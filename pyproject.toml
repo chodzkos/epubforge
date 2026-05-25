@@ -1,0 +1,151 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "epubforge"
+dynamic = ["version"]
+description = "Modern modular toolkit for EPUB files — validate, fix, convert, hyphenate"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "chodzkos" }
+]
+keywords = ["epub", "ebook", "kindle", "kfx", "hyphenation", "metadata"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Text Processing :: Markup",
+    "Topic :: Office/Business",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "lxml>=5.0",
+    "pyphen>=0.15",
+    "cssutils>=2.10",
+]
+
+[project.optional-dependencies]
+gui = [
+    "tkinterdnd2>=0.4; sys_platform != 'darwin'",
+    "Pillow>=10.0",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.1",
+    "pytest-mock>=3.12",
+    "ruff>=0.4",
+    "mypy>=1.10",
+    "pre-commit>=3.7",
+    "pdoc>=14.0",
+    "lxml-stubs",
+]
+build = [
+    "pyinstaller>=6.6",
+    "Pillow>=10.0",
+]
+
+[project.scripts]
+epubforge = "epubforge.cli.main:main"
+
+[project.gui-scripts]
+epubforge-gui = "epubforge.gui.app:main"
+
+[project.urls]
+Homepage = "https://github.com/chodzkos/epubforge"
+Documentation = "https://github.com/chodzkos/epubforge/blob/main/README.md"
+Repository = "https://github.com/chodzkos/epubforge"
+Issues = "https://github.com/chodzkos/epubforge/issues"
+Changelog = "https://github.com/chodzkos/epubforge/blob/main/CHANGELOG.md"
+
+[tool.hatch.version]
+path = "src/epubforge/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/epubforge"]
+
+# ── Ruff (linter + formatter) ──────────────────────────────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # bugbear
+    "C4",   # comprehensions
+    "UP",   # pyupgrade
+    "N",    # pep8-naming
+    "SIM",  # simplify
+    "RUF",  # ruff-specific
+]
+ignore = [
+    "E501",  # line too long (formatter handles it)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]  # asserts dozwolone w testach
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# ── Mypy (type checker) ────────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unreachable = true
+show_error_codes = true
+files = ["src/epubforge"]
+
+[[tool.mypy.overrides]]
+module = [
+    "pyphen",
+    "cssutils",
+    "tkinterdnd2",
+]
+ignore_missing_imports = true
+
+# ── Pytest ─────────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+]
+markers = [
+    "gui: testy GUI (wymagają tkinter / xvfb)",
+    "integration: testy integracyjne (wymagają zewnętrznych narzędzi)",
+    "slow: wolne testy",
+]
+
+# ── Coverage ───────────────────────────────────────────────────────────────────
+[tool.coverage.run]
+source = ["src/epubforge"]
+branch = true
+omit = ["*/gui/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
