@@ -1,0 +1,1 @@
+"""Reużywalne widgety tkinter."""
