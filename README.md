@@ -8,6 +8,26 @@
 
 ---
 
+## 🚧 Status projektu
+
+> **Faza: alpha / development.** Projekt jest w trakcie budowy etapami zgodnie z [ROADMAP.md](ROADMAP.md).
+> Część funkcji opisanych poniżej jest **docelowa** — sprawdź tabelę poniżej, co już działa.
+
+| Funkcja | Status |
+|---|---|
+| Klasa `Epub` (odczyt/zapis) | 🔜 planowane (Etap 1) |
+| Metadane Dublin Core | 🔜 planowane (Etap 2) |
+| Wykrywanie narzędzi | 🔜 planowane (Etap 3) |
+| Konwersja → EPUB | 🔜 planowane (Etap 4) |
+| Hyphenacja | 🔜 planowane (Etap 5) |
+| CSS Fixer | 🔜 planowane (Etap 6) |
+| KFX | 🔜 planowane (Etap 7) |
+| GUI | 🔜 planowane (Etap 8-12) |
+
+*Status będzie aktualizowany w miarę postępu. Zobacz [CHANGELOG.md](CHANGELOG.md).*
+
+---
+
 ## ✨ Funkcje
 
 - **📖 Library API** — czysty interfejs Python do pracy z plikami EPUB
@@ -97,6 +117,29 @@ epubforge-gui
 ---
 
 ## 📋 Wymagania
+
+### Obsługiwane formaty wejściowe (konwersja → EPUB)
+
+| Format | Silnik | Jakość | Uwagi |
+|---|---|---|---|
+| TXT | Pandoc | dobra | prosty tekst |
+| Markdown | Pandoc | bardzo dobra | natywne wsparcie |
+| DOCX | Pandoc | dobra | zachowuje style |
+| HTML | Pandoc | bardzo dobra | |
+| ODT | Pandoc | dobra | |
+| RTF | Pandoc | średnia | |
+| **PDF** | Calibre | **eksperymentalna** | tylko PDF tekstowe; skany wymagają OCR (planowane) |
+| FB2 / LIT | Calibre | dobra | |
+
+> ⚠️ **PDF → EPUB jest eksperymentalne.** Najlepsze wyniki dla PDF z tekstem (nie skanów).
+> PDF wielokolumnowe, naukowe i skany dają słabą jakość. OCR planowany w przyszłych wersjach.
+
+### Konwersja EPUB → KFX
+
+| Silnik | Status | Uwagi |
+|---|---|---|
+| **Calibre + wtyczka KFX Output** | zalecany | sprawdzony, mniej wrażliwy na formatowanie |
+| Kindle Previewer 3 | eksperymentalny | wrażliwy na nieidealne formatowanie EPUB |
 
 ### Do uruchomienia
 - Python 3.10+ (jeśli nie używasz .exe)

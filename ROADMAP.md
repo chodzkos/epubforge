@@ -68,7 +68,7 @@ class Epub:
     def __exit__(self, *args) -> None: ...
     
     @property
-    def opf_path(self) -> str: ...
+    def opf_path(self) -> str: ...        # odczytany z META-INF/container.xml
     @property
     def manifest(self) -> list[ManifestItem]: ...
     @property
@@ -81,10 +81,51 @@ class Epub:
     def backup(self) -> Path: ...
 ```
 
+### ⚠️ KRYTYCZNE: zasady bezpiecznego zapisu EPUB (ZIP)
+
+EPUB to archiwum ZIP z **rygorystycznymi wymogami strukturalnymi**. Naiwne `zipfile.write()` w pętli tworzy plik, który EpubCheck i część czytników odrzuca. Klasa `Epub.save()` MUSI:
+
+1. **Plik `mimetype` jest PIERWSZY w archiwum** — przed czymkolwiek innym
+2. **Plik `mimetype` zapisany BEZ kompresji** — `ZIP_STORED`, NIE `ZIP_DEFLATED`
+3. **Plik `mimetype` bez extra fields** — czysty zapis, zawartość dokładnie `application/epub+zip` (bez końcowego newline)
+4. **Pozostałe pliki** mogą być kompresowane (`ZIP_DEFLATED`)
+5. **Zapis atomowy** — najpierw do pliku tymczasowego (`.tmp`), potem `os.replace()`
+6. **Backup przed nadpisaniem** oryginału (`.bak`)
+
+Wzorzec zapisu:
+```python
+import zipfile, os
+from pathlib import Path
+
+def _write_epub(target: Path, files: dict[str, bytes]) -> None:
+    tmp = target.with_suffix(".tmp")
+    with zipfile.ZipFile(tmp, "w") as zf:
+        # 1. mimetype PIERWSZY, BEZ kompresji
+        zf.writestr("mimetype", "application/epub+zip", compress_type=zipfile.ZIP_STORED)
+        # 2. reszta plików, z kompresją
+        for name, data in files.items():
+            if name == "mimetype":
+                continue
+            zf.writestr(name, data, compress_type=zipfile.ZIP_DEFLATED)
+    os.replace(tmp, target)  # atomic
+```
+
+### ⚠️ Odczyt ścieżki OPF — przez container.xml
+
+Ścieżki do pliku OPF NIE wolno zgadywać. Trzeba ją odczytać z `META-INF/container.xml`:
+```python
+# META-INF/container.xml zawiera:
+# <rootfiles><rootfile full-path="OEBPS/content.opf" .../></rootfiles>
+# Najpierw parsujemy container.xml, dopiero potem znamy opf_path
+```
+
 ### Kryteria akceptacji
-- [ ] Otwarcie EPUB → odczyt manifestu i spine'a
+- [ ] Otwarcie EPUB → odczyt `opf_path` z container.xml → manifest i spine
 - [ ] Modyfikacja pliku wewnętrznego → zapis zachowuje strukturę ZIP
+- [ ] **`mimetype` pierwszy i nieskompresowany w wyjściowym EPUB** (test sprawdza `ZipInfo.compress_type == ZIP_STORED`)
+- [ ] Zapisany EPUB przechodzi walidację EpubCheck (jeśli dostępny — test integracyjny)
 - [ ] `backup()` tworzy `.bak` przed zapisem
+- [ ] Zapis atomowy (plik tymczasowy + replace)
 - [ ] Coverage > 80% dla `epub.py`
 
 ---
@@ -118,11 +159,26 @@ class Metadata:
     def to_opf(self, existing_opf: bytes) -> bytes: ...
 ```
 
+### ⚠️ Pułapka: namespace'y w OPF
+
+OPF używa przestrzeni nazw XML. Metadane są w namespace Dublin Core, elementy struktury w namespace OPF. Parsowanie BEZ obsługi namespace'ów zwróci puste wyniki. Trzeba użyć namespace map:
+```python
+NS = {
+    "dc":   "http://purl.org/dc/elements/1.1/",
+    "opf":  "http://www.idpf.org/2007/opf",
+}
+# lxml: root.findall(".//dc:creator", namespaces=NS)
+# xml.etree: root.findall(".//{http://purl.org/dc/elements/1.1/}creator")
+```
+Zachowaj deklarację XML i kodowanie UTF-8 przy zapisie (polskie znaki!).
+
 ### Kryteria akceptacji
 - [ ] Odczyt metadanych z fixture EPUB
 - [ ] Edycja + zapis nie psuje innych elementów OPF
 - [ ] Obsługa wielu autorów (`<dc:creator>` × N)
+- [ ] Poprawna obsługa namespace'ów (dc:, opf:)
 - [ ] Polskie znaki (`ąęłżźć`) — odczyt i zapis poprawny
+- [ ] Deklaracja `<?xml ... encoding="utf-8"?>` zachowana po zapisie
 
 ### Stage gate (po tym etapie)
 ✋ **Tag:** `git tag v0.1.0-alpha` — pierwsza biblioteka działa.

@@ -125,14 +125,18 @@ sudo apt install python3.10 python3.10-venv python3-tk -y
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
+
+# Pre-commit hooks (uruchamiają lint + mypy przed każdym commitem)
+pre-commit install
 ```
 
 Sprawdzenie:
 ```bash
-pytest          # uruchom testy
-ruff check .    # linter
-mypy src/       # type checker
-epubforge --help # CLI działa
+pytest                      # uruchom testy
+ruff check .                # linter
+mypy src/                   # type checker
+pre-commit run --all-files  # wszystkie hooki naraz
+epubforge --help            # CLI działa
 ```
 
 ---

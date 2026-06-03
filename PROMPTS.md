@@ -49,20 +49,32 @@ Wykonaj:
    - OpfNotFoundError
 3. Utwórz src/epubforge/core/epub.py z klasą Epub zgodnie z API w ROADMAP.md.
    Implementacja:
-   - Używa stdlib: zipfile, xml.etree.ElementTree
+   - Używa stdlib: zipfile, xml.etree.ElementTree (lub lxml jeśli dostępne)
+   - opf_path odczytywany z META-INF/container.xml (NIE zgadywany!)
    - Lazy loading - manifest/spine wczytywane tylko gdy potrzebne
    - Context manager (__enter__/__exit__)
    - read_file/write_file operują na ścieżkach względnych wewnątrz EPUB
    - save() z opcjonalnym output_path - jeśli None, nadpisuje oryginał z backupem
    - backup() tworzy plik .bak obok oryginału
+
+   ⚠️ KRYTYCZNE - zasady zapisu ZIP (przeczytaj sekcję "bezpieczny zapis" w ROADMAP.md Etap 1):
+   - Plik "mimetype" MUSI być PIERWSZY w archiwum
+   - Plik "mimetype" MUSI być zapisany BEZ kompresji (zipfile.ZIP_STORED)
+   - Zawartość mimetype: dokładnie "application/epub+zip" (bez newline)
+   - Pozostałe pliki z kompresją (ZIP_DEFLATED)
+   - Zapis atomowy: plik .tmp, potem os.replace()
 4. Utwórz tests/fixtures/sample.epub - prosty EPUB testowy (możesz wygenerować skryptem)
 5. Utwórz tests/test_epub.py z testami pokrywającymi:
-   - Otwarcie EPUB i odczyt OPF
+   - Otwarcie EPUB i odczyt opf_path z container.xml
    - Listowanie plików
    - Odczyt zawartości pliku wewnętrznego
    - Modyfikacja i zapis (przez context manager)
+   - SPRAWDŹ że mimetype jest pierwszy i nieskompresowany:
+     with zipfile.ZipFile(output) as zf:
+         assert zf.namelist()[0] == "mimetype"
+         assert zf.getinfo("mimetype").compress_type == zipfile.ZIP_STORED
    - Backup
-   - Obsługa błędów (plik nie istnieje, uszkodzony ZIP)
+   - Obsługa błędów (plik nie istnieje, uszkodzony ZIP, brak container.xml)
 6. Uruchom testy, lint, mypy. Cel: coverage > 80% dla epub.py.
 7. Zacommituj: "feat(core): Epub class for reading and writing EPUB archives"
 8. Zaproponuj push i PR.
@@ -302,9 +314,10 @@ Wykonaj:
    - DARK = {"bg": "#1e2028", "bg2": "#252830", ...} 
    - LIGHT = {"bg": "#ffffff", "bg2": "#f5f5f5", ...}
    - apply_theme(root, theme_dict) - rekurencyjnie po wszystkich widgetach
-5. Dodaj entry point GUI w pyproject.toml:
-   [project.scripts]
+5. Dodaj entry point GUI w pyproject.toml (UWAGA: sekcja [project.gui-scripts], NIE [project.scripts] — gui-scripts ukrywa konsolę na Windows):
+   [project.gui-scripts]
    epubforge-gui = "epubforge.gui.app:main"
+   (ten wpis prawdopodobnie już istnieje w pyproject.toml - sprawdź i NIE przenoś go do [project.scripts])
 6. Tests/gui/test_widgets.py - testuje że widgety tworzą się bez błędów (xvfb-run w CI)
 7. Update .github/workflows/test.yml - dodaj xvfb dla testów GUI
 8. Commit: "feat(gui): application framework with theme and reusable widgets"

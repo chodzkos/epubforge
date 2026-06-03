@@ -6,6 +6,86 @@ Ten plik zawiera fragmenty kodu ze starego `gui_main.py` (epubtools-suite) gotow
 
 ---
 
+## 📦 Etap 1 — `core/epub.py` (bezpieczny zapis ZIP)
+
+### Wzorzec zapisu EPUB zgodny ze specyfikacją:
+
+```python
+import os
+import zipfile
+from pathlib import Path
+
+
+def write_epub(target: Path, files: dict[str, bytes]) -> None:
+    """Zapisz EPUB zachowując wymogi specyfikacji.
+
+    Args:
+        target: Ścieżka docelowa pliku .epub
+        files: Słownik {ścieżka_wewnętrzna: zawartość_bytes}
+
+    Wymogi spec EPUB:
+        1. mimetype PIERWSZY w archiwum
+        2. mimetype BEZ kompresji (ZIP_STORED)
+        3. mimetype = dokładnie "application/epub+zip" (bez newline)
+        4. reszta plików z kompresją
+        5. zapis atomowy (tmp + replace)
+    """
+    tmp = target.with_suffix(target.suffix + ".tmp")
+    try:
+        with zipfile.ZipFile(tmp, "w") as zf:
+            # 1+2+3. mimetype PIERWSZY, BEZ kompresji
+            zf.writestr(
+                "mimetype",
+                "application/epub+zip",
+                compress_type=zipfile.ZIP_STORED,
+            )
+            # 4. pozostałe pliki z kompresją
+            for name, data in files.items():
+                if name == "mimetype":
+                    continue  # już zapisany jako pierwszy
+                zf.writestr(name, data, compress_type=zipfile.ZIP_DEFLATED)
+        # 5. atomowe zastąpienie
+        os.replace(tmp, target)
+    except Exception:
+        if tmp.exists():
+            tmp.unlink()  # sprzątanie po błędzie
+        raise
+
+
+def read_opf_path(zf: zipfile.ZipFile) -> str:
+    """Odczytaj ścieżkę do OPF z META-INF/container.xml.
+
+    NIE zgaduj ścieżki OPF - musi pochodzić z container.xml!
+    """
+    import xml.etree.ElementTree as ET
+
+    container = zf.read("META-INF/container.xml")
+    root = ET.fromstring(container)
+    ns = {"c": "urn:oasis:names:tc:opendocument:xmlns:container"}
+    rootfile = root.find(".//c:rootfile", ns)
+    if rootfile is None:
+        raise ValueError("Brak rootfile w container.xml — uszkodzony EPUB")
+    return rootfile.attrib["full-path"]
+```
+
+**Test sprawdzający poprawność:**
+```python
+def test_mimetype_is_first_and_stored(tmp_path):
+    target = tmp_path / "test.epub"
+    write_epub(target, {"OEBPS/content.opf": b"<package/>"})
+
+    with zipfile.ZipFile(target) as zf:
+        # mimetype musi być PIERWSZY
+        assert zf.namelist()[0] == "mimetype"
+        # mimetype musi być NIESKOMPRESOWANY
+        info = zf.getinfo("mimetype")
+        assert info.compress_type == zipfile.ZIP_STORED
+        # zawartość dokładnie ta wymagana
+        assert zf.read("mimetype") == b"application/epub+zip"
+```
+
+---
+
 ## 📦 Etap 3 — `core/config.py`
 
 ### Skopiuj ze starego `gui_main.py`:
@@ -166,8 +246,37 @@ def _calibre_has_kfx_plugin(calibre_config_dir: Path) -> bool:
 
 **Zmiany do wprowadzenia:**
 - Każde `_find_*` → metoda statyczna klasy `Tools`
-- Zwracaj `Tool` dataclass z `path`, `version`, `available`
+- Zwracaj `Tool` dataclass z bogatszą informacją (poniżej)
 - Mockowanie w testach: `monkeypatch.setattr("shutil.which", lambda x: "/fake/path")`
+
+### Zalecany model danych `Tool` (bogatszy niż w ROADMAP)
+
+```python
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Literal
+
+@dataclass(frozen=True)
+class Tool:
+    """Informacja o wykrytym (lub nie) narzędziu zewnętrznym."""
+    name: str                       # np. "Pandoc"
+    executable: str                 # np. "pandoc"
+    path: Path | None = None        # ścieżka jeśli znaleziono
+    version: str = ""               # wersja jeśli udało się odczytać
+    available: bool = False         # czy gotowe do użycia
+    source: Literal[
+        "path",          # znalezione w PATH
+        "default_path",  # znalezione w typowej lokalizacji
+        "config",        # ścieżka z config.json (ręczny override)
+        "not_found"      # nie znaleziono
+    ] = "not_found"
+    error: str = ""                 # komunikat dlaczego niedostępne
+```
+
+**Korzyść:** GUI może pokazać użytkownikowi nie tylko „brak", ale też „czemu brak"
+(np. „Pandoc: znaleziono w PATH, wersja 3.1.3" albo „Calibre: nie znaleziono w typowych
+lokalizacjach — zainstaluj z calibre-ebook.com"). To znacząco poprawia UX przy
+diagnozowaniu problemów z konfiguracją.
 
 ---
 
