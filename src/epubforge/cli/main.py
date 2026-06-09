@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Callable
+from typing import cast
 
 from epubforge import __version__
+from epubforge.cli import convert
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -30,8 +33,13 @@ def main(argv: list[str] | None = None) -> int:
     # Subkomendy będą dodane w etapach 1-7
     subparsers = parser.add_subparsers(dest="command", help="Dostępne komendy")
     subparsers.add_parser("info", help="Wyświetl informacje o wersji i wykrytych narzędziach")
+    convert.add_parser(subparsers)
 
     args = parser.parse_args(argv)
+
+    if hasattr(args, "func"):
+        handler = cast(Callable[[argparse.Namespace], int], args.func)
+        return handler(args)
 
     if args.command == "info":
         print(f"EpubForge {__version__}")
