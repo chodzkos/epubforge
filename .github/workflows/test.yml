@@ -42,8 +42,13 @@ jobs:
         ruff check .
         ruff format --check .
 
-    - name: Type check with mypy
-      run: mypy src/
+    - name: Type check with mypy (wszystkie platformy)
+      # Sprawdzamy każdą platformę jawnie — kod warunkowany sys.platform
+      # może mieć błędy widoczne tylko pod konkretnym --platform (np. unreachable).
+      run: |
+        mypy --platform linux src/
+        mypy --platform darwin src/
+        mypy --platform win32 src/
 
     - name: Test with pytest (Linux)
       if: runner.os == 'Linux'
