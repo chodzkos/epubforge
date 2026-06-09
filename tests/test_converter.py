@@ -52,7 +52,9 @@ def test_pandoc_command_with_metadata_cover_and_css(
 ) -> None:
     """Pandoc dostaje ścieżki, EPUB version, TOC, CSS, okładkę i metadane."""
     calls: list[tuple[list[str], dict[str, object]]] = []
-    monkeypatch.setattr(converter.Tools, "pandoc", staticmethod(lambda: _tool("pandoc", "/bin/pandoc")))
+    monkeypatch.setattr(
+        converter.Tools, "pandoc", staticmethod(lambda: _tool("pandoc", "/bin/pandoc"))
+    )
     monkeypatch.setattr(converter.subprocess, "run", _fake_run(calls, stdout="pandoc log"))
 
     source = tmp_path / "book.md"
