@@ -61,7 +61,7 @@ Licencja: MIT
 | Python | 3.10+ | match statements, type hints |
 | GUI | tkinter | wbudowany w Pythona |
 | XML/HTML | lxml | szybki, robust |
-| CSS | cssutils (lub css-parser) | parsing |
+| CSS | tinycss2 | nowoczesny parser (NIE cssutils) |
 | Hyphenation | pyphen | 50+ języków |
 | Drag&Drop | tkinterdnd2 | opcjonalne |
 | Obrazy | Pillow | dla ikon |
@@ -188,6 +188,23 @@ except ImportError:
 # W kodzie warunek - jeśli HAS_DND to rejestruj D&D, inaczej nie
 ```
 
+**Dodatkowo przy PyInstaller:** `tkinterdnd2` dołącza natywne binaria `tkdnd`, których PyInstaller domyślnie nie pakuje → `.exe` wywala się z `can't find package tkdnd`. W `.spec` trzeba jawnie dodać katalog `tkdnd` do `datas` (lub `--collect-all tkinterdnd2`).
+
+### 9. Duże pliki EPUB — nie ładuj wszystkiego do RAM
+**Problem:** EPUB z grafiką/wideo może mieć 50-150 MB. Trzymanie całości w `dict[str, bytes]` zjada RAM przy batch processing.
+
+**Rozwiązanie:** przy zapisie kopiuj niezmienione wpisy bezpośrednio ze źródłowego ZIP, w pamięci trzymaj tylko zmodyfikowane pliki (wzorzec w ROADMAP Etap 1).
+
+### 10. CSS — używaj tinycss2, nie cssutils
+**Problem:** `cssutils` jest przestarzały, hałasuje ostrzeżeniami przy CSS3 (`--var`, `@supports`, `calc()`) i bywa nadgorliwy przy modyfikacjach — może uszkodzić poprawny layout.
+
+**Rozwiązanie:** `tinycss2` (tokenizer W3C) lub precyzyjny regex. Zachowuj nieznane reguły bez zmian, modyfikuj tylko jawnie celowane.
+
+### 11. Hyphenation — soft-hyphen vs CSS to kompromis
+**Problem:** Soft-hyphen (`\u00ad`) działa wszędzie (też stary Kindle), ale psuje słownik i wyszukiwarkę na czytniku. CSS `hyphens: auto` jest czysty, ale słabo wspierany na Kindle.
+
+**Rozwiązanie:** oferuj OBIE metody, NIE wybieraj za użytkownika. Przy soft-hyphen pokaż ostrzeżenie w GUI.
+
 ---
 
 ## Workflow Claude Code
@@ -201,7 +218,8 @@ except ImportError:
 ### Przed pisaniem kodu:
 1. Sprawdź czy są testy dla istniejącego API
 2. Sprawdź czy podobne wzorce są już użyte gdzie indziej
-3. Zaproponuj plan jeśli zadanie ma >50 linii kodu
+3. **Przy pracy nad warstwą wyższą (GUI, CLI) ZAWSZE najpierw przeczytaj aktualny stan modułów core których będziesz używać** — kształt dataclass, sygnatury funkcji. NIE twórz mocków ani duplikatów klas z `core/`. Importuj i używaj prawdziwych. To zapobiega rozjazdowi między warstwami przy długich sesjach.
+4. Zaproponuj plan jeśli zadanie ma >50 linii kodu
 
 ### Przed commitem:
 1. `pytest` — wszystkie zielone

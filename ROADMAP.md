@@ -92,23 +92,35 @@ EPUB to archiwum ZIP z **rygorystycznymi wymogami strukturalnymi**. Naiwne `zipf
 5. **Zapis atomowy** — najpierw do pliku tymczasowego (`.tmp`), potem `os.replace()`
 6. **Backup przed nadpisaniem** oryginału (`.bak`)
 
-Wzorzec zapisu:
+Wzorzec zapisu — **kopiuj niezmienione wpisy bezpośrednio ze źródłowego ZIP** (nie ładuj całości do pamięci, ważne dla dużych EPUB-ów z grafiką):
 ```python
 import zipfile, os
 from pathlib import Path
 
-def _write_epub(target: Path, files: dict[str, bytes]) -> None:
-    tmp = target.with_suffix(".tmp")
-    with zipfile.ZipFile(tmp, "w") as zf:
+def _write_epub(source: Path, target: Path, modified: dict[str, bytes]) -> None:
+    """Zapis z kopiowaniem strumieniowym ze źródła.
+
+    Args:
+        source: oryginalny EPUB (do skopiowania niezmienionych plików)
+        target: plik docelowy
+        modified: tylko ZMIENIONE pliki {ścieżka: dane}
+    """
+    tmp = target.with_suffix(target.suffix + ".tmp")
+    with zipfile.ZipFile(source) as zin, zipfile.ZipFile(tmp, "w") as zout:
         # 1. mimetype PIERWSZY, BEZ kompresji
-        zf.writestr("mimetype", "application/epub+zip", compress_type=zipfile.ZIP_STORED)
-        # 2. reszta plików, z kompresją
-        for name, data in files.items():
-            if name == "mimetype":
+        zout.writestr("mimetype", b"application/epub+zip",
+                      compress_type=zipfile.ZIP_STORED)
+        # 2. reszta: zmienione z dict, niezmienione kopiowane ze źródła
+        for item in zin.infolist():
+            if item.filename == "mimetype":
                 continue
-            zf.writestr(name, data, compress_type=zipfile.ZIP_DEFLATED)
+            data = modified.get(item.filename)
+            if data is None:
+                data = zin.read(item.filename)  # kopiuj oryginał
+            zout.writestr(item.filename, data, compress_type=zipfile.ZIP_DEFLATED)
     os.replace(tmp, target)  # atomic
 ```
+Dzięki temu w pamięci trzymamy tylko zmodyfikowane pliki, nie cały EPUB — przy 100 MB książce z grafiką to różnica między 5 MB a 100 MB RAM.
 
 ### ⚠️ Odczyt ścieżki OPF — przez container.xml
 
@@ -126,6 +138,7 @@ def _write_epub(target: Path, files: dict[str, bytes]) -> None:
 - [ ] Zapisany EPUB przechodzi walidację EpubCheck (jeśli dostępny — test integracyjny)
 - [ ] `backup()` tworzy `.bak` przed zapisem
 - [ ] Zapis atomowy (plik tymczasowy + replace)
+- [ ] **Niezmienione pliki kopiowane ze źródła** (nie ładowane wszystkie do RAM)
 - [ ] Coverage > 80% dla `epub.py`
 
 ---
@@ -289,6 +302,7 @@ def to_epub(
 @dataclass
 class HyphenationOptions:
     language: str = "pl"           # ISO 639-1
+    method: Literal["soft-hyphen", "css"] = "soft-hyphen"
     skip_headers: bool = True       # h1-h3
     skip_tags: set[str] = field(default_factory=lambda: {"code", "pre", "kbd"})
     min_word_length: int = 5
@@ -296,14 +310,33 @@ class HyphenationOptions:
 def hyphenate(epub: Epub, options: HyphenationOptions) -> None: ...
 ```
 
+### ⚠️ WAŻNE: kompromis metod dzielenia wyrazów
+
+Dwie metody, każda z wadami — **pozwól użytkownikowi wybrać, nie wybieraj za niego**:
+
+| Metoda | Działa wszędzie | Wada |
+|---|---|---|
+| `soft-hyphen` (wstawia `\u00ad`) | tak, też stary Kindle/MOBI/KFX | **psuje słownik i wyszukiwarkę na czytniku** — zaznaczone słowo z ukrytym myślnikiem nie zostanie znalezione w słowniku |
+| `css` (`hyphens: auto`) | nie — słabo wspierane na Kindle | czysty tekst, ale brak efektu na wielu czytnikach e-ink |
+
+**Implementacja `soft-hyphen`:** wstawia `\u00ad` w słowach (jak dotychczas).
+**Implementacja `css`:** wstrzykuje globalną regułę do CSS:
+```css
+body { hyphens: auto; -webkit-hyphens: auto; -moz-hyphens: auto; hyphenate-limit-chars: 5 2 2; }
+```
+
+GUI MUSI pokazać ostrzeżenie przy wyborze `soft-hyphen`: *„Ta metoda działa na wszystkich czytnikach, ale może utrudnić wyszukiwanie słów i działanie słownika na urządzeniu."*
+
 ### Biblioteka
-- `pyphen` — słowniki dla 50+ języków, w tym polski
+- `pyphen` — słowniki dla 50+ języków, w tym polski (tylko dla metody soft-hyphen)
 
 ### Kryteria akceptacji
-- [ ] Polski tekst hyphenowany poprawnie
-- [ ] Tagi `<code>`, `<pre>` pomijane
+- [ ] Metoda soft-hyphen: polski tekst hyphenowany poprawnie
+- [ ] Metoda css: reguła wstrzyknięta, tekst nietknięty
+- [ ] Tagi `<code>`, `<pre>` pomijane (soft-hyphen)
 - [ ] Nagłówki opcjonalnie pomijane
 - [ ] Idempotentność — drugi przebieg nie podwaja hyphenów
+- [ ] Ostrzeżenie dostępne w API (np. `HyphenationOptions` ma docstring z przestrogą)
 
 ---
 
@@ -339,10 +372,25 @@ def fix_css(epub: Epub, options: CssFixOptions) -> None: ...
 5. **Book margin** — `@page { margin: Npx }`
 6. **Skip hyphenation in headers** — `h1, h2, h3 { hyphens: none; }`
 
+### Biblioteka
+- `tinycss2` — nowoczesny, lekki parser CSS oparty o specyfikacje W3C. **Nie używamy cssutils** — jest przestarzały, hałasuje przy CSS3 (`--var`, `@supports`, `calc()`) i bywa nadgorliwy przy modyfikacjach.
+- Dla prostych operacji (usuń kolory, justify→left) tinycss2 lub precyzyjny regex są bezpieczniejsze niż cssutils.
+
+### ⚠️ Uwaga implementacyjna
+`tinycss2` to tokenizer/parser niskiego poziomu (nie obiektowy model jak cssutils). Operujesz na liście tokenów:
+```python
+import tinycss2
+rules = tinycss2.parse_stylesheet(css_text, skip_whitespace=True)
+# Modyfikuj/filtruj tokeny, potem serialize:
+new_css = tinycss2.serialize(rules)
+```
+Zachowuj nieznane reguły (`@supports`, `calc()`, zmienne) bez zmian — modyfikuj tylko to, co jawnie celujesz.
+
 ### Kryteria akceptacji
 - [ ] Każda opcja działa niezależnie
 - [ ] Kombinacja opcji działa (np. remove-colors + replace-justify)
-- [ ] CSS pozostaje valid (sprawdzenie przez `cssutils`)
+- [ ] **Nowoczesny CSS3 (`--var`, `@supports`, `calc()`) NIE jest uszkadzany**
+- [ ] CSS pozostaje parsowalny po zmianach
 
 ---
 
@@ -446,6 +494,7 @@ Zobacz `REUSABLE_CODE.md` sekcja **Widgets** — gotowe klasy do skopiowania.
 - Wybór silnika (Pandoc/Calibre/auto)
 - Pola metadanych
 - Wybór okładki
+- **PDF za jawnym potwierdzeniem**: gdy użytkownik doda plik `.pdf`, pokaż ostrzeżenie w dialogu: *„Konwersja PDF → EPUB jest eksperymentalna. Calibre wstawia sztywne marginesy i może łamać akapity. Najlepsze wyniki dla prostych PDF tekstowych. Kontynuować?"* — dopiero po potwierdzeniu plik trafia na listę.
 
 ---
 
@@ -486,9 +535,18 @@ Zobacz `REUSABLE_CODE.md` sekcja **Widgets** — gotowe klasy do skopiowania.
 ### Pułapki techniczne (z poprzedniego projektu!)
 **DLL conflict** — `python311.dll` z PyInstaller vs Python użytkownika. Rozwiązanie: izoluj pliki w podkatalogu, ustaw `sys.path[0]` tak, by NIE wskazywał na `_MEIPASS` przy wywołaniach subprocess.
 
+**tkinterdnd2 + PyInstaller** — `tkinterdnd2` dołącza natywne binaria `tkdnd`, których PyInstaller domyślnie NIE pakuje → `.exe` wywala się z `can't find package tkdnd`. Rozwiązanie w `.spec`:
+```python
+import tkinterdnd2, os
+tkdnd_dir = os.path.join(os.path.dirname(tkinterdnd2.__file__), 'tkdnd')
+datas += [(tkdnd_dir, 'tkinterdnd2/tkdnd')]
+# Alternatywnie: pyinstaller --collect-all tkinterdnd2
+```
+
 ### Kryteria akceptacji
 - [ ] Lokalny `build.bat` produkuje `.exe`
 - [ ] `.exe` otwiera się i działają wszystkie zakładki
+- [ ] **Drag & drop działa w `.exe`** (test: przeciągnij plik na okno)
 - [ ] GitHub Actions buduje przy tagu `v*`
 
 ---

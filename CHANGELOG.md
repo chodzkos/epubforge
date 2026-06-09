@@ -13,6 +13,13 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 - Pre-commit hooks (ruff, mypy, podstawowe sprawdzenia)
 - Dokumentacja: README, ROADMAP, CLAUDE.md, PROMPTS, FEATURES
 
+### Decyzje techniczne (na podstawie analiz)
+- CSS: `tinycss2` zamiast `cssutils` (nowocześniejszy, nie psuje CSS3)
+- Zapis EPUB: kopiowanie strumieniowe ze źródła zamiast ładowania całości do RAM
+- Hyphenacja: dwie metody (soft-hyphen / CSS) z ostrzeżeniem o kompromisie Kindle
+- PyInstaller: jawny hook dla natywnych binariów tkdnd (drag&drop)
+- PDF → EPUB: oznaczone jako eksperymentalne, za potwierdzeniem w GUI
+
 ### Planowane (zgodnie z ROADMAP.md)
 - Etap 1: Klasa `Epub` (odczyt/zapis z poprawną obsługą mimetype)
 - Etap 2: Metadane Dublin Core
