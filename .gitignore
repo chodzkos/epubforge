@@ -92,3 +92,6 @@ desktop.ini
 
 # Claude Code
 .claude/
+
+# Lokalne archiwum startera (nie wersjonujemy binariów)
+epubforge_starter.tar.gz
