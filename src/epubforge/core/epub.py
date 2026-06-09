@@ -28,6 +28,7 @@ from epubforge.core.exceptions import (
     InvalidEpubError,
     OpfNotFoundError,
 )
+from epubforge.core.metadata import Metadata
 
 logger = logging.getLogger(__name__)
 
@@ -207,6 +208,18 @@ class Epub:
             self._parse_opf()
         assert self._spine is not None
         return self._spine
+
+    @property
+    def metadata(self) -> Metadata:
+        """Metadane Dublin Core sparsowane z bieżącego OPF."""
+        return Metadata.from_opf(self.read_file(self.opf_path))
+
+    @metadata.setter
+    def metadata(self, value: Metadata) -> None:
+        """Wpisuje metadane do OPF i utrwala zmianę na dysku (z backupem)."""
+        new_opf = value.to_opf(self.read_file(self.opf_path))
+        self.write_file(self.opf_path, new_opf)
+        self.save()
 
     # ── Operacje na plikach wewnętrznych ─────────────────────────────────────
 
