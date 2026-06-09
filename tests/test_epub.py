@@ -137,6 +137,18 @@ def test_write_file_adds_new_entry(epub_path: Path) -> None:
         assert epub.read_file("OEBPS/text/chapter2.xhtml") == b"<html>nowy</html>"
 
 
+def test_delete_file_removes_entry_on_save(epub_path: Path) -> None:
+    """delete_file usuwa wpis z listy i z zapisanego archiwum."""
+    with Epub(epub_path) as epub:
+        epub.delete_file("OEBPS/nav.xhtml")
+        assert "OEBPS/nav.xhtml" not in epub.list_files()
+        with pytest.raises(KeyError):
+            epub.read_file("OEBPS/nav.xhtml")
+        epub.save()
+    with zipfile.ZipFile(epub_path) as zf:
+        assert "OEBPS/nav.xhtml" not in zf.namelist()
+
+
 def test_save_creates_backup(epub_path: Path) -> None:
     """save() bez ścieżki tworzy backup .bak oryginału."""
     with Epub(epub_path) as epub:

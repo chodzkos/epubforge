@@ -57,7 +57,7 @@ class ManifestItem:
     properties: str | None = None
 
 
-def _write_epub(source: Path, target: Path, modified: dict[str, bytes]) -> None:
+def _write_epub(source: Path, target: Path, modified: dict[str, bytes], deleted: set[str]) -> None:
     """Zapisuje EPUB kopiując niezmienione wpisy strumieniowo ze źródła.
 
     W pamięci trzymamy wyłącznie zmodyfikowane pliki (``modified``); resztę
@@ -67,6 +67,7 @@ def _write_epub(source: Path, target: Path, modified: dict[str, bytes]) -> None:
         source: oryginalny EPUB — źródło niezmienionych wpisów.
         target: plik docelowy (może być identyczny z ``source``).
         modified: zmienione/nowe pliki jako ``{ścieżka_wewnętrzna: dane}``.
+        deleted: ścieżki wpisów, których nie należy kopiować do wyjścia.
     """
     tmp = target.with_suffix(target.suffix + ".tmp")
     written: set[str] = set()
@@ -78,6 +79,8 @@ def _write_epub(source: Path, target: Path, modified: dict[str, bytes]) -> None:
         for item in zin.infolist():
             if item.filename == _MIMETYPE_PATH:
                 continue
+            if item.filename in deleted:
+                continue
             data = modified.get(item.filename)
             if data is None:
                 data = zin.read(item.filename)
@@ -85,7 +88,7 @@ def _write_epub(source: Path, target: Path, modified: dict[str, bytes]) -> None:
             written.add(item.filename)
         # 3. Pliki dodane przez write_file, których nie ma jeszcze w źródle.
         for name, data in modified.items():
-            if name not in written:
+            if name not in deleted and name not in written:
                 zout.writestr(name, data, compress_type=zipfile.ZIP_DEFLATED)
     os.replace(tmp, target)
 
@@ -132,6 +135,7 @@ class Epub:
         self.path = Path(path)
         self._zip: zipfile.ZipFile | None = None
         self._modified: dict[str, bytes] = {}
+        self._deleted: set[str] = set()
         self._opf_path: str | None = None
         self._manifest: list[ManifestItem] | None = None
         self._spine: list[str] | None = None
@@ -168,6 +172,7 @@ class Epub:
             self._zip.close()
             self._zip = None
         self._modified.clear()
+        self._deleted.clear()
         self._reset_cache()
 
     def __enter__(self) -> Epub:
@@ -236,6 +241,8 @@ class Epub:
             KeyError: gdy plik nie istnieje w archiwum.
         """
         zf = self._ensure_open()
+        if internal_path in self._deleted:
+            raise KeyError(internal_path)
         if internal_path in self._modified:
             return self._modified[internal_path]
         return zf.read(internal_path)
@@ -251,11 +258,27 @@ class Epub:
             EpubNotOpenError: gdy EPUB nie jest otwarty.
         """
         self._ensure_open()
+        self._deleted.discard(internal_path)
         self._modified[internal_path] = data
         # Modyfikacja OPF unieważnia zcache'owany manifest/spine.
         if internal_path == self._opf_path:
             self._manifest = None
             self._spine = None
+
+    def delete_file(self, internal_path: str) -> None:
+        """Oznacza plik wewnętrzny do usunięcia przy następnym :meth:`save`.
+
+        Args:
+            internal_path: ścieżka względna wewnątrz archiwum (z ``/``).
+
+        Raises:
+            EpubNotOpenError: gdy EPUB nie jest otwarty.
+        """
+        self._ensure_open()
+        self._modified.pop(internal_path, None)
+        self._deleted.add(internal_path)
+        if internal_path == self._opf_path:
+            self._reset_cache()
 
     def list_files(self) -> list[str]:
         """Zwraca listę wszystkich plików w archiwum (z dodanymi przez bufor).
@@ -264,7 +287,7 @@ class Epub:
             EpubNotOpenError: gdy EPUB nie jest otwarty.
         """
         zf = self._ensure_open()
-        names = list(zf.namelist())
+        names = [name for name in zf.namelist() if name not in self._deleted]
         for name in self._modified:
             if name not in names:
                 names.append(name)
@@ -288,9 +311,10 @@ class Epub:
         """
         self._ensure_open()
         modified = dict(self._modified)
+        deleted = set(self._deleted)
         if output_path is not None:
             target = Path(output_path)
-            _write_epub(self.path, target, modified)
+            _write_epub(self.path, target, modified, deleted)
             logger.debug("Zapisano EPUB jako: %s", target)
             return target
         # Nadpisanie oryginału: backup, zamknięcie uchwytu (Windows), zapis, reopen.
@@ -298,8 +322,9 @@ class Epub:
         assert self._zip is not None
         self._zip.close()
         self._zip = None
-        _write_epub(self.path, self.path, modified)
+        _write_epub(self.path, self.path, modified, deleted)
         self._modified.clear()
+        self._deleted.clear()
         self._reset_cache()
         self.open()
         logger.debug("Nadpisano EPUB: %s", self.path)

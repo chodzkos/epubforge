@@ -8,7 +8,7 @@ from collections.abc import Callable
 from typing import cast
 
 from epubforge import __version__
-from epubforge.cli import convert, hyphenate
+from epubforge.cli import convert, fix, hyphenate
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -34,6 +34,7 @@ def main(argv: list[str] | None = None) -> int:
     subparsers = parser.add_subparsers(dest="command", help="Dostępne komendy")
     subparsers.add_parser("info", help="Wyświetl informacje o wersji i wykrytych narzędziach")
     convert.add_parser(subparsers)
+    fix.add_parser(subparsers)
     hyphenate.add_parser(subparsers)
 
     args = parser.parse_args(argv)
