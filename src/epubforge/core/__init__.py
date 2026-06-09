@@ -1,5 +1,7 @@
 """Core library modules — biblioteka bez zależności od GUI."""
 
+from epubforge.core.config import default_config_path, load_config, save_config
+from epubforge.core.detection import Tool, Tools, detect_with_cache
 from epubforge.core.epub import Epub, ManifestItem
 from epubforge.core.exceptions import (
     EpubError,
@@ -17,4 +19,10 @@ __all__ = [
     "ManifestItem",
     "Metadata",
     "OpfNotFoundError",
+    "Tool",
+    "Tools",
+    "default_config_path",
+    "detect_with_cache",
+    "load_config",
+    "save_config",
 ]
