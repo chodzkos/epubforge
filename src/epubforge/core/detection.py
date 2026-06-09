@@ -46,9 +46,10 @@ class Tool:
 
 def _exe_names(*bases: str) -> list[str]:
     """Buduje listę nazw plików wykonywalnych z rozszerzeniem ``.exe`` na Windows."""
+    names = list(bases)
     if sys.platform == "win32":
-        return [f"{base}.exe" for base in bases] + list(bases)
-    return list(bases)
+        names = [*(f"{base}.exe" for base in bases), *names]
+    return names
 
 
 def _env_dirs(*subpaths: str) -> list[Path]:
@@ -135,11 +136,12 @@ def _make_tool(
 def _calibre_plugins_dir() -> Path:
     """Zwraca katalog wtyczek Calibre dla bieżącego systemu."""
     if sys.platform == "win32":
-        base = Path(os.environ.get("APPDATA") or Path.home())
-        return base / "calibre" / "plugins"
-    if sys.platform == "darwin":
-        return Path.home() / "Library" / "Preferences" / "calibre" / "plugins"
-    return Path.home() / ".config" / "calibre" / "plugins"
+        base = Path(os.environ.get("APPDATA") or Path.home()) / "calibre"
+    elif sys.platform == "darwin":
+        base = Path.home() / "Library" / "Preferences" / "calibre"
+    else:
+        base = Path.home() / ".config" / "calibre"
+    return base / "plugins"
 
 
 class Tools:
