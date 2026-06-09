@@ -8,7 +8,7 @@ Ten plik zawiera fragmenty kodu ze starego `gui_main.py` (epubtools-suite) gotow
 
 ## 📦 Etap 1 — `core/epub.py` (bezpieczny zapis ZIP)
 
-### Wzorzec zapisu EPUB zgodny ze specyfikacją:
+### Wzorzec zapisu EPUB zgodny ze specyfikacją (kopiowanie ze źródła):
 
 ```python
 import os
@@ -16,39 +16,46 @@ import zipfile
 from pathlib import Path
 
 
-def write_epub(target: Path, files: dict[str, bytes]) -> None:
-    """Zapisz EPUB zachowując wymogi specyfikacji.
+def write_epub(source: Path, target: Path, modified: dict[str, bytes]) -> None:
+    """Zapisz EPUB kopiując niezmienione wpisy ze źródła (oszczędność RAM).
 
     Args:
-        target: Ścieżka docelowa pliku .epub
-        files: Słownik {ścieżka_wewnętrzna: zawartość_bytes}
+        source: oryginalny EPUB (źródło niezmienionych plików)
+        target: ścieżka docelowa
+        modified: TYLKO zmienione pliki {ścieżka_wewnętrzna: dane}
 
     Wymogi spec EPUB:
         1. mimetype PIERWSZY w archiwum
         2. mimetype BEZ kompresji (ZIP_STORED)
-        3. mimetype = dokładnie "application/epub+zip" (bez newline)
+        3. mimetype = dokładnie b"application/epub+zip" (bez newline)
         4. reszta plików z kompresją
         5. zapis atomowy (tmp + replace)
+
+    Uwaga RAM: niezmienione pliki kopiowane są strumieniowo ze źródła,
+    w pamięci trzymamy tylko zawartość z `modified`. Dla EPUB 100 MB
+    z grafiką to różnica między ~5 MB a ~100 MB użycia RAM.
     """
     tmp = target.with_suffix(target.suffix + ".tmp")
     try:
-        with zipfile.ZipFile(tmp, "w") as zf:
+        with zipfile.ZipFile(source) as zin, zipfile.ZipFile(tmp, "w") as zout:
             # 1+2+3. mimetype PIERWSZY, BEZ kompresji
-            zf.writestr(
+            zout.writestr(
                 "mimetype",
-                "application/epub+zip",
+                b"application/epub+zip",
                 compress_type=zipfile.ZIP_STORED,
             )
-            # 4. pozostałe pliki z kompresją
-            for name, data in files.items():
-                if name == "mimetype":
-                    continue  # już zapisany jako pierwszy
-                zf.writestr(name, data, compress_type=zipfile.ZIP_DEFLATED)
-        # 5. atomowe zastąpienie
-        os.replace(tmp, target)
+            # 4. zmienione z dict, niezmienione kopiowane ze źródła
+            for item in zin.infolist():
+                if item.filename == "mimetype":
+                    continue
+                data = modified.get(item.filename)
+                if data is None:
+                    data = zin.read(item.filename)  # kopiuj oryginał
+                zout.writestr(item.filename, data, compress_type=zipfile.ZIP_DEFLATED)
+        os.replace(tmp, target)  # 5. atomowe zastąpienie
     except Exception:
         if tmp.exists():
-            tmp.unlink()  # sprzątanie po błędzie
+            tmp.unlink()
         raise
 
 
@@ -605,15 +612,20 @@ class LogStreamer:
 
 ```python
 # -*- mode: python ; coding: utf-8 -*-
+import os
+import tkinterdnd2
 from PyInstaller.utils.hooks import collect_data_files
+
+# tkinterdnd2 — dołącz natywne binaria tkdnd (inaczej "can't find package tkdnd")
+tkdnd_dir = os.path.join(os.path.dirname(tkinterdnd2.__file__), 'tkdnd')
 
 a = Analysis(
     ['../src/epubforge/gui/app.py'],
     pathex=['../src'],
     binaries=[],
     datas=[
-        # Dołącz zasoby GUI jeśli będą (ikony itp.)
-        # ('../src/epubforge/gui/assets/*', 'assets'),
+        (tkdnd_dir, 'tkinterdnd2/tkdnd'),  # KLUCZOWE dla drag&drop w .exe
+        # ('../src/epubforge/gui/assets/*', 'assets'),  # jeśli będą ikony
     ],
     hiddenimports=[
         'tkinter',
@@ -621,7 +633,7 @@ a = Analysis(
         'lxml',
         'lxml.etree',
         'pyphen',
-        'cssutils',
+        'tinycss2',
         'tkinterdnd2',
     ],
     hookspath=[],

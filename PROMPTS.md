@@ -198,23 +198,25 @@ Wykonaj:
 1. Gałąź: feature/stage-5-hyphenation
 2. Dodaj do pyproject.toml: pyphen >= 0.15
 3. Utwórz src/epubforge/fixers/__init__.py i src/epubforge/fixers/hyphenator.py
-4. API: zgodnie z ROADMAP.md
-5. Implementacja:
-   - Iteruj po wszystkich plikach HTML/XHTML w EPUB (przez Epub.manifest)
-   - Parsuj każdy plik (lxml.html lub xml.etree)
-   - Dla każdego węzła tekstowego (poza skipowanymi tagami) - dodaj soft-hyphens (\u00ad)
-   - Pomijaj tagi: code, pre, kbd, samp, var, tt
-   - Pomijaj h1-h3 jeśli skip_headers=True
-   - Słowa krótsze niż min_word_length nie są hyphenowane
-   - Idempotentność: pomijaj słowa już zawierające \u00ad
-6. Tests/test_hyphenator.py:
-   - Test podstawowy: polski tekst hyphenowany
-   - Test skip tags: <code>polski</code> NIE hyphenowany
-   - Test skip headers: <h1>tytuł</h1> NIE hyphenowany gdy skip_headers
+4. API: zgodnie z ROADMAP.md - UWAGA: HyphenationOptions ma pole method: Literal["soft-hyphen", "css"]
+5. Implementacja DWÓCH metod (przeczytaj sekcję "kompromis metod" w ROADMAP.md Etap 5):
+   - method="soft-hyphen": wstawia \u00ad w słowach przez pyphen
+     * Iteruj po plikach HTML/XHTML (przez Epub.manifest)
+     * Pomijaj tagi: code, pre, kbd, samp, var, tt
+     * Pomijaj h1-h3 jeśli skip_headers=True
+     * Słowa krótsze niż min_word_length pomijane
+     * Idempotentność: pomijaj słowa już zawierające \u00ad
+   - method="css": wstrzykuje regułę CSS hyphens: auto do arkusza (NIE modyfikuje tekstu)
+6. WAŻNE: docstring HyphenationOptions musi zawierać ostrzeżenie że soft-hyphen psuje
+   słownik/wyszukiwarkę na czytnikach Kindle. To świadomy kompromis - użytkownik wybiera.
+7. Tests/test_hyphenator.py:
+   - Test soft-hyphen: polski tekst hyphenowany
+   - Test css: reguła wstrzyknięta, tekst NIE zmieniony
+   - Test skip tags i skip headers
    - Test idempotentności
    - Test innych języków: en, de
-7. Dodaj CLI: epubforge hyphenate FILE [--lang pl] [--skip-headers]
-8. Commit: "feat(fixers): hyphenation via pyphen"
+8. Dodaj CLI: epubforge hyphenate FILE [--lang pl] [--method soft-hyphen|css] [--skip-headers]
+9. Commit: "feat(fixers): hyphenation with soft-hyphen and CSS methods"
 ```
 
 ---
@@ -227,20 +229,24 @@ Realizujemy Etap 6 z ROADMAP.md - "CSS Fixer".
 Wykonaj:
 
 1. Gałąź: feature/stage-6-css-fixer
-2. Dodaj do pyproject.toml: cssutils >= 2.10 (jeśli problem z importem - css-parser jako alternatywa)
+2. Dodaj do pyproject.toml: tinycss2 >= 1.3 (NIE cssutils - jest przestarzały i hałasuje przy CSS3)
 3. Utwórz src/epubforge/fixers/css_fixer.py
 4. API zgodnie z ROADMAP.md
-5. Implementacja każdej opcji jako osobnej funkcji:
+5. Implementacja każdej opcji jako osobnej funkcji, używając tinycss2 do parsowania:
    - _remove_colors(css: str) -> str
    - _remove_fonts(epub: Epub, css: str) -> str  (też usuwa fizyczne pliki fontów!)
    - _inject_reset(css: str) -> str
    - _replace_justify(css: str) -> str
    - _inject_book_margin(css: str, px: int) -> str
    - _skip_hyphenation_headers(css: str) -> str
+   WAŻNE: zachowuj nieznane reguły (@supports, calc(), --zmienne) BEZ ZMIAN.
+   Modyfikuj tylko to, co jawnie celujesz. tinycss2 operuje na tokenach:
+   rules = tinycss2.parse_stylesheet(css, skip_whitespace=True); ...; tinycss2.serialize(rules)
 6. Funkcja główna fix_css iteruje po opcjach i aplikuje
-7. Tests/test_css_fixer.py - test każdej opcji osobno + kombinacje + walidacja CSS po zmianach
+7. Tests/test_css_fixer.py - test każdej opcji osobno + kombinacje +
+   TEST że nowoczesny CSS3 (--var, @supports, calc()) NIE jest uszkadzany
 8. Dodaj CLI: epubforge fix FILE [--remove-colors] [--replace-justify] [--book-margin N] ...
-9. Commit: "feat(fixers): CSS normalization and cleanup"
+9. Commit: "feat(fixers): CSS normalization via tinycss2"
 
 Po tym etapie zrób stage gate v0.5.0 - lokalnie:
 git tag v0.5.0
@@ -332,6 +338,12 @@ KOD REUSE: Sprawdź REUSABLE_CODE.md sekcja "Widgets" - tam są gotowe szablony 
 ```
 Realizujemy Etap 9 z ROADMAP.md - "GUI: Zakładka Metadane".
 
+⚠️ NAJPIERW przeczytaj aktualny stan modułów core których będziesz używać:
+- src/epubforge/core/metadata.py (kształt klasy Metadata - pola, typy)
+- src/epubforge/core/epub.py (API klasy Epub)
+- src/epubforge/core/detection.py (klasa Tools)
+NIE twórz mocków ani duplikatów tych klas - importuj i używaj prawdziwych. Jeśli czegoś brakuje w API core, zgłoś to zanim zaczniesz GUI.
+
 Wykonaj:
 
 1. Gałąź: feature/stage-9-gui-metadata
@@ -358,6 +370,8 @@ Jeśli narzędzie niedostępne -> przycisk wyszarzony z tooltipem "Nie wykryto S
 ```
 Realizujemy Etap 10 z ROADMAP.md - "GUI: Konwerter".
 
+⚠️ NAJPIERW przeczytaj: src/epubforge/converters/to_epub.py (ConvertOptions, to_epub, obsługiwane formaty) i src/epubforge/core/metadata.py. Używaj prawdziwych klas, nie twórz mocków.
+
 1. Gałąź: feature/stage-10-gui-converter
 2. Utwórz src/epubforge/gui/tabs/converter.py:
    - Klasa ConverterTab(ttk.Frame)
@@ -367,9 +381,13 @@ Realizujemy Etap 10 z ROADMAP.md - "GUI: Konwerter".
    - Wybór silnika: radio "Auto" / "Pandoc" / "Calibre"
    - PathEntry dla folderu wyjściowego
    - Przycisk "Konwertuj" - uruchamia konwersję w wątku, streamuje log
-3. Wykorzystaj LogStreamer z gui/streaming.py
-4. Dodaj zakładkę do app.py
-5. Commit: "feat(gui): converter tab for format → EPUB"
+3. PDF za jawnym potwierdzeniem: gdy użytkownik doda plik .pdf, pokaż messagebox.askyesno
+   z ostrzeżeniem: "Konwersja PDF → EPUB jest eksperymentalna. Calibre wstawia sztywne
+   marginesy i może łamać akapity. Najlepsze wyniki dla prostych PDF tekstowych. Kontynuować?"
+   Dopiero po potwierdzeniu dodaj plik do listy.
+4. Wykorzystaj LogStreamer z gui/streaming.py
+5. Dodaj zakładkę do app.py
+6. Commit: "feat(gui): converter tab for format → EPUB"
 ```
 
 ---
@@ -379,11 +397,14 @@ Realizujemy Etap 10 z ROADMAP.md - "GUI: Konwerter".
 ```
 Realizujemy Etap 11 z ROADMAP.md - "GUI: Fixer".
 
+⚠️ NAJPIERW przeczytaj: src/epubforge/fixers/hyphenator.py (HyphenationOptions z polem method!) i src/epubforge/fixers/css_fixer.py (CssFixOptions). Używaj prawdziwych klas.
+
 1. Gałąź: feature/stage-11-gui-fixer
 2. Utwórz src/epubforge/gui/tabs/fixer.py:
    - FileList z plikami EPUB
-   - Sekcja "Hyphenation": Toggle "Włącz", dropdown języka, Toggle "Pomiń nagłówki"
-   - Sekcja "CSS Fixer": Toggle dla każdej opcji z fix_css (remove-colors, replace-justify itp.)
+   - Sekcja "Hyphenation": Toggle "Włącz", dropdown języka, radio metoda (soft-hyphen/css), Toggle "Pomiń nagłówki"
+   - Przy wyborze soft-hyphen pokaż ostrzeżenie (label) o psuciu słownika na czytniku
+   - Sekcja "CSS Fixer": Toggle dla każdej opcji z CssFixOptions (remove-colors, replace-justify itp.)
    - Spinner dla book-margin (px)
    - Przycisk "Napraw" - uruchamia w wątku
    - Po sukcesie - przycisk "Podgląd w Calibre Viewer"
@@ -396,6 +417,8 @@ Realizujemy Etap 11 z ROADMAP.md - "GUI: Fixer".
 
 ```
 Realizujemy Etap 12 z ROADMAP.md - "GUI: KFX".
+
+⚠️ NAJPIERW przeczytaj: src/epubforge/converters/to_kfx.py (KfxOptions, to_kfx) i src/epubforge/core/detection.py. Używaj prawdziwych klas.
 
 1. Gałąź: feature/stage-12-gui-kfx
 2. Utwórz src/epubforge/gui/tabs/kfx.py:
@@ -427,7 +450,12 @@ Wykonaj:
    - Single-file exe
    - console=False (GUI app)
    - icon=icon.ico
-   - Hidden imports: tkinter, lxml, pyphen, cssutils
+   - Hidden imports: tkinter, lxml, pyphen, tinycss2
+   - WAŻNE - tkinterdnd2: dołącz natywne binaria tkdnd, inaczej .exe wywala się z "can't find package tkdnd":
+       import tkinterdnd2, os
+       tkdnd_dir = os.path.join(os.path.dirname(tkinterdnd2.__file__), 'tkdnd')
+       datas += [(tkdnd_dir, 'tkinterdnd2/tkdnd')]
+     (alternatywnie flaga --collect-all tkinterdnd2)
    - Excludes: matplotlib, numpy, scipy, PIL.tests (oszczędność miejsca)
    - Datas: src/epubforge/gui/assets/* (jeśli są)
 4. Utwórz build/build.bat dla lokalnego buildu Windows

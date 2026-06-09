@@ -87,6 +87,11 @@ docs/api/
 # OS
 Thumbs.db
 desktop.ini
+# Windows NTFS alternate data streams (tworzone przez Windows przy pobieraniu plików z internetu)
+*:Zone.Identifier
 
 # Claude Code
 .claude/
+
+# Lokalne archiwum startera (nie wersjonujemy binariów)
+epubforge_starter.tar.gz
