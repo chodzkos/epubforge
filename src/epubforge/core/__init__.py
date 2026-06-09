@@ -4,6 +4,8 @@ from epubforge.core.config import default_config_path, load_config, save_config
 from epubforge.core.detection import Tool, Tools, detect_with_cache
 from epubforge.core.epub import Epub, ManifestItem
 from epubforge.core.exceptions import (
+    ConversionError,
+    ConverterNotFoundError,
     EpubError,
     EpubNotOpenError,
     InvalidEpubError,
@@ -12,6 +14,8 @@ from epubforge.core.exceptions import (
 from epubforge.core.metadata import Metadata
 
 __all__ = [
+    "ConversionError",
+    "ConverterNotFoundError",
     "Epub",
     "EpubError",
     "EpubNotOpenError",

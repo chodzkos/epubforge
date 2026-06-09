@@ -29,3 +29,11 @@ class OpfNotFoundError(EpubError):
     Najczęściej oznacza brak lub uszkodzony ``META-INF/container.xml``
     (plik, z którego odczytujemy lokalizację pliku OPF — nie zgadujemy jej).
     """
+
+
+class ConversionError(EpubError):
+    """Konwersja pliku nie powiodła się."""
+
+
+class ConverterNotFoundError(ConversionError):
+    """Wymagany zewnętrzny konwerter nie został znaleziony."""
