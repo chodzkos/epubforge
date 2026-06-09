@@ -26,6 +26,11 @@ def _tool(name: str, path: str) -> Tool:
     return Tool(name=name, path=Path(path), version=f"{name} 1.0", available=True)
 
 
+def _path_arg(path: str) -> str:
+    """Zwraca ścieżkę tak, jak trafi do argumentów subprocess na danej platformie."""
+    return str(Path(path))
+
+
 def _missing_tool(name: str) -> Tool:
     """Buduje niedostępne narzędzie do testów."""
     return Tool(name=name, path=None, version="", available=False)
@@ -79,7 +84,7 @@ def test_pandoc_command_with_metadata_cover_and_css(
     command, kwargs = calls[0]
     assert result == ConversionResult(True, target, "pandoc log", "pandoc")
     assert command[:6] == [
-        "/bin/pandoc",
+        _path_arg("/bin/pandoc"),
         str(source),
         "--to",
         "epub3",
@@ -136,7 +141,7 @@ def test_calibre_command_with_metadata_and_cover(
     command, _kwargs = calls[0]
     assert result.engine == "calibre"
     assert command[:6] == [
-        "/bin/ebook-convert",
+        _path_arg("/bin/ebook-convert"),
         str(source),
         str(target),
         "--epub-version",
@@ -165,7 +170,7 @@ def test_auto_uses_pandoc_for_non_pdf_when_available(
     result = to_epub(tmp_path / "book.html", tmp_path / "book.epub")
 
     assert result.engine == "pandoc"
-    assert calls[0][0][0] == "/p"
+    assert calls[0][0][0] == _path_arg("/p")
 
 
 def test_auto_falls_back_to_calibre_when_pandoc_missing(
@@ -184,7 +189,7 @@ def test_auto_falls_back_to_calibre_when_pandoc_missing(
     result = to_epub(tmp_path / "book.rtf", tmp_path / "book.epub")
 
     assert result.engine == "calibre"
-    assert calls[0][0][0] == "/ebook-convert"
+    assert calls[0][0][0] == _path_arg("/ebook-convert")
 
 
 def test_auto_pdf_uses_calibre_even_when_pandoc_available(
@@ -203,7 +208,7 @@ def test_auto_pdf_uses_calibre_even_when_pandoc_available(
     result = to_epub(tmp_path / "book.pdf", tmp_path / "book.epub")
 
     assert result.engine == "calibre"
-    assert calls[0][0][0] == "/ebook-convert"
+    assert calls[0][0][0] == _path_arg("/ebook-convert")
 
 
 def test_missing_requested_tool_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
