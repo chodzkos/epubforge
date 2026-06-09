@@ -7,6 +7,7 @@ from epubforge.core.exceptions import (
     InvalidEpubError,
     OpfNotFoundError,
 )
+from epubforge.core.metadata import Metadata
 
 __all__ = [
     "Epub",
@@ -14,5 +15,6 @@ __all__ = [
     "EpubNotOpenError",
     "InvalidEpubError",
     "ManifestItem",
+    "Metadata",
     "OpfNotFoundError",
 ]
