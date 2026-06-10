@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import tkinter as tk
+from contextlib import suppress
 from pathlib import Path
 from tkinter import ttk
 
@@ -12,12 +13,14 @@ from epubforge.core import Tool, default_config_path, detect_with_cache, load_co
 from epubforge.core.config import Config
 from epubforge.gui.tabs import AboutTab, ConverterTab, FixerTab, KfxTab, MetadataTab
 from epubforge.gui.theme import Theme, apply_theme, resolve_theme_name, theme_for_name
-from epubforge.gui.window_theme import refresh_titlebar, set_titlebar_dark
+from epubforge.gui.widgets import Tooltip
+from epubforge.gui.window_theme import set_titlebar_dark
 
 logger = logging.getLogger(__name__)
 
-# Dozwolone wartości ustawienia motywu w config.json.
+# Dozwolone wartości ustawienia motywu w config.json i ich krótkie etykiety.
 _THEME_SETTINGS = ("auto", "light", "dark")
+_THEME_LABELS = {"auto": "Auto", "light": "Jasny", "dark": "Ciemny"}
 
 
 class App(tk.Tk):
@@ -36,21 +39,29 @@ class App(tk.Tk):
         self.theme_var = tk.StringVar(value=self.theme_setting)
         self.theme_name = resolve_theme_name(self.theme_setting)
         self.theme: Theme = theme_for_name(self.theme_name)
+        self._about_window: tk.Toplevel | None = None
+
         self.title(f"EpubForge {__version__}")
         self.geometry(str(self.config_data.get("geometry") or "980x680"))
         self.minsize(760, 520)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self._refresh_status()
 
-        self._build_menu()
+        # Buduj okno ukryte — ustawiamy ciemny pasek tytułu przed pierwszym
+        # pokazaniem, żeby uniknąć jasnego mignięcia (PROBLEM 1).
+        self.withdraw()
         self.root_frame = ttk.Frame(self, style="Root.TFrame", padding=12)
         self.root_frame.pack(fill="both", expand=True)
-
-        self._build_header()
+        self._build_topbar()
         self._build_notebook()
         self._build_status_bar()
-        # Zastosuj motyw po zbudowaniu widgetów (bez refresh — okno dopiero powstaje).
         self._apply_current_theme()
+
+        self.update_idletasks()
+        self._apply_titlebar()  # poprawny HWND, póki okno ukryte
+        self.deiconify()
+        # Win10 bywa, że dopiero po zmapowaniu przyjmuje atrybut — ponów po chwili.
+        self.after(10, self._apply_titlebar)
 
     def _init_tkdnd(self) -> bool:
         """Ładuje pakiet tkdnd do tego okna (jak robi ``TkinterDnD.Tk``).
@@ -70,31 +81,33 @@ class App(tk.Tk):
             return False
         return True
 
-    def _build_menu(self) -> None:
-        """Buduje pasek menu z 'Widok → Motyw' (Automatyczny/Jasny/Ciemny)."""
-        menubar = tk.Menu(self)
-        view_menu = tk.Menu(menubar, tearoff=False)
-        theme_menu = tk.Menu(view_menu, tearoff=False)
+    def _build_topbar(self) -> None:
+        """Buduje lekki górny pasek: nazwa po lewej, motyw i About po prawej."""
+        topbar = ttk.Frame(self.root_frame, style="Root.TFrame")
+        topbar.pack(fill="x", pady=(0, 10))
+
+        ttk.Label(topbar, text="EpubForge", style="Title.TLabel").pack(side="left")
+
+        # Po prawej: przycisk About (mała ikonka) + przełącznik motywu (dropdown).
+        self.about_button = ttk.Button(topbar, text="ⓘ", width=3, command=self._open_about)
+        self.about_button.pack(side="right")
+        Tooltip(self.about_button, "O programie")
+
+        self.theme_menubutton = ttk.Menubutton(topbar, text="Motyw")
+        self.theme_menubutton.pack(side="right", padx=(0, 8))
+        self.theme_menu = tk.Menu(self.theme_menubutton, tearoff=False)
         for label, value in (("Automatyczny", "auto"), ("Jasny", "light"), ("Ciemny", "dark")):
-            theme_menu.add_radiobutton(
+            self.theme_menu.add_radiobutton(
                 label=label,
                 value=value,
                 variable=self.theme_var,
                 command=self._on_theme_menu,
             )
-        view_menu.add_cascade(label="Motyw", menu=theme_menu)
-        menubar.add_cascade(label="Widok", menu=view_menu)
-        self.configure(menu=menubar)
-
-    def _build_header(self) -> None:
-        """Buduje górny pasek z tytułem aplikacji."""
-        header = ttk.Frame(self.root_frame, style="Root.TFrame")
-        header.pack(fill="x", pady=(0, 10))
-        title = ttk.Label(header, text="EpubForge", style="Title.TLabel")
-        title.pack(side="left")
+        self.theme_menubutton["menu"] = self.theme_menu
+        Tooltip(self.theme_menubutton, "Motyw: Automatyczny / Jasny / Ciemny")
 
     def _build_notebook(self) -> None:
-        """Buduje notebook z zakładkami roboczymi."""
+        """Buduje notebook z zakładkami roboczymi (bez meta-zakładek)."""
         self.notebook = ttk.Notebook(self.root_frame)
         self.notebook.pack(fill="both", expand=True)
         self.metadata_tab = MetadataTab(self.notebook, tools=self.tools)
@@ -105,8 +118,6 @@ class App(tk.Tk):
         self.notebook.add(self.fixer_tab, text="Fixer")
         self.kfx_tab = KfxTab(self.notebook, tools=self.tools, config=self.config_data)
         self.notebook.add(self.kfx_tab, text="Eksport Kindle")
-        self.about_tab = AboutTab(self.notebook)
-        self.notebook.add(self.about_tab, text="O programie")
 
     def _build_status_bar(self) -> None:
         """Buduje dolny pasek statusu narzędzi."""
@@ -124,37 +135,86 @@ class App(tk.Tk):
             return
         self.status_var.set(_format_tools_status(self.tools))
 
+    # ── Motyw ────────────────────────────────────────────────────────────────
+
     def _initial_theme_setting(self) -> str:
         """Zwraca ustawienie motywu z configu (auto/light/dark), domyślnie auto."""
         value = self.config_data.get("theme")
         return value if value in _THEME_SETTINGS else "auto"
 
     def _on_theme_menu(self) -> None:
-        """Reaguje na wybór motywu z menu."""
+        """Reaguje na wybór motywu z dropdownu w górnym pasku."""
         self._set_theme_setting(self.theme_var.get())
 
     def _set_theme_setting(self, setting: str) -> None:
         """Ustawia tryb motywu, zapisuje w configu i stosuje go."""
-        new_name = resolve_theme_name(setting)
-        changed = new_name != self.theme_name
         self.theme_setting = setting
         self.theme_var.set(setting)
         self.config_data["theme"] = setting
-        self._apply_current_theme(refresh=changed)
+        self._apply_current_theme()
 
-    def _apply_current_theme(self, *, refresh: bool = False) -> None:
-        """Rozwiązuje ustawienie na konkretny motyw i stosuje go do okna.
-
-        Args:
-            refresh: czy wymusić przemalowanie paska tytułu (Win10) — tylko gdy
-                motyw faktycznie się zmienił, by uniknąć zbędnego mrugnięcia.
-        """
+    def _apply_current_theme(self) -> None:
+        """Rozwiązuje ustawienie na konkretny motyw i stosuje go do okna."""
         self.theme_name = resolve_theme_name(self.theme_setting)
         self.theme = theme_for_name(self.theme_name)
         apply_theme(self, self.theme)
+        self._apply_menu_theme()
+        self._update_theme_button()
         set_titlebar_dark(self, self.theme_name == "dark")
-        if refresh:
-            refresh_titlebar(self)
+        # Otwarte okno About też przemaluj.
+        if self._about_window is not None and self._about_window.winfo_exists():
+            apply_theme(self._about_window, self.theme)
+            set_titlebar_dark(self._about_window, self.theme_name == "dark")
+
+    def _apply_titlebar(self) -> None:
+        """Ustawia kolor paska tytułu zgodnie z bieżącym motywem."""
+        set_titlebar_dark(self, self.theme_name == "dark")
+
+    def _apply_menu_theme(self) -> None:
+        """Koloruje rozwijane menu motywu (tło pozycji zmienia się w dark/light).
+
+        Uwaga: na Windows obwódka ramki menu bywa rysowana przez system — to
+        ograniczenie tkinter; kolorujemy to, co się da.
+        """
+        with suppress(tk.TclError):
+            self.theme_menu.configure(
+                bg=self.theme["bg2"],
+                fg=self.theme["fg"],
+                activebackground=self.theme["accent2"],
+                activeforeground=self.theme["fg"],
+                relief="flat",
+            )
+
+    def _update_theme_button(self) -> None:
+        """Aktualizuje etykietę przełącznika motywu na bieżący tryb."""
+        with suppress(tk.TclError):
+            self.theme_menubutton.configure(text=f"Motyw: {_THEME_LABELS[self.theme_setting]}")
+
+    # ── Okno „O programie" ──────────────────────────────────────────────────
+
+    def _open_about(self) -> None:
+        """Otwiera „O programie" jako małe okno (pojedyncza instancja)."""
+        if self._about_window is not None and self._about_window.winfo_exists():
+            self._about_window.lift()
+            self._about_window.focus_set()
+            return
+        window = tk.Toplevel(self)
+        window.title("O programie")
+        window.transient(self)
+        window.resizable(False, False)
+        window.geometry("440x360")
+        AboutTab(window).pack(fill="both", expand=True)
+        apply_theme(window, self.theme)
+        window.update_idletasks()
+        set_titlebar_dark(window, self.theme_name == "dark")
+        window.protocol("WM_DELETE_WINDOW", self._close_about)
+        self._about_window = window
+
+    def _close_about(self) -> None:
+        """Zamyka okno About i czyści referencję."""
+        if self._about_window is not None:
+            self._about_window.destroy()
+            self._about_window = None
 
     def _on_close(self) -> None:
         """Zapisuje konfigurację i zamyka okno."""

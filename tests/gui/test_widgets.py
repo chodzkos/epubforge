@@ -106,6 +106,40 @@ def test_app_creates_saves_config_and_status(
     assert saved["theme"] == "light"
 
 
+def test_app_topbar_about_and_theme_menu(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Górny pasek: 4 zakładki robocze, About jako okno, menu motywu kolorowane."""
+    monkeypatch.setattr(app_module, "detect_with_cache", lambda config_path: {})
+    try:
+        app = App(config_path=tmp_path / "config.json")
+    except tk.TclError as exc:
+        pytest.skip(f"Tk display unavailable: {exc}")
+    app.withdraw()
+
+    # Notebook ma tylko zakładki robocze — About wyjęte do górnego paska.
+    tabs = [app.notebook.tab(i, "text") for i in app.notebook.tabs()]
+    assert tabs == ["Metadane", "Konwerter", "Fixer", "Eksport Kindle"]
+
+    # Przełącznik motywu odzwierciedla bieżący tryb.
+    assert "Auto" in app.theme_menubutton.cget("text")
+
+    # About otwiera pojedyncze okno (bez duplikatów) i daje się zamknąć.
+    app._open_about()
+    first = app._about_window
+    assert first is not None and first.winfo_exists()
+    app._open_about()
+    assert app._about_window is first
+    app._close_about()
+    assert app._about_window is None
+
+    # Menu motywu koloruje się zgodnie z motywem.
+    app._set_theme_setting("dark")
+    assert str(app.theme_menu.cget("bg")) == app.theme["bg2"]
+    app._on_close()
+
+
 def test_file_list_survives_dnd_tclerror(
     root: tk.Tk,
     monkeypatch: pytest.MonkeyPatch,
