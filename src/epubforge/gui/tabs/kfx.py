@@ -1,4 +1,4 @@
-"""Zakładka GUI konwersji EPUB do KFX."""
+"""Zakładka GUI eksportu EPUB do formatów Kindle (KFX/MOBI/AZW3)."""
 
 from __future__ import annotations
 
@@ -9,8 +9,9 @@ from pathlib import Path
 from tkinter import ttk
 from typing import cast
 
-from epubforge.converters import KfxOptions, to_kfx
+from epubforge.converters import KfxOptions, MobiOptions, to_kfx, to_mobi
 from epubforge.converters.to_kfx import KfxEngine
+from epubforge.converters.to_mobi import MobiEngine, MobiFormat
 from epubforge.core import Tool
 from epubforge.gui.streaming import LogStreamer
 from epubforge.gui.widgets import FileList, PathEntry, Section, Toggle
@@ -23,10 +24,15 @@ _KP3_WARNING = (
     "marginesów i zostaw włączoną naprawę EPUB. Jeśli konwersja się nie powiedzie, "
     "wróć do silnika Calibre + wtyczka KFX Output."
 )
+_KINDLEGEN_WARNING = (
+    "kindlegen jest oficjalnie wycofany przez Amazon (utknął na wersji 2.9) i nie "
+    "jest już rozwijany. Nadal tworzy poprawne pliki MOBI, ale zalecanym, "
+    "nowocześniejszym silnikiem jest Calibre ebook-convert."
+)
 
 
 class KfxTab(ttk.Frame):
-    """Zakładka do batchowej konwersji plików EPUB na KFX."""
+    """Zakładka batchowego eksportu EPUB do KFX/MOBI/AZW3."""
 
     def __init__(
         self,
@@ -38,13 +44,16 @@ class KfxTab(ttk.Frame):
         self.tools = tools if tools is not None else {}
         self._running = False
 
+        self.format_var = tk.StringVar(value="kfx")
         self.engine_var = tk.StringVar(value="calibre")
+        self.mobi_engine_var = tk.StringVar(value="calibre")
         self.status_var = tk.StringVar(value="Dodaj pliki EPUB")
         self.progress_var = tk.IntVar(value=0)
 
         self._build_layout()
         self.streamer = LogStreamer(self.log_text)
         self.streamer.start_polling()
+        self._on_format_change()
 
     # ── Budowa UI ─────────────────────────────────────────────────────────────
 
@@ -59,7 +68,8 @@ class KfxTab(ttk.Frame):
         panes.add(right, weight=2)
 
         self._build_file_list(left)
-        self._build_engine_section(right)
+        self._build_format_section(right)
+        self._build_engine_sections(right)
         self._build_options_section(right)
         self._build_log(right)
         self._build_actions(right)
@@ -72,12 +82,31 @@ class KfxTab(ttk.Frame):
         self.file_list = FileList(section, extensions={".epub"}, on_change=self._on_files_changed)
         self.file_list.pack(fill="both", expand=True)
 
-    def _build_engine_section(self, parent: tk.Misc) -> None:
-        """Buduje sekcję wyboru silnika konwersji."""
-        section = Section(parent, "Silnik konwersji")
+    def _build_format_section(self, parent: tk.Misc) -> None:
+        """Buduje wybór formatu docelowego (KFX / MOBI / AZW3)."""
+        section = Section(parent, "Format docelowy")
         section.pack(fill="x")
+        for value, label in (("kfx", "KFX"), ("mobi", "MOBI"), ("azw3", "AZW3")):
+            ttk.Radiobutton(
+                section,
+                text=label,
+                value=value,
+                variable=self.format_var,
+                command=self._on_format_change,
+            ).pack(side="left", padx=(0, 10))
 
-        calibre = ttk.Frame(section)
+    def _build_engine_sections(self, parent: tk.Misc) -> None:
+        """Buduje kontener z sekcjami silników (KFX i MOBI) — widoczna jedna."""
+        self.engine_container = ttk.Frame(parent)
+        self.engine_container.pack(fill="x", pady=(10, 0))
+        self._build_kfx_engine_section(self.engine_container)
+        self._build_mobi_engine_section(self.engine_container)
+
+    def _build_kfx_engine_section(self, parent: tk.Misc) -> None:
+        """Buduje sekcję wyboru silnika KFX."""
+        self.kfx_engine_section = Section(parent, "Silnik KFX")
+
+        calibre = ttk.Frame(self.kfx_engine_section)
         calibre.pack(fill="x")
         ttk.Radiobutton(
             calibre,
@@ -88,7 +117,7 @@ class KfxTab(ttk.Frame):
         ).pack(side="left")
         ttk.Label(calibre, text="ZALECANE", style="Muted.TLabel").pack(side="left", padx=(8, 0))
 
-        kp3 = ttk.Frame(section)
+        kp3 = ttk.Frame(self.kfx_engine_section)
         kp3.pack(fill="x", pady=(4, 0))
         ttk.Radiobutton(
             kp3,
@@ -103,12 +132,46 @@ class KfxTab(ttk.Frame):
             style="Muted.TLabel",
         ).pack(side="left", padx=(8, 0))
 
-        self.kp3_warning_text = tk.Text(section, height=4, wrap="word", state="disabled")
-        self.kp3_warning_text.configure(width=1)
-        self._set_warning_text(_KP3_WARNING)
+        self.kp3_warning_text = tk.Text(self.kfx_engine_section, height=4, wrap="word")
+        self.kp3_warning_text.configure(width=1, state="disabled")
+        self._set_readonly_text(self.kp3_warning_text, _KP3_WARNING)
+
+    def _build_mobi_engine_section(self, parent: tk.Misc) -> None:
+        """Buduje sekcję wyboru silnika MOBI/AZW3."""
+        self.mobi_engine_section = Section(parent, "Silnik MOBI/AZW3")
+
+        calibre = ttk.Frame(self.mobi_engine_section)
+        calibre.pack(fill="x")
+        ttk.Radiobutton(
+            calibre,
+            text="Calibre ebook-convert",
+            value="calibre",
+            variable=self.mobi_engine_var,
+            command=self._refresh_kindlegen_warning,
+        ).pack(side="left")
+        ttk.Label(calibre, text="ZALECANE", style="Muted.TLabel").pack(side="left", padx=(8, 0))
+
+        kindlegen = ttk.Frame(self.mobi_engine_section)
+        kindlegen.pack(fill="x", pady=(4, 0))
+        ttk.Radiobutton(
+            kindlegen,
+            text="kindlegen",
+            value="kindlegen",
+            variable=self.mobi_engine_var,
+            command=self._refresh_kindlegen_warning,
+        ).pack(side="left")
+        ttk.Label(
+            kindlegen,
+            text="WYCOFANY - opcjonalny",
+            style="Muted.TLabel",
+        ).pack(side="left", padx=(8, 0))
+
+        self.kindlegen_warning_text = tk.Text(self.mobi_engine_section, height=3, wrap="word")
+        self.kindlegen_warning_text.configure(width=1, state="disabled")
+        self._set_readonly_text(self.kindlegen_warning_text, _KINDLEGEN_WARNING)
 
     def _build_options_section(self, parent: tk.Misc) -> None:
-        """Buduje pozostałe opcje konwersji KFX."""
+        """Buduje pozostałe opcje konwersji."""
         section = Section(parent, "Opcje")
         section.pack(fill="x", pady=(10, 0))
         section.columnconfigure(1, weight=1)
@@ -146,7 +209,7 @@ class KfxTab(ttk.Frame):
 
         self.convert_button = ttk.Button(
             actions,
-            text="Konwertuj do KFX",
+            text="Konwertuj",
             command=self._run_conversion,
         )
         self.convert_button.pack(side="right")
@@ -167,7 +230,20 @@ class KfxTab(ttk.Frame):
         )
         self.progress_bar.pack(side="right", fill="x", expand=True, padx=(10, 0))
 
-    # ── Logika ────────────────────────────────────────────────────────────────
+    # ── Reakcje UI ──────────────────────────────────────────────────────────────
+
+    def _on_format_change(self) -> None:
+        """Pokazuje sekcję silnika właściwą dla wybranego formatu."""
+        is_kfx = self.format_var.get() == "kfx"
+        self.kfx_engine_section.pack_forget()
+        self.mobi_engine_section.pack_forget()
+        if is_kfx:
+            self.kfx_engine_section.pack(fill="x")
+            self._refresh_kp3_warning()
+        else:
+            self.mobi_engine_section.pack(fill="x")
+            self._refresh_kindlegen_warning()
+        self.convert_button.configure(text=f"Konwertuj do {self.format_var.get().upper()}")
 
     def _on_files_changed(self, files: list[Path]) -> None:
         """Aktualizuje stan przycisku po zmianie listy plików."""
@@ -175,16 +251,33 @@ class KfxTab(ttk.Frame):
         self.status_var.set(f"Wybrano {len(files)} {_plural_files(len(files))} EPUB")
 
     def _refresh_kp3_warning(self) -> None:
-        """Pokazuje ostrzeżenie poradnikowe przy eksperymentalnym KP3."""
-        if self.engine_var.get() == "kindle-previewer":
+        """Pokazuje porady przy eksperymentalnym KP3 (tylko w trybie KFX)."""
+        if self.format_var.get() == "kfx" and self.engine_var.get() == "kindle-previewer":
             self.kp3_warning_text.pack(fill="x", pady=(8, 0))
         else:
             self.kp3_warning_text.pack_forget()
+
+    def _refresh_kindlegen_warning(self) -> None:
+        """Pokazuje ostrzeżenie przy wybraniu wycofanego kindlegen."""
+        if self.format_var.get() != "kfx" and self.mobi_engine_var.get() == "kindlegen":
+            self.kindlegen_warning_text.pack(fill="x", pady=(8, 0))
+        else:
+            self.kindlegen_warning_text.pack_forget()
+
+    # ── Logika konwersji ─────────────────────────────────────────────────────────
 
     def _build_options_obj(self) -> KfxOptions:
         """Składa KfxOptions z aktualnego stanu formularza."""
         return KfxOptions(
             engine=cast(KfxEngine, self.engine_var.get()),
+            fix_epub_first=self.fix_epub_toggle.get(),
+        )
+
+    def _build_mobi_options(self) -> MobiOptions:
+        """Składa MobiOptions z aktualnego stanu formularza."""
+        return MobiOptions(
+            fmt=cast(MobiFormat, self.format_var.get()),
+            engine=cast(MobiEngine, self.mobi_engine_var.get()),
             fix_epub_first=self.fix_epub_toggle.get(),
         )
 
@@ -207,17 +300,25 @@ class KfxTab(ttk.Frame):
         self.streamer.clear()
         self.progress_bar.configure(maximum=len(files))
         self.progress_var.set(0)
-        self.status_var.set("Konwersja KFX trwa...")
+        self.status_var.set("Konwersja trwa...")
 
-        thread = threading.Thread(
-            target=self._run_worker,
-            args=(files, Path(output), self._build_options_obj()),
-            daemon=True,
-        )
+        output_dir = Path(output)
+        if self.format_var.get() == "kfx":
+            thread = threading.Thread(
+                target=self._run_worker,
+                args=(files, output_dir, self._build_options_obj()),
+                daemon=True,
+            )
+        else:
+            thread = threading.Thread(
+                target=self._run_mobi_worker,
+                args=(files, output_dir, self._build_mobi_options()),
+                daemon=True,
+            )
         thread.start()
 
     def _run_worker(self, files: list[Path], target_dir: Path, options: KfxOptions) -> None:
-        """Konwertuje pliki po kolei i aktualizuje postęp."""
+        """Konwertuje pliki do KFX po kolei i aktualizuje postęp."""
         succeeded = 0
         total = len(files)
         for index, source in enumerate(files, start=1):
@@ -237,18 +338,40 @@ class KfxTab(ttk.Frame):
 
         self.after(0, self._finish_conversion, succeeded, total)
 
+    def _run_mobi_worker(self, files: list[Path], target_dir: Path, options: MobiOptions) -> None:
+        """Konwertuje pliki do MOBI/AZW3 po kolei i aktualizuje postęp."""
+        succeeded = 0
+        total = len(files)
+        for index, source in enumerate(files, start=1):
+            self.after(0, self.status_var.set, f"Konwersja {index}/{total}: {source.name}")
+            self.streamer.write(f"→ {source.name}\n", "cmd")
+            target = target_dir / f"{source.stem}.{options.fmt}"
+            try:
+                result = to_mobi(source, target, options)
+            except Exception as exc:
+                logger.exception("Błąd konwersji MOBI/AZW3: %s", source)
+                self.streamer.write(f"BŁĄD: {exc}\n\n", "err")
+            else:
+                if result.log:
+                    self.streamer.write(f"{result.log}\n", "info")
+                self.streamer.write(f"OK [{result.engine}]: {result.output_path.name}\n\n", "ok")
+                succeeded += 1
+            self.after(0, self.progress_var.set, index)
+
+        self.after(0, self._finish_conversion, succeeded, total)
+
     def _finish_conversion(self, succeeded: int, total: int) -> None:
         """Aktualizuje UI po zakończeniu konwersji."""
         self._running = False
         self.convert_button.state(["!disabled"] if self.file_list.files() else ["disabled"])
         self.status_var.set(f"Zakończono: {succeeded}/{total} OK")
 
-    def _set_warning_text(self, value: str) -> None:
-        """Ustawia treść ostrzeżenia KP3 w read-only Text."""
-        self.kp3_warning_text.configure(state="normal")
-        self.kp3_warning_text.delete("1.0", "end")
-        self.kp3_warning_text.insert("1.0", value)
-        self.kp3_warning_text.configure(state="disabled")
+    def _set_readonly_text(self, widget: tk.Text, value: str) -> None:
+        """Ustawia treść read-only pola Text."""
+        widget.configure(state="normal")
+        widget.delete("1.0", "end")
+        widget.insert("1.0", value)
+        widget.configure(state="disabled")
 
 
 def _plural_files(count: int) -> str:

@@ -234,6 +234,29 @@ class Tools:
         )
 
     @staticmethod
+    def kindlegen() -> Tool:
+        """Wykrywa ``kindlegen`` (generator MOBI firmy Amazon).
+
+        UWAGA: ``kindlegen`` jest **oficjalnie wycofany** przez Amazon (ostatnia
+        wersja 2.9 z 2018 r., brak dalszego rozwoju), ale nadal działa do
+        generowania plików MOBI. Nowocześniejszą i zalecaną alternatywą jest
+        Calibre ``ebook-convert``. Bywa też dołączany w katalogu Kindle Previewer 3.
+        """
+        return _make_tool(
+            "kindlegen",
+            _exe_names("kindlegen"),
+            [
+                *_env_dirs(
+                    "KindleGen",
+                    str(Path("Amazon") / "Kindle Previewer 3" / "lib" / "fc" / "bin"),
+                ),
+                Path("/usr/bin"),
+                Path("/usr/local/bin"),
+                Path("/opt/kindlegen"),
+            ],
+        )
+
+    @staticmethod
     def calibre_kfx_plugin() -> bool:
         """Sprawdza, czy w katalogu wtyczek Calibre jest wtyczka KFX Output."""
         plugins_dir = _calibre_plugins_dir()
@@ -253,6 +276,7 @@ class Tools:
             "calibre_editor": Tools.calibre_editor(),
             "sigil": Tools.sigil(),
             "kindle_previewer": Tools.kindle_previewer(),
+            "kindlegen": Tools.kindlegen(),
         }
 
 

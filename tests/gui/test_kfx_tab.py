@@ -12,7 +12,7 @@ import pytest
 
 tk = pytest.importorskip("tkinter")
 
-from epubforge.converters import ConversionResult, KfxOptions
+from epubforge.converters import ConversionResult, KfxOptions, MobiOptions
 from epubforge.core import Tool
 from epubforge.gui.tabs import kfx as kfx_module
 from epubforge.gui.tabs.kfx import KfxTab
@@ -171,3 +171,55 @@ def test_kfx_tab_run_button_starts_thread(
     assert target_dir == output
     assert options.engine == "calibre"
     assert options.fix_epub_first is True
+
+
+def test_format_switch_shows_mobi_engine(root: tk.Tk) -> None:
+    """Wybór formatu MOBI pokazuje sekcję silnika MOBI i chowa sekcję KFX."""
+    tab = KfxTab(root, tools=_tools())
+    tab.pack(fill="both", expand=True)
+    root.update_idletasks()
+
+    # Domyślnie KFX: sekcja KFX widoczna, MOBI ukryta.
+    assert tab.kfx_engine_section.winfo_manager() == "pack"
+    assert tab.mobi_engine_section.winfo_manager() == ""
+
+    tab.format_var.set("mobi")
+    tab._on_format_change()
+    root.update_idletasks()
+
+    assert tab.mobi_engine_section.winfo_manager() == "pack"
+    assert tab.kfx_engine_section.winfo_manager() == ""
+    assert "MOBI" in tab.convert_button.cget("text")
+
+
+def test_mobi_worker_calls_to_mobi(
+    root: tk.Tk,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Worker MOBI woła to_mobi z celem o właściwym rozszerzeniu i opcjami."""
+    calls: list[tuple[Path, Path, MobiOptions]] = []
+
+    def fake_to_mobi(source: Path, target: Path, options: MobiOptions) -> ConversionResult:
+        calls.append((source, target, options))
+        return ConversionResult(True, target, "done", "calibre")
+
+    monkeypatch.setattr(kfx_module, "to_mobi", fake_to_mobi)
+
+    tab = KfxTab(root, tools=_tools())
+    tab.format_var.set("azw3")
+    tab.mobi_engine_var.set("calibre")
+    options = tab._build_mobi_options()
+
+    book = tmp_path / "book.epub"
+    output = tmp_path / "out"
+    tab._run_mobi_worker([book], output, options)
+    root.update()
+
+    assert len(calls) == 1
+    source, target, opts = calls[0]
+    assert source == book
+    assert target == output / "book.azw3"
+    assert opts.fmt == "azw3"
+    assert opts.engine == "calibre"
+    assert tab.status_var.get() == "Zakończono: 1/1 OK"
