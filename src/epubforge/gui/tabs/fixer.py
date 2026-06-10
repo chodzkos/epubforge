@@ -103,14 +103,27 @@ class FixerTab(ttk.Frame):
         ttk.Label(section, text="Metoda").grid(row=2, column=0, sticky="nw", pady=4, padx=(0, 8))
         methods = ttk.Frame(section)
         methods.grid(row=2, column=1, sticky="w", pady=4)
+        _method_tooltips = {
+            "soft-hyphen": (
+                "Wstawia miękkie myślniki (\\u00ad) w tekście. Działa na KAŻDYM "
+                "czytniku (też starym Kindle), ALE psuje słownik i wyszukiwarkę "
+                "na czytniku."
+            ),
+            "css": (
+                "Wstrzykuje regułę CSS 'hyphens: auto' — czysty tekst, ale słabo "
+                "wspierane na Kindle."
+            ),
+        }
         for value, label in (("soft-hyphen", "soft-hyphen"), ("css", "css")):
-            ttk.Radiobutton(
+            radio = ttk.Radiobutton(
                 methods,
                 text=label,
                 value=value,
                 variable=self.hyphen_method_var,
                 command=self._refresh_hyphen_warning,
-            ).pack(anchor="w")
+            )
+            radio.pack(anchor="w")
+            Tooltip(radio, _method_tooltips[value])
 
         self.hyphen_warning_label = ttk.Label(
             section,
@@ -190,6 +203,7 @@ class FixerTab(ttk.Frame):
         self.fix_button = ttk.Button(actions, text="Napraw", command=self._run_fix)
         self.fix_button.pack(side="left")
         self.fix_button.state(["disabled"])
+        Tooltip(self.fix_button, "Hyphenacja i naprawa CSS wybranych plików (zapis w miejscu).")
 
         self.preview_button = ttk.Button(
             actions,

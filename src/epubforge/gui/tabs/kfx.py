@@ -16,7 +16,7 @@ from epubforge.core import Tool
 from epubforge.core.config import Config
 from epubforge.gui.output import remember_output_dir, remembered_output_dir, resolve_output_dir
 from epubforge.gui.streaming import LogStreamer
-from epubforge.gui.widgets import FileList, PathEntry, Section, Toggle
+from epubforge.gui.widgets import FileList, PathEntry, Section, Toggle, Tooltip
 
 logger = logging.getLogger(__name__)
 
@@ -127,13 +127,19 @@ class KfxTab(ttk.Frame):
 
         kp3 = ttk.Frame(self.kfx_engine_section)
         kp3.pack(fill="x", pady=(4, 0))
-        ttk.Radiobutton(
+        kp3_radio = ttk.Radiobutton(
             kp3,
             text="Kindle Previewer 3",
             value="kindle-previewer",
             variable=self.engine_var,
             command=self._refresh_kp3_warning,
-        ).pack(side="left")
+        )
+        kp3_radio.pack(side="left")
+        Tooltip(
+            kp3_radio,
+            "Eksperymentalny silnik KFX — wrażliwy na nieidealny EPUB. "
+            "Preferuj Calibre + wtyczkę KFX Output.",
+        )
         ttk.Label(
             kp3,
             text="EKSPERYMENTALNE - wrażliwe na formatowanie",
@@ -161,13 +167,19 @@ class KfxTab(ttk.Frame):
 
         kindlegen = ttk.Frame(self.mobi_engine_section)
         kindlegen.pack(fill="x", pady=(4, 0))
-        ttk.Radiobutton(
+        kindlegen_radio = ttk.Radiobutton(
             kindlegen,
             text="kindlegen",
             value="kindlegen",
             variable=self.mobi_engine_var,
             command=self._refresh_kindlegen_warning,
-        ).pack(side="left")
+        )
+        kindlegen_radio.pack(side="left")
+        Tooltip(
+            kindlegen_radio,
+            "Wycofany przez Amazon (utknął na 2.9). Działa do MOBI, ale "
+            "zalecany jest Calibre ebook-convert.",
+        )
         ttk.Label(
             kindlegen,
             text="WYCOFANY - opcjonalny",
@@ -222,6 +234,11 @@ class KfxTab(ttk.Frame):
         )
         self.convert_button.pack(side="right")
         self.convert_button.state(["disabled"])
+        Tooltip(
+            self.convert_button,
+            "Eksportuje wybrane pliki EPUB do wybranego formatu Kindle "
+            "(KFX/MOBI/AZW3). Puste pole folderu = zapis obok źródła.",
+        )
 
     def _build_status(self) -> None:
         """Buduje pasek statusu i postępu batch processing."""
