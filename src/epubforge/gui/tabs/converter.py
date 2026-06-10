@@ -11,7 +11,9 @@ from typing import cast
 from epubforge.converters import SUPPORTED_INPUT_EXTENSIONS, ConvertOptions, to_epub
 from epubforge.converters.to_epub import Engine
 from epubforge.core import Metadata
+from epubforge.core.config import Config
 from epubforge.core.exceptions import ConversionError, ConverterNotFoundError
+from epubforge.gui.output import remember_output_dir, remembered_output_dir, resolve_output_dir
 from epubforge.gui.streaming import LogStreamer
 from epubforge.gui.widgets import FileList, PathEntry, Section
 
@@ -28,8 +30,9 @@ _PDF_WARNING = (
 class ConverterTab(ttk.Frame):
     """Zakładka konwersji TXT/DOCX/HTML/MD/PDF… → EPUB."""
 
-    def __init__(self, parent: tk.Misc) -> None:
+    def __init__(self, parent: tk.Misc, *, config: Config | None = None) -> None:
         super().__init__(parent, padding=12)
+        self.config_data: Config = config if config is not None else {}
         self.title_var = tk.StringVar()
         self.author_var = tk.StringVar()
         self.language_var = tk.StringVar(value="pl")
@@ -40,6 +43,10 @@ class ConverterTab(ttk.Frame):
         self._build_layout()
         self.streamer = LogStreamer(self.log_text)
         self.streamer.start_polling()
+
+        remembered = remembered_output_dir(self.config_data)
+        if remembered:
+            self.output_entry.set(remembered)
 
     # ── Budowa UI ─────────────────────────────────────────────────────────────
 
@@ -68,8 +75,14 @@ class ConverterTab(ttk.Frame):
             section,
             extensions=SUPPORTED_INPUT_EXTENSIONS,
             confirm=self._confirm_file,
+            on_change=self._on_files_changed,
         )
         self.file_list.pack(fill="both", expand=True)
+
+    def _on_files_changed(self, files: list[Path]) -> None:
+        """Podpowiada katalog wyjściowy katalogiem pierwszego pliku, gdy pole puste."""
+        if files and not self.output_entry.get().strip():
+            self.output_entry.set(str(files[0].parent))
 
     def _build_options(self, parent: tk.Misc) -> None:
         """Buduje formularz metadanych, okładki, silnika i wyjścia."""
@@ -160,19 +173,17 @@ class ConverterTab(ttk.Frame):
         if not files:
             self.status_var.set("Brak plików do konwersji")
             return
-        output = self.output_entry.get()
-        if not output or not Path(output).is_dir():
-            self.status_var.set("Wskaż istniejący folder wyjściowy")
-            return
+        output = self.output_entry.get().strip()
 
         self._converting = True
         self.convert_button.state(["disabled"])
         self.streamer.clear()
         self.status_var.set("Konwertowanie...")
 
+        remember_output_dir(self.config_data, output)
         options = self._build_convert_options()
         engine = cast(Engine, self.engine_var.get())
-        output_dir = Path(output)
+        output_dir = Path(output) if output else None
         thread = threading.Thread(
             target=self._run_conversion,
             args=(files, output_dir, options, engine),
@@ -183,14 +194,18 @@ class ConverterTab(ttk.Frame):
     def _run_conversion(
         self,
         files: list[Path],
-        output_dir: Path,
+        output_dir: Path | None,
         options: ConvertOptions,
         engine: Engine,
     ) -> None:
-        """Konwertuje pliki po kolei (wątek roboczy) i streamuje log."""
+        """Konwertuje pliki po kolei (wątek roboczy) i streamuje log.
+
+        Gdy ``output_dir`` jest ``None`` (puste pole), każdy plik trafia obok
+        swojego źródła.
+        """
         succeeded = 0
         for source in files:
-            target = output_dir / f"{source.stem}.epub"
+            target = resolve_output_dir(output_dir, source) / f"{source.stem}.epub"
             self.streamer.write(f"→ {source.name} → {target.name}\n", "cmd")
             try:
                 result = to_epub(source, target, options, engine)

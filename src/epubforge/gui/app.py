@@ -85,11 +85,11 @@ class App(tk.Tk):
         self.notebook.pack(fill="both", expand=True)
         self.metadata_tab = MetadataTab(self.notebook, tools=self.tools)
         self.notebook.add(self.metadata_tab, text="Metadane")
-        self.converter_tab = ConverterTab(self.notebook)
+        self.converter_tab = ConverterTab(self.notebook, config=self.config_data)
         self.notebook.add(self.converter_tab, text="Konwerter")
         self.fixer_tab = FixerTab(self.notebook, tools=self.tools)
         self.notebook.add(self.fixer_tab, text="Fixer")
-        self.kfx_tab = KfxTab(self.notebook, tools=self.tools)
+        self.kfx_tab = KfxTab(self.notebook, tools=self.tools, config=self.config_data)
         self.notebook.add(self.kfx_tab, text="Eksport Kindle")
 
     def _build_status_bar(self) -> None:
