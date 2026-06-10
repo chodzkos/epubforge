@@ -58,6 +58,12 @@ def _configure_ttk_style(root: tk.Misc, theme: Theme) -> None:
     style.configure("TLabel", background=theme["bg2"], foreground=theme["fg"])
     style.configure("Muted.TLabel", background=theme["bg2"], foreground=theme["fg2"])
     style.configure(
+        "Link.TLabel",
+        background=theme["bg2"],
+        foreground=theme["accent"],
+        font=("TkDefaultFont", 10, "underline"),
+    )
+    style.configure(
         "Title.TLabel",
         background=theme["bg"],
         foreground=theme["fg"],

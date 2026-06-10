@@ -10,7 +10,7 @@ from tkinter import ttk
 from epubforge import __version__
 from epubforge.core import Tool, default_config_path, detect_with_cache, load_config, save_config
 from epubforge.core.config import Config
-from epubforge.gui.tabs import ConverterTab, FixerTab, KfxTab, MetadataTab
+from epubforge.gui.tabs import AboutTab, ConverterTab, FixerTab, KfxTab, MetadataTab
 from epubforge.gui.theme import DARK, LIGHT, Theme, apply_theme
 from epubforge.gui.widgets import Toggle
 from epubforge.gui.widgets.tooltip import Tooltip
@@ -91,6 +91,8 @@ class App(tk.Tk):
         self.notebook.add(self.fixer_tab, text="Fixer")
         self.kfx_tab = KfxTab(self.notebook, tools=self.tools, config=self.config_data)
         self.notebook.add(self.kfx_tab, text="Eksport Kindle")
+        self.about_tab = AboutTab(self.notebook)
+        self.notebook.add(self.about_tab, text="O programie")
 
     def _build_status_bar(self) -> None:
         """Buduje dolny pasek statusu narzędzi."""
