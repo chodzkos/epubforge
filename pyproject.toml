@@ -113,6 +113,7 @@ files = ["src/epubforge"]
 
 [[tool.mypy.overrides]]
 module = [
+    "PIL.*",
     "pyphen",
     "tinycss2",
     "tkinterdnd2",
