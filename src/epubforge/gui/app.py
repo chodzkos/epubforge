@@ -9,6 +9,7 @@ from tkinter import ttk
 from epubforge import __version__
 from epubforge.core import Tool, default_config_path, detect_with_cache, load_config, save_config
 from epubforge.core.config import Config
+from epubforge.gui.tabs import MetadataTab
 from epubforge.gui.theme import DARK, LIGHT, Theme, apply_theme
 from epubforge.gui.widgets import Toggle
 from epubforge.gui.widgets.tooltip import Tooltip
@@ -53,19 +54,11 @@ class App(tk.Tk):
         Tooltip(self.theme_toggle, "Przełącz motyw jasny/ciemny")
 
     def _build_notebook(self) -> None:
-        """Buduje notebook z pierwszą zakładką placeholder."""
+        """Buduje notebook z zakładkami roboczymi."""
         self.notebook = ttk.Notebook(self.root_frame)
         self.notebook.pack(fill="both", expand=True)
-        welcome = ttk.Frame(self.notebook, padding=24)
-        self.notebook.add(welcome, text="Welcome")
-        ttk.Label(welcome, text="EpubForge GUI", font=("TkDefaultFont", 16, "bold")).pack(
-            anchor="w"
-        )
-        ttk.Label(
-            welcome,
-            text="Biblioteka i CLI są gotowe. Kolejne etapy dodadzą zakładki robocze.",
-            style="Muted.TLabel",
-        ).pack(anchor="w", pady=(8, 0))
+        self.metadata_tab = MetadataTab(self.notebook)
+        self.notebook.add(self.metadata_tab, text="Metadane")
 
     def _build_status_bar(self) -> None:
         """Buduje dolny pasek statusu narzędzi."""
@@ -111,6 +104,7 @@ def _format_tools_status(tools: dict[str, Tool]) -> str:
     labels = {
         "pandoc": "Pandoc",
         "calibre_ebook_convert": "Calibre",
+        "calibre_editor": "Editor",
         "sigil": "Sigil",
         "kindle_previewer": "KP3",
     }
