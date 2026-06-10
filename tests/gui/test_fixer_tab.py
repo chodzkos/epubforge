@@ -91,7 +91,7 @@ def test_fixer_tab_runs_worker_thread(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Kliknięcie „Napraw” uruchamia wątek roboczy z poprawnymi argumentami."""
-    calls: list[tuple[Any, ...]] = []
+    calls: list[tuple[list[Path], HyphenationOptions | None, CssFixOptions]] = []
 
     class ImmediateThread:
         def __init__(
@@ -108,8 +108,13 @@ def test_fixer_tab_runs_worker_thread(
         def start(self) -> None:
             self.target(*self.args)
 
-    def fake_worker(*args: Any) -> None:
-        calls.append(args)
+    def fake_worker(
+        self: FixerTab,
+        files: list[Path],
+        hyphen_opts: HyphenationOptions | None,
+        css_opts: CssFixOptions,
+    ) -> None:
+        calls.append((files, hyphen_opts, css_opts))
 
     monkeypatch.setattr(fixer_module.threading, "Thread", ImmediateThread)
     monkeypatch.setattr(FixerTab, "_run_worker", fake_worker)
