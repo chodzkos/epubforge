@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import tkinter as tk
 from collections.abc import Callable, Iterable
 from pathlib import Path
@@ -15,6 +16,8 @@ try:
 except ImportError:
     DND_FILES = "DND_Files"
     HAS_DND = False
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_EXTENSIONS = {".epub", ".txt", ".md", ".markdown", ".docx", ".html", ".htm", ".pdf"}
 
@@ -110,12 +113,22 @@ class FileList(ttk.Frame):
         self.add_files(Path(path.strip("{}")) for path in raw_paths)
 
     def _enable_drag_and_drop(self) -> None:
-        """Włącza D&D, jeśli widget listbox obsługuje metody tkinterdnd2."""
+        """Włącza drag&drop, jeśli natywny tkdnd jest faktycznie dostępny.
+
+        Metody ``drop_target_register``/``dnd_bind`` istnieją zawsze (tkinterdnd2
+        je monkeypatchuje), ale gdy pakiet tkdnd nie został załadowany do okna,
+        ich wywołanie rzuca ``TclError``. Łapiemy to cicho — lista działa dalej,
+        tylko bez przeciągania plików.
+        """
         drop_register = getattr(self.listbox, "drop_target_register", None)
         dnd_bind = getattr(self.listbox, "dnd_bind", None)
-        if callable(drop_register) and callable(dnd_bind):
+        if not (callable(drop_register) and callable(dnd_bind)):
+            return
+        try:
             drop_register(DND_FILES)
             dnd_bind("<<Drop>>", self._on_drop)
+        except tk.TclError as exc:
+            logger.warning("Drag&drop niedostępne: %s", exc)
 
     def _refresh(self) -> None:
         """Odświeża widok listbox i licznik."""

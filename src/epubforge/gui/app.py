@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import tkinter as tk
 from pathlib import Path
 from tkinter import ttk
@@ -14,12 +15,17 @@ from epubforge.gui.theme import DARK, LIGHT, Theme, apply_theme
 from epubforge.gui.widgets import Toggle
 from epubforge.gui.widgets.tooltip import Tooltip
 
+logger = logging.getLogger(__name__)
+
 
 class App(tk.Tk):
     """Główne okno aplikacji EpubForge."""
 
     def __init__(self, config_path: Path | None = None) -> None:
         super().__init__()
+        # Załaduj natywny tkdnd do interpretera Tk — bez tego widgety mają
+        # metody drag&drop (monkeypatch tkinterdnd2), ale komendy Tcl nie istnieją.
+        self.dnd_available = self._init_tkdnd()
         self.config_path = default_config_path() if config_path is None else config_path
         self.config_data: Config = load_config(self.config_path)
         self.theme_name = self._initial_theme_name()
@@ -37,6 +43,24 @@ class App(tk.Tk):
         self._build_status_bar()
         apply_theme(self, self.theme)
         self._refresh_status()
+
+    def _init_tkdnd(self) -> bool:
+        """Ładuje pakiet tkdnd do tego okna (jak robi ``TkinterDnD.Tk``).
+
+        Robimy to na już utworzonym ``tk.Tk``, więc gdy natywna biblioteka tkdnd
+        jest niedostępna, aplikacja działa dalej — tylko bez przeciągania plików.
+
+        Returns:
+            ``True`` gdy tkdnd się załadował, inaczej ``False``.
+        """
+        try:
+            from tkinterdnd2 import TkinterDnD
+
+            TkinterDnD._require(self)
+        except (ImportError, tk.TclError, RuntimeError) as exc:
+            logger.warning("Drag&drop niedostępne — tkdnd nie załadowane: %s", exc)
+            return False
+        return True
 
     def _build_header(self) -> None:
         """Buduje górny pasek tytułu i przełącznik motywu."""
