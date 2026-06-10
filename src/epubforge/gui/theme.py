@@ -38,8 +38,20 @@ LIGHT: Theme = {
 }
 
 
+# Aktualnie zastosowany motyw — odczytywany przez widgety budowane dynamicznie
+# (np. Tooltip tworzy okno dopiero po najechaniu, więc musi znać bieżący motyw).
+_current_theme: Theme = DARK
+
+
+def current_theme() -> Theme:
+    """Zwraca ostatnio zastosowany motyw (domyślnie DARK przed pierwszym apply)."""
+    return _current_theme
+
+
 def apply_theme(root: tk.Misc, theme: Theme) -> None:
     """Aplikuje motyw do ttk style i rekurencyjnie do widgetów klasycznych."""
+    global _current_theme
+    _current_theme = theme
     _configure_ttk_style(root, theme)
     _apply_widget_theme(root, theme)
 

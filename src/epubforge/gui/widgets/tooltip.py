@@ -1,9 +1,11 @@
-"""Tooltip dla widgetów tkinter."""
+"""Tooltip dla widgetów tkinter — czytelny w obu motywach."""
 
 from __future__ import annotations
 
 import tkinter as tk
 from typing import Any
+
+from epubforge.gui.theme import current_theme
 
 
 class Tooltip:
@@ -31,24 +33,29 @@ class Tooltip:
     def _show(self) -> None:
         if self.tip_window is not None or not self.text:
             return
+        # Kolory z bieżącego motywu — czytelne zarówno w dark, jak i light.
+        theme = current_theme()
         x = self.widget.winfo_rootx() + 24
         y = self.widget.winfo_rooty() + 24
         self.tip_window = tk.Toplevel(self.widget)
         self.tip_window.wm_overrideredirect(True)
         self.tip_window.wm_geometry(f"+{x}+{y}")
+        self.tip_window.configure(bg=theme["border"])
         label = tk.Label(
             self.tip_window,
             text=self.text,
             justify="left",
-            bg="#2d3040",
-            fg="#dde1ec",
-            relief="solid",
-            borderwidth=1,
+            bg=theme["bg3"],
+            fg=theme["fg"],
+            highlightbackground=theme["border"],
+            highlightthickness=1,
+            relief="flat",
+            borderwidth=0,
             font=("TkDefaultFont", 9),
             padx=8,
             pady=4,
         )
-        label.pack()
+        label.pack(padx=1, pady=1)
 
     def _hide(self) -> None:
         if self.tip_window is not None:

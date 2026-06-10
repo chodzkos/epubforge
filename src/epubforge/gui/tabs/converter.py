@@ -15,7 +15,7 @@ from epubforge.core.config import Config
 from epubforge.core.exceptions import ConversionError, ConverterNotFoundError
 from epubforge.gui.output import remember_output_dir, remembered_output_dir, resolve_output_dir
 from epubforge.gui.streaming import LogStreamer
-from epubforge.gui.widgets import FileList, PathEntry, Section
+from epubforge.gui.widgets import FileList, PathEntry, Section, Tooltip
 
 # Najczęstsze kody języków dla dropdownu (kolejność = priorytet wyświetlania).
 _LANGUAGES = ["pl", "en", "de", "fr", "es", "it", "ru", "cs", "uk", "nl", "pt"]
@@ -129,6 +129,12 @@ class ConverterTab(ttk.Frame):
 
         self.convert_button = ttk.Button(section, text="Konwertuj", command=self._convert)
         self.convert_button.grid(row=6, column=0, columnspan=2, sticky="ew", pady=(10, 0))
+        Tooltip(
+            self.convert_button,
+            "Konwertuje wybrane pliki do EPUB wybranym silnikiem.\n"
+            "Puste pole 'Folder wyjściowy' = zapis obok pliku źródłowego.",
+        )
+        Tooltip(self.cover_entry, "Opcjonalny obraz okładki (jpg/png/gif).")
 
     def _build_log(self, parent: tk.Misc) -> None:
         """Buduje pole logu konwersji."""
