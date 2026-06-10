@@ -77,18 +77,52 @@ def test_kfx_tab_builds_options_and_shows_kp3_warning(root: tk.Tk) -> None:
     assert "uprość CSS" in warning
 
 
-def test_kfx_tab_blocks_conversion_without_output_dir(root: tk.Tk, tmp_path: Path) -> None:
-    """Bez katalogu docelowego konwersja nie rusza."""
-    tab = KfxTab(root, tools=_tools())
-    book = tmp_path / "book.epub"
-    tab.file_list.add_files([book])
+def test_kfx_tab_empty_output_passes_none(
+    root: tk.Tk,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Puste pole katalogu → worker dostaje None (zapis obok źródła)."""
+    calls: list[tuple[list[Path], Path | None, KfxOptions]] = []
 
-    tab.output_dir.set("")
+    class ImmediateThread:
+        def __init__(self, *, target: Any, args: tuple[Any, ...], daemon: bool) -> None:
+            self.target = target
+            self.args = args
+
+        def start(self) -> None:
+            self.target(*self.args)
+
+    def fake_worker(
+        self: KfxTab, files: list[Path], target_dir: Path | None, options: KfxOptions
+    ) -> None:
+        calls.append((files, target_dir, options))
+
+    monkeypatch.setattr(kfx_module.threading, "Thread", ImmediateThread)
+    monkeypatch.setattr(KfxTab, "_run_worker", fake_worker)
+
+    tab = KfxTab(root, tools=_tools())
+    tab.file_list.add_files([tmp_path / "book.epub"])
+    tab.output_dir.set("")  # wyczyść ewentualną podpowiedź
     tab._run_conversion()
 
-    assert tab._running is False
-    assert tab.progress_var.get() == 0
-    assert "folder wyjściowy" in tab.status_var.get()
+    assert len(calls) == 1
+    assert calls[0][1] is None
+
+
+def test_kfx_tab_prefills_output_from_first_file(root: tk.Tk, tmp_path: Path) -> None:
+    """Dodanie pierwszego pliku podpowiada jego katalog, gdy pole puste."""
+    tab = KfxTab(root, tools=_tools())
+    book = tmp_path / "sub" / "book.epub"
+    book.parent.mkdir()
+    tab.file_list.add_files([book])
+    assert tab.output_dir.get() == str(book.parent)
+
+
+def test_kfx_tab_init_prefills_from_config(root: tk.Tk) -> None:
+    """Zapamiętany katalog z configu jest podpowiadany na starcie."""
+    tab = KfxTab(root, tools=_tools(), config={"last_output_dir": "/remembered"})
+    assert tab.output_dir.get() == "/remembered"
 
 
 def test_kfx_tab_runs_conversion_in_worker(

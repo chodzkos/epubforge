@@ -13,6 +13,8 @@ from epubforge.converters import KfxOptions, MobiOptions, to_kfx, to_mobi
 from epubforge.converters.to_kfx import KfxEngine
 from epubforge.converters.to_mobi import MobiEngine, MobiFormat
 from epubforge.core import Tool
+from epubforge.core.config import Config
+from epubforge.gui.output import remember_output_dir, remembered_output_dir, resolve_output_dir
 from epubforge.gui.streaming import LogStreamer
 from epubforge.gui.widgets import FileList, PathEntry, Section, Toggle
 
@@ -39,9 +41,11 @@ class KfxTab(ttk.Frame):
         parent: tk.Misc,
         *,
         tools: dict[str, Tool] | None = None,
+        config: Config | None = None,
     ) -> None:
         super().__init__(parent, padding=12)
         self.tools = tools if tools is not None else {}
+        self.config_data: Config = config if config is not None else {}
         self._running = False
 
         self.format_var = tk.StringVar(value="kfx")
@@ -54,6 +58,10 @@ class KfxTab(ttk.Frame):
         self.streamer = LogStreamer(self.log_text)
         self.streamer.start_polling()
         self._on_format_change()
+
+        remembered = remembered_output_dir(self.config_data)
+        if remembered:
+            self.output_dir.set(remembered)
 
     # ── Budowa UI ─────────────────────────────────────────────────────────────
 
@@ -246,9 +254,11 @@ class KfxTab(ttk.Frame):
         self.convert_button.configure(text=f"Konwertuj do {self.format_var.get().upper()}")
 
     def _on_files_changed(self, files: list[Path]) -> None:
-        """Aktualizuje stan przycisku po zmianie listy plików."""
+        """Aktualizuje przycisk i podpowiada katalog wyjściowy, gdy pole puste."""
         self.convert_button.state(["!disabled"] if files and not self._running else ["disabled"])
         self.status_var.set(f"Wybrano {len(files)} {_plural_files(len(files))} EPUB")
+        if files and not self.output_dir.get().strip():
+            self.output_dir.set(str(files[0].parent))
 
     def _refresh_kp3_warning(self) -> None:
         """Pokazuje porady przy eksperymentalnym KP3 (tylko w trybie KFX)."""
@@ -289,11 +299,7 @@ class KfxTab(ttk.Frame):
         if not files:
             self.status_var.set("Brak plików EPUB do konwersji")
             return
-        output = self.output_dir.get()
-        if not output:
-            self.streamer.write("BŁĄD: Wybierz folder wyjściowy.\n", "err")
-            self.status_var.set("Wskaż folder wyjściowy")
-            return
+        output = self.output_dir.get().strip()
 
         self._running = True
         self.convert_button.state(["disabled"])
@@ -302,7 +308,8 @@ class KfxTab(ttk.Frame):
         self.progress_var.set(0)
         self.status_var.set("Konwersja trwa...")
 
-        output_dir = Path(output)
+        remember_output_dir(self.config_data, output)
+        output_dir = Path(output) if output else None
         if self.format_var.get() == "kfx":
             thread = threading.Thread(
                 target=self._run_worker,
@@ -317,15 +324,18 @@ class KfxTab(ttk.Frame):
             )
         thread.start()
 
-    def _run_worker(self, files: list[Path], target_dir: Path, options: KfxOptions) -> None:
-        """Konwertuje pliki do KFX po kolei i aktualizuje postęp."""
+    def _run_worker(self, files: list[Path], target_dir: Path | None, options: KfxOptions) -> None:
+        """Konwertuje pliki do KFX po kolei i aktualizuje postęp.
+
+        ``target_dir`` ``None`` (puste pole) oznacza zapis obok każdego źródła.
+        """
         succeeded = 0
         total = len(files)
         for index, source in enumerate(files, start=1):
             self.after(0, self.status_var.set, f"Konwersja {index}/{total}: {source.name}")
             self.streamer.write(f"→ {source.name}\n", "cmd")
             try:
-                result = to_kfx(source, target_dir, options)
+                result = to_kfx(source, resolve_output_dir(target_dir, source), options)
             except Exception as exc:
                 logger.exception("Błąd konwersji KFX: %s", source)
                 self.streamer.write(f"BŁĄD: {exc}\n\n", "err")
@@ -338,14 +348,19 @@ class KfxTab(ttk.Frame):
 
         self.after(0, self._finish_conversion, succeeded, total)
 
-    def _run_mobi_worker(self, files: list[Path], target_dir: Path, options: MobiOptions) -> None:
-        """Konwertuje pliki do MOBI/AZW3 po kolei i aktualizuje postęp."""
+    def _run_mobi_worker(
+        self, files: list[Path], target_dir: Path | None, options: MobiOptions
+    ) -> None:
+        """Konwertuje pliki do MOBI/AZW3 po kolei i aktualizuje postęp.
+
+        ``target_dir`` ``None`` (puste pole) oznacza zapis obok każdego źródła.
+        """
         succeeded = 0
         total = len(files)
         for index, source in enumerate(files, start=1):
             self.after(0, self.status_var.set, f"Konwersja {index}/{total}: {source.name}")
             self.streamer.write(f"→ {source.name}\n", "cmd")
-            target = target_dir / f"{source.stem}.{options.fmt}"
+            target = resolve_output_dir(target_dir, source) / f"{source.stem}.{options.fmt}"
             try:
                 result = to_mobi(source, target, options)
             except Exception as exc:
