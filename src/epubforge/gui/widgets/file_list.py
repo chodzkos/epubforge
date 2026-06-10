@@ -31,10 +31,14 @@ class FileList(ttk.Frame):
         *,
         extensions: Iterable[str] | None = None,
         on_change: Callable[[list[Path]], None] | None = None,
+        confirm: Callable[[Path], bool] | None = None,
     ) -> None:
         super().__init__(parent)
         self.extensions = {ext.lower() for ext in (extensions or DEFAULT_EXTENSIONS)}
         self.on_change = on_change
+        # Hook wołany przed dodaniem pliku — zwrot False pomija plik
+        # (np. potwierdzenie eksperymentalnej konwersji PDF).
+        self.confirm = confirm
         self._files: list[Path] = []
 
         toolbar = ttk.Frame(self)
@@ -71,9 +75,12 @@ class FileList(ttk.Frame):
             candidate = Path(path)
             if candidate.suffix.lower() not in self.extensions:
                 continue
-            if candidate not in self._files:
-                self._files.append(candidate)
-                changed = True
+            if candidate in self._files:
+                continue
+            if self.confirm is not None and not self.confirm(candidate):
+                continue
+            self._files.append(candidate)
+            changed = True
         if changed:
             self._refresh()
 

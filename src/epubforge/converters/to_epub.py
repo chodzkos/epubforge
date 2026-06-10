@@ -23,6 +23,24 @@ Engine = Literal["pandoc", "calibre", "auto"]
 _NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 _PDF_EXTENSIONS = {".pdf"}
 
+# Rozszerzenia wejściowe obsługiwane przez konwersję do EPUB (źródło prawdy dla UI/CLI).
+SUPPORTED_INPUT_EXTENSIONS = frozenset(
+    {
+        ".txt",
+        ".md",
+        ".markdown",
+        ".docx",
+        ".odt",
+        ".rtf",
+        ".html",
+        ".htm",
+        ".pdf",
+        ".fb2",
+        ".lit",
+        ".mobi",
+    }
+)
+
 
 @dataclass
 class ConvertOptions:
