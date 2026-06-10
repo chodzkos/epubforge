@@ -10,7 +10,7 @@ from tkinter import ttk
 from epubforge import __version__
 from epubforge.core import Tool, default_config_path, detect_with_cache, load_config, save_config
 from epubforge.core.config import Config
-from epubforge.gui.tabs import ConverterTab, MetadataTab
+from epubforge.gui.tabs import ConverterTab, FixerTab, MetadataTab
 from epubforge.gui.theme import DARK, LIGHT, Theme, apply_theme
 from epubforge.gui.widgets import Toggle
 from epubforge.gui.widgets.tooltip import Tooltip
@@ -28,12 +28,15 @@ class App(tk.Tk):
         self.dnd_available = self._init_tkdnd()
         self.config_path = default_config_path() if config_path is None else config_path
         self.config_data: Config = load_config(self.config_path)
+        self.tools: dict[str, Tool] = {}
+        self.status_var = tk.StringVar(value="Wykrywanie narzędzi...")
         self.theme_name = self._initial_theme_name()
         self.theme: Theme = DARK if self.theme_name == "dark" else LIGHT
         self.title(f"EpubForge {__version__}")
         self.geometry(str(self.config_data.get("geometry") or "980x680"))
         self.minsize(760, 520)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
+        self._refresh_status()
 
         self.root_frame = ttk.Frame(self, style="Root.TFrame", padding=12)
         self.root_frame.pack(fill="both", expand=True)
@@ -41,8 +44,7 @@ class App(tk.Tk):
         self._build_header()
         self._build_notebook()
         self._build_status_bar()
-        apply_theme(self, self.theme)
-        self._refresh_status()
+        apply_theme(self, self.theme)  # Zastosuj motyw po zbudowaniu wszystkich widgetów
 
     def _init_tkdnd(self) -> bool:
         """Ładuje pakiet tkdnd do tego okna (jak robi ``TkinterDnD.Tk``).
@@ -81,14 +83,15 @@ class App(tk.Tk):
         """Buduje notebook z zakładkami roboczymi."""
         self.notebook = ttk.Notebook(self.root_frame)
         self.notebook.pack(fill="both", expand=True)
-        self.metadata_tab = MetadataTab(self.notebook)
+        self.metadata_tab = MetadataTab(self.notebook, tools=self.tools)
         self.notebook.add(self.metadata_tab, text="Metadane")
         self.converter_tab = ConverterTab(self.notebook)
         self.notebook.add(self.converter_tab, text="Konwerter")
+        self.fixer_tab = FixerTab(self.notebook, tools=self.tools)
+        self.notebook.add(self.fixer_tab, text="Fixer")
 
     def _build_status_bar(self) -> None:
         """Buduje dolny pasek statusu narzędzi."""
-        self.status_var = tk.StringVar(value="Wykrywanie narzędzi...")
         status = ttk.Frame(self.root_frame, style="Root.TFrame")
         status.pack(fill="x", pady=(10, 0))
         self.status_label = ttk.Label(status, textvariable=self.status_var, style="Muted.TLabel")
@@ -97,11 +100,11 @@ class App(tk.Tk):
     def _refresh_status(self) -> None:
         """Wykrywa narzędzia i odświeża pasek statusu."""
         try:
-            tools = detect_with_cache(self.config_path)
+            self.tools = detect_with_cache(self.config_path)
         except OSError:
             self.status_var.set("Nie udało się odczytać statusu narzędzi")
             return
-        self.status_var.set(_format_tools_status(tools))
+        self.status_var.set(_format_tools_status(self.tools))
 
     def _toggle_theme(self, enabled: bool) -> None:
         """Przełącza motyw aplikacji."""
@@ -130,6 +133,7 @@ def _format_tools_status(tools: dict[str, Tool]) -> str:
     labels = {
         "pandoc": "Pandoc",
         "calibre_ebook_convert": "Calibre",
+        "calibre_viewer": "Viewer",
         "calibre_editor": "Editor",
         "sigil": "Sigil",
         "kindle_previewer": "KP3",
