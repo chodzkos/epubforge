@@ -17,6 +17,7 @@ from epubforge.gui.app import App
 from epubforge.gui.streaming import LogStreamer
 from epubforge.gui.theme import DARK, apply_theme
 from epubforge.gui.widgets import FileList, PathEntry, Section, Toggle, Tooltip
+from epubforge.gui.widgets import file_list as file_list_module
 
 pytestmark = pytest.mark.gui
 
@@ -99,3 +100,24 @@ def test_app_creates_saves_config_and_status(
     app.theme_toggle.set(False)
     app._on_close()
     assert (tmp_path / "config.json").read_text(encoding="utf-8")
+
+
+def test_file_list_survives_dnd_tclerror(
+    root: tk.Tk,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """FileList tworzy się i działa, nawet gdy rejestracja D&D rzuca TclError."""
+
+    def boom(*args: object, **kwargs: object) -> None:
+        raise tk.TclError('invalid command name "tkdnd::drop_target"')
+
+    monkeypatch.setattr(file_list_module, "HAS_DND", True)
+    monkeypatch.setattr(tk.Listbox, "drop_target_register", boom, raising=False)
+    monkeypatch.setattr(tk.Listbox, "dnd_bind", boom, raising=False)
+
+    file_list = FileList(root, extensions={".epub"})
+    file_list.pack()
+    # Brak crasha; lista nadal przyjmuje pliki przez API.
+    file_list.add_files([tmp_path / "book.epub"])
+    assert file_list.files() == [tmp_path / "book.epub"]
