@@ -97,9 +97,13 @@ def test_app_creates_saves_config_and_status(
 
     app.withdraw()
     assert "Calibre: OK" in app.status_var.get()
-    app.theme_toggle.set(False)
+    app._set_theme_setting("light")
+    assert app.theme_name == "light"
     app._on_close()
-    assert (tmp_path / "config.json").read_text(encoding="utf-8")
+    import json
+
+    saved = json.loads((tmp_path / "config.json").read_text(encoding="utf-8"))
+    assert saved["theme"] == "light"
 
 
 def test_file_list_survives_dnd_tclerror(

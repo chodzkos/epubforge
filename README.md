@@ -114,6 +114,13 @@ with Epub("book.epub") as ebook:
 epubforge-gui
 ```
 
+Motyw: **Widok → Motyw** (Automatyczny / Jasny / Ciemny). „Automatyczny" podąża
+za ustawieniem systemu. Na Windows pasek tytułu również zmienia kolor.
+
+> ⚠️ Natywne okna systemowe **Otwórz/Zapisz** (filedialog) są rysowane przez
+> system i pozostają jasne niezależnie od motywu aplikacji — w czystym tkinter
+> nie da się tego prosto obejść.
+
 ---
 
 ## 📋 Wymagania
