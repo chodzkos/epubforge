@@ -103,6 +103,40 @@ def test_tool_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
     assert tool.version == ""
 
 
+def test_calibre_editor_available_via_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Calibre Editor obecny w PATH → available z wersją."""
+    which_calls: list[str] = []
+
+    def fake_which(name: str) -> str | None:
+        which_calls.append(name)
+        if name in {"ebook-edit", "ebook-edit.exe"}:
+            return "/usr/bin/ebook-edit"
+        return None
+
+    monkeypatch.setattr(detection.shutil, "which", fake_which)
+    monkeypatch.setattr(detection, "_get_version", lambda path: "ebook-edit 7.0")
+    tool = Tools.calibre_editor()
+    assert tool.available is True
+    assert tool.path == Path("/usr/bin/ebook-edit")
+    assert tool.version == "ebook-edit 7.0"
+    assert any(name in {"ebook-edit", "ebook-edit.exe"} for name in which_calls)
+
+
+def test_calibre_editor_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Brak ebook-edit w PATH i typowych lokalizacjach → unavailable."""
+    monkeypatch.setattr(detection.shutil, "which", lambda name: None)
+    monkeypatch.setattr(Path, "is_file", lambda self: False)
+
+    def fail(path: Path) -> str:
+        raise AssertionError("--version nie powinno być wywołane dla brakującej binarki")
+
+    monkeypatch.setattr(detection, "_get_version", fail)
+    tool = Tools.calibre_editor()
+    assert tool.available is False
+    assert tool.path is None
+    assert tool.version == ""
+
+
 def test_kindle_previewer_skips_version(monkeypatch: pytest.MonkeyPatch) -> None:
     """Dla Kindle Previewer NIE uruchamiamy --version (otwiera GUI)."""
     monkeypatch.setattr(detection, "_find_executable", lambda names, dirs: Path("/x/kp3"))
@@ -124,6 +158,7 @@ def test_detect_all_keys(monkeypatch: pytest.MonkeyPatch) -> None:
         "pandoc",
         "calibre_ebook_convert",
         "calibre_viewer",
+        "calibre_editor",
         "sigil",
         "kindle_previewer",
     }
@@ -177,6 +212,7 @@ def test_detect_with_cache_writes(tmp_path: Path, no_tools: None) -> None:
         "pandoc",
         "calibre_ebook_convert",
         "calibre_viewer",
+        "calibre_editor",
         "sigil",
         "kindle_previewer",
     }

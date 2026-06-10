@@ -190,6 +190,20 @@ class Tools:
         )
 
     @staticmethod
+    def calibre_editor() -> Tool:
+        """Wykrywa ``ebook-edit`` (edytor EPUB wbudowany w Calibre)."""
+        return _make_tool(
+            "calibre_editor",
+            _exe_names("ebook-edit"),
+            [
+                *_env_dirs("Calibre2", "Calibre"),
+                Path("/usr/bin"),
+                Path("/opt/calibre"),
+                Path("/Applications/calibre.app/Contents/MacOS"),
+            ],
+        )
+
+    @staticmethod
     def sigil() -> Tool:
         """Wykrywa edytor EPUB Sigil."""
         return _make_tool(
@@ -236,6 +250,7 @@ class Tools:
             "pandoc": Tools.pandoc(),
             "calibre_ebook_convert": Tools.calibre_ebook_convert(),
             "calibre_viewer": Tools.calibre_viewer(),
+            "calibre_editor": Tools.calibre_editor(),
             "sigil": Tools.sigil(),
             "kindle_previewer": Tools.kindle_previewer(),
         }
