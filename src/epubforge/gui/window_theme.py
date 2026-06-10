@@ -24,6 +24,11 @@ Window = tk.Tk | tk.Toplevel
 _DWMWA_USE_IMMERSIVE_DARK_MODE = 20
 _DWMWA_USE_IMMERSIVE_DARK_MODE_OLD = 19
 
+# WinAPI do wymuszenia przemalowania ramki okna (pasek tytułu + menu).
+_WM_NCACTIVATE = 0x0086
+# SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED
+_SWP_FRAME_REDRAW = 0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020
+
 
 def set_titlebar_dark(window: Window, dark: bool) -> bool:
     """Ustawia ciemny (``dark=True``) lub jasny pasek tytułu okna.
@@ -71,10 +76,24 @@ def _set_titlebar_dark_win(window: Window, dark: bool) -> bool:
             dwm.DwmSetWindowAttribute(
                 hwnd, _DWMWA_USE_IMMERSIVE_DARK_MODE_OLD, ctypes.byref(value), ctypes.sizeof(value)
             )
+        _force_frame_redraw(windll, hwnd)
         return True
     except Exception:
         # Różne błędy ctypes/DWM (brak API, zły HWND) — traktujemy jednolicie jako brak wsparcia.
         return False
+
+
+def _force_frame_redraw(windll: Any, hwnd: Any) -> None:
+    """Wymusza przemalowanie obszaru nieklienckiego (pasek tytułu + menu).
+
+    Bez mrugania oknem: dezaktywacja/aktywacja paska (``WM_NCACTIVATE``) plus
+    ``SetWindowPos`` z ``SWP_FRAMECHANGED``. Naprawia sytuację, gdy na Win10
+    pasek tytułu wraz z paskiem menu nie odświeża się po zmianie motywu.
+    """
+    user32 = windll.user32
+    user32.SendMessageW(hwnd, _WM_NCACTIVATE, 0, 0)
+    user32.SendMessageW(hwnd, _WM_NCACTIVATE, 1, 0)
+    user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, _SWP_FRAME_REDRAW)
 
 
 def _refresh_window_win(window: Window) -> None:
