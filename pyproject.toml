@@ -29,6 +29,7 @@ classifiers = [
 ]
 
 dependencies = [
+    "darkdetect>=0.8",
     "lxml>=5.0",
     "pyphen>=0.15",
     "tinycss2>=1.3",
@@ -114,6 +115,7 @@ files = ["src/epubforge"]
 [[tool.mypy.overrides]]
 module = [
     "PIL.*",
+    "darkdetect",
     "pyphen",
     "tinycss2",
     "tkinterdnd2",

@@ -11,11 +11,13 @@ from epubforge import __version__
 from epubforge.core import Tool, default_config_path, detect_with_cache, load_config, save_config
 from epubforge.core.config import Config
 from epubforge.gui.tabs import AboutTab, ConverterTab, FixerTab, KfxTab, MetadataTab
-from epubforge.gui.theme import DARK, LIGHT, Theme, apply_theme
-from epubforge.gui.widgets import Toggle
-from epubforge.gui.widgets.tooltip import Tooltip
+from epubforge.gui.theme import Theme, apply_theme, resolve_theme_name, theme_for_name
+from epubforge.gui.window_theme import refresh_titlebar, set_titlebar_dark
 
 logger = logging.getLogger(__name__)
+
+# Dozwolone wartości ustawienia motywu w config.json.
+_THEME_SETTINGS = ("auto", "light", "dark")
 
 
 class App(tk.Tk):
@@ -30,21 +32,25 @@ class App(tk.Tk):
         self.config_data: Config = load_config(self.config_path)
         self.tools: dict[str, Tool] = {}
         self.status_var = tk.StringVar(value="Wykrywanie narzędzi...")
-        self.theme_name = self._initial_theme_name()
-        self.theme: Theme = DARK if self.theme_name == "dark" else LIGHT
+        self.theme_setting = self._initial_theme_setting()
+        self.theme_var = tk.StringVar(value=self.theme_setting)
+        self.theme_name = resolve_theme_name(self.theme_setting)
+        self.theme: Theme = theme_for_name(self.theme_name)
         self.title(f"EpubForge {__version__}")
         self.geometry(str(self.config_data.get("geometry") or "980x680"))
         self.minsize(760, 520)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self._refresh_status()
 
+        self._build_menu()
         self.root_frame = ttk.Frame(self, style="Root.TFrame", padding=12)
         self.root_frame.pack(fill="both", expand=True)
 
         self._build_header()
         self._build_notebook()
         self._build_status_bar()
-        apply_theme(self, self.theme)  # Zastosuj motyw po zbudowaniu wszystkich widgetów
+        # Zastosuj motyw po zbudowaniu widgetów (bez refresh — okno dopiero powstaje).
+        self._apply_current_theme()
 
     def _init_tkdnd(self) -> bool:
         """Ładuje pakiet tkdnd do tego okna (jak robi ``TkinterDnD.Tk``).
@@ -64,20 +70,28 @@ class App(tk.Tk):
             return False
         return True
 
+    def _build_menu(self) -> None:
+        """Buduje pasek menu z 'Widok → Motyw' (Automatyczny/Jasny/Ciemny)."""
+        menubar = tk.Menu(self)
+        view_menu = tk.Menu(menubar, tearoff=False)
+        theme_menu = tk.Menu(view_menu, tearoff=False)
+        for label, value in (("Automatyczny", "auto"), ("Jasny", "light"), ("Ciemny", "dark")):
+            theme_menu.add_radiobutton(
+                label=label,
+                value=value,
+                variable=self.theme_var,
+                command=self._on_theme_menu,
+            )
+        view_menu.add_cascade(label="Motyw", menu=theme_menu)
+        menubar.add_cascade(label="Widok", menu=view_menu)
+        self.configure(menu=menubar)
+
     def _build_header(self) -> None:
-        """Buduje górny pasek tytułu i przełącznik motywu."""
+        """Buduje górny pasek z tytułem aplikacji."""
         header = ttk.Frame(self.root_frame, style="Root.TFrame")
         header.pack(fill="x", pady=(0, 10))
         title = ttk.Label(header, text="EpubForge", style="Title.TLabel")
         title.pack(side="left")
-        self.theme_toggle = Toggle(
-            header,
-            text="Dark",
-            value=self.theme_name == "dark",
-            on_change=self._toggle_theme,
-        )
-        self.theme_toggle.pack(side="right")
-        Tooltip(self.theme_toggle, "Przełącz motyw jasny/ciemny")
 
     def _build_notebook(self) -> None:
         """Buduje notebook z zakładkami roboczymi."""
@@ -110,22 +124,43 @@ class App(tk.Tk):
             return
         self.status_var.set(_format_tools_status(self.tools))
 
-    def _toggle_theme(self, enabled: bool) -> None:
-        """Przełącza motyw aplikacji."""
-        self.theme_name = "dark" if enabled else "light"
-        self.theme = DARK if enabled else LIGHT
-        apply_theme(self, self.theme)
-
-    def _initial_theme_name(self) -> str:
-        """Zwraca nazwę motywu z configu albo domyślny dark."""
+    def _initial_theme_setting(self) -> str:
+        """Zwraca ustawienie motywu z configu (auto/light/dark), domyślnie auto."""
         value = self.config_data.get("theme")
-        return "light" if value == "light" else "dark"
+        return value if value in _THEME_SETTINGS else "auto"
+
+    def _on_theme_menu(self) -> None:
+        """Reaguje na wybór motywu z menu."""
+        self._set_theme_setting(self.theme_var.get())
+
+    def _set_theme_setting(self, setting: str) -> None:
+        """Ustawia tryb motywu, zapisuje w configu i stosuje go."""
+        new_name = resolve_theme_name(setting)
+        changed = new_name != self.theme_name
+        self.theme_setting = setting
+        self.theme_var.set(setting)
+        self.config_data["theme"] = setting
+        self._apply_current_theme(refresh=changed)
+
+    def _apply_current_theme(self, *, refresh: bool = False) -> None:
+        """Rozwiązuje ustawienie na konkretny motyw i stosuje go do okna.
+
+        Args:
+            refresh: czy wymusić przemalowanie paska tytułu (Win10) — tylko gdy
+                motyw faktycznie się zmienił, by uniknąć zbędnego mrugnięcia.
+        """
+        self.theme_name = resolve_theme_name(self.theme_setting)
+        self.theme = theme_for_name(self.theme_name)
+        apply_theme(self, self.theme)
+        set_titlebar_dark(self, self.theme_name == "dark")
+        if refresh:
+            refresh_titlebar(self)
 
     def _on_close(self) -> None:
         """Zapisuje konfigurację i zamyka okno."""
         current = load_config(self.config_path)
         current.update(self.config_data)
-        current["theme"] = self.theme_name
+        current["theme"] = self.theme_setting
         current["geometry"] = self.geometry()
         self.config_data = current
         save_config(self.config_path, current)

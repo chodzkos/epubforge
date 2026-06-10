@@ -7,6 +7,8 @@ from contextlib import suppress
 from tkinter import ttk
 from typing import Any, cast
 
+import darkdetect
+
 Theme = dict[str, str]
 
 DARK: Theme = {
@@ -46,6 +48,31 @@ _current_theme: Theme = DARK
 def current_theme() -> Theme:
     """Zwraca ostatnio zastosowany motyw (domyślnie DARK przed pierwszym apply)."""
     return _current_theme
+
+
+def system_theme() -> str:
+    """Zwraca motyw systemowy jako ``"dark"`` albo ``"light"``.
+
+    Korzysta z ``darkdetect`` (cross-platform). Gdy systemu nie da się odpytać,
+    przyjmuje ``light``.
+    """
+    return (darkdetect.theme() or "Light").lower()
+
+
+def resolve_theme_name(setting: str) -> str:
+    """Mapuje ustawienie (``auto``/``dark``/``light``) na konkretny motyw.
+
+    ``auto`` rozwiązywane jest przez :func:`system_theme`; nieznane wartości
+    traktujemy jak ``dark``.
+    """
+    if setting == "auto":
+        return system_theme()
+    return "light" if setting == "light" else "dark"
+
+
+def theme_for_name(name: str) -> Theme:
+    """Zwraca słownik motywu dla nazwy ``dark``/``light``."""
+    return LIGHT if name == "light" else DARK
 
 
 def apply_theme(root: tk.Misc, theme: Theme) -> None:
@@ -128,6 +155,8 @@ def _apply_widget_theme(widget: tk.Misc, theme: Theme) -> None:
             _safe_configure(
                 widget, bg=theme["bg3"], fg=theme["fg"], insertbackground=theme["accent"]
             )
+        elif class_name == "Canvas":
+            _safe_configure(widget, bg=theme["bg2"], highlightbackground=theme["border"])
         elif class_name in {"Checkbutton", "Radiobutton"}:
             _safe_configure(widget, bg=theme["bg2"], fg=theme["fg"], activebackground=theme["bg2"])
     except tk.TclError:
