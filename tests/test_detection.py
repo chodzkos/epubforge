@@ -150,6 +150,22 @@ def test_kindle_previewer_skips_version(monkeypatch: pytest.MonkeyPatch) -> None
     assert tool.version == ""
 
 
+def test_kindlegen_available(monkeypatch: pytest.MonkeyPatch) -> None:
+    """kindlegen obecny w PATH → available z wersją."""
+    monkeypatch.setattr(detection, "_find_executable", lambda names, dirs: Path("/bin/kindlegen"))
+    monkeypatch.setattr(detection, "_get_version", lambda path: "kindlegen 2.9")
+    tool = Tools.kindlegen()
+    assert tool.available is True
+    assert tool.path == Path("/bin/kindlegen")
+    assert tool.version == "kindlegen 2.9"
+
+
+def test_kindlegen_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Brak kindlegen → Tool(available=False)."""
+    monkeypatch.setattr(detection, "_find_executable", lambda names, dirs: None)
+    assert Tools.kindlegen().available is False
+
+
 def test_detect_all_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     """detect_all zwraca komplet narzędzi jako Tool."""
     monkeypatch.setattr(detection, "_find_executable", lambda names, dirs: None)
@@ -161,6 +177,7 @@ def test_detect_all_keys(monkeypatch: pytest.MonkeyPatch) -> None:
         "calibre_editor",
         "sigil",
         "kindle_previewer",
+        "kindlegen",
     }
     assert all(isinstance(t, Tool) for t in tools.values())
 
@@ -215,6 +232,7 @@ def test_detect_with_cache_writes(tmp_path: Path, no_tools: None) -> None:
         "calibre_editor",
         "sigil",
         "kindle_previewer",
+        "kindlegen",
     }
     saved = load_config(cfg)
     assert "last_detected" in saved

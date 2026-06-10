@@ -90,7 +90,7 @@ class App(tk.Tk):
         self.fixer_tab = FixerTab(self.notebook, tools=self.tools)
         self.notebook.add(self.fixer_tab, text="Fixer")
         self.kfx_tab = KfxTab(self.notebook, tools=self.tools)
-        self.notebook.add(self.kfx_tab, text="KFX")
+        self.notebook.add(self.kfx_tab, text="Eksport Kindle")
 
     def _build_status_bar(self) -> None:
         """Buduje dolny pasek statusu narzędzi."""
