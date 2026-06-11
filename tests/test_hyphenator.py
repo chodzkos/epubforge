@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import zipfile
 from pathlib import Path
+from typing import cast
 
 import pyphen
 import pytest
@@ -64,7 +65,7 @@ def _read_text(epub: Epub) -> str:
 
 def _expected_word(language: str, word: str) -> str:
     """Zwraca słowo podzielone przez Pyphen tak jak w kodzie produkcyjnym."""
-    return pyphen.Pyphen(lang=language).inserted(word, hyphen=SOFT_HYPHEN)
+    return cast(str, pyphen.Pyphen(lang=language).inserted(word, hyphen=SOFT_HYPHEN))
 
 
 def test_soft_hyphen_hyphenates_polish_text(tmp_path: Path) -> None:
@@ -154,7 +155,10 @@ def test_soft_hyphen_supports_other_languages(
     assert _expected_word(language, word) in html
 
 
-def test_cli_hyphenate_saves_epub(tmp_path: Path, capsys) -> None:
+def test_cli_hyphenate_saves_epub(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """Subkomenda hyphenate modyfikuje i zapisuje wskazany EPUB."""
     epub_path = _build_epub(tmp_path, "<p>tekst próbny</p>", css="")
 

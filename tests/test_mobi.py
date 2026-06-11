@@ -7,6 +7,7 @@ prawdziwych binariów.
 from __future__ import annotations
 
 import importlib
+from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -37,7 +38,7 @@ def _fake_run(
     stderr: str = "",
     returncode: int = 0,
     create_kindlegen: bool = False,
-):  # type: ignore[no-untyped-def]
+) -> Callable[..., SimpleNamespace]:
     """Zwraca mock subprocess.run zapisujący wywołania."""
 
     def run(command: list[str], **kwargs: object) -> SimpleNamespace:

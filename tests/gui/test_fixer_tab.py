@@ -1,20 +1,20 @@
 """Testy zakładki GUI do naprawy EPUB."""
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
-tk = pytest.importorskip("tkinter")
+if TYPE_CHECKING:
+    import tkinter as tk
+else:
+    tk = pytest.importorskip("tkinter")
 
 from epubforge.core import Tool
 from epubforge.fixers import CssFixOptions, HyphenationOptions
-from epubforge.gui.tabs import fixer as fixer_module
 from epubforge.gui.tabs.fixer import FixerTab
 
 pytestmark = pytest.mark.gui
@@ -116,7 +116,7 @@ def test_fixer_tab_runs_worker_thread(
     ) -> None:
         calls.append((files, hyphen_opts, css_opts))
 
-    monkeypatch.setattr(fixer_module.threading, "Thread", ImmediateThread)
+    monkeypatch.setattr("epubforge.gui.tabs.fixer.threading.Thread", ImmediateThread)
     monkeypatch.setattr(FixerTab, "_run_worker", fake_worker)
 
     tab = FixerTab(root, tools=_tools())
@@ -143,7 +143,7 @@ def test_fixer_tab_preview_uses_calibre_viewer(
         calls.append(cmd)
         return object()
 
-    monkeypatch.setattr(fixer_module.subprocess, "Popen", fake_popen)
+    monkeypatch.setattr("epubforge.gui.tabs.fixer.subprocess.Popen", fake_popen)
 
     tab = FixerTab(root, tools=_tools())
     fixed = tmp_path / "book.epub"

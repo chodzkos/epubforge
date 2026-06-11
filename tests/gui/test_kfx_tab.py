@@ -1,16 +1,17 @@
 """Testy zakładki GUI konwersji do KFX."""
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
-tk = pytest.importorskip("tkinter")
+if TYPE_CHECKING:
+    import tkinter as tk
+else:
+    tk = pytest.importorskip("tkinter")
 
 from epubforge.converters import ConversionResult, KfxOptions, MobiOptions
 from epubforge.core import Tool
@@ -98,7 +99,7 @@ def test_kfx_tab_empty_output_passes_none(
     ) -> None:
         calls.append((files, target_dir, options))
 
-    monkeypatch.setattr(kfx_module.threading, "Thread", ImmediateThread)
+    monkeypatch.setattr("epubforge.gui.tabs.kfx.threading.Thread", ImmediateThread)
     monkeypatch.setattr(KfxTab, "_run_worker", fake_worker)
 
     tab = KfxTab(root, tools=_tools())
@@ -188,7 +189,7 @@ def test_kfx_tab_run_button_starts_thread(
     ) -> None:
         calls.append((files, target_dir, options))
 
-    monkeypatch.setattr(kfx_module.threading, "Thread", ImmediateThread)
+    monkeypatch.setattr("epubforge.gui.tabs.kfx.threading.Thread", ImmediateThread)
     monkeypatch.setattr(KfxTab, "_run_worker", fake_worker)
 
     tab = KfxTab(root, tools=_tools())

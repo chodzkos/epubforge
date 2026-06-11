@@ -1,15 +1,17 @@
 """Testy zakładki GUI konwersji do EPUB."""
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 from collections.abc import Iterator
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
-tk = pytest.importorskip("tkinter")
+if TYPE_CHECKING:
+    import tkinter as tk
+else:
+    tk = pytest.importorskip("tkinter")
 
 from epubforge.converters import ConversionResult, ConvertOptions
 from epubforge.gui.tabs import converter as converter_module
@@ -53,11 +55,11 @@ def test_converter_pdf_requires_confirmation(
     tab = ConverterTab(root)
     pdf = tmp_path / "doc.pdf"
 
-    monkeypatch.setattr(converter_module.messagebox, "askyesno", lambda *a, **k: False)
+    monkeypatch.setattr("epubforge.gui.tabs.converter.messagebox.askyesno", lambda *a, **k: False)
     tab.file_list.add_files([pdf])
     assert tab.file_list.files() == []
 
-    monkeypatch.setattr(converter_module.messagebox, "askyesno", lambda *a, **k: True)
+    monkeypatch.setattr("epubforge.gui.tabs.converter.messagebox.askyesno", lambda *a, **k: True)
     tab.file_list.add_files([pdf])
     assert tab.file_list.files() == [pdf]
 
@@ -172,7 +174,7 @@ def test_converter_remembers_output_in_config(
             pass  # nie uruchamiamy workera — testujemy tylko zapamiętanie katalogu
 
     config: dict[str, object] = {}
-    monkeypatch.setattr(converter_module.threading, "Thread", ImmediateThread)
+    monkeypatch.setattr("epubforge.gui.tabs.converter.threading.Thread", ImmediateThread)
 
     tab = ConverterTab(root, config=config)
     tab.file_list.add_files([tmp_path / "a.txt"])

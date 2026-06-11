@@ -7,6 +7,7 @@ mockowane — testy są deterministyczne i nie uruchamiają zewnętrznych binari
 from __future__ import annotations
 
 import subprocess
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -22,27 +23,27 @@ from epubforge.core.detection import Tool, Tools, detect_with_cache
 
 def test_find_executable_via_path(monkeypatch: pytest.MonkeyPatch) -> None:
     """Plik znaleziony przez shutil.which (PATH) ma pierwszeństwo."""
-    monkeypatch.setattr(detection.shutil, "which", lambda name: "/usr/bin/pandoc")
+    monkeypatch.setattr("epubforge.core.detection.shutil.which", lambda name: "/usr/bin/pandoc")
     assert detection._find_executable(["pandoc"], []) == Path("/usr/bin/pandoc")
 
 
 def test_find_executable_in_extra_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Gdy nie ma w PATH — szukamy w katalogach instalacyjnych."""
-    monkeypatch.setattr(detection.shutil, "which", lambda name: None)
+    monkeypatch.setattr("epubforge.core.detection.shutil.which", lambda name: None)
     (tmp_path / "pandoc").write_text("#!/bin/sh\n", encoding="utf-8")
     assert detection._find_executable(["pandoc"], [tmp_path]) == tmp_path / "pandoc"
 
 
 def test_find_executable_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     """Brak w PATH i w katalogach → None."""
-    monkeypatch.setattr(detection.shutil, "which", lambda name: None)
+    monkeypatch.setattr("epubforge.core.detection.shutil.which", lambda name: None)
     assert detection._find_executable(["pandoc"], [Path("/nope")]) is None
 
 
 # ── Wersja przez subprocess ─────────────────────────────────────────────────────
 
 
-def _fake_run(stdout: str = "", stderr: str = ""):  # type: ignore[no-untyped-def]
+def _fake_run(stdout: str = "", stderr: str = "") -> Callable[..., SimpleNamespace]:
     def runner(*args: object, **kwargs: object) -> SimpleNamespace:
         return SimpleNamespace(stdout=stdout, stderr=stderr, returncode=0)
 
@@ -51,13 +52,16 @@ def _fake_run(stdout: str = "", stderr: str = ""):  # type: ignore[no-untyped-de
 
 def test_get_version_first_line(monkeypatch: pytest.MonkeyPatch) -> None:
     """_get_version zwraca pierwszą, przyciętą linię wyjścia."""
-    monkeypatch.setattr(detection.subprocess, "run", _fake_run(stdout="pandoc 3.1.2\nfeatures..."))
+    monkeypatch.setattr(
+        "epubforge.core.detection.subprocess.run",
+        _fake_run(stdout="pandoc 3.1.2\nfeatures..."),
+    )
     assert detection._get_version(Path("/usr/bin/pandoc")) == "pandoc 3.1.2"
 
 
 def test_get_version_from_stderr(monkeypatch: pytest.MonkeyPatch) -> None:
     """Wersja wypisywana na stderr też jest wychwytywana."""
-    monkeypatch.setattr(detection.subprocess, "run", _fake_run(stderr="tool v1.0"))
+    monkeypatch.setattr("epubforge.core.detection.subprocess.run", _fake_run(stderr="tool v1.0"))
     assert detection._get_version(Path("/x")) == "tool v1.0"
 
 
@@ -67,7 +71,7 @@ def test_get_version_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
     def boom(*args: object, **kwargs: object) -> None:
         raise subprocess.TimeoutExpired(cmd="x", timeout=10)
 
-    monkeypatch.setattr(detection.subprocess, "run", boom)
+    monkeypatch.setattr("epubforge.core.detection.subprocess.run", boom)
     assert detection._get_version(Path("/x")) == ""
 
 
@@ -77,7 +81,7 @@ def test_get_version_missing_binary(monkeypatch: pytest.MonkeyPatch) -> None:
     def boom(*args: object, **kwargs: object) -> None:
         raise FileNotFoundError
 
-    monkeypatch.setattr(detection.subprocess, "run", boom)
+    monkeypatch.setattr("epubforge.core.detection.subprocess.run", boom)
     assert detection._get_version(Path("/x")) == ""
 
 
@@ -113,7 +117,7 @@ def test_calibre_editor_available_via_path(monkeypatch: pytest.MonkeyPatch) -> N
             return "/usr/bin/ebook-edit"
         return None
 
-    monkeypatch.setattr(detection.shutil, "which", fake_which)
+    monkeypatch.setattr("epubforge.core.detection.shutil.which", fake_which)
     monkeypatch.setattr(detection, "_get_version", lambda path: "ebook-edit 7.0")
     tool = Tools.calibre_editor()
     assert tool.available is True
@@ -124,7 +128,7 @@ def test_calibre_editor_available_via_path(monkeypatch: pytest.MonkeyPatch) -> N
 
 def test_calibre_editor_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
     """Brak ebook-edit w PATH i typowych lokalizacjach → unavailable."""
-    monkeypatch.setattr(detection.shutil, "which", lambda name: None)
+    monkeypatch.setattr("epubforge.core.detection.shutil.which", lambda name: None)
     monkeypatch.setattr(Path, "is_file", lambda self: False)
 
     def fail(path: Path) -> str:

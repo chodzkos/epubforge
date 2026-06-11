@@ -1,16 +1,17 @@
 """Testy zakładki GUI do edycji metadanych."""
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import pytest
 
-tk = pytest.importorskip("tkinter")
+if TYPE_CHECKING:
+    import tkinter as tk
+else:
+    tk = pytest.importorskip("tkinter")
 
 from epubforge.core import Metadata, Tool
 from epubforge.gui.tabs import metadata as metadata_module
@@ -77,6 +78,12 @@ def _tools() -> dict[str, Tool]:
     }
 
 
+def _saved_metadata() -> Metadata:
+    metadata = FakeEpub.saved_metadata
+    assert metadata is not None
+    return metadata
+
+
 def test_metadata_tab_loads_and_saves_metadata(
     root: tk.Tk,
     tmp_path: Path,
@@ -112,12 +119,12 @@ def test_metadata_tab_loads_and_saves_metadata(
     tab.subjects_text.insert("1.0", "nowe\nmetadane")
     tab._save_metadata()
 
-    assert FakeEpub.saved_metadata is not None
-    assert FakeEpub.saved_metadata.title == "Nowy tytuł"
-    assert FakeEpub.saved_metadata.series == "Saga o wiedźminie"
-    assert FakeEpub.saved_metadata.series_index == 1.5
-    assert FakeEpub.saved_metadata.creators == ["Nowy Autor", "Drugi Autor"]
-    assert FakeEpub.saved_metadata.subjects == ["nowe", "metadane"]
+    saved = _saved_metadata()
+    assert saved.title == "Nowy tytuł"
+    assert saved.series == "Saga o wiedźminie"
+    assert saved.series_index == 1.5
+    assert saved.creators == ["Nowy Autor", "Drugi Autor"]
+    assert saved.subjects == ["nowe", "metadane"]
     assert FakeEpub.opened_paths[-1] == book
 
 
@@ -130,11 +137,11 @@ def test_metadata_tab_invalid_series_index_does_not_block_save(
     warnings: list[tuple[str, str]] = []
 
     monkeypatch.setattr(metadata_module, "Epub", FakeEpub)
-    monkeypatch.setattr(
-        metadata_module.messagebox,
-        "showwarning",
-        lambda title, message: warnings.append((title, message)),
-    )
+
+    def fake_warning(title: str, message: str) -> None:
+        warnings.append((title, message))
+
+    monkeypatch.setattr("epubforge.gui.tabs.metadata.messagebox.showwarning", fake_warning)
     FakeEpub.saved_metadata = None
     FakeEpub.opened_paths = []
 
@@ -149,10 +156,10 @@ def test_metadata_tab_invalid_series_index_does_not_block_save(
     tab._save_metadata()
 
     assert warnings
-    assert FakeEpub.saved_metadata is not None
-    assert FakeEpub.saved_metadata.title == "Tytuł mimo błędu"
-    assert FakeEpub.saved_metadata.series == "Nowy cykl"
-    assert FakeEpub.saved_metadata.series_index == 2.0
+    saved = _saved_metadata()
+    assert saved.title == "Tytuł mimo błędu"
+    assert saved.series == "Nowy cykl"
+    assert saved.series_index == 2.0
 
 
 def test_metadata_tab_external_tool_buttons(
@@ -167,7 +174,7 @@ def test_metadata_tab_external_tool_buttons(
         calls.append((cmd, kwargs))
         return object()
 
-    monkeypatch.setattr(metadata_module.subprocess, "Popen", fake_popen)
+    monkeypatch.setattr("epubforge.gui.tabs.metadata.subprocess.Popen", fake_popen)
 
     tab = MetadataTab(root, tools=_tools())
     book = tmp_path / "book.epub"

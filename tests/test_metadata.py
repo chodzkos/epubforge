@@ -13,6 +13,13 @@ DC_NS = "http://purl.org/dc/elements/1.1/"
 OPF_NS = "http://www.idpf.org/2007/opf"
 
 
+def _required_attr(element: etree._Element, name: str) -> str:
+    """Zwraca wymagany atrybut XML z asercją pomocną też dla type checkera."""
+    value = element.get(name)
+    assert value is not None
+    return value
+
+
 # ── Odczyt ───────────────────────────────────────────────────────────────────
 
 
@@ -91,7 +98,8 @@ def test_other_opf_elements_not_modified(opf_bytes: bytes) -> None:
     """Zmiana metadanych nie rusza manifestu ani spine."""
     before = etree.fromstring(opf_bytes)
     manifest_before = sorted(
-        item.get("id") for item in before.findall(f".//{{{OPF_NS}}}manifest/{{{OPF_NS}}}item")
+        _required_attr(item, "id")
+        for item in before.findall(f".//{{{OPF_NS}}}manifest/{{{OPF_NS}}}item")
     )
     spine_before = [
         ref.get("idref") for ref in before.findall(f".//{{{OPF_NS}}}spine/{{{OPF_NS}}}itemref")
@@ -101,7 +109,8 @@ def test_other_opf_elements_not_modified(opf_bytes: bytes) -> None:
     meta.title = "Cokolwiek innego"
     after = etree.fromstring(meta.to_opf(opf_bytes))
     manifest_after = sorted(
-        item.get("id") for item in after.findall(f".//{{{OPF_NS}}}manifest/{{{OPF_NS}}}item")
+        _required_attr(item, "id")
+        for item in after.findall(f".//{{{OPF_NS}}}manifest/{{{OPF_NS}}}item")
     )
     spine_after = [
         ref.get("idref") for ref in after.findall(f".//{{{OPF_NS}}}spine/{{{OPF_NS}}}itemref")

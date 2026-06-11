@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import pytest
 
-from epubforge.gui import theme as theme_module
 from epubforge.gui import window_theme
 from epubforge.gui.theme import (
     DARK,
@@ -20,19 +19,19 @@ from epubforge.gui.theme import (
 
 def test_system_theme_dark(monkeypatch: pytest.MonkeyPatch) -> None:
     """darkdetect 'Dark' → 'dark'."""
-    monkeypatch.setattr(theme_module.darkdetect, "theme", lambda: "Dark")
+    monkeypatch.setattr("epubforge.gui.theme.darkdetect.theme", lambda: "Dark")
     assert system_theme() == "dark"
 
 
 def test_system_theme_light(monkeypatch: pytest.MonkeyPatch) -> None:
     """darkdetect 'Light' → 'light'."""
-    monkeypatch.setattr(theme_module.darkdetect, "theme", lambda: "Light")
+    monkeypatch.setattr("epubforge.gui.theme.darkdetect.theme", lambda: "Light")
     assert system_theme() == "light"
 
 
 def test_system_theme_none_defaults_light(monkeypatch: pytest.MonkeyPatch) -> None:
     """Gdy system nieznany (None) → 'light'."""
-    monkeypatch.setattr(theme_module.darkdetect, "theme", lambda: None)
+    monkeypatch.setattr("epubforge.gui.theme.darkdetect.theme", lambda: None)
     assert system_theme() == "light"
 
 
@@ -49,9 +48,9 @@ def test_resolve_unknown_defaults_dark() -> None:
 
 def test_resolve_auto_uses_system(monkeypatch: pytest.MonkeyPatch) -> None:
     """'auto' korzysta z system_theme."""
-    monkeypatch.setattr(theme_module.darkdetect, "theme", lambda: "Dark")
+    monkeypatch.setattr("epubforge.gui.theme.darkdetect.theme", lambda: "Dark")
     assert resolve_theme_name("auto") == "dark"
-    monkeypatch.setattr(theme_module.darkdetect, "theme", lambda: "Light")
+    monkeypatch.setattr("epubforge.gui.theme.darkdetect.theme", lambda: "Light")
     assert resolve_theme_name("auto") == "light"
 
 

@@ -1,15 +1,17 @@
 """Smoke testy frameworka GUI i widgetów."""
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 from collections.abc import Iterator
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-tk = pytest.importorskip("tkinter")
+if TYPE_CHECKING:
+    import tkinter as tk
+else:
+    tk = pytest.importorskip("tkinter")
 
 from epubforge.core.detection import Tool
 from epubforge.gui import app as app_module
@@ -119,7 +121,8 @@ def test_app_topbar_about_and_theme_menu(
     app.withdraw()
 
     # Notebook ma tylko zakładki robocze — About wyjęte do górnego paska.
-    tabs = [app.notebook.tab(i, "text") for i in app.notebook.tabs()]
+    notebook = cast(Any, app.notebook)
+    tabs = [notebook.tab(i, "text") for i in notebook.tabs()]
     assert tabs == ["Metadane", "Konwerter", "Fixer", "Eksport Kindle"]
 
     # Przełącznik motywu odzwierciedla bieżący tryb.
@@ -130,7 +133,7 @@ def test_app_topbar_about_and_theme_menu(
     first = app._about_window
     assert first is not None and first.winfo_exists()
     app._open_about()
-    assert app._about_window is first
+    assert id(app._about_window) == id(first)
     app._close_about()
     assert app._about_window is None
 

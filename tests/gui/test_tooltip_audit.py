@@ -4,16 +4,18 @@ Sprawdzamy klasy kontrolek (przyciski, radio, checkboxy, dropdowny, spinboxy,
 menubuttony) — każda taka kontrolka powinna mieć powiązanie ``<Enter>`` od Tooltipa.
 """
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 from collections.abc import Iterator
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
-tk = pytest.importorskip("tkinter")
+if TYPE_CHECKING:
+    import tkinter as tk
+else:
+    tk = pytest.importorskip("tkinter")
 
 from epubforge.gui import app as app_module
 from epubforge.gui.app import App

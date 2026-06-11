@@ -6,6 +6,7 @@ Zewnętrzne binaria są mockowane: nie uruchamiamy Pandoc ani Calibre w CI.
 from __future__ import annotations
 
 import importlib
+from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -42,7 +43,7 @@ def _fake_run(
     stdout: str = "ok",
     stderr: str = "",
     returncode: int = 0,
-):
+) -> Callable[..., SimpleNamespace]:
     """Zwraca mock ``subprocess.run`` zapisujący komendę i opcje."""
 
     def run(command: list[str], **kwargs: object) -> SimpleNamespace:
@@ -235,7 +236,11 @@ def test_non_zero_exit_raises_conversion_error(
         to_epub(tmp_path / "book.md", tmp_path / "book.epub", engine="pandoc")
 
 
-def test_cli_convert_subcommand(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys) -> None:
+def test_cli_convert_subcommand(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """CLI przekazuje SOURCE, TARGET i engine do warstwy konwersji."""
     seen: dict[str, object] = {}
 

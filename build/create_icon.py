@@ -37,9 +37,9 @@ def create_icon(output: Path = _DEFAULT_OUTPUT) -> Path:
 
         text = "ε"
         bbox = draw.textbbox((0, 0), text, font=font)
-        x = (size - (bbox[2] - bbox[0])) // 2 - bbox[0]
-        y = (size - (bbox[3] - bbox[1])) // 2 - bbox[1]
-        draw.text((x, y), text, fill=(255, 255, 255, 255), font=font)
+        text_x = (size - (bbox[2] - bbox[0])) // 2 - bbox[0]
+        text_y = (size - (bbox[3] - bbox[1])) // 2 - bbox[1]
+        draw.text((text_x, text_y), text, fill=(255, 255, 255, 255), font=font)
         images.append(img)
 
     images[0].save(

@@ -7,6 +7,7 @@ w CI.
 from __future__ import annotations
 
 import importlib
+from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -43,7 +44,7 @@ def _fake_run(
     stderr: str = "",
     returncode: int = 0,
     create_kfx: bool = False,
-):
+) -> Callable[..., SimpleNamespace]:
     """Zwraca mock subprocess.run zapisujący wywołania."""
 
     def run(command: list[str], **kwargs: object) -> SimpleNamespace:
@@ -243,7 +244,11 @@ def test_fix_epub_first_runs_before_conversion(
     assert events == ["open", "fix:book.epub:CssFixOptions", "save", "close", "convert"]
 
 
-def test_cli_kfx_subcommand(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys) -> None:
+def test_cli_kfx_subcommand(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """CLI przekazuje FILE, engine i --no-fix do warstwy konwersji."""
     seen: dict[str, object] = {}
 

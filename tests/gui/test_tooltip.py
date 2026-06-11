@@ -1,14 +1,16 @@
 """Testy tooltipa reagującego na motyw."""
 
-# ruff: noqa: E402
-
 from __future__ import annotations
 
 from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
 import pytest
 
-tk = pytest.importorskip("tkinter")
+if TYPE_CHECKING:
+    import tkinter as tk
+else:
+    tk = pytest.importorskip("tkinter")
 
 from epubforge.gui.theme import DARK, LIGHT, apply_theme
 from epubforge.gui.widgets import Tooltip

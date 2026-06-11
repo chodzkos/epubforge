@@ -5,6 +5,8 @@ from __future__ import annotations
 import zipfile
 from pathlib import Path
 
+import pytest
+
 from epubforge.cli.main import main
 from epubforge.core import Epub
 from epubforge.fixers import CssFixOptions, fix_css
@@ -204,7 +206,7 @@ def test_modern_css3_is_not_damaged() -> None:
     assert "text-align:left" in fixed
 
 
-def test_cli_fix_saves_epub(tmp_path: Path, capsys) -> None:
+def test_cli_fix_saves_epub(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """Subkomenda fix zapisuje zmieniony CSS w EPUB-ie."""
     epub_path = _build_epub(tmp_path, "p { color: red; text-align: justify; }")
 
