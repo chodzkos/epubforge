@@ -94,14 +94,21 @@ class KfxTab(ttk.Frame):
         """Buduje wybór formatu docelowego (KFX / MOBI / AZW3)."""
         section = Section(parent, "Format docelowy")
         section.pack(fill="x")
+        format_tooltips = {
+            "kfx": "KFX — nowoczesny format Kindle (Calibre + wtyczka KFX Output)",
+            "mobi": "MOBI — starszy, uniwersalny format Kindle",
+            "azw3": "AZW3 — format Kindle KF8 (Calibre)",
+        }
         for value, label in (("kfx", "KFX"), ("mobi", "MOBI"), ("azw3", "AZW3")):
-            ttk.Radiobutton(
+            radio = ttk.Radiobutton(
                 section,
                 text=label,
                 value=value,
                 variable=self.format_var,
                 command=self._on_format_change,
-            ).pack(side="left", padx=(0, 10))
+            )
+            radio.pack(side="left", padx=(0, 10))
+            Tooltip(radio, format_tooltips[value])
 
     def _build_engine_sections(self, parent: tk.Misc) -> None:
         """Buduje kontener z sekcjami silników (KFX i MOBI) — widoczna jedna."""
@@ -116,13 +123,15 @@ class KfxTab(ttk.Frame):
 
         calibre = ttk.Frame(self.kfx_engine_section)
         calibre.pack(fill="x")
-        ttk.Radiobutton(
+        calibre_radio = ttk.Radiobutton(
             calibre,
             text="Calibre + wtyczka KFX",
             value="calibre",
             variable=self.engine_var,
             command=self._refresh_kp3_warning,
-        ).pack(side="left")
+        )
+        calibre_radio.pack(side="left")
+        Tooltip(calibre_radio, "Zalecany silnik KFX — Calibre z wtyczką KFX Output")
         ttk.Label(calibre, text="ZALECANE", style="Muted.TLabel").pack(side="left", padx=(8, 0))
 
         kp3 = ttk.Frame(self.kfx_engine_section)
@@ -156,13 +165,15 @@ class KfxTab(ttk.Frame):
 
         calibre = ttk.Frame(self.mobi_engine_section)
         calibre.pack(fill="x")
-        ttk.Radiobutton(
+        mobi_calibre_radio = ttk.Radiobutton(
             calibre,
             text="Calibre ebook-convert",
             value="calibre",
             variable=self.mobi_engine_var,
             command=self._refresh_kindlegen_warning,
-        ).pack(side="left")
+        )
+        mobi_calibre_radio.pack(side="left")
+        Tooltip(mobi_calibre_radio, "Zalecany silnik MOBI/AZW3 — nowoczesny i aktywnie rozwijany")
         ttk.Label(calibre, text="ZALECANE", style="Muted.TLabel").pack(side="left", padx=(8, 0))
 
         kindlegen = ttk.Frame(self.mobi_engine_section)
@@ -198,6 +209,10 @@ class KfxTab(ttk.Frame):
 
         self.fix_epub_toggle = Toggle(section, text="Napraw EPUB przed konwersją", value=True)
         self.fix_epub_toggle.grid(row=0, column=0, columnspan=2, sticky="w")
+        Tooltip(
+            self.fix_epub_toggle.checkbutton,
+            "Przed eksportem uruchamia podstawową naprawę CSS (zalecane)",
+        )
 
         ttk.Label(section, text="Folder wyjściowy").grid(
             row=1,
@@ -208,6 +223,9 @@ class KfxTab(ttk.Frame):
         )
         self.output_dir = PathEntry(section, mode="dir")
         self.output_dir.grid(row=1, column=1, sticky="ew", pady=(8, 0))
+        Tooltip(
+            self.output_dir.entry, "Folder na pliki wynikowe; puste = zapis obok pliku źródłowego"
+        )
 
     def _build_log(self, parent: tk.Misc) -> None:
         """Buduje pole logu konwersji."""

@@ -91,19 +91,25 @@ class ConverterTab(ttk.Frame):
         section.columnconfigure(1, weight=1)
 
         ttk.Label(section, text="Tytuł").grid(row=0, column=0, sticky="w", pady=3, padx=(0, 8))
-        ttk.Entry(section, textvariable=self.title_var).grid(row=0, column=1, sticky="ew", pady=3)
+        title_entry = ttk.Entry(section, textvariable=self.title_var)
+        title_entry.grid(row=0, column=1, sticky="ew", pady=3)
+        Tooltip(title_entry, "Tytuł książki w wynikowym EPUB (opcjonalny)")
 
         ttk.Label(section, text="Autor").grid(row=1, column=0, sticky="w", pady=3, padx=(0, 8))
-        ttk.Entry(section, textvariable=self.author_var).grid(row=1, column=1, sticky="ew", pady=3)
+        author_entry = ttk.Entry(section, textvariable=self.author_var)
+        author_entry.grid(row=1, column=1, sticky="ew", pady=3)
+        Tooltip(author_entry, "Autor; zalecany format: Nazwisko, Imię (opcjonalny)")
 
         ttk.Label(section, text="Język").grid(row=2, column=0, sticky="w", pady=3, padx=(0, 8))
-        ttk.Combobox(
+        language_box = ttk.Combobox(
             section,
             textvariable=self.language_var,
             values=_LANGUAGES,
             state="readonly",
             width=8,
-        ).grid(row=2, column=1, sticky="w", pady=3)
+        )
+        language_box.grid(row=2, column=1, sticky="w", pady=3)
+        Tooltip(language_box, "Kod języka treści, np. pl, en, de")
 
         ttk.Label(section, text="Okładka").grid(row=3, column=0, sticky="w", pady=3, padx=(0, 8))
         self.cover_entry = PathEntry(
@@ -112,20 +118,29 @@ class ConverterTab(ttk.Frame):
             filetypes=[("Obrazy", "*.jpg *.jpeg *.png *.gif"), ("Wszystkie pliki", "*.*")],
         )
         self.cover_entry.grid(row=3, column=1, sticky="ew", pady=3)
+        Tooltip(self.cover_entry.entry, "Opcjonalny obraz okładki (jpg/png/gif)")
 
         ttk.Label(section, text="Silnik").grid(row=4, column=0, sticky="w", pady=3, padx=(0, 8))
         engines = ttk.Frame(section)
         engines.grid(row=4, column=1, sticky="w", pady=3)
+        engine_tooltips = {
+            "auto": "Auto: PDF → Calibre, pozostałe → Pandoc (fallback Calibre)",
+            "pandoc": "Wymusza Pandoc (TXT/MD/DOCX/HTML/ODT/RTF)",
+            "calibre": "Wymusza Calibre ebook-convert (obsługuje też PDF/MOBI/FB2)",
+        }
         for value, label in (("auto", "Auto"), ("pandoc", "Pandoc"), ("calibre", "Calibre")):
-            ttk.Radiobutton(engines, text=label, value=value, variable=self.engine_var).pack(
-                side="left", padx=(0, 8)
-            )
+            radio = ttk.Radiobutton(engines, text=label, value=value, variable=self.engine_var)
+            radio.pack(side="left", padx=(0, 8))
+            Tooltip(radio, engine_tooltips[value])
 
         ttk.Label(section, text="Folder wyjściowy").grid(
             row=5, column=0, sticky="w", pady=3, padx=(0, 8)
         )
         self.output_entry = PathEntry(section, mode="dir")
         self.output_entry.grid(row=5, column=1, sticky="ew", pady=3)
+        Tooltip(
+            self.output_entry.entry, "Folder na pliki .epub; puste = zapis obok pliku źródłowego"
+        )
 
         self.convert_button = ttk.Button(section, text="Konwertuj", command=self._convert)
         self.convert_button.grid(row=6, column=0, columnspan=2, sticky="ew", pady=(10, 0))
@@ -134,7 +149,6 @@ class ConverterTab(ttk.Frame):
             "Konwertuje wybrane pliki do EPUB wybranym silnikiem.\n"
             "Puste pole 'Folder wyjściowy' = zapis obok pliku źródłowego.",
         )
-        Tooltip(self.cover_entry, "Opcjonalny obraz okładki (jpg/png/gif).")
 
     def _build_log(self, parent: tk.Misc) -> None:
         """Buduje pole logu konwersji."""

@@ -11,6 +11,7 @@ from tkinter import ttk
 from typing import Any
 
 from epubforge import __version__
+from epubforge.gui.widgets import Tooltip
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +92,7 @@ class AboutTab(ttk.Frame):
         link = ttk.Label(parent, text=text, style="Link.TLabel", cursor="hand2")
         link.pack(pady=(8, 0))
         link.bind("<Button-1>", lambda _event: self._open(url))
+        Tooltip(link, f"Otwórz w przeglądarce: {url}")
         return link
 
     def _open(self, url: str) -> None:

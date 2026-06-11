@@ -7,8 +7,16 @@ from collections.abc import Callable, Sequence
 from tkinter import filedialog, ttk
 from typing import Literal
 
+from epubforge.gui.widgets.tooltip import Tooltip
+
 PathMode = Literal["dir", "file", "save"]
 FileTypes = Sequence[tuple[str, str]]
+
+_BROWSE_TOOLTIPS: dict[PathMode, str] = {
+    "dir": "Wybierz folder",
+    "file": "Wybierz plik",
+    "save": "Wybierz miejsce i nazwę zapisu",
+}
 
 
 class PathEntry(ttk.Frame):
@@ -33,6 +41,7 @@ class PathEntry(ttk.Frame):
         self.entry.pack(side="left", fill="x", expand=True)
         self.button = ttk.Button(self, text="...", width=3, command=self._browse)
         self.button.pack(side="right", padx=(6, 0))
+        Tooltip(self.button, _BROWSE_TOOLTIPS[mode])
 
     def get(self) -> str:
         """Zwraca aktualną ścieżkę bez białych znaków na końcach."""
