@@ -128,9 +128,7 @@ def test_fixer_preview_uses_calibre_viewer(
     assert calls == [["/bin/ebook-viewer", str(fixed)]]
 
 
-def test_run_fix_worker_calls_fixers(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_run_fix_worker_calls_fixers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Funkcja robocza otwiera Epub, woła hyphenate/fix_css i zwraca licznik."""
     hyphen_calls: list[Any] = []
     css_calls: list[Any] = []

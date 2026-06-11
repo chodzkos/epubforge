@@ -110,7 +110,9 @@ def test_level_for_line_classifies() -> None:
 def test_worker_emits_done_with_result(qtbot: QtBot) -> None:
     """Worker uruchamia callable w wątku i emituje done z wynikiem."""
 
-    def job(emit_line: Callable[[str, str], None], emit_progress: Callable[[int, int], None], x: int) -> int:
+    def job(
+        emit_line: Callable[[str, str], None], emit_progress: Callable[[int, int], None], x: int
+    ) -> int:
         emit_line("praca", "info")
         emit_progress(1, 1)
         return x * 2
@@ -128,7 +130,9 @@ def test_worker_emits_done_with_result(qtbot: QtBot) -> None:
 def test_worker_emits_failed_on_exception(qtbot: QtBot) -> None:
     """Wyjątek w callable trafia do sygnału failed (nie wywala aplikacji)."""
 
-    def boom(emit_line: Callable[[str, str], None], emit_progress: Callable[[int, int], None]) -> None:
+    def boom(
+        emit_line: Callable[[str, str], None], emit_progress: Callable[[int, int], None]
+    ) -> None:
         raise RuntimeError("pęknięcie")
 
     worker = Worker(boom)

@@ -126,9 +126,7 @@ def test_kfx_empty_output_passes_none(
     assert args[1] is None
 
 
-def test_run_kfx_worker_calls_to_kfx(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_run_kfx_worker_calls_to_kfx(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Funkcja robocza woła to_kfx dla każdego pliku i liczy sukcesy."""
     calls: list[tuple[Path, Path, KfxOptions]] = []
 
@@ -148,9 +146,7 @@ def test_run_kfx_worker_calls_to_kfx(
     assert calls == [(book, output, options)]
 
 
-def test_run_mobi_worker_calls_to_mobi(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_run_mobi_worker_calls_to_mobi(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Funkcja robocza MOBI woła to_mobi z celem o właściwym rozszerzeniu."""
     calls: list[tuple[Path, Path, MobiOptions]] = []
 

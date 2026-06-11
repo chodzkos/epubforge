@@ -109,9 +109,7 @@ def test_metadata_invalid_series_index_does_not_block_save(
     """Niepoprawny numer tomu ostrzega, ale zapisuje pozostałe pola."""
     warnings: list[str] = []
     monkeypatch.setattr(metadata_module, "Epub", FakeEpub)
-    monkeypatch.setattr(
-        QMessageBox, "warning", staticmethod(lambda *a, **k: warnings.append(a[2]))
-    )
+    monkeypatch.setattr(QMessageBox, "warning", staticmethod(lambda *a, **k: warnings.append(a[2])))
     FakeEpub.saved_metadata = None
     FakeEpub.opened_paths = []
 

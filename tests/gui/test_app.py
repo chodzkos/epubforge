@@ -66,9 +66,7 @@ def test_theme_menu_switches_and_persists_on_close(
     assert "window_geometry" in saved
 
 
-def test_about_dialog_is_single_instance(
-    qtbot: QtBot, qapp: QApplication, tmp_path: Path
-) -> None:
+def test_about_dialog_is_single_instance(qtbot: QtBot, qapp: QApplication, tmp_path: Path) -> None:
     """About otwiera pojedyncze okno i czyści referencję po zamknięciu."""
     window = _make_window(qtbot, qapp, tmp_path, {})
 
@@ -82,9 +80,7 @@ def test_about_dialog_is_single_instance(
     assert window._about_dialog is None
 
 
-def test_geometry_restored_from_config(
-    qtbot: QtBot, qapp: QApplication, tmp_path: Path
-) -> None:
+def test_geometry_restored_from_config(qtbot: QtBot, qapp: QApplication, tmp_path: Path) -> None:
     """Zapisana geometria z configu jest przywracana bez błędu."""
     window = _make_window(qtbot, qapp, tmp_path, {})
     window.resize(900, 640)
