@@ -281,8 +281,10 @@ feat(core): add Epub.metadata property for Dublin Core access
 
 1. **`CLAUDE.md`** (ten plik)
 2. **`ROADMAP.md`** — gdzie jesteśmy
-3. **`pyproject.toml`** — zależności, scripts
-4. **Aktualne `PROMPTS.md`** — co użytkownik mógł właśnie wkleić
+3. **`ROADMAP_FEATURES_v1.1.md`** — plan funkcji v1.1 (jeśli pracujemy nad nową funkcją)
+4. **`GUI_STANDARD.md`** — standardy i wzorce GUI (jeśli pracujemy nad GUI)
+5. **`pyproject.toml`** — zależności, scripts
+6. **Aktualne `PROMPTS.md`** — co użytkownik mógł właśnie wkleić
 
 ---
 

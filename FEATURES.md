@@ -11,18 +11,21 @@ Lista funkcji do rozważenia **po** zakończeniu wersji 1.0. Każda funkcja moż
 - Auto-detekcja języka systemu
 - Przełącznik w GUI
 - **Estymacja:** 4-6 godzin
+- → zaplanowane, zob. ROADMAP_FEATURES_v1.1.md
 
 ### F2. Walidacja przez EpubCheck
 - Wrapper na EpubCheck 5.x (JAR)
 - Parsowanie wyników do strukturyzowanej listy błędów
 - Klikalne błędy w GUI - skok do problematycznego pliku
 - **Estymacja:** 6-8 godzin
+- → zaplanowane, zob. ROADMAP_FEATURES_v1.1.md
 
 ### F3. Edytor wewnętrzny (lite)
 - Podgląd plików HTML/CSS w EPUB (read-only)
 - Podstawowa edycja (z syntax highlighting)
 - Nie konkurujemy z Sigil - tylko quick fix
 - **Estymacja:** 12-16 godzin
+- → zaplanowane, zob. ROADMAP_FEATURES_v1.1.md
 
 ### F4. Batch processing z presetami
 - Zapisywanie zestawów ustawień jako "preset" (np. "Mój standard PL")
@@ -52,6 +55,7 @@ Lista funkcji do rozważenia **po** zakończeniu wersji 1.0. Każda funkcja moż
 - Wsparcie odwrotne (KFX → EPUB nie jest możliwe bez DRM removal)
 - Calibre + kindleunpack (jeśli legalnie posiadasz plik)
 - **Estymacja:** 3-4 godziny
+- → zaplanowane, zob. ROADMAP_FEATURES_v1.1.md
 
 ### F8. Statystyki książki
 - Liczba słów, stron (szacowana)
@@ -60,6 +64,7 @@ Lista funkcji do rozważenia **po** zakończeniu wersji 1.0. Każda funkcja moż
 - Najczęstsze słowa (chmurka tagów)
 - Eksport raportu do PDF/HTML
 - **Estymacja:** 6-8 godzin
+- → zaplanowane, zob. ROADMAP_FEATURES_v1.1.md
 
 ### F9. Automatyczna optymalizacja obrazów
 - Kompresja JPEG/PNG w EPUB
@@ -73,6 +78,7 @@ Lista funkcji do rozważenia **po** zakończeniu wersji 1.0. Każda funkcja moż
 - Edycja struktury TOC (drag-drop)
 - Naprawa uszkodzonych TOC
 - **Estymacja:** 8-10 godzin
+- → zaplanowane, zob. ROADMAP_FEATURES_v1.1.md
 
 ### F11. CSS preset library
 - Wbudowane szablony CSS dla różnych potrzeb:
@@ -82,6 +88,7 @@ Lista funkcji do rozważenia **po** zakończeniu wersji 1.0. Każda funkcja moż
   - "Manga / Comic" (RTL, justify)
 - Możliwość importu własnych
 - **Estymacja:** 4 godziny
+- → zaplanowane, zob. ROADMAP_FEATURES_v1.1.md
 
 ---
 
