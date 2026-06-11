@@ -154,6 +154,19 @@ def test_kindle_previewer_skips_version(monkeypatch: pytest.MonkeyPatch) -> None
     assert tool.version == ""
 
 
+def test_sigil_skips_version(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Dla Sigila NIE uruchamiamy --version (GUI miga przy detekcji)."""
+    monkeypatch.setattr(detection, "_find_executable", lambda names, dirs: Path("/x/sigil"))
+
+    def fail(path: Path) -> str:
+        raise AssertionError("--version nie powinno być wywołane dla Sigila")
+
+    monkeypatch.setattr(detection, "_get_version", fail)
+    tool = Tools.sigil()
+    assert tool.available is True
+    assert tool.version == ""
+
+
 def test_kindlegen_available(monkeypatch: pytest.MonkeyPatch) -> None:
     """kindlegen obecny w PATH → available z wersją."""
     monkeypatch.setattr(detection, "_find_executable", lambda names, dirs: Path("/bin/kindlegen"))
