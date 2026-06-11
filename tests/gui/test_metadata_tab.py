@@ -60,6 +60,8 @@ class FakeEpub:
             date="2026-06-10",
             description="Opis książki",
             subjects=["temat", "epub"],
+            series="Wiedźmin",
+            series_index=2.0,
         )
 
     @metadata.setter
@@ -95,11 +97,15 @@ def test_metadata_tab_loads_and_saves_metadata(
 
     assert tab.current_path == book
     assert tab.title_var.get() == "Stary tytuł"
+    assert tab.series_var.get() == "Wiedźmin"
+    assert tab.series_index_var.get() == "2"
     assert tab.language_var.get() == "pl"
     assert "Autor A" in tab.creators_text.get("1.0", "end-1c")
     assert "temat" in tab.subjects_text.get("1.0", "end-1c")
 
     tab.title_var.set("Nowy tytuł")
+    tab.series_var.set("Saga o wiedźminie")
+    tab.series_index_var.set("1.5")
     tab.creators_text.delete("1.0", "end")
     tab.creators_text.insert("1.0", "Nowy Autor\nDrugi Autor")
     tab.subjects_text.delete("1.0", "end")
@@ -108,9 +114,45 @@ def test_metadata_tab_loads_and_saves_metadata(
 
     assert FakeEpub.saved_metadata is not None
     assert FakeEpub.saved_metadata.title == "Nowy tytuł"
+    assert FakeEpub.saved_metadata.series == "Saga o wiedźminie"
+    assert FakeEpub.saved_metadata.series_index == 1.5
     assert FakeEpub.saved_metadata.creators == ["Nowy Autor", "Drugi Autor"]
     assert FakeEpub.saved_metadata.subjects == ["nowe", "metadane"]
     assert FakeEpub.opened_paths[-1] == book
+
+
+def test_metadata_tab_invalid_series_index_does_not_block_save(
+    root: tk.Tk,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Niepoprawny numer tomu ostrzega, ale zapisuje pozostałe pola."""
+    warnings: list[tuple[str, str]] = []
+
+    monkeypatch.setattr(metadata_module, "Epub", FakeEpub)
+    monkeypatch.setattr(
+        metadata_module.messagebox,
+        "showwarning",
+        lambda title, message: warnings.append((title, message)),
+    )
+    FakeEpub.saved_metadata = None
+    FakeEpub.opened_paths = []
+
+    tab = MetadataTab(root, tools=_tools())
+    book = tmp_path / "book.epub"
+    book.write_bytes(b"epub")
+    tab.file_list.add_files([book])
+
+    tab.title_var.set("Tytuł mimo błędu")
+    tab.series_var.set("Nowy cykl")
+    tab.series_index_var.set("drugi")
+    tab._save_metadata()
+
+    assert warnings
+    assert FakeEpub.saved_metadata is not None
+    assert FakeEpub.saved_metadata.title == "Tytuł mimo błędu"
+    assert FakeEpub.saved_metadata.series == "Nowy cykl"
+    assert FakeEpub.saved_metadata.series_index == 2.0
 
 
 def test_metadata_tab_external_tool_buttons(

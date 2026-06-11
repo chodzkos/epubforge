@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tkinter as tk
 from collections.abc import Callable
+from math import isfinite
 from pathlib import Path
 from tkinter import messagebox, ttk
 from typing import Any, cast
@@ -34,9 +35,12 @@ class MetadataTab(ttk.Frame):
         super().__init__(parent, padding=12)
         self.tools = tools if tools is not None else _detect_tools()
         self.current_path: Path | None = None
+        self._loaded_metadata: Metadata | None = None
         self.tool_buttons: dict[str, ttk.Button] = {}
 
         self.title_var = tk.StringVar()
+        self.series_var = tk.StringVar()
+        self.series_index_var = tk.StringVar()
         self.language_var = tk.StringVar(value="en")
         self.publisher_var = tk.StringVar()
         self.date_var = tk.StringVar()
@@ -80,35 +84,36 @@ class MetadataTab(ttk.Frame):
         form = Section(parent, "Metadane Dublin Core")
         form.pack(fill="both", expand=True)
         form.columnconfigure(1, weight=1)
-        form.rowconfigure(7, weight=1)
+        form.rowconfigure(8, weight=1)
 
         self._add_entry(form, "Tytuł", self.title_var, 0, tooltip="Tytuł książki (dc:title)")
+        self._add_series_row(form, 1)
         self.creators_text = self._add_text(
-            form, "Autorzy", 1, height=3, tooltip="Autorzy — jeden na linię; format: Nazwisko, Imię"
+            form, "Autorzy", 2, height=3, tooltip="Autorzy — jeden na linię; format: Nazwisko, Imię"
         )
         self._add_entry(
-            form, "Język", self.language_var, 2, tooltip="Kod języka, np. pl, en (dc:language)"
+            form, "Język", self.language_var, 3, tooltip="Kod języka, np. pl, en (dc:language)"
         )
-        self._add_entry(form, "Wydawca", self.publisher_var, 3, tooltip="Wydawca (dc:publisher)")
+        self._add_entry(form, "Wydawca", self.publisher_var, 4, tooltip="Wydawca (dc:publisher)")
         self._add_entry(
-            form, "Data", self.date_var, 4, tooltip="Data publikacji w formacie ISO: RRRR-MM-DD"
+            form, "Data", self.date_var, 5, tooltip="Data publikacji w formacie ISO: RRRR-MM-DD"
         )
         self._add_entry(
             form,
             "ISBN",
             self.identifier_var,
-            5,
+            6,
             tooltip="Identyfikator: ISBN lub UUID (dc:identifier)",
         )
         self.subjects_text = self._add_text(
-            form, "Tematy", 6, height=3, tooltip="Tematy/tagi — jeden na linię (dc:subject)"
+            form, "Tematy", 7, height=3, tooltip="Tematy/tagi — jeden na linię (dc:subject)"
         )
         self.description_text = self._add_text(
-            form, "Opis", 7, height=7, tooltip="Opis/streszczenie książki (dc:description)"
+            form, "Opis", 8, height=7, tooltip="Opis/streszczenie książki (dc:description)"
         )
 
         actions = ttk.Frame(form)
-        actions.grid(row=8, column=0, columnspan=2, sticky="ew", pady=(10, 0))
+        actions.grid(row=9, column=0, columnspan=2, sticky="ew", pady=(10, 0))
         actions.columnconfigure(0, weight=1)
 
         save = ttk.Button(actions, text="Zapisz", command=self._save_metadata)
@@ -142,6 +147,22 @@ class MetadataTab(ttk.Frame):
         if tooltip:
             Tooltip(entry, tooltip)
         return entry
+
+    def _add_series_row(self, parent: tk.Misc, row: int) -> None:
+        """Dodaje pola cyklu i numeru tomu w jednym wierszu."""
+        ttk.Label(parent, text="Cykl:").grid(row=row, column=0, sticky="w", pady=3, padx=(0, 8))
+        frame = ttk.Frame(parent)
+        frame.grid(row=row, column=1, sticky="ew", pady=3)
+        frame.columnconfigure(0, weight=1)
+
+        series_entry = ttk.Entry(frame, textvariable=self.series_var)
+        series_entry.grid(row=0, column=0, sticky="ew")
+        Tooltip(series_entry, "Nazwa cyklu/serii, np. Wiedźmin")
+
+        ttk.Label(frame, text="Tom nr:").grid(row=0, column=1, sticky="w", padx=(12, 6))
+        series_index_entry = ttk.Entry(frame, textvariable=self.series_index_var, width=10)
+        series_index_entry.grid(row=0, column=2, sticky="w")
+        Tooltip(series_index_entry, "Numer tomu w cyklu, np. 2 (można 1.5)")
 
     def _add_text(
         self, parent: tk.Misc, label: str, row: int, *, height: int, tooltip: str = ""
@@ -211,6 +232,7 @@ class MetadataTab(ttk.Frame):
             messagebox.showerror("Metadane", f"Nie udało się wczytać metadanych:\n{exc}")
             return
         self.current_path = path
+        self._loaded_metadata = metadata
         self._set_form(metadata)
         self.status_var.set(f"Wczytano metadane: {path.name}")
 
@@ -227,6 +249,7 @@ class MetadataTab(ttk.Frame):
             self.status_var.set(f"Nie udało się zapisać metadanych: {exc}")
             messagebox.showerror("Metadane", f"Nie udało się zapisać metadanych:\n{exc}")
             return
+        self._loaded_metadata = metadata
         self.status_var.set(f"Zapisano metadane: {self.current_path.name}")
 
     def _open_external(self, key: str, label: str) -> None:
@@ -262,6 +285,8 @@ class MetadataTab(ttk.Frame):
     def _set_form(self, metadata: Metadata) -> None:
         """Przepisuje obiekt Metadata do pól formularza."""
         self.title_var.set(metadata.title)
+        self.series_var.set(metadata.series)
+        self.series_index_var.set(_format_series_index(metadata.series_index))
         self.language_var.set(metadata.language)
         self.publisher_var.set(metadata.publisher)
         self.date_var.set(metadata.date)
@@ -272,6 +297,7 @@ class MetadataTab(ttk.Frame):
 
     def _metadata_from_form(self) -> Metadata:
         """Buduje Metadata z aktualnych wartości formularza."""
+        series_index = self._series_index_from_form()
         return Metadata(
             title=self.title_var.get().strip(),
             creators=_split_lines(_get_text(self.creators_text)),
@@ -281,11 +307,37 @@ class MetadataTab(ttk.Frame):
             date=self.date_var.get().strip(),
             description=_get_text(self.description_text).strip(),
             subjects=_split_lines(_get_text(self.subjects_text)),
+            series=self.series_var.get().strip(),
+            series_index=series_index,
         )
 
     def _clear_form(self) -> None:
         """Czyści formularz metadanych."""
+        self._loaded_metadata = None
         self._set_form(Metadata())
+
+    def _series_index_from_form(self) -> float | None:
+        """Parsuje numer tomu, łagodnie ignorując niepoprawną wartość."""
+        raw_value = self.series_index_var.get().strip()
+        if not raw_value:
+            return None
+        try:
+            value = float(raw_value)
+        except ValueError:
+            return self._warn_invalid_series_index()
+        if not isfinite(value):
+            return self._warn_invalid_series_index()
+        return value
+
+    def _warn_invalid_series_index(self) -> float | None:
+        """Pokazuje ostrzeżenie i zachowuje poprzedni numer tomu."""
+        previous = self._loaded_metadata.series_index if self._loaded_metadata is not None else None
+        self.status_var.set("Tom nr nie jest liczbą; zapisano pozostałe metadane")
+        messagebox.showwarning(
+            "Metadane",
+            "Pole „Tom nr” musi być liczbą, np. 2 albo 1.5. Ta wartość nie zostanie zmieniona.",
+        )
+        return previous
 
 
 def _detect_tools() -> dict[str, Tool]:
@@ -319,6 +371,13 @@ def _set_text(widget: tk.Text, value: str) -> None:
     """Ustawia zawartość pola Text."""
     widget.delete("1.0", "end")
     widget.insert("1.0", value)
+
+
+def _format_series_index(value: float | None) -> str:
+    """Formatuje numer tomu do pola formularza."""
+    if value is None:
+        return ""
+    return str(int(value)) if value.is_integer() else str(value)
 
 
 def _split_lines(value: str) -> list[str]:
