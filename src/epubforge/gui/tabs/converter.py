@@ -1,12 +1,25 @@
-"""Zakładka konwersji formatów wejściowych do EPUB."""
+"""Zakładka konwersji formatów wejściowych do EPUB (Qt)."""
 
 from __future__ import annotations
 
-import threading
-import tkinter as tk
 from pathlib import Path
-from tkinter import messagebox, ttk
 from typing import cast
+
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QButtonGroup,
+    QComboBox,
+    QFormLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QRadioButton,
+    QSplitter,
+    QVBoxLayout,
+    QWidget,
+)
 
 from epubforge.converters import SUPPORTED_INPUT_EXTENSIONS, ConvertOptions, to_epub
 from epubforge.converters.to_epub import Engine
@@ -14,8 +27,8 @@ from epubforge.core import Metadata
 from epubforge.core.config import Config
 from epubforge.core.exceptions import ConversionError, ConverterNotFoundError
 from epubforge.gui.output import remember_output_dir, remembered_output_dir, resolve_output_dir
-from epubforge.gui.streaming import LogStreamer
-from epubforge.gui.widgets import FileList, PathEntry, Section, Tooltip
+from epubforge.gui.widgets import FileList, LogView, PathEntry, Section
+from epubforge.gui.workers import EmitLine, EmitProgress, Worker
 
 # Najczęstsze kody języków dla dropdownu (kolejność = priorytet wyświetlania).
 _LANGUAGES = ["pl", "en", "de", "fr", "es", "it", "ru", "cs", "uk", "nl", "pt"]
@@ -26,23 +39,23 @@ _PDF_WARNING = (
     "tekstowych. Kontynuować?"
 )
 
+_ENGINE_TOOLTIPS = {
+    "auto": "Auto: PDF → Calibre, pozostałe → Pandoc (fallback Calibre)",
+    "pandoc": "Wymusza Pandoc (TXT/MD/DOCX/HTML/ODT/RTF)",
+    "calibre": "Wymusza Calibre ebook-convert (obsługuje też PDF/MOBI/FB2)",
+}
 
-class ConverterTab(ttk.Frame):
+
+class ConverterTab(QWidget):
     """Zakładka konwersji TXT/DOCX/HTML/MD/PDF… → EPUB."""
 
-    def __init__(self, parent: tk.Misc, *, config: Config | None = None) -> None:
-        super().__init__(parent, padding=12)
+    def __init__(self, parent: QWidget | None = None, *, config: Config | None = None) -> None:
+        super().__init__(parent)
         self.config_data: Config = config if config is not None else {}
-        self.title_var = tk.StringVar()
-        self.author_var = tk.StringVar()
-        self.language_var = tk.StringVar(value="pl")
-        self.engine_var = tk.StringVar(value="auto")
-        self.status_var = tk.StringVar(value="Dodaj pliki wejściowe")
         self._converting = False
+        self._worker: Worker | None = None
 
         self._build_layout()
-        self.streamer = LogStreamer(self.log_text)
-        self.streamer.start_polling()
 
         remembered = remembered_output_dir(self.config_data)
         if remembered:
@@ -52,194 +65,215 @@ class ConverterTab(ttk.Frame):
 
     def _build_layout(self) -> None:
         """Buduje dwukolumnowy układ: pliki po lewej, opcje po prawej."""
-        panes = ttk.PanedWindow(self, orient="horizontal")
-        panes.pack(fill="both", expand=True)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(12, 12, 12, 12)
 
-        left = ttk.Frame(panes, padding=(0, 0, 10, 0))
-        right = ttk.Frame(panes)
-        panes.add(left, weight=1)
-        panes.add(right, weight=2)
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        outer.addWidget(splitter, stretch=1)
 
+        left = QWidget()
         self._build_file_list(left)
-        self._build_options(right)
-        self._build_log(right)
+        right = QWidget()
+        self._build_right(right)
+        splitter.addWidget(left)
+        splitter.addWidget(right)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 2)
 
-        status = ttk.Label(self, textvariable=self.status_var, style="Muted.TLabel")
-        status.pack(fill="x", pady=(10, 0))
+        self.status_label = QLabel("Dodaj pliki wejściowe")
+        outer.addWidget(self.status_label)
 
-    def _build_file_list(self, parent: tk.Misc) -> None:
+    def _build_file_list(self, parent: QWidget) -> None:
         """Buduje listę plików wejściowych z potwierdzeniem PDF."""
-        section = Section(parent, "Pliki wejściowe")
-        section.pack(fill="both", expand=True)
+        layout = QVBoxLayout(parent)
+        layout.setContentsMargins(0, 0, 10, 0)
+        section = Section("Pliki wejściowe")
+        layout.addWidget(section)
         self.file_list = FileList(
-            section,
             extensions=SUPPORTED_INPUT_EXTENSIONS,
             confirm=self._confirm_file,
-            on_change=self._on_files_changed,
         )
-        self.file_list.pack(fill="both", expand=True)
+        self.file_list.files_changed.connect(self._on_files_changed)
+        section.add_widget(self.file_list)
+
+    def _build_right(self, parent: QWidget) -> None:
+        """Buduje kolumnę opcji i logu."""
+        layout = QVBoxLayout(parent)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self._build_options(layout)
+        self._build_log(layout)
+
+    def _build_options(self, layout: QVBoxLayout) -> None:
+        """Buduje formularz metadanych, okładki, silnika i wyjścia."""
+        section = Section("Opcje konwersji")
+        layout.addWidget(section)
+
+        form = QFormLayout()
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        section.content_layout().addLayout(form)
+
+        self.title_edit = QLineEdit()
+        self.title_edit.setToolTip("Tytuł książki w wynikowym EPUB (opcjonalny)")
+        form.addRow("Tytuł", self.title_edit)
+
+        self.author_edit = QLineEdit()
+        self.author_edit.setToolTip("Autor; zalecany format: Nazwisko, Imię (opcjonalny)")
+        form.addRow("Autor", self.author_edit)
+
+        self.language_box = QComboBox()
+        self.language_box.addItems(_LANGUAGES)
+        self.language_box.setCurrentText("pl")
+        self.language_box.setToolTip("Kod języka treści, np. pl, en, de")
+        form.addRow("Język", self.language_box)
+
+        self.cover_entry = PathEntry(
+            mode="file",
+            filetypes=[("Obrazy", "*.jpg *.jpeg *.png *.gif"), ("Wszystkie pliki", "*.*")],
+        )
+        self.cover_entry.entry.setToolTip("Opcjonalny obraz okładki (jpg/png/gif)")
+        form.addRow("Okładka", self.cover_entry)
+
+        form.addRow("Silnik", self._build_engine_row())
+
+        self.output_entry = PathEntry(
+            mode="dir", config=self.config_data, remember_key="last_output_dir"
+        )
+        self.output_entry.entry.setToolTip(
+            "Folder na pliki .epub; puste = zapis obok pliku źródłowego"
+        )
+        form.addRow("Folder wyjściowy", self.output_entry)
+
+        self.convert_button = QPushButton("Konwertuj")
+        self.convert_button.setToolTip(
+            "Konwertuje wybrane pliki do EPUB wybranym silnikiem.\n"
+            "Puste pole 'Folder wyjściowy' = zapis obok pliku źródłowego."
+        )
+        self.convert_button.clicked.connect(self._convert)
+        section.content_layout().addWidget(self.convert_button)
+
+    def _build_engine_row(self) -> QWidget:
+        """Buduje wiersz radiobuttonów wyboru silnika konwersji."""
+        widget = QWidget()
+        row = QHBoxLayout(widget)
+        row.setContentsMargins(0, 0, 0, 0)
+        self.engine_group = QButtonGroup(self)
+        for value, label in (("auto", "Auto"), ("pandoc", "Pandoc"), ("calibre", "Calibre")):
+            radio = QRadioButton(label)
+            radio.setToolTip(_ENGINE_TOOLTIPS[value])
+            radio.setProperty("engine", value)
+            if value == "auto":
+                radio.setChecked(True)
+            self.engine_group.addButton(radio)
+            row.addWidget(radio)
+        row.addStretch(1)
+        return widget
+
+    def _build_log(self, layout: QVBoxLayout) -> None:
+        """Buduje pole logu konwersji."""
+        section = Section("Log")
+        layout.addWidget(section, stretch=1)
+        self.log_view = LogView()
+        section.add_widget(self.log_view)
+
+    # ── Logika ────────────────────────────────────────────────────────────────
 
     def _on_files_changed(self, files: list[Path]) -> None:
         """Podpowiada katalog wyjściowy katalogiem pierwszego pliku, gdy pole puste."""
         if files and not self.output_entry.get().strip():
             self.output_entry.set(str(files[0].parent))
 
-    def _build_options(self, parent: tk.Misc) -> None:
-        """Buduje formularz metadanych, okładki, silnika i wyjścia."""
-        section = Section(parent, "Opcje konwersji")
-        section.pack(fill="x")
-        section.columnconfigure(1, weight=1)
-
-        ttk.Label(section, text="Tytuł").grid(row=0, column=0, sticky="w", pady=3, padx=(0, 8))
-        title_entry = ttk.Entry(section, textvariable=self.title_var)
-        title_entry.grid(row=0, column=1, sticky="ew", pady=3)
-        Tooltip(title_entry, "Tytuł książki w wynikowym EPUB (opcjonalny)")
-
-        ttk.Label(section, text="Autor").grid(row=1, column=0, sticky="w", pady=3, padx=(0, 8))
-        author_entry = ttk.Entry(section, textvariable=self.author_var)
-        author_entry.grid(row=1, column=1, sticky="ew", pady=3)
-        Tooltip(author_entry, "Autor; zalecany format: Nazwisko, Imię (opcjonalny)")
-
-        ttk.Label(section, text="Język").grid(row=2, column=0, sticky="w", pady=3, padx=(0, 8))
-        language_box = ttk.Combobox(
-            section,
-            textvariable=self.language_var,
-            values=_LANGUAGES,
-            state="readonly",
-            width=8,
-        )
-        language_box.grid(row=2, column=1, sticky="w", pady=3)
-        Tooltip(language_box, "Kod języka treści, np. pl, en, de")
-
-        ttk.Label(section, text="Okładka").grid(row=3, column=0, sticky="w", pady=3, padx=(0, 8))
-        self.cover_entry = PathEntry(
-            section,
-            mode="file",
-            filetypes=[("Obrazy", "*.jpg *.jpeg *.png *.gif"), ("Wszystkie pliki", "*.*")],
-        )
-        self.cover_entry.grid(row=3, column=1, sticky="ew", pady=3)
-        Tooltip(self.cover_entry.entry, "Opcjonalny obraz okładki (jpg/png/gif)")
-
-        ttk.Label(section, text="Silnik").grid(row=4, column=0, sticky="w", pady=3, padx=(0, 8))
-        engines = ttk.Frame(section)
-        engines.grid(row=4, column=1, sticky="w", pady=3)
-        engine_tooltips = {
-            "auto": "Auto: PDF → Calibre, pozostałe → Pandoc (fallback Calibre)",
-            "pandoc": "Wymusza Pandoc (TXT/MD/DOCX/HTML/ODT/RTF)",
-            "calibre": "Wymusza Calibre ebook-convert (obsługuje też PDF/MOBI/FB2)",
-        }
-        for value, label in (("auto", "Auto"), ("pandoc", "Pandoc"), ("calibre", "Calibre")):
-            radio = ttk.Radiobutton(engines, text=label, value=value, variable=self.engine_var)
-            radio.pack(side="left", padx=(0, 8))
-            Tooltip(radio, engine_tooltips[value])
-
-        ttk.Label(section, text="Folder wyjściowy").grid(
-            row=5, column=0, sticky="w", pady=3, padx=(0, 8)
-        )
-        self.output_entry = PathEntry(section, mode="dir")
-        self.output_entry.grid(row=5, column=1, sticky="ew", pady=3)
-        Tooltip(
-            self.output_entry.entry, "Folder na pliki .epub; puste = zapis obok pliku źródłowego"
-        )
-
-        self.convert_button = ttk.Button(section, text="Konwertuj", command=self._convert)
-        self.convert_button.grid(row=6, column=0, columnspan=2, sticky="ew", pady=(10, 0))
-        Tooltip(
-            self.convert_button,
-            "Konwertuje wybrane pliki do EPUB wybranym silnikiem.\n"
-            "Puste pole 'Folder wyjściowy' = zapis obok pliku źródłowego.",
-        )
-
-    def _build_log(self, parent: tk.Misc) -> None:
-        """Buduje pole logu konwersji."""
-        section = Section(parent, "Log")
-        section.pack(fill="both", expand=True, pady=(10, 0))
-        section.columnconfigure(0, weight=1)
-        section.rowconfigure(0, weight=1)
-
-        self.log_text = tk.Text(section, height=10, wrap="word", state="disabled")
-        scroll = ttk.Scrollbar(section, orient="vertical", command=self.log_text.yview)
-        self.log_text.configure(yscrollcommand=scroll.set)
-        self.log_text.grid(row=0, column=0, sticky="nsew")
-        scroll.grid(row=0, column=1, sticky="ns")
-
-    # ── Logika ────────────────────────────────────────────────────────────────
-
     def _confirm_file(self, path: Path) -> bool:
         """Dla plików PDF wymaga potwierdzenia (konwersja eksperymentalna)."""
         if path.suffix.lower() != ".pdf":
             return True
-        return messagebox.askyesno("Konwersja PDF → EPUB", _PDF_WARNING)
+        answer = QMessageBox.question(self, "Konwersja PDF → EPUB", _PDF_WARNING)
+        return answer == QMessageBox.StandardButton.Yes
+
+    def _selected_engine(self) -> Engine:
+        """Zwraca aktualnie wybrany silnik konwersji."""
+        button = self.engine_group.checkedButton()
+        return cast(Engine, button.property("engine")) if button is not None else "auto"
 
     def _build_convert_options(self) -> ConvertOptions:
         """Składa opcje konwersji z aktualnych wartości formularza."""
-        author = self.author_var.get().strip()
+        author = self.author_edit.text().strip()
         metadata = Metadata(
-            title=self.title_var.get().strip(),
+            title=self.title_edit.text().strip(),
             creators=[author] if author else [],
-            language=self.language_var.get().strip() or "en",
+            language=self.language_box.currentText().strip() or "en",
         )
         cover = self.cover_entry.get()
-        return ConvertOptions(
-            metadata=metadata,
-            cover_image=Path(cover) if cover else None,
-        )
+        return ConvertOptions(metadata=metadata, cover_image=Path(cover) if cover else None)
 
     def _convert(self) -> None:
-        """Waliduje wejście i uruchamia konwersję w osobnym wątku."""
+        """Waliduje wejście i uruchamia konwersję w wątku roboczym."""
         if self._converting:
             return
         files = self.file_list.files()
         if not files:
-            self.status_var.set("Brak plików do konwersji")
+            self._set_status("Brak plików do konwersji")
             return
         output = self.output_entry.get().strip()
 
         self._converting = True
-        self.convert_button.state(["disabled"])
-        self.streamer.clear()
-        self.status_var.set("Konwertowanie...")
+        self.convert_button.setEnabled(False)
+        self.log_view.clear()
+        self._set_status("Konwertowanie...")
 
         remember_output_dir(self.config_data, output)
         options = self._build_convert_options()
-        engine = cast(Engine, self.engine_var.get())
+        engine = self._selected_engine()
         output_dir = Path(output) if output else None
-        thread = threading.Thread(
-            target=self._run_conversion,
-            args=(files, output_dir, options, engine),
-            daemon=True,
-        )
-        thread.start()
 
-    def _run_conversion(
-        self,
-        files: list[Path],
-        output_dir: Path | None,
-        options: ConvertOptions,
-        engine: Engine,
-    ) -> None:
-        """Konwertuje pliki po kolei (wątek roboczy) i streamuje log.
+        self._worker = Worker(_run_conversion, files, output_dir, options, engine)
+        self._worker.line.connect(self.log_view.append_line)
+        self._worker.done.connect(self._finish_conversion)
+        self._worker.failed.connect(self._on_failed)
+        self._worker.start()
 
-        Gdy ``output_dir`` jest ``None`` (puste pole), każdy plik trafia obok
-        swojego źródła.
-        """
-        succeeded = 0
-        for source in files:
-            target = resolve_output_dir(output_dir, source) / f"{source.stem}.epub"
-            self.streamer.write(f"→ {source.name} → {target.name}\n", "cmd")
-            try:
-                result = to_epub(source, target, options, engine)
-            except (ConverterNotFoundError, ConversionError) as exc:
-                self.streamer.write(f"BŁĄD: {exc}\n", "err")
-                continue
-            if result.log:
-                self.streamer.write(f"{result.log}\n", "info")
-            self.streamer.write(f"OK [{result.engine}]: {target.name}\n", "ok")
-            succeeded += 1
-        self.after(0, lambda: self._finish_conversion(succeeded, len(files)))
-
-    def _finish_conversion(self, succeeded: int, total: int) -> None:
+    def _finish_conversion(self, result: object) -> None:
         """Aktualizuje UI po zakończeniu konwersji (wątek główny)."""
+        succeeded, total = cast(tuple[int, int], result)
         self._converting = False
-        self.convert_button.state(["!disabled"])
-        self.status_var.set(f"Zakończono: {succeeded}/{total} OK")
+        self.convert_button.setEnabled(True)
+        self._set_status(f"Zakończono: {succeeded}/{total} OK")
+
+    def _on_failed(self, message: str) -> None:
+        """Obsługuje nieoczekiwany błąd wątku konwersji."""
+        self._converting = False
+        self.convert_button.setEnabled(True)
+        self.log_view.append_line(f"BŁĄD: {message}", "err")
+        self._set_status("Konwersja przerwana błędem")
+
+    def _set_status(self, text: str) -> None:
+        """Ustawia tekst paska statusu zakładki."""
+        self.status_label.setText(text)
+
+
+def _run_conversion(
+    emit_line: EmitLine,
+    _emit_progress: EmitProgress,
+    files: list[Path],
+    output_dir: Path | None,
+    options: ConvertOptions,
+    engine: Engine,
+) -> tuple[int, int]:
+    """Konwertuje pliki po kolei (wątek roboczy) i streamuje log.
+
+    Gdy ``output_dir`` jest ``None`` (puste pole), każdy plik trafia obok źródła.
+    Zwraca krotkę ``(udane, łącznie)``.
+    """
+    succeeded = 0
+    for source in files:
+        target = resolve_output_dir(output_dir, source) / f"{source.stem}.epub"
+        emit_line(f"→ {source.name} → {target.name}", "cmd")
+        try:
+            result = to_epub(source, target, options, engine)
+        except (ConverterNotFoundError, ConversionError) as exc:
+            emit_line(f"BŁĄD: {exc}", "err")
+            continue
+        if result.log:
+            emit_line(result.log, "info")
+        emit_line(f"OK [{result.engine}]: {target.name}", "ok")
+        succeeded += 1
+    return succeeded, len(files)

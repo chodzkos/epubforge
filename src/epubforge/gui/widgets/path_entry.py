@@ -1,13 +1,22 @@
-"""Pole ścieżki z przyciskiem wyboru pliku lub katalogu."""
+"""Pole ścieżki: ``QLineEdit`` + przycisk „…" otwierający ``QFileDialog``."""
 
 from __future__ import annotations
 
-import tkinter as tk
-from collections.abc import Callable, Sequence
-from tkinter import filedialog, ttk
+from collections.abc import Sequence
+from pathlib import Path
 from typing import Literal
 
-from epubforge.gui.widgets.tooltip import Tooltip
+from PySide6.QtCore import Signal
+from PySide6.QtWidgets import (
+    QFileDialog,
+    QHBoxLayout,
+    QLineEdit,
+    QToolButton,
+    QWidget,
+)
+
+from epubforge.core.config import Config
+from epubforge.gui.theme import native_file_dialogs
 
 PathMode = Literal["dir", "file", "save"]
 FileTypes = Sequence[tuple[str, str]]
@@ -18,51 +27,102 @@ _BROWSE_TOOLTIPS: dict[PathMode, str] = {
     "save": "Wybierz miejsce i nazwę zapisu",
 }
 
+_DIALOG_TITLES: dict[PathMode, str] = {
+    "dir": "Wybierz folder",
+    "file": "Wybierz plik",
+    "save": "Zapisz jako",
+}
 
-class PathEntry(ttk.Frame):
-    """Pole tekstowe z przyciskiem wyboru ścieżki."""
+
+class PathEntry(QWidget):
+    """Pole tekstowe z przyciskiem wyboru ścieżki (plik/folder/zapis).
+
+    Emituje :attr:`path_changed` przy każdej zmianie tekstu. Jeśli przekazano
+    ``config`` i ``remember_key``, zapamiętuje katalog ostatniego wyboru i używa
+    go jako punktu startowego kolejnego dialogu.
+    """
+
+    path_changed = Signal(str)
 
     def __init__(
         self,
-        parent: tk.Misc,
+        parent: QWidget | None = None,
         *,
         mode: PathMode = "dir",
         filetypes: FileTypes | None = None,
-        on_change: Callable[[str], None] | None = None,
+        placeholder: str = "",
+        config: Config | None = None,
+        remember_key: str | None = None,
     ) -> None:
         super().__init__(parent)
         self.mode = mode
         self.filetypes: FileTypes = filetypes or [("Wszystkie pliki", "*.*")]
-        self.on_change = on_change
-        self.var = tk.StringVar()
-        self.var.trace_add("write", self._notify_change)
+        self._config = config
+        self._remember_key = remember_key
 
-        self.entry = ttk.Entry(self, textvariable=self.var)
-        self.entry.pack(side="left", fill="x", expand=True)
-        self.button = ttk.Button(self, text="...", width=3, command=self._browse)
-        self.button.pack(side="right", padx=(6, 0))
-        Tooltip(self.button, _BROWSE_TOOLTIPS[mode])
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+
+        self.entry = QLineEdit(self)
+        if placeholder:
+            self.entry.setPlaceholderText(placeholder)
+        self.entry.textChanged.connect(self.path_changed.emit)
+        layout.addWidget(self.entry, stretch=1)
+
+        self.button = QToolButton(self)
+        self.button.setText("…")
+        self.button.setToolTip(_BROWSE_TOOLTIPS[mode])
+        self.button.clicked.connect(self._browse)
+        layout.addWidget(self.button)
 
     def get(self) -> str:
         """Zwraca aktualną ścieżkę bez białych znaków na końcach."""
-        return self.var.get().strip()
+        return self.entry.text().strip()
 
     def set(self, value: str) -> None:
         """Ustawia wartość pola."""
-        self.var.set(value)
+        self.entry.setText(value)
 
     def _browse(self) -> None:
-        """Otwiera systemowy dialog wyboru ścieżki."""
+        """Otwiera dialog wyboru ścieżki (natywny w trybie jasnym, Qt w ciemnym)."""
+        options = QFileDialog.Option(0)
+        if not native_file_dialogs():
+            options = QFileDialog.Option.DontUseNativeDialog
+        title = _DIALOG_TITLES[self.mode]
+        start_dir = self._start_dir()
         if self.mode == "dir":
-            path = filedialog.askdirectory()
+            path = QFileDialog.getExistingDirectory(self, title, start_dir, options=options)
         elif self.mode == "file":
-            path = filedialog.askopenfilename(filetypes=self.filetypes)
+            path, _ = QFileDialog.getOpenFileName(
+                self, title, start_dir, self._filter(), options=options
+            )
         else:
-            path = filedialog.asksaveasfilename(filetypes=self.filetypes)
+            path, _ = QFileDialog.getSaveFileName(
+                self, title, start_dir, self._filter(), options=options
+            )
         if path:
-            self.var.set(path)
+            self.set(path)
+            self._remember(path)
 
-    def _notify_change(self, *_args: str) -> None:
-        """Powiadamia callback o zmianie wartości."""
-        if self.on_change is not None:
-            self.on_change(self.get())
+    def _filter(self) -> str:
+        """Buduje string filtra Qt z listy ``(opis, wzorzec)``."""
+        return ";;".join(f"{label} ({pattern})" for label, pattern in self.filetypes)
+
+    def _start_dir(self) -> str:
+        """Katalog startowy dialogu: bieżąca wartość, potem zapamiętany."""
+        current = self.get()
+        if current:
+            path = Path(current)
+            return str(path if path.is_dir() else path.parent)
+        if self._config is not None and self._remember_key:
+            return str(self._config.get(self._remember_key, ""))
+        return ""
+
+    def _remember(self, path: str) -> None:
+        """Zapamiętuje katalog wybranej ścieżki w configu (jeśli skonfigurowano)."""
+        if self._config is None or not self._remember_key:
+            return
+        chosen = Path(path)
+        directory = chosen if chosen.is_dir() else chosen.parent
+        self._config[self._remember_key] = str(directory)

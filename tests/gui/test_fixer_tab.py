@@ -1,72 +1,57 @@
-"""Testy zakładki GUI do naprawy EPUB."""
+"""Testy zakładki GUI do naprawy EPUB (PySide6)."""
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pytest
-
-if TYPE_CHECKING:
-    import tkinter as tk
-else:
-    tk = pytest.importorskip("tkinter")
+from pytestqt.qtbot import QtBot
 
 from epubforge.core import Tool
 from epubforge.fixers import CssFixOptions, HyphenationOptions
-from epubforge.gui.tabs.fixer import FixerTab
+from epubforge.gui.tabs import fixer as fixer_module
+from epubforge.gui.tabs.fixer import FixerTab, _run_fix_worker
 
 pytestmark = pytest.mark.gui
 
 
-@pytest.fixture
-def root() -> Iterator[tk.Tk]:
-    """Tworzy root tkinter albo pomija test, gdy środowisko nie ma display."""
-    try:
-        window = tk.Tk()
-    except tk.TclError as exc:
-        pytest.skip(f"Tk display unavailable: {exc}")
-    window.withdraw()
-    try:
-        yield window
-    finally:
-        window.destroy()
-
-
 def _tools() -> dict[str, Tool]:
-    return {
-        "calibre_viewer": Tool("calibre_viewer", Path("/bin/ebook-viewer"), available=True),
-    }
+    return {"calibre_viewer": Tool("calibre_viewer", Path("/bin/ebook-viewer"), available=True)}
 
 
-def test_fixer_tab_creates_without_errors(root: tk.Tk) -> None:
-    """Zakładka tworzy się i buduje wymagane sekcje bez wyjątku."""
-    tab = FixerTab(root, tools=_tools())
-    tab.pack(fill="both", expand=True)
-    root.update_idletasks()
+def _select_method(tab: FixerTab, method: str) -> None:
+    for button in tab.hyphen_method_group.buttons():
+        if button.property("method") == method:
+            button.setChecked(True)
 
-    assert tab.winfo_exists()
+
+def test_fixer_creates_with_preview_disabled(qtbot: QtBot) -> None:
+    """Zakładka tworzy się; podgląd jest wyłączony do pierwszego sukcesu."""
+    tab = FixerTab(tools=_tools())
+    qtbot.addWidget(tab)
     assert tab.file_list.files() == []
-    assert "disabled" in tab.preview_button.state()
+    assert tab.preview_button.isEnabled() is False
+    assert tab.fix_button.isEnabled() is False
 
 
-def test_fixer_tab_builds_correct_options(root: tk.Tk) -> None:
+def test_fixer_builds_correct_options(qtbot: QtBot) -> None:
     """Zakładka buduje prawdziwe obiekty opcji fixerów z wartości UI."""
-    tab = FixerTab(root, tools=_tools())
+    tab = FixerTab(tools=_tools())
+    qtbot.addWidget(tab)
 
-    tab.hyphen_enabled_toggle.set(True)
-    tab.hyphen_lang_var.set("en_US")
-    tab.hyphen_method_var.set("css")
-    tab.hyphen_skip_headers_toggle.set(False)
+    tab.hyphen_enabled.setChecked(True)
+    tab.hyphen_lang_box.setCurrentText("en_US")
+    _select_method(tab, "css")
+    tab.hyphen_skip_headers.setChecked(False)
 
-    tab.css_remove_colors_toggle.set(True)
-    tab.css_remove_fonts_toggle.set(False)
-    tab.css_inject_reset_toggle.set(False)
-    tab.css_replace_justify_toggle.set(True)
-    tab.css_skip_hyphen_headers_toggle.set(False)
-    tab.css_book_margin_toggle.set(True)
-    tab.css_margin_px_var.set("30")
+    tab.css_remove_colors.setChecked(True)
+    tab.css_remove_fonts.setChecked(False)
+    tab.css_inject_reset.setChecked(False)
+    tab.css_replace_justify.setChecked(True)
+    tab.css_skip_hyphen_headers.setChecked(False)
+    tab.css_book_margin.setChecked(True)
+    tab.margin_spin.setValue(30)
 
     hyphen_opts = tab._build_hyphen_options()
     css_opts = tab._build_css_options()
@@ -85,56 +70,44 @@ def test_fixer_tab_builds_correct_options(root: tk.Tk) -> None:
     assert css_opts.inject_book_margin_px == 30
 
 
-def test_fixer_tab_runs_worker_thread(
-    root: tk.Tk,
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
+def test_fixer_disabled_hyphenation_returns_none(qtbot: QtBot) -> None:
+    """Wyłączony przełącznik hyphenacji daje None (fixer pomija dzielenie)."""
+    tab = FixerTab(tools=_tools())
+    qtbot.addWidget(tab)
+    tab.hyphen_enabled.setChecked(False)
+    assert tab._build_hyphen_options() is None
+
+
+def test_fixer_warning_visible_only_for_soft_hyphen(qtbot: QtBot) -> None:
+    """Ostrzeżenie o soft-hyphen pokazuje się tylko dla tej metody."""
+    tab = FixerTab(tools=_tools())
+    qtbot.addWidget(tab)
+    _select_method(tab, "soft-hyphen")
+    assert tab.hyphen_warning_label.isHidden() is False
+    _select_method(tab, "css")
+    assert tab.hyphen_warning_label.isHidden() is True
+
+
+def test_fixer_run_starts_worker(
+    qtbot: QtBot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fake_worker: type
 ) -> None:
-    """Kliknięcie „Napraw” uruchamia wątek roboczy z poprawnymi argumentami."""
-    calls: list[tuple[list[Path], HyphenationOptions | None, CssFixOptions]] = []
-
-    class ImmediateThread:
-        def __init__(
-            self,
-            *,
-            target: Any,
-            args: tuple[Any, ...],
-            daemon: bool,
-        ) -> None:
-            self.target = target
-            self.args = args
-            self.daemon = daemon
-
-        def start(self) -> None:
-            self.target(*self.args)
-
-    def fake_worker(
-        self: FixerTab,
-        files: list[Path],
-        hyphen_opts: HyphenationOptions | None,
-        css_opts: CssFixOptions,
-    ) -> None:
-        calls.append((files, hyphen_opts, css_opts))
-
-    monkeypatch.setattr("epubforge.gui.tabs.fixer.threading.Thread", ImmediateThread)
-    monkeypatch.setattr(FixerTab, "_run_worker", fake_worker)
-
-    tab = FixerTab(root, tools=_tools())
+    """„Napraw" startuje workera z plikami i opcjami fixerów."""
+    monkeypatch.setattr(fixer_module, "Worker", fake_worker)
+    tab = FixerTab(tools=_tools())
+    qtbot.addWidget(tab)
     book = tmp_path / "book.epub"
     tab.file_list.add_files([book])
     tab._run_fix()
 
-    assert len(calls) == 1
-    files, hyphen_opts, css_opts = calls[0]
-    assert files == [book]
-    assert isinstance(hyphen_opts, HyphenationOptions)
-    assert isinstance(css_opts, CssFixOptions)
+    fn, args, _kwargs = fake_worker.captured[-1]  # type: ignore[attr-defined]
+    assert fn is _run_fix_worker
+    assert args[0] == [book]
+    assert isinstance(args[1], (HyphenationOptions, type(None)))
+    assert isinstance(args[2], CssFixOptions)
 
 
-def test_fixer_tab_preview_uses_calibre_viewer(
-    root: tk.Tk,
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
+def test_fixer_preview_uses_calibre_viewer(
+    qtbot: QtBot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Podgląd po sukcesie uruchamia wykryty Calibre Viewer z plikiem wynikowym."""
     calls: list[list[str]] = []
@@ -145,9 +118,47 @@ def test_fixer_tab_preview_uses_calibre_viewer(
 
     monkeypatch.setattr("epubforge.gui.tabs.fixer.subprocess.Popen", fake_popen)
 
-    tab = FixerTab(root, tools=_tools())
+    tab = FixerTab(tools=_tools())
+    qtbot.addWidget(tab)
     fixed = tmp_path / "book.epub"
-    tab._finish_fix(1, 1, fixed)
+    tab._finish_fix((1, 1, fixed))
+    assert tab.preview_button.isEnabled() is True
     tab._view_result()
 
-    assert calls == [["/bin/ebook-viewer", str(fixed)]]
+    assert calls == [[str(Path("/bin/ebook-viewer")), str(fixed)]]
+
+
+def test_run_fix_worker_calls_fixers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Funkcja robocza otwiera Epub, woła hyphenate/fix_css i zwraca licznik."""
+    hyphen_calls: list[Any] = []
+    css_calls: list[Any] = []
+    fixed = tmp_path / "book.epub"
+
+    class FakeEpub:
+        def __init__(self, path: Path) -> None:
+            self.path = path
+
+        def __enter__(self) -> FakeEpub:
+            return self
+
+        def __exit__(self, *_a: object) -> None:
+            return None
+
+        def save(self) -> Path:
+            return fixed
+
+    monkeypatch.setattr(fixer_module, "Epub", FakeEpub)
+    monkeypatch.setattr(fixer_module, "hyphenate", lambda epub, opts: hyphen_calls.append(opts))
+    monkeypatch.setattr(fixer_module, "fix_css", lambda epub, opts: css_calls.append(opts))
+
+    succeeded, total, last = _run_fix_worker(
+        lambda text, level: None,
+        lambda current, total_: None,
+        [fixed],
+        HyphenationOptions(),
+        CssFixOptions(),
+    )
+
+    assert (succeeded, total) == (1, 1)
+    assert last == fixed
+    assert hyphen_calls and css_calls

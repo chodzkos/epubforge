@@ -1,164 +1,145 @@
-"""Smoke testy frameworka GUI i widgetów."""
+"""Smoke testy widgetów GUI (PySide6) i workera w wątku."""
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
 
 import pytest
+from PySide6.QtCore import QMimeData, QPoint, Qt, QUrl
+from PySide6.QtGui import QDropEvent
+from PySide6.QtWidgets import QLabel
+from pytestqt.qtbot import QtBot
 
-if TYPE_CHECKING:
-    import tkinter as tk
-else:
-    tk = pytest.importorskip("tkinter")
-
-from epubforge.core.detection import Tool
-from epubforge.gui import app as app_module
-from epubforge.gui.app import App
-from epubforge.gui.streaming import LogStreamer
-from epubforge.gui.theme import DARK, apply_theme
-from epubforge.gui.widgets import FileList, PathEntry, Section, Toggle, Tooltip
-from epubforge.gui.widgets import file_list as file_list_module
+from epubforge.gui.theme import DARK, LIGHT
+from epubforge.gui.widgets import FileList, LogView, PathEntry, Section
+from epubforge.gui.workers import Worker, level_for_line
 
 pytestmark = pytest.mark.gui
 
 
-@pytest.fixture
-def root() -> Iterator[tk.Tk]:
-    """Tworzy root tkinter albo pomija test, gdy środowisko nie ma display."""
-    try:
-        window = tk.Tk()
-    except tk.TclError as exc:
-        pytest.skip(f"Tk display unavailable: {exc}")
-    window.withdraw()
-    try:
-        yield window
-    finally:
-        window.destroy()
+def test_path_entry_get_set_and_signal(qtbot: QtBot, tmp_path: Path) -> None:
+    """PathEntry zwraca/ustawia ścieżkę i emituje path_changed przy zmianie."""
+    entry = PathEntry(mode="file")
+    qtbot.addWidget(entry)
+
+    changed: list[str] = []
+    entry.path_changed.connect(changed.append)
+    entry.set(str(tmp_path / "book.epub"))
+
+    assert entry.get().endswith("book.epub")
+    assert changed and changed[-1].endswith("book.epub")
 
 
-def test_widgets_create_without_errors(root: tk.Tk, tmp_path: Path) -> None:
-    """Podstawowe widgety tworzą się i obsługują swoje publiczne API."""
-    frame = tk.Frame(root)
-    frame.pack()
+def test_file_list_filters_and_emits(qtbot: QtBot, tmp_path: Path) -> None:
+    """FileList przyjmuje tylko pasujące rozszerzenia i emituje files_changed."""
+    file_list = FileList(extensions={".epub"})
+    qtbot.addWidget(file_list)
 
-    changed_paths: list[str] = []
-    path_entry = PathEntry(frame, mode="file", on_change=changed_paths.append)
-    path_entry.pack()
-    path_entry.set(str(tmp_path / "book.epub"))
-    assert path_entry.get().endswith("book.epub")
-    assert changed_paths
-
-    listed: list[list[Path]] = []
-    file_list = FileList(frame, extensions={".epub"}, on_change=listed.append)
-    file_list.pack()
+    emitted: list[list[Path]] = []
+    file_list.files_changed.connect(emitted.append)
     file_list.add_files([tmp_path / "book.epub", tmp_path / "skip.txt"])
+
     assert file_list.files() == [tmp_path / "book.epub"]
-    assert listed[-1] == [tmp_path / "book.epub"]
+    assert emitted[-1] == [tmp_path / "book.epub"]
+    assert "1 plik" in file_list.count_label.text()
 
-    toggled: list[bool] = []
-    toggle = Toggle(frame, text="Dark", value=False, on_change=toggled.append)
-    toggle.pack()
-    toggle.set(True)
-    assert toggle.get() is True
-    assert toggled[-1] is True
-
-    section = Section(frame, "Opcje")
-    section.pack()
-    Tooltip(toggle, "Tooltip text")
-
-    text = tk.Text(frame)
-    text.pack()
-    streamer = LogStreamer(text)
-    streamer.write("ok\n", "ok")
-    streamer.clear()
-
-    apply_theme(root, DARK)
-    root.update_idletasks()
+    file_list.clear()
+    assert file_list.files() == []
 
 
-def test_app_creates_saves_config_and_status(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """App startuje, pokazuje status narzędzi i zapisuje config przy zamknięciu."""
-    try:
-        tools = {
-            "pandoc": Tool("pandoc", None, available=False),
-            "calibre_ebook_convert": Tool(
-                "calibre_ebook_convert", Path("/bin/ebook-convert"), available=True
-            ),
-            "sigil": Tool("sigil", None, available=False),
-            "kindle_previewer": Tool("kindle_previewer", None, available=False),
-        }
-        monkeypatch.setattr(app_module, "detect_with_cache", lambda config_path: tools)
-        app = App(config_path=tmp_path / "config.json")
-    except tk.TclError as exc:
-        pytest.skip(f"Tk display unavailable: {exc}")
+def test_file_list_drop_adds_files(qtbot: QtBot, tmp_path: Path) -> None:
+    """Natywny drop URL-i plików dodaje pasujące pozycje do listy."""
+    file_list = FileList(extensions={".epub"})
+    qtbot.addWidget(file_list)
 
-    app.withdraw()
-    assert "Calibre: OK" in app.status_var.get()
-    app._set_theme_setting("light")
-    assert app.theme_name == "light"
-    app._on_close()
-    import json
+    book = tmp_path / "dropped.epub"
+    book.write_bytes(b"epub")
+    mime = QMimeData()
+    mime.setUrls([QUrl.fromLocalFile(str(book))])
+    event = QDropEvent(
+        QPoint(0, 0),
+        Qt.DropAction.CopyAction,
+        mime,
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.NoModifier,
+    )
+    file_list.dropEvent(event)
 
-    saved = json.loads((tmp_path / "config.json").read_text(encoding="utf-8"))
-    assert saved["theme"] == "light"
+    assert file_list.files() == [book]
 
 
-def test_app_topbar_about_and_theme_menu(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Górny pasek: 4 zakładki robocze, About jako okno, menu motywu kolorowane."""
-    monkeypatch.setattr(app_module, "detect_with_cache", lambda config_path: {})
-    try:
-        app = App(config_path=tmp_path / "config.json")
-    except tk.TclError as exc:
-        pytest.skip(f"Tk display unavailable: {exc}")
-    app.withdraw()
+def test_section_holds_widgets(qtbot: QtBot) -> None:
+    """Section udostępnia layout treści i przyjmuje widgety."""
+    section = Section("Opcje")
+    qtbot.addWidget(section)
+    label = QLabel("treść")
+    section.add_widget(label)
 
-    # Notebook ma tylko zakładki robocze — About wyjęte do górnego paska.
-    notebook = cast(Any, app.notebook)
-    tabs = [notebook.tab(i, "text") for i in notebook.tabs()]
-    assert tabs == ["Metadane", "Konwerter", "Fixer", "Eksport Kindle"]
-
-    # Przełącznik motywu odzwierciedla bieżący tryb.
-    assert "Auto" in app.theme_menubutton.cget("text")
-
-    # About otwiera pojedyncze okno (bez duplikatów) i daje się zamknąć.
-    app._open_about()
-    first = app._about_window
-    assert first is not None and first.winfo_exists()
-    app._open_about()
-    assert id(app._about_window) == id(first)
-    app._close_about()
-    assert app._about_window is None
-
-    # Menu motywu koloruje się zgodnie z motywem.
-    app._set_theme_setting("dark")
-    assert str(app.theme_menu.cget("bg")) == app.theme["bg2"]
-    app._on_close()
+    assert section.title() == "Opcje"
+    assert section.content_layout().indexOf(label) >= 0
 
 
-def test_file_list_survives_dnd_tclerror(
-    root: tk.Tk,
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    """FileList tworzy się i działa, nawet gdy rejestracja D&D rzuca TclError."""
+def test_log_view_appends_and_themes(qtbot: QtBot) -> None:
+    """LogView dopisuje linie, czyści się i zmienia motyw kolorowania."""
+    log = LogView()
+    qtbot.addWidget(log)
 
-    def boom(*args: object, **kwargs: object) -> None:
-        raise tk.TclError('invalid command name "tkdnd::drop_target"')
+    log.append_line("gotowe", "ok")
+    log.append_line("uwaga", "warn")
+    assert "gotowe" in log.toPlainText()
+    assert "uwaga" in log.toPlainText()
 
-    monkeypatch.setattr(file_list_module, "HAS_DND", True)
-    monkeypatch.setattr(tk.Listbox, "drop_target_register", boom, raising=False)
-    monkeypatch.setattr(tk.Listbox, "dnd_bind", boom, raising=False)
+    log.set_theme(LIGHT)
+    assert log._color_for("ok") == LIGHT.accent
+    log.set_theme(DARK)
+    assert log._color_for("err") == DARK.red
 
-    file_list = FileList(root, extensions={".epub"})
-    file_list.pack()
-    # Brak crasha; lista nadal przyjmuje pliki przez API.
-    file_list.add_files([tmp_path / "book.epub"])
-    assert file_list.files() == [tmp_path / "book.epub"]
+    log.clear()
+    assert log.toPlainText() == ""
+
+
+def test_level_for_line_classifies() -> None:
+    """Heurystyka poziomu logu rozpoznaje błędy, ostrzeżenia i sukces."""
+    assert level_for_line("ERROR: coś") == "err"
+    assert level_for_line("Warning: uwaga") == "warn"
+    assert level_for_line("Success") == "ok"
+    assert level_for_line("zwykła linia") == "info"
+
+
+def test_worker_emits_done_with_result(qtbot: QtBot) -> None:
+    """Worker uruchamia callable w wątku i emituje done z wynikiem."""
+
+    def job(
+        emit_line: Callable[[str, str], None], emit_progress: Callable[[int, int], None], x: int
+    ) -> int:
+        emit_line("praca", "info")
+        emit_progress(1, 1)
+        return x * 2
+
+    worker = Worker(job, 21)
+    results: list[object] = []
+    worker.done.connect(results.append)
+    with qtbot.waitSignal(worker.done, timeout=3000):
+        worker.start()
+    worker.wait()
+
+    assert results == [42]
+
+
+def test_worker_emits_failed_on_exception(qtbot: QtBot) -> None:
+    """Wyjątek w callable trafia do sygnału failed (nie wywala aplikacji)."""
+
+    def boom(
+        emit_line: Callable[[str, str], None], emit_progress: Callable[[int, int], None]
+    ) -> None:
+        raise RuntimeError("pęknięcie")
+
+    worker = Worker(boom)
+    errors: list[str] = []
+    worker.failed.connect(errors.append)
+    with qtbot.waitSignal(worker.failed, timeout=3000):
+        worker.start()
+    worker.wait()
+
+    assert errors and "pęknięcie" in errors[0]

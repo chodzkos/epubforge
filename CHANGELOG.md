@@ -7,6 +7,16 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 
 ## [Unreleased]
 
+### Changed
+- **GUI przepisane z tkinter na PySide6 (Qt)** — pełna parzystość funkcji z v1.0
+  (zakładki Metadane / Konwerter / Fixer / Eksport Kindle, górny pasek z motywem
+  i oknem „O programie", tooltipy, drag&drop, zapamiętany katalog wyjścia). Motyw
+  ciemny realizuje `qdarktheme` z akcentem marki, jasny przywraca natywny styl Qt.
+  W trybie ciemnym dialogi Otwórz/Zapisz są również ciemne (Qt), w jasnym natywne.
+- **Zależności GUI**: `tkinterdnd2` i `darkdetect` zastąpione przez `PySide6`
+  + `pyqtdarktheme-fork`; drag&drop jest teraz natywny w Qt (bez binariów `tkdnd`).
+- **Testy GUI** przeniesione na `pytest-qt` (platforma `offscreen`); CI bez `xvfb`.
+
 ## [1.0.0] - 2026-06-11
 
 Pierwsze stabilne wydanie — komplet funkcji biblioteki, CLI i GUI.

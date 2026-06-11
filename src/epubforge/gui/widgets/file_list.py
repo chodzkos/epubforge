@@ -1,79 +1,92 @@
-"""Lista plików z toolbar i opcjonalnym drag and drop."""
+"""Lista plików z toolbarem i natywnym drag&drop (Qt)."""
 
 from __future__ import annotations
 
-import logging
-import tkinter as tk
 from collections.abc import Callable, Iterable
 from pathlib import Path
-from tkinter import filedialog, ttk
-from typing import Any, cast
 
-from epubforge.gui.widgets.tooltip import Tooltip
+from PySide6.QtCore import Signal
+from PySide6.QtGui import QDragEnterEvent, QDropEvent
+from PySide6.QtWidgets import (
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
-try:
-    from tkinterdnd2 import DND_FILES
-
-    HAS_DND = True
-except ImportError:
-    DND_FILES = "DND_Files"
-    HAS_DND = False
-
-logger = logging.getLogger(__name__)
+from epubforge.gui.theme import native_file_dialogs
 
 DEFAULT_EXTENSIONS = {".epub", ".txt", ".md", ".markdown", ".docx", ".html", ".htm", ".pdf"}
 
 
-class FileList(ttk.Frame):
-    """Lista plików z przyciskami dodawania, usuwania i czyszczenia."""
+class FileList(QWidget):
+    """Lista plików z przyciskami dodawania, usuwania i czyszczenia.
+
+    Drag&drop jest natywny (Qt): upuszczenie plików dodaje pasujące rozszerzenia,
+    a upuszczenie folderu skanuje go rekurencyjnie.
+
+    Sygnały:
+        files_changed: lista plików zmieniła się (niesie kopię listy).
+        selection_changed: zmieniono zaznaczenie (niesie ``Path`` lub ``None``).
+    """
+
+    files_changed = Signal(list)
+    selection_changed = Signal(object)
 
     def __init__(
         self,
-        parent: tk.Misc,
+        parent: QWidget | None = None,
         *,
         extensions: Iterable[str] | None = None,
-        on_change: Callable[[list[Path]], None] | None = None,
         confirm: Callable[[Path], bool] | None = None,
     ) -> None:
         super().__init__(parent)
         self.extensions = {ext.lower() for ext in (extensions or DEFAULT_EXTENSIONS)}
-        self.on_change = on_change
         # Hook wołany przed dodaniem pliku — zwrot False pomija plik
         # (np. potwierdzenie eksperymentalnej konwersji PDF).
         self.confirm = confirm
         self._files: list[Path] = []
 
-        toolbar = ttk.Frame(self)
-        toolbar.pack(fill="x", pady=(0, 6))
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
 
-        add_files_btn = ttk.Button(toolbar, text="+ Pliki", command=self._add_files)
-        add_files_btn.pack(side="left")
-        add_folder_btn = ttk.Button(toolbar, text="+ Folder", command=self._add_folder)
-        add_folder_btn.pack(side="left", padx=4)
-        remove_btn = ttk.Button(toolbar, text="Usuń", command=self._remove_selected)
-        remove_btn.pack(side="left")
-        clear_btn = ttk.Button(toolbar, text="Wyczyść", command=self.clear)
-        clear_btn.pack(side="left", padx=4)
-        Tooltip(add_files_btn, "Dodaj pliki przez okno wyboru")
-        Tooltip(add_folder_btn, "Dodaj wszystkie obsługiwane pliki z wybranego folderu")
-        Tooltip(remove_btn, "Usuń zaznaczone pozycje z listy")
-        Tooltip(clear_btn, "Usuń wszystkie pozycje z listy")
+        toolbar = QHBoxLayout()
+        toolbar.setSpacing(6)
+        self._add_files_btn = self._make_button("+ Pliki", "Dodaj pliki przez okno wyboru")
+        self._add_files_btn.clicked.connect(self._add_files)
+        self._add_folder_btn = self._make_button(
+            "+ Folder", "Dodaj obsługiwane pliki z wybranego folderu"
+        )
+        self._add_folder_btn.clicked.connect(self._add_folder)
+        self._remove_btn = self._make_button("Usuń", "Usuń zaznaczone pozycje z listy")
+        self._remove_btn.clicked.connect(self._remove_selected)
+        self._clear_btn = self._make_button("Wyczyść", "Usuń wszystkie pozycje z listy")
+        self._clear_btn.clicked.connect(self.clear)
+        toolbar.addWidget(self._add_files_btn)
+        toolbar.addWidget(self._add_folder_btn)
+        toolbar.addWidget(self._remove_btn)
+        toolbar.addWidget(self._clear_btn)
+        toolbar.addStretch(1)
+        self.count_label = QLabel("0 plików")
+        toolbar.addWidget(self.count_label)
+        layout.addLayout(toolbar)
 
-        self.count_label = ttk.Label(toolbar, text="0 plików", style="Muted.TLabel")
-        self.count_label.pack(side="right")
+        self.listbox = QListWidget(self)
+        self.listbox.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
+        self.listbox.setToolTip(
+            "Lista plików — przeciągnij pliki tutaj lub użyj przycisków powyżej"
+        )
+        self.listbox.currentRowChanged.connect(self._on_current_row_changed)
+        layout.addWidget(self.listbox, stretch=1)
 
-        list_frame = ttk.Frame(self)
-        list_frame.pack(fill="both", expand=True)
+        self.setAcceptDrops(True)
 
-        self.listbox = tk.Listbox(list_frame, selectmode="extended", height=8)
-        Tooltip(self.listbox, "Lista plików — przeciągnij pliki tutaj lub użyj przycisków powyżej")
-        scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.listbox.yview)
-        self.listbox.configure(yscrollcommand=scrollbar.set)
-        scrollbar.pack(side="right", fill="y")
-        self.listbox.pack(side="left", fill="both", expand=True)
-
-        if HAS_DND:
-            self._enable_drag_and_drop()
+    # ── API publiczne ─────────────────────────────────────────────────────────
 
     def files(self) -> list[Path]:
         """Zwraca kopię listy plików."""
@@ -102,61 +115,92 @@ class FileList(ttk.Frame):
         self._files.clear()
         self._refresh()
 
+    def current_path(self) -> Path | None:
+        """Zwraca aktualnie zaznaczony plik (lub ``None``)."""
+        row = self.listbox.currentRow()
+        if 0 <= row < len(self._files):
+            return self._files[row]
+        return None
+
+    def select_first(self) -> None:
+        """Zaznacza pierwszy plik na liście, jeśli istnieje."""
+        if self._files:
+            self.listbox.setCurrentRow(0)
+
+    # ── Drag & drop ─────────────────────────────────────────────────────────--
+
+    def dragEnterEvent(self, event: QDragEnterEvent) -> None:  # noqa: N802 — Qt API
+        """Akceptuje przeciąganie, gdy niesie URL-e plików/folderów."""
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event: QDropEvent) -> None:  # noqa: N802 — Qt API
+        """Dodaje upuszczone pliki; foldery skanuje rekurencyjnie."""
+        paths: list[Path] = []
+        for url in event.mimeData().urls():
+            local = url.toLocalFile()
+            if not local:
+                continue
+            path = Path(local)
+            if path.is_dir():
+                paths.extend(p for p in path.rglob("*") if p.is_file())
+            else:
+                paths.append(path)
+        self.add_files(paths)
+        event.acceptProposedAction()
+
+    # ── Wewnętrzne ────────────────────────────────────────────────────────────
+
+    def _make_button(self, text: str, tooltip: str) -> QPushButton:
+        """Tworzy przycisk toolbaru z tooltipem."""
+        button = QPushButton(text, self)
+        button.setToolTip(tooltip)
+        return button
+
     def _add_files(self) -> None:
-        """Dodaje pliki wybrane w dialogu systemowym."""
-        filetypes = [("Obsługiwane", " ".join(f"*{ext}" for ext in sorted(self.extensions)))]
-        paths = filedialog.askopenfilenames(filetypes=filetypes)
+        """Dodaje pliki wybrane w dialogu."""
+        options = QFileDialog.Option(0)
+        if not native_file_dialogs():
+            options = QFileDialog.Option.DontUseNativeDialog
+        pattern = " ".join(f"*{ext}" for ext in sorted(self.extensions))
+        paths, _ = QFileDialog.getOpenFileNames(
+            self, "Dodaj pliki", "", f"Obsługiwane ({pattern})", options=options
+        )
         self.add_files(Path(path) for path in paths)
 
     def _add_folder(self) -> None:
-        """Dodaje obsługiwane pliki z wybranego katalogu."""
-        folder = filedialog.askdirectory()
+        """Dodaje obsługiwane pliki z wybranego katalogu (bez rekursji)."""
+        options = QFileDialog.Option(0)
+        if not native_file_dialogs():
+            options = QFileDialog.Option.DontUseNativeDialog
+        folder = QFileDialog.getExistingDirectory(self, "Dodaj folder", "", options=options)
         if not folder:
             return
         self.add_files(path for path in Path(folder).iterdir() if path.is_file())
 
     def _remove_selected(self) -> None:
         """Usuwa zaznaczone pozycje."""
-        listbox = cast(Any, self.listbox)
-        selection = tuple(int(index) for index in listbox.curselection())
-        if not selection:
+        rows = sorted((index.row() for index in self.listbox.selectedIndexes()), reverse=True)
+        if not rows:
             return
-        for index in reversed(selection):
-            self._files.pop(index)
+        for row in rows:
+            self._files.pop(row)
         self._refresh()
 
-    def _on_drop(self, event: Any) -> None:
-        """Obsługuje drop plików z tkinterdnd2."""
-        raw_paths = self.tk.splitlist(str(event.data))
-        self.add_files(Path(path.strip("{}")) for path in raw_paths)
-
-    def _enable_drag_and_drop(self) -> None:
-        """Włącza drag&drop, jeśli natywny tkdnd jest faktycznie dostępny.
-
-        Metody ``drop_target_register``/``dnd_bind`` istnieją zawsze (tkinterdnd2
-        je monkeypatchuje), ale gdy pakiet tkdnd nie został załadowany do okna,
-        ich wywołanie rzuca ``TclError``. Łapiemy to cicho — lista działa dalej,
-        tylko bez przeciągania plików.
-        """
-        drop_register = getattr(self.listbox, "drop_target_register", None)
-        dnd_bind = getattr(self.listbox, "dnd_bind", None)
-        if not (callable(drop_register) and callable(dnd_bind)):
-            return
-        try:
-            drop_register(DND_FILES)
-            dnd_bind("<<Drop>>", self._on_drop)
-        except tk.TclError as exc:
-            logger.warning("Drag&drop niedostępne: %s", exc)
+    def _on_current_row_changed(self, _row: int) -> None:
+        """Emituje sygnał zmiany zaznaczenia."""
+        self.selection_changed.emit(self.current_path())
 
     def _refresh(self) -> None:
-        """Odświeża widok listbox i licznik."""
-        self.listbox.delete(0, "end")
+        """Odświeża widok listy i licznik."""
+        self.listbox.clear()
         for path in self._files:
-            self.listbox.insert("end", f"{path.name}  ({path.parent})")
+            QListWidgetItem(f"{path.name}  ({path.parent})", self.listbox)
         count = len(self._files)
-        self.count_label.configure(text=f"{count} {_plural_files(count)}")
-        if self.on_change is not None:
-            self.on_change(self.files())
+        self.count_label.setText(f"{count} {_plural_files(count)}")
+        self.files_changed.emit(self.files())
 
 
 def _plural_files(count: int) -> str:
