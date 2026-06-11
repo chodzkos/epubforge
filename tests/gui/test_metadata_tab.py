@@ -152,4 +152,4 @@ def test_metadata_external_tool_buttons(
     assert tab.tool_buttons["sigil"].isEnabled() is True
 
     tab._open_external("sigil", "Sigil")
-    assert calls[0] == ["/bin/sigil", str(book)]
+    assert calls[0] == [str(Path("/bin/sigil")), str(book)]

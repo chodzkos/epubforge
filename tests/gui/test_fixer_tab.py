@@ -125,7 +125,7 @@ def test_fixer_preview_uses_calibre_viewer(
     assert tab.preview_button.isEnabled() is True
     tab._view_result()
 
-    assert calls == [["/bin/ebook-viewer", str(fixed)]]
+    assert calls == [[str(Path("/bin/ebook-viewer")), str(fixed)]]
 
 
 def test_run_fix_worker_calls_fixers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
