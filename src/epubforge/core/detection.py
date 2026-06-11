@@ -205,7 +205,11 @@ class Tools:
 
     @staticmethod
     def sigil() -> Tool:
-        """Wykrywa edytor EPUB Sigil."""
+        """Wykrywa edytor EPUB Sigil.
+
+        Wersji NIE ustalamy — Sigil na ``--version`` na moment pokazuje okno GUI
+        (mignięcie przy pierwszej detekcji); interesuje nas tylko dostępność.
+        """
         return _make_tool(
             "sigil",
             _exe_names("sigil", "Sigil"),
@@ -215,6 +219,7 @@ class Tools:
                 Path("/opt/sigil"),
                 Path("/Applications/Sigil.app/Contents/MacOS"),
             ],
+            detect_version=False,
         )
 
     @staticmethod
