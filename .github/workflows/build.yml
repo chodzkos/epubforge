@@ -1,0 +1,64 @@
+name: Build Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[build,gui]"
+
+    - name: Generate placeholder icon (gdy brak prawdziwej)
+      run: python build/create_icon.py
+
+    - name: Build portable (onefile)
+      working-directory: build
+      run: python -m PyInstaller epubforge-portable.spec --clean --noconfirm --distpath dist --workpath build-tmp
+
+    - name: Build onedir (do instalatora)
+      working-directory: build
+      run: python -m PyInstaller epubforge-dir.spec --clean --noconfirm --distpath dist --workpath build-tmp
+
+    - name: Install Inno Setup
+      run: choco install innosetup --no-progress -y
+
+    - name: Build installer
+      working-directory: build
+      shell: pwsh
+      run: |
+        $ver = python -c "import epubforge; print(epubforge.__version__)"
+        & "ISCC.exe" "/DMyAppVersion=$ver" installer.iss
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: epubforge-windows
+        path: |
+          build/dist/epubforge.exe
+          build/dist/epubforge-setup.exe
+        retention-days: 30
+
+    - name: Create Release (only on tags)
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          build/dist/epubforge.exe
+          build/dist/epubforge-setup.exe
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

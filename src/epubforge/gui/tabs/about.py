@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 import tkinter as tk
 import webbrowser
 from pathlib import Path
@@ -18,8 +19,21 @@ HELP_URL = "https://github.com/chodzkos/epubforge#readme"
 DESCRIPTION = "Narzędzie do walidacji, naprawy i konwersji plików EPUB"
 LICENSE = "Licencja: MIT"
 
+
+def _asset_path(name: str) -> Path:
+    """Zwraca ścieżkę do zasobu z ``gui/assets`` — działa też w bundlu PyInstaller.
+
+    W spakowanym ``.exe`` zasoby leżą pod ``sys._MEIPASS`` (z zachowaniem
+    struktury pakietu), w trybie deweloperskim — obok modułu.
+    """
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        return Path(meipass) / "epubforge" / "gui" / "assets" / name
+    return Path(__file__).resolve().parent.parent / "assets" / name
+
+
 # Logo wczytywane z pliku — podmiana grafiki nie wymaga zmian w kodzie.
-_LOGO_PATH = Path(__file__).resolve().parent.parent / "assets" / "logo.png"
+_LOGO_PATH = _asset_path("logo.png")
 
 
 class AboutTab(ttk.Frame):

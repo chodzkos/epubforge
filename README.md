@@ -56,8 +56,15 @@ cd epubforge
 pip install -e ".[dev]"
 ```
 
-### Skompilowany .exe (Windows)
-Pobierz z [Releases](https://github.com/chodzkos/epubforge/releases) — bez instalacji Pythona.
+### Windows (bez instalacji Pythona)
+Pobierz z [Releases](https://github.com/chodzkos/epubforge/releases) jeden z dwóch wariantów:
+
+- **`epubforge.exe`** — wersja **portable**: jeden plik, uruchamiasz bez instalacji.
+- **`epubforge-setup.exe`** — **instalator** (Inno Setup): skrót w menu Start, opcjonalnie
+  na pulpicie, odinstalowanie przez „Dodaj/usuń programy".
+
+Build lokalny (Windows): `build\build.bat` — tworzy oba pliki w `build\dist\`
+(instalator wymaga zainstalowanego [Inno Setup](https://jrsoftware.org/isinfo.php)).
 
 ---
 
