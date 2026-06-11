@@ -2,8 +2,20 @@
 """PyInstaller spec — wariant ONEDIR (folder dist/epubforge/ do instalatora)."""
 
 import os
+import importlib
 
 import tkinterdnd2
+
+for required_module in (
+    "PIL.Image",
+    "PIL.ImageTk",
+    "darkdetect",
+    "lxml.etree",
+    "pyphen",
+    "tinycss2",
+    "tkinterdnd2",
+):
+    importlib.import_module(required_module)
 
 spec_dir = os.path.abspath(SPECPATH)
 assets_dir = os.path.abspath(os.path.join(spec_dir, "..", "src", "epubforge", "gui", "assets"))

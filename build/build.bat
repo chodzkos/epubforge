@@ -2,8 +2,22 @@
 REM Lokalny build EpubForge dla Windows: portable .exe + instalator.
 REM Wymaga: pip install -e ".[build,gui]"  oraz (dla instalatora) Inno Setup (ISCC w PATH).
 
-setlocal
+setlocal EnableExtensions EnableDelayedExpansion
 cd /d "%~dp0"
+
+echo === Przygotowanie zaleznosci buildu ===
+pushd ..
+python -m pip install -e ".[build,gui]"
+if errorlevel 1 (
+    echo [BLAD] Nie udalo sie zainstalowac zaleznosci buildu.
+    exit /b 1
+)
+popd
+
+python check_build_env.py
+if errorlevel 1 (
+    exit /b 1
+)
 
 echo === Czyszczenie poprzednich buildow ===
 if exist dist rmdir /s /q dist
@@ -36,13 +50,27 @@ if not exist "dist\epubforge\epubforge.exe" (
 echo [OK] dist\epubforge\
 
 echo === [3/3] Instalator (Inno Setup) ===
+set "ISCC_CMD="
 where ISCC >nul 2>nul
-if %errorlevel%==0 (
+if not errorlevel 1 set "ISCC_CMD=ISCC"
+if not defined ISCC_CMD (
+    if exist "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" (
+        set "ISCC_CMD=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
+    )
+)
+if not defined ISCC_CMD (
+    if exist "%ProgramFiles%\Inno Setup 6\ISCC.exe" (
+        set "ISCC_CMD=%ProgramFiles%\Inno Setup 6\ISCC.exe"
+    )
+)
+
+if defined ISCC_CMD (
+    echo Uzywam Inno Setup: !ISCC_CMD!
     REM Odczytaj wersje z pakietu do zmiennej.
     python -c "import epubforge; print(epubforge.__version__)" > _ver.tmp
     set /p EF_VERSION=<_ver.tmp
     del _ver.tmp
-    ISCC /DMyAppVersion=%EF_VERSION% installer.iss
+    "!ISCC_CMD!" /DMyAppVersion=!EF_VERSION! installer.iss
     if exist "dist\epubforge-setup.exe" (
         echo [OK] dist\epubforge-setup.exe
     ) else (
@@ -50,8 +78,8 @@ if %errorlevel%==0 (
         exit /b 1
     )
 ) else (
-    echo [POMINIETO] Brak ISCC w PATH - instalator nie zbudowany.
-    echo Zainstaluj Inno Setup, aby zbudowac dist\epubforge-setup.exe.
+    echo [POMINIETO] Nie znaleziono ISCC.exe - instalator nie zbudowany.
+    echo Zainstaluj Inno Setup 6 lub dodaj ISCC.exe do PATH, aby zbudowac dist\epubforge-setup.exe.
 )
 
 echo.

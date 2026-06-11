@@ -2,8 +2,20 @@
 """PyInstaller spec — wariant PORTABLE (jeden plik epubforge.exe)."""
 
 import os
+import importlib
 
 import tkinterdnd2
+
+for required_module in (
+    "PIL.Image",
+    "PIL.ImageTk",
+    "darkdetect",
+    "lxml.etree",
+    "pyphen",
+    "tinycss2",
+    "tkinterdnd2",
+):
+    importlib.import_module(required_module)
 
 # Katalog tego spec-a (SPECPATH wstrzykiwany przez PyInstaller).
 spec_dir = os.path.abspath(SPECPATH)

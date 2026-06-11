@@ -75,6 +75,26 @@ Licencja: MIT
 
 ---
 
+## Build
+
+### Lokalny build Windows
+```bat
+build\build.bat
+```
+
+Skrypt:
+1. instaluje projekt z dodatkami `build,gui`, żeby PyInstaller widział m.in.
+   `darkdetect`, `tkinterdnd2` i Pillow,
+2. sprawdza środowisko przez `build/check_build_env.py`,
+3. buduje `build\dist\epubforge.exe` (portable),
+4. buduje `build\dist\epubforge\` (onedir pod instalator),
+5. jeśli znajdzie `ISCC.exe`, tworzy `build\dist\epubforge-setup.exe`.
+
+Brak `epubforge-setup.exe` zwykle oznacza brak Inno Setup albo brak `ISCC.exe`
+w `PATH` / standardowym katalogu `Program Files`.
+
+---
+
 ## Architektura
 
 ### Struktura modułowa
