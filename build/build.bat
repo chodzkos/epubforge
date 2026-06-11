@@ -5,16 +5,43 @@ REM Wymaga: pip install -e ".[build,gui]"  oraz (dla instalatora) Inno Setup (IS
 setlocal EnableExtensions EnableDelayedExpansion
 cd /d "%~dp0"
 
+echo === Wybor Pythona 3.10+ ===
+set "PYTHON_CMD="
+
+where py >nul 2>nul
+if not errorlevel 1 (
+    for %%V in (3.12 3.11 3.10) do (
+        if not defined PYTHON_CMD (
+            py -%%V -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)" >nul 2>nul
+            if not errorlevel 1 set "PYTHON_CMD=py -%%V"
+        )
+    )
+)
+
+if not defined PYTHON_CMD (
+    python -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)" >nul 2>nul
+    if not errorlevel 1 set "PYTHON_CMD=python"
+)
+
+if not defined PYTHON_CMD (
+    echo [BLAD] EpubForge wymaga Pythona 3.10 lub nowszego.
+    echo Domyslne polecenie python jest za stare albo Python 3.10+ nie jest zainstalowany.
+    echo Zainstaluj Python 3.12 z python.org i upewnij sie, ze dziala: py -3.12 --version
+    exit /b 1
+)
+
+for /f "delims=" %%P in ('!PYTHON_CMD! -c "import sys; print(sys.executable + chr(32) + sys.version.split()[0])"') do echo Uzywam: %%P
+
 echo === Przygotowanie zaleznosci buildu ===
 pushd ..
-python -m pip install -e ".[build,gui]"
+!PYTHON_CMD! -m pip install -e ".[build,gui]"
 if errorlevel 1 (
     echo [BLAD] Nie udalo sie zainstalowac zaleznosci buildu.
     exit /b 1
 )
 popd
 
-python check_build_env.py
+!PYTHON_CMD! check_build_env.py
 if errorlevel 1 (
     exit /b 1
 )
@@ -29,12 +56,12 @@ if exist "..\src\epubforge\gui\assets\icon.ico" (
 ) else (
     if not exist icon.ico (
         echo Generuje placeholder icon.ico...
-        python create_icon.py
+        !PYTHON_CMD! create_icon.py
     )
 )
 
 echo === [1/3] Build PORTABLE (onefile) ===
-python -m PyInstaller epubforge-portable.spec --clean --noconfirm --distpath dist --workpath build-tmp
+!PYTHON_CMD! -m PyInstaller epubforge-portable.spec --clean --noconfirm --distpath dist --workpath build-tmp
 if not exist "dist\epubforge.exe" (
     echo [BLAD] Portable build nie powiodl sie.
     exit /b 1
@@ -42,7 +69,7 @@ if not exist "dist\epubforge.exe" (
 echo [OK] dist\epubforge.exe
 
 echo === [2/3] Build ONEDIR (do instalatora) ===
-python -m PyInstaller epubforge-dir.spec --clean --noconfirm --distpath dist --workpath build-tmp
+!PYTHON_CMD! -m PyInstaller epubforge-dir.spec --clean --noconfirm --distpath dist --workpath build-tmp
 if not exist "dist\epubforge\epubforge.exe" (
     echo [BLAD] Onedir build nie powiodl sie.
     exit /b 1
@@ -67,7 +94,7 @@ if not defined ISCC_CMD (
 if defined ISCC_CMD (
     echo Uzywam Inno Setup: !ISCC_CMD!
     REM Odczytaj wersje z pakietu do zmiennej.
-    python -c "import epubforge; print(epubforge.__version__)" > _ver.tmp
+    !PYTHON_CMD! -c "import epubforge; print(epubforge.__version__)" > _ver.tmp
     set /p EF_VERSION=<_ver.tmp
     del _ver.tmp
     "!ISCC_CMD!" /DMyAppVersion=!EF_VERSION! installer.iss

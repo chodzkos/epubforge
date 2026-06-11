@@ -83,12 +83,18 @@ build\build.bat
 ```
 
 Skrypt:
-1. instaluje projekt z dodatkami `build,gui`, żeby PyInstaller widział m.in.
+1. wybiera Pythona 3.10+ (`py -3.12`, `py -3.11`, `py -3.10`, a dopiero potem
+   `python`),
+2. instaluje projekt z dodatkami `build,gui`, żeby PyInstaller widział m.in.
    `darkdetect`, `tkinterdnd2` i Pillow,
-2. sprawdza środowisko przez `build/check_build_env.py`,
-3. buduje `build\dist\epubforge.exe` (portable),
-4. buduje `build\dist\epubforge\` (onedir pod instalator),
-5. jeśli znajdzie `ISCC.exe`, tworzy `build\dist\epubforge-setup.exe`.
+3. sprawdza środowisko przez `build/check_build_env.py`,
+4. buduje `build\dist\epubforge.exe` (portable),
+5. buduje `build\dist\epubforge\` (onedir pod instalator),
+6. jeśli znajdzie `ISCC.exe`, tworzy `build\dist\epubforge-setup.exe`.
+
+Jeśli domyślne `python` wskazuje na 3.9 albo starsze, build nadal powinien działać
+przez Python Launcher. Gdy `py -3.10 --version` też nie działa, trzeba
+zainstalować nowszego Pythona.
 
 Brak `epubforge-setup.exe` zwykle oznacza brak Inno Setup albo brak `ISCC.exe`
 w `PATH` / standardowym katalogu `Program Files`.
