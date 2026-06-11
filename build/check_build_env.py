@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import sys
 
 _REQUIRED_MODULES = {
     "PyInstaller": "pyinstaller",
@@ -18,6 +19,14 @@ _REQUIRED_MODULES = {
 
 def main() -> int:
     """Zwraca 0, gdy zależności buildu są kompletne."""
+    if sys.version_info < (3, 10):  # noqa: UP036 - ten helper ma zgłosić za starego Pythona.
+        print(
+            "[BLAD] EpubForge wymaga Pythona 3.10 lub nowszego "
+            f"(uruchomiono {sys.version.split()[0]})."
+        )
+        print("Zainstaluj Python 3.12 i uruchom build przez build\\build.bat.")
+        return 1
+
     missing: list[str] = []
     for module_name, package_name in _REQUIRED_MODULES.items():
         try:
@@ -30,7 +39,7 @@ def main() -> int:
         for package_name in sorted(set(missing)):
             print(f"  - {package_name}")
         print()
-        print('Uruchom z katalogu repo: python -m pip install -e ".[build,gui]"')
+        print('Uruchom z katalogu repo Pythonem 3.10+: python -m pip install -e ".[build,gui]"')
         return 1
 
     # Import aplikacji łapie zależności ukryte w modułach GUI, np. darkdetect.

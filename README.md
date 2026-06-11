@@ -63,10 +63,11 @@ Pobierz z [Releases](https://github.com/chodzkos/epubforge/releases) jeden z dw�
 - **`epubforge-setup.exe`** — **instalator** (Inno Setup): skrót w menu Start, opcjonalnie
   na pulpicie, odinstalowanie przez „Dodaj/usuń programy".
 
-Build lokalny (Windows): `build\build.bat` — przygotowuje zależności, sprawdza
-środowisko i tworzy pliki w `build\dist\`. Instalator powstaje tylko wtedy, gdy
-zainstalowany jest [Inno Setup](https://jrsoftware.org/isinfo.php) (`ISCC.exe` w
-`PATH` albo standardowy katalog `Program Files`).
+Build lokalny (Windows): `build\build.bat` — wybiera Pythona 3.10+ przez launcher
+`py`, przygotowuje zależności, sprawdza środowisko i tworzy pliki w `build\dist\`.
+Instalator powstaje tylko wtedy, gdy zainstalowany jest
+[Inno Setup](https://jrsoftware.org/isinfo.php) (`ISCC.exe` w `PATH` albo
+standardowy katalog `Program Files`).
 
 ---
 
