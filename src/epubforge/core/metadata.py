@@ -31,9 +31,68 @@ _SINGLE_FIELDS: tuple[tuple[str, str], ...] = (
 )
 
 
+# Identyfikator kolekcji EPUB 3 (refines wskazuje na ten id).
+_COLLECTION_ID = "epubforge-series"
+
+
 def _dc(tag: str) -> str:
     """Zwraca w pełni kwalifikowaną nazwę tagu Dublin Core (Clark notation)."""
     return f"{{{DC_NS}}}{tag}"
+
+
+def _opf(tag: str) -> str:
+    """Zwraca w pełni kwalifikowaną nazwę tagu OPF (Clark notation)."""
+    return f"{{{OPF_NS}}}{tag}"
+
+
+def _to_float(value: str | None) -> float | None:
+    """Parsuje numer tomu na float; toleruje liczby całkowite, zwraca None gdy się nie da."""
+    if not value:
+        return None
+    try:
+        return float(value.strip())
+    except ValueError:
+        return None
+
+
+def _format_index(value: float) -> str:
+    """Formatuje numer tomu bez zbędnych zer (2.0 → '2', 1.5 → '1.5')."""
+    return str(int(value)) if value.is_integer() else str(value)
+
+
+def _read_series(root: etree._Element) -> tuple[str, float | None]:
+    """Odczytuje serię z OPF, obsługując format Calibre (EPUB 2) i EPUB 3.
+
+    Najpierw próbuje ``calibre:series`` (najczęstszy, kompatybilny), a gdy go
+    brak — ``belongs-to-collection`` + ``group-position`` (standard EPUB 3).
+    """
+    metas = list(root.iterfind(f".//{_opf('meta')}"))
+
+    # Wariant Calibre: <meta name="calibre:series" content="..."/>
+    by_name = {m.get("name"): (m.get("content") or "") for m in metas if m.get("name")}
+    calibre_series = by_name.get("calibre:series", "")
+    if calibre_series:
+        return calibre_series, _to_float(by_name.get("calibre:series_index"))
+
+    # Wariant EPUB 3: <meta property="belongs-to-collection" id="..">Nazwa</meta>
+    for meta in metas:
+        if meta.get("property") != "belongs-to-collection":
+            continue
+        name = (meta.text or "").strip()
+        if not name:
+            continue
+        collection_id = meta.get("id")
+        index: float | None = None
+        if collection_id:
+            for refine in metas:
+                if (
+                    refine.get("refines") == f"#{collection_id}"
+                    and refine.get("property") == "group-position"
+                ):
+                    index = _to_float(refine.text)
+        return name, index
+
+    return "", None
 
 
 def _first_text(root: etree._Element, tag: str) -> str:
@@ -66,6 +125,8 @@ class Metadata:
         date: data w formacie ISO 8601 (``dc:date``).
         description: opis (``dc:description``).
         subjects: tematy/tagi (``dc:subject`` x N).
+        series: nazwa cyklu/serii (poza Dublin Core; format Calibre + EPUB 3).
+        series_index: numer tomu (float, bywa ułamkowy jak 1.5); ``None`` = brak.
     """
 
     title: str = ""
@@ -76,6 +137,8 @@ class Metadata:
     date: str = ""
     description: str = ""
     subjects: list[str] = field(default_factory=list)
+    series: str = ""
+    series_index: float | None = None
 
     @classmethod
     def from_opf(cls, opf_xml: bytes) -> Metadata:
@@ -90,6 +153,7 @@ class Metadata:
         """
         root = etree.fromstring(opf_xml)
         language = _first_text(root, "language")
+        series, series_index = _read_series(root)
         return cls(
             title=_first_text(root, "title"),
             creators=_all_texts(root, "creator"),
@@ -99,6 +163,8 @@ class Metadata:
             date=_first_text(root, "date"),
             description=_first_text(root, "description"),
             subjects=_all_texts(root, "subject"),
+            series=series,
+            series_index=series_index,
         )
 
     def to_opf(self, existing_opf: bytes) -> bytes:
@@ -130,6 +196,10 @@ class Metadata:
         self._set_multi(metadata_el, "creator", self.creators)
         self._set_multi(metadata_el, "subject", self.subjects)
 
+        # Seria — Calibre (zawsze) + EPUB 3 (gdy package version 3.x).
+        epub3 = str(root.get("version", "")).startswith("3")
+        self._set_series(metadata_el, epub3=epub3)
+
         return etree.tostring(root, xml_declaration=True, encoding="utf-8")
 
     @staticmethod
@@ -149,3 +219,51 @@ class Metadata:
             metadata_el.remove(el)
         for value in values:
             etree.SubElement(metadata_el, _dc(tag)).text = value
+
+    def _set_series(self, metadata_el: etree._Element, *, epub3: bool) -> None:
+        """Zapisuje serię (Calibre + opcjonalnie EPUB 3); pusta seria = usunięcie.
+
+        Najpierw usuwa wszystkie istniejące meta serii (oba formaty), żeby zapis
+        był idempotentny i nie zostawiał osieroconych wpisów.
+        """
+        self._remove_series(metadata_el)
+        if not self.series:
+            return
+
+        index_text = "" if self.series_index is None else _format_index(self.series_index)
+
+        # Wariant Calibre — zawsze (kompatybilność z wieloma czytnikami).
+        etree.SubElement(metadata_el, _opf("meta"), name="calibre:series", content=self.series)
+        if index_text:
+            etree.SubElement(
+                metadata_el, _opf("meta"), name="calibre:series_index", content=index_text
+            )
+
+        # Wariant EPUB 3 — tylko dla pakietów 3.x.
+        if epub3:
+            collection = etree.SubElement(metadata_el, _opf("meta"))
+            collection.set("property", "belongs-to-collection")
+            collection.set("id", _COLLECTION_ID)
+            collection.text = self.series
+
+            ctype = etree.SubElement(metadata_el, _opf("meta"))
+            ctype.set("refines", f"#{_COLLECTION_ID}")
+            ctype.set("property", "collection-type")
+            ctype.text = "series"
+
+            if index_text:
+                position = etree.SubElement(metadata_el, _opf("meta"))
+                position.set("refines", f"#{_COLLECTION_ID}")
+                position.set("property", "group-position")
+                position.text = index_text
+
+    @staticmethod
+    def _remove_series(metadata_el: etree._Element) -> None:
+        """Usuwa wszystkie meta serii (Calibre i EPUB 3) z sekcji metadanych."""
+        for meta in list(metadata_el.findall(_opf("meta"))):
+            name = meta.get("name")
+            prop = meta.get("property")
+            is_calibre = name in {"calibre:series", "calibre:series_index"}
+            is_epub3 = prop in {"belongs-to-collection", "collection-type", "group-position"}
+            if is_calibre or is_epub3:
+                metadata_el.remove(meta)
