@@ -9,6 +9,8 @@ from pathlib import Path
 from tkinter import filedialog, ttk
 from typing import Any, cast
 
+from epubforge.gui.widgets.tooltip import Tooltip
+
 try:
     from tkinterdnd2 import DND_FILES
 
@@ -44,10 +46,18 @@ class FileList(ttk.Frame):
         toolbar = ttk.Frame(self)
         toolbar.pack(fill="x", pady=(0, 6))
 
-        ttk.Button(toolbar, text="+ Pliki", command=self._add_files).pack(side="left")
-        ttk.Button(toolbar, text="+ Folder", command=self._add_folder).pack(side="left", padx=4)
-        ttk.Button(toolbar, text="Usuń", command=self._remove_selected).pack(side="left")
-        ttk.Button(toolbar, text="Wyczyść", command=self.clear).pack(side="left", padx=4)
+        add_files_btn = ttk.Button(toolbar, text="+ Pliki", command=self._add_files)
+        add_files_btn.pack(side="left")
+        add_folder_btn = ttk.Button(toolbar, text="+ Folder", command=self._add_folder)
+        add_folder_btn.pack(side="left", padx=4)
+        remove_btn = ttk.Button(toolbar, text="Usuń", command=self._remove_selected)
+        remove_btn.pack(side="left")
+        clear_btn = ttk.Button(toolbar, text="Wyczyść", command=self.clear)
+        clear_btn.pack(side="left", padx=4)
+        Tooltip(add_files_btn, "Dodaj pliki przez okno wyboru")
+        Tooltip(add_folder_btn, "Dodaj wszystkie obsługiwane pliki z wybranego folderu")
+        Tooltip(remove_btn, "Usuń zaznaczone pozycje z listy")
+        Tooltip(clear_btn, "Usuń wszystkie pozycje z listy")
 
         self.count_label = ttk.Label(toolbar, text="0 plików", style="Muted.TLabel")
         self.count_label.pack(side="right")
@@ -56,6 +66,7 @@ class FileList(ttk.Frame):
         list_frame.pack(fill="both", expand=True)
 
         self.listbox = tk.Listbox(list_frame, selectmode="extended", height=8)
+        Tooltip(self.listbox, "Lista plików — przeciągnij pliki tutaj lub użyj przycisków powyżej")
         scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.listbox.yview)
         self.listbox.configure(yscrollcommand=scrollbar.set)
         scrollbar.pack(side="right", fill="y")

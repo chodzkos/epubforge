@@ -90,15 +90,20 @@ class FixerTab(ttk.Frame):
 
         self.hyphen_enabled_toggle = Toggle(section, text="Włącz", value=True)
         self.hyphen_enabled_toggle.grid(row=0, column=0, columnspan=2, sticky="w")
+        Tooltip(
+            self.hyphen_enabled_toggle.checkbutton, "Włącz dzielenie wyrazów dla wybranych EPUB"
+        )
 
         ttk.Label(section, text="Język").grid(row=1, column=0, sticky="w", pady=4, padx=(0, 8))
-        ttk.Combobox(
+        lang_box = ttk.Combobox(
             section,
             textvariable=self.hyphen_lang_var,
             values=_LANGUAGES,
             state="readonly",
             width=10,
-        ).grid(row=1, column=1, sticky="w", pady=4)
+        )
+        lang_box.grid(row=1, column=1, sticky="w", pady=4)
+        Tooltip(lang_box, "Język słownika dzielenia wyrazów (pyphen), np. pl, en_US")
 
         ttk.Label(section, text="Metoda").grid(row=2, column=0, sticky="nw", pady=4, padx=(0, 8))
         methods = ttk.Frame(section)
@@ -139,6 +144,10 @@ class FixerTab(ttk.Frame):
             value=True,
         )
         self.hyphen_skip_headers_toggle.grid(row=4, column=0, columnspan=2, sticky="w")
+        Tooltip(
+            self.hyphen_skip_headers_toggle.checkbutton,
+            "Nie dziel wyrazów w nagłówkach (h1-h3)",
+        )
 
     def _build_css_section(self, parent: tk.Misc) -> None:
         """Buduje opcje normalizacji CSS."""
@@ -147,12 +156,24 @@ class FixerTab(ttk.Frame):
 
         self.css_remove_colors_toggle = Toggle(section, text="Usuń kolory", value=False)
         self.css_remove_colors_toggle.pack(anchor="w")
+        Tooltip(
+            self.css_remove_colors_toggle.checkbutton,
+            "Usuwa deklaracje color/background z CSS (czytnik narzuca własne)",
+        )
 
         self.css_remove_fonts_toggle = Toggle(section, text="Usuń fonty", value=False)
         self.css_remove_fonts_toggle.pack(anchor="w")
+        Tooltip(
+            self.css_remove_fonts_toggle.checkbutton,
+            "UWAGA: usuwa @font-face i pliki fontów z EPUB — nieodwracalne dla danej kopii",
+        )
 
         self.css_inject_reset_toggle = Toggle(section, text="Dodaj reset CSS", value=True)
         self.css_inject_reset_toggle.pack(anchor="w")
+        Tooltip(
+            self.css_inject_reset_toggle.checkbutton,
+            "Dodaje delikatny reset (marginesy/padding) dla spójnego renderowania",
+        )
 
         self.css_replace_justify_toggle = Toggle(
             section,
@@ -160,6 +181,10 @@ class FixerTab(ttk.Frame):
             value=False,
         )
         self.css_replace_justify_toggle.pack(anchor="w")
+        Tooltip(
+            self.css_replace_justify_toggle.checkbutton,
+            "Zamienia text-align: justify na left (mniej dużych odstępów)",
+        )
 
         self.css_skip_hyphen_headers_toggle = Toggle(
             section,
@@ -167,19 +192,29 @@ class FixerTab(ttk.Frame):
             value=True,
         )
         self.css_skip_hyphen_headers_toggle.pack(anchor="w")
+        Tooltip(
+            self.css_skip_hyphen_headers_toggle.checkbutton,
+            "Dodaje regułę CSS wyłączającą dzielenie wyrazów w nagłówkach",
+        )
 
         margin = ttk.Frame(section)
         margin.pack(fill="x", pady=(6, 0))
         self.css_book_margin_toggle = Toggle(margin, text="Margines książki", value=False)
         self.css_book_margin_toggle.pack(side="left")
-        ttk.Spinbox(
+        Tooltip(
+            self.css_book_margin_toggle.checkbutton,
+            "Wstrzykuje margines strony (w px) z pola obok",
+        )
+        self.margin_spinbox = ttk.Spinbox(
             margin,
             from_=0,
             to=120,
             increment=1,
             textvariable=self.css_margin_px_var,
             width=5,
-        ).pack(side="left", padx=(6, 3))
+        )
+        self.margin_spinbox.pack(side="left", padx=(6, 3))
+        Tooltip(self.margin_spinbox, "Szerokość marginesu strony w pikselach (0-120)")
         ttk.Label(margin, text="px").pack(side="left")
 
     def _build_log(self, parent: tk.Misc) -> None:

@@ -69,6 +69,7 @@ class MetadataTab(ttk.Frame):
 
         self.folder_entry = PathEntry(browser, mode="dir", on_change=self._load_folder)
         self.folder_entry.pack(fill="x", pady=(0, 8))
+        Tooltip(self.folder_entry.entry, "Folder z plikami EPUB do edycji metadanych")
 
         self.file_list = FileList(browser, extensions={".epub"}, on_change=self._on_files_changed)
         self.file_list.pack(fill="both", expand=True)
@@ -81,14 +82,30 @@ class MetadataTab(ttk.Frame):
         form.columnconfigure(1, weight=1)
         form.rowconfigure(7, weight=1)
 
-        self._add_entry(form, "Tytuł", self.title_var, 0)
-        self.creators_text = self._add_text(form, "Autorzy", 1, height=3)
-        self._add_entry(form, "Język", self.language_var, 2)
-        self._add_entry(form, "Wydawca", self.publisher_var, 3)
-        self._add_entry(form, "Data", self.date_var, 4)
-        self._add_entry(form, "ISBN", self.identifier_var, 5)
-        self.subjects_text = self._add_text(form, "Tematy", 6, height=3)
-        self.description_text = self._add_text(form, "Opis", 7, height=7)
+        self._add_entry(form, "Tytuł", self.title_var, 0, tooltip="Tytuł książki (dc:title)")
+        self.creators_text = self._add_text(
+            form, "Autorzy", 1, height=3, tooltip="Autorzy — jeden na linię; format: Nazwisko, Imię"
+        )
+        self._add_entry(
+            form, "Język", self.language_var, 2, tooltip="Kod języka, np. pl, en (dc:language)"
+        )
+        self._add_entry(form, "Wydawca", self.publisher_var, 3, tooltip="Wydawca (dc:publisher)")
+        self._add_entry(
+            form, "Data", self.date_var, 4, tooltip="Data publikacji w formacie ISO: RRRR-MM-DD"
+        )
+        self._add_entry(
+            form,
+            "ISBN",
+            self.identifier_var,
+            5,
+            tooltip="Identyfikator: ISBN lub UUID (dc:identifier)",
+        )
+        self.subjects_text = self._add_text(
+            form, "Tematy", 6, height=3, tooltip="Tematy/tagi — jeden na linię (dc:subject)"
+        )
+        self.description_text = self._add_text(
+            form, "Opis", 7, height=7, tooltip="Opis/streszczenie książki (dc:description)"
+        )
 
         actions = ttk.Frame(form)
         actions.grid(row=8, column=0, columnspan=2, sticky="ew", pady=(10, 0))
@@ -96,6 +113,7 @@ class MetadataTab(ttk.Frame):
 
         save = ttk.Button(actions, text="Zapisz", command=self._save_metadata)
         save.grid(row=0, column=0, sticky="w")
+        Tooltip(save, "Zapisuje metadane do wybranego EPUB (tworzy kopię .bak)")
 
         tools_frame = ttk.Frame(actions)
         tools_frame.grid(row=0, column=1, sticky="e")
@@ -114,15 +132,21 @@ class MetadataTab(ttk.Frame):
         label: str,
         variable: tk.StringVar,
         row: int,
+        *,
+        tooltip: str = "",
     ) -> ttk.Entry:
-        """Dodaje podpisane pole tekstowe."""
+        """Dodaje podpisane pole tekstowe (z opcjonalnym tooltipem)."""
         ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", pady=3, padx=(0, 8))
         entry = ttk.Entry(parent, textvariable=variable)
         entry.grid(row=row, column=1, sticky="ew", pady=3)
+        if tooltip:
+            Tooltip(entry, tooltip)
         return entry
 
-    def _add_text(self, parent: tk.Misc, label: str, row: int, *, height: int) -> tk.Text:
-        """Dodaje podpisane pole wielowierszowe."""
+    def _add_text(
+        self, parent: tk.Misc, label: str, row: int, *, height: int, tooltip: str = ""
+    ) -> tk.Text:
+        """Dodaje podpisane pole wielowierszowe (z opcjonalnym tooltipem)."""
         ttk.Label(parent, text=label).grid(row=row, column=0, sticky="nw", pady=3, padx=(0, 8))
         frame = ttk.Frame(parent)
         frame.grid(row=row, column=1, sticky="nsew", pady=3)
@@ -134,6 +158,8 @@ class MetadataTab(ttk.Frame):
         text.configure(yscrollcommand=scroll.set)
         text.grid(row=0, column=0, sticky="nsew")
         scroll.grid(row=0, column=1, sticky="ns")
+        if tooltip:
+            Tooltip(text, tooltip)
         return text
 
     def _load_folder(self, raw_path: str) -> None:
