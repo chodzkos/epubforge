@@ -8,7 +8,6 @@ from typing import Literal
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
-    QFileDialog,
     QHBoxLayout,
     QLineEdit,
     QToolButton,
@@ -16,7 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 from epubforge.core.config import Config
-from epubforge.gui.theme import native_file_dialogs
+from epubforge.gui.dialogs import choose_directory, open_file, save_file
 
 PathMode = Literal["dir", "file", "save"]
 FileTypes = Sequence[tuple[str, str]]
@@ -86,21 +85,14 @@ class PathEntry(QWidget):
 
     def _browse(self) -> None:
         """Otwiera dialog wyboru ścieżki (natywny w trybie jasnym, Qt w ciemnym)."""
-        options = QFileDialog.Option(0)
-        if not native_file_dialogs():
-            options = QFileDialog.Option.DontUseNativeDialog
         title = _DIALOG_TITLES[self.mode]
         start_dir = self._start_dir()
         if self.mode == "dir":
-            path = QFileDialog.getExistingDirectory(self, title, start_dir, options=options)
+            path = choose_directory(self, title, start_dir)
         elif self.mode == "file":
-            path, _ = QFileDialog.getOpenFileName(
-                self, title, start_dir, self._filter(), options=options
-            )
+            path = open_file(self, title, start_dir, self._filter())
         else:
-            path, _ = QFileDialog.getSaveFileName(
-                self, title, start_dir, self._filter(), options=options
-            )
+            path = save_file(self, title, start_dir, self._filter())
         if path:
             self.set(path)
             self._remember(path)

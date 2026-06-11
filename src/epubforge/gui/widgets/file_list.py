@@ -8,7 +8,6 @@ from pathlib import Path
 from PySide6.QtCore import Signal
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
 from PySide6.QtWidgets import (
-    QFileDialog,
     QHBoxLayout,
     QLabel,
     QListWidget,
@@ -18,7 +17,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from epubforge.gui.theme import native_file_dialogs
+from epubforge.gui.dialogs import choose_directory, open_files
 
 DEFAULT_EXTENSIONS = {".epub", ".txt", ".md", ".markdown", ".docx", ".html", ".htm", ".pdf"}
 
@@ -161,21 +160,13 @@ class FileList(QWidget):
 
     def _add_files(self) -> None:
         """Dodaje pliki wybrane w dialogu."""
-        options = QFileDialog.Option(0)
-        if not native_file_dialogs():
-            options = QFileDialog.Option.DontUseNativeDialog
         pattern = " ".join(f"*{ext}" for ext in sorted(self.extensions))
-        paths, _ = QFileDialog.getOpenFileNames(
-            self, "Dodaj pliki", "", f"Obsługiwane ({pattern})", options=options
-        )
+        paths = open_files(self, "Dodaj pliki", f"Obsługiwane ({pattern})")
         self.add_files(Path(path) for path in paths)
 
     def _add_folder(self) -> None:
         """Dodaje obsługiwane pliki z wybranego katalogu (bez rekursji)."""
-        options = QFileDialog.Option(0)
-        if not native_file_dialogs():
-            options = QFileDialog.Option.DontUseNativeDialog
-        folder = QFileDialog.getExistingDirectory(self, "Dodaj folder", "", options=options)
+        folder = choose_directory(self, "Dodaj folder")
         if not folder:
             return
         self.add_files(path for path in Path(folder).iterdir() if path.is_file())
