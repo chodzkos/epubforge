@@ -3,28 +3,30 @@
 > Modern, modular toolkit for EPUB files — validate, fix, convert, hyphenate.
 
 [![Tests](https://github.com/chodzkos/epubforge/actions/workflows/test.yml/badge.svg)](https://github.com/chodzkos/epubforge/actions/workflows/test.yml)
+[![Build](https://github.com/chodzkos/epubforge/actions/workflows/build.yml/badge.svg)](https://github.com/chodzkos/epubforge/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/chodzkos/epubforge?sort=semver)](https://github.com/chodzkos/epubforge/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
 ---
 
-## 🚧 Status projektu
+## ✅ Status projektu
 
-> **Faza: alpha / development.** Projekt jest w trakcie budowy etapami zgodnie z [ROADMAP.md](ROADMAP.md).
-> Część funkcji opisanych poniżej jest **docelowa** — sprawdź tabelę poniżej, co już działa.
+> **Wersja 1.0 — wszystkie funkcje z [ROADMAP.md](ROADMAP.md) ukończone.**
 
 | Funkcja | Status |
 |---|---|
-| Klasa `Epub` (odczyt/zapis) | 🔜 planowane (Etap 1) |
-| Metadane Dublin Core | 🔜 planowane (Etap 2) |
-| Wykrywanie narzędzi | 🔜 planowane (Etap 3) |
-| Konwersja → EPUB | 🔜 planowane (Etap 4) |
-| Hyphenacja | 🔜 planowane (Etap 5) |
-| CSS Fixer | 🔜 planowane (Etap 6) |
-| KFX | 🔜 planowane (Etap 7) |
-| GUI | 🔜 planowane (Etap 8-12) |
+| Klasa `Epub` (odczyt/zapis) | ✅ |
+| Metadane Dublin Core (+ seria/tom) | ✅ |
+| Wykrywanie narzędzi | ✅ |
+| Konwersja → EPUB | ✅ |
+| Hyphenacja | ✅ |
+| CSS Fixer | ✅ |
+| KFX / MOBI / AZW3 | ✅ |
+| GUI (motyw jasny/ciemny) | ✅ |
+| Build: portable `.exe` + instalator | ✅ |
 
-*Status będzie aktualizowany w miarę postępu. Zobacz [CHANGELOG.md](CHANGELOG.md).*
+*Pełna historia zmian: [CHANGELOG.md](CHANGELOG.md).*
 
 ---
 
@@ -34,11 +36,11 @@
 - **⌨️ CLI** — `epubforge convert/fix/meta/kfx ...` z linii poleceń
 - **🖥️ GUI** — desktopowa aplikacja z motywem jasnym i ciemnym
 - **🔄 Konwersja** TXT / DOCX / HTML / MD / ODT / RTF / PDF → EPUB
-- **📚 KFX** — EPUB → KFX przez Calibre (zalecane) lub Kindle Previewer 3
+- **📚 Eksport Kindle** — EPUB → KFX / MOBI / AZW3 (Calibre zalecane; KP3/kindlegen opcjonalnie)
 - **✂️ Hyphenation** — dzielenie wyrazów dla 50+ języków
-- **🎨 CSS Fixer** — czyszczenie kolorów, fontów, justify
-- **🏷️ Metadata** — pełna edycja Dublin Core
-- **🔍 Auto-detekcja** — Pandoc, Calibre, Sigil, Kindle Previewer
+- **🎨 CSS Fixer** — czyszczenie kolorów, fontów, justify, marginesy
+- **🏷️ Metadata** — pełna edycja Dublin Core + seria/tom (Calibre i EPUB 3)
+- **🔍 Auto-detekcja** — Pandoc, Calibre, Sigil, Kindle Previewer, kindlegen
 
 ---
 
@@ -130,6 +132,25 @@ za ustawieniem systemu. Na Windows pasek tytułu również zmienia kolor.
 > ⚠️ Natywne okna systemowe **Otwórz/Zapisz** (filedialog) są rysowane przez
 > system i pozostają jasne niezależnie od motywu aplikacji — w czystym tkinter
 > nie da się tego prosto obejść.
+
+---
+
+## 📸 Zrzuty ekranu
+
+<!-- TODO: dodać zrzuty ekranu GUI (motyw jasny i ciemny). -->
+> _Zrzuty ekranu zostaną dodane._
+
+| Motyw jasny | Motyw ciemny |
+|---|---|
+| _(placeholder)_ | _(placeholder)_ |
+
+---
+
+## 📚 Dokumentacja
+
+- [Przewodnik użytkownika](docs/user-guide.md) — instalacja, GUI, CLI krok po kroku
+- [API reference](docs/api-reference.md) — użycie biblioteki w kodzie Python
+- [CHANGELOG](CHANGELOG.md) — historia zmian
 
 ---
 
