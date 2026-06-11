@@ -1,9 +1,10 @@
-"""Motyw aplikacji: ciemny (qdarktheme) i jasny (natywny styl Qt).
+"""Motyw aplikacji: ciemny i jasny — oba przez ``qdarktheme``.
 
-Zgodnie z GUI_STANDARD §4: tryb ciemny realizuje ``qdarktheme`` z akcentem
-marki, a tryb jasny **przywraca natywny styl Qt** (nie ``qdarktheme("light")``,
-który bywa „wyprany") wzbogacony o minimalny akcent. Role palety (§5) trzymamy
-w dataclassie :class:`Theme`, żeby widgety nie używały sztywnych hexów.
+Zgodnie z GUI_STANDARD §4 tryb ciemny i jasny realizuje ``qdarktheme`` z akcentem
+marki. Oba warianty korzystają z tego samego generatora arkusza stylów (styl
+Fusion + spójne metryki), więc przełączanie zmienia wyłącznie kolory, a NIE
+rozmiary/odstępy/położenie kontrolek. Role palety (§5) trzymamy w dataclassie
+:class:`Theme`, żeby widgety nie używały sztywnych hexów.
 """
 
 from __future__ import annotations
@@ -14,7 +15,6 @@ from typing import Literal
 
 import qdarktheme
 from PySide6.QtCore import QObject, Qt, Signal
-from PySide6.QtGui import QColor, QPalette
 from PySide6.QtWidgets import QApplication
 
 from epubforge.core.config import Config
@@ -94,16 +94,6 @@ LIGHT = Theme(
     amber="#b25000",
 )
 
-# Minimalny akcent dla trybu jasnego (natywny styl + odrobina marki).
-_LIGHT_ACCENT_QSS = f"""
-QPushButton:default {{
-    border: 1px solid {LIGHT.accent2};
-}}
-QTabBar::tab:selected {{
-    color: {LIGHT.accent2};
-}}
-"""
-
 # Bieżący motyw — odczytywany przez widgety budowane dynamicznie (log, tooltipy
 # kolorów, wybór natywnego/ciemnego dialogu plików). Ustawiany przez ThemeManager.
 _current_theme: Theme = DARK
@@ -138,11 +128,6 @@ class ThemeManager(QObject):
         self._config = config
         self._setting: ThemeSetting = self._initial_setting()
         self._theme: Theme = DARK
-
-        # Zapamiętaj natywny styl PRZED pierwszą zmianą (pułapka „wyprany light").
-        self._native_style_name = app.style().objectName()
-        self._native_palette = QPalette(app.palette())
-        self._native_stylesheet = app.styleSheet()
 
         # Reakcja na zmianę motywu systemowego w locie (tania) — tylko gdy auto.
         app.styleHints().colorSchemeChanged.connect(self._on_system_scheme_changed)
@@ -195,14 +180,13 @@ class ThemeManager(QObject):
         qdarktheme.setup_theme("dark", custom_colors={"primary": PRIMARY})
 
     def _apply_light(self) -> None:
-        """Przywraca natywny styl Qt i dokłada minimalny akcent marki."""
-        if self._native_style_name:
-            self._app.setStyle(self._native_style_name)
-        palette = QPalette(self._native_palette)
-        palette.setColor(QPalette.ColorRole.Highlight, QColor(LIGHT.accent2))
-        palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#ffffff"))
-        self._app.setPalette(palette)
-        self._app.setStyleSheet(self._native_stylesheet + _LIGHT_ACCENT_QSS)
+        """Stosuje jasny motyw qdarktheme z akcentem marki.
+
+        Świadomie używamy ``qdarktheme`` (a nie natywnego stylu), żeby metryki
+        kontrolek były identyczne jak w trybie ciemnym — przełączanie zmienia
+        tylko kolory, bez przeskoków rozmiaru/odstępów.
+        """
+        qdarktheme.setup_theme("light", custom_colors={"primary": PRIMARY_DARK})
 
     def _on_system_scheme_changed(self, _scheme: Qt.ColorScheme) -> None:
         """Gdy zmienia się motyw systemu, odśwież w trybie auto."""

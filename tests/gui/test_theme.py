@@ -40,7 +40,7 @@ def test_apply_dark_sets_theme_and_persists(qapp: QApplication) -> None:
     assert emitted == [DARK]
 
 
-def test_apply_light_uses_native_style_and_signal(qapp: QApplication) -> None:
+def test_apply_light_sets_theme_and_native_dialogs(qapp: QApplication) -> None:
     """Tryb jasny ustawia motyw LIGHT i pozwala na natywne dialogi plików."""
     config: dict[str, object] = {}
     manager = ThemeManager(qapp, config)
