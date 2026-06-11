@@ -524,13 +524,26 @@ Zobacz `REUSABLE_CODE.md` sekcja **Widgets** — gotowe klasy do skopiowania.
 
 **Gałąź:** `feature/stage-13-build`  
 **Czas:** ~1 godzina  
-**Cel:** PyInstaller `.spec`, ikona, GitHub Actions Release.
+**Cel:** PyInstaller `.spec` (portable + onedir), ikona, instalator Inno Setup, GitHub Actions Release.
 
 ### Co powstanie
-- `build/epubforge.spec` (PyInstaller)
-- `build/create_icon.py` (generator z Pillow)
-- `build/build.bat` (lokalny Windows)
-- `.github/workflows/build.yml` (GitHub Actions Release)
+- `build/epubforge-portable.spec` — PyInstaller `--onefile` (jeden `epubforge.exe`)
+- `build/epubforge-dir.spec` — PyInstaller `--onedir` (folder pod instalator)
+- `build/installer.iss` — skrypt Inno Setup (instalator z menu Start, „Dodaj/usuń programy")
+- `build/create_icon.py` — generator placeholderowej `icon.ico` (Pillow)
+- `build/build.bat` — lokalny build obu wariantów + instalatora (Windows)
+- `.github/workflows/build.yml` — Release przy tagu `v*` z OBOMA plikami
+- `src/epubforge/gui/assets/` — miejsce na dostarczane później `logo.png` / `icon.ico`
+
+### Dwa warianty dystrybucji
+- **Portable** — `epubforge.exe`, jeden plik, bez instalacji.
+- **Instalator** — `epubforge-setup.exe` (Inno Setup): skrót w menu Start, opcjonalnie na
+  pulpicie, wpis w „Dodaj/usuń programy", licencja MIT, katalog `{autopf}\EpubForge`.
+
+### Assety (dostarczane później)
+Kod ładuje `logo.png` (zakładka About, przez `sys._MEIPASS` w bundlu) i `icon.ico`
+(spec/instalator), jeśli istnieją. Gdy `icon.ico` brak — `create_icon.py` generuje
+placeholder. Podmiana plików w `assets/` nie wymaga zmian w kodzie ani spec-ach.
 
 ### Pułapki techniczne (z poprzedniego projektu!)
 **DLL conflict** — `python311.dll` z PyInstaller vs Python użytkownika. Rozwiązanie: izoluj pliki w podkatalogu, ustaw `sys.path[0]` tak, by NIE wskazywał na `_MEIPASS` przy wywołaniach subprocess.
@@ -544,10 +557,11 @@ datas += [(tkdnd_dir, 'tkinterdnd2/tkdnd')]
 ```
 
 ### Kryteria akceptacji
-- [ ] Lokalny `build.bat` produkuje `.exe`
+- [ ] Lokalny `build.bat` produkuje `epubforge.exe` (portable) i `epubforge-setup.exe` (instalator)
 - [ ] `.exe` otwiera się i działają wszystkie zakładki
 - [ ] **Drag & drop działa w `.exe`** (test: przeciągnij plik na okno)
-- [ ] GitHub Actions buduje przy tagu `v*`
+- [ ] Instalator tworzy skrót w menu Start i wpis w „Dodaj/usuń programy"
+- [ ] GitHub Actions przy tagu `v*` dołącza do Release oba pliki
 
 ---
 

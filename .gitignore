@@ -6,7 +6,6 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-build/
 develop-eggs/
 dist/
 downloads/
@@ -24,8 +23,11 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# PyInstaller
+# PyInstaller — build/ to katalog commitowanych skryptów; ignorujemy tylko artefakty
 *.spec.bak
+build/dist/
+build/build-tmp/
+build/icon.ico
 
 # Installer logs
 pip-log.txt
