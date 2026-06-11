@@ -46,7 +46,7 @@ Powód: największy ból tkinter (jasne natywne dialogi i menu w trybie ciemnym)
 | Projekt | Tor | Uzasadnienie |
 |---|---|---|
 | IcoForge | Qt | dopracowany motyw, edytor pikseli, bogate UI |
-| EpubForge | tkinter (rozważyć migrację po v1.0) | start jako lekkie narzędzie; ciemny motyw okazał się problematyczny |
+| EpubForge | Qt (migracja z tkinter po v1.0) | start jako lekkie narzędzie; ciemny motyw wymusił migrację na PySide6 |
 | Kolejne | domyślnie Qt | spójność, mniej walki z wyglądem |
 
 ---

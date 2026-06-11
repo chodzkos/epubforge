@@ -1,13 +1,28 @@
-"""Sekcja UI oparta o ttk.LabelFrame."""
+"""Sekcja UI oparta o ``QGroupBox`` z tytułem i wewnętrznym marginesem."""
 
 from __future__ import annotations
 
-import tkinter as tk
-from tkinter import ttk
+from PySide6.QtWidgets import QGroupBox, QVBoxLayout, QWidget
 
 
-class Section(ttk.LabelFrame):
-    """Opakowanie dla grupy powiązanych kontrolek."""
+class Section(QGroupBox):
+    """Opakowanie dla grupy powiązanych kontrolek (ramka z tytułem).
 
-    def __init__(self, parent: tk.Misc, title: str, padding: int = 10) -> None:
-        super().__init__(parent, text=title, padding=padding)
+    Tworzy wewnętrzny ``QVBoxLayout`` z marginesem zgodnym z GUI_STANDARD §5
+    (10-12 px). Treść dokładamy metodą :meth:`add_widget` lub przez
+    :meth:`content_layout`.
+    """
+
+    def __init__(self, title: str, parent: QWidget | None = None, padding: int = 12) -> None:
+        super().__init__(title, parent)
+        self._layout = QVBoxLayout(self)
+        self._layout.setContentsMargins(padding, padding, padding, padding)
+        self._layout.setSpacing(8)
+
+    def content_layout(self) -> QVBoxLayout:
+        """Zwraca wewnętrzny layout sekcji do ręcznego dokładania kontrolek."""
+        return self._layout
+
+    def add_widget(self, widget: QWidget) -> None:
+        """Dodaje widget do sekcji."""
+        self._layout.addWidget(widget)

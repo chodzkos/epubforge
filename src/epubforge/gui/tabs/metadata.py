@@ -1,20 +1,29 @@
-"""Zakładka edycji metadanych Dublin Core."""
+"""Zakładka edycji metadanych Dublin Core (Qt)."""
 
 from __future__ import annotations
 
 import subprocess
-import sys
-import tkinter as tk
 from collections.abc import Callable
 from math import isfinite
 from pathlib import Path
-from tkinter import messagebox, ttk
-from typing import Any, cast
+
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QFormLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPlainTextEdit,
+    QPushButton,
+    QSplitter,
+    QVBoxLayout,
+    QWidget,
+)
 
 from epubforge.core import Epub, EpubError, Metadata, Tool, Tools
-from epubforge.gui.widgets import FileList, PathEntry, Section, Tooltip
-
-_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
+from epubforge.gui.widgets import FileList, PathEntry, Section
+from epubforge.gui.workers import CREATE_NO_WINDOW
 
 _TOOL_LABELS = {
     "sigil": "Sigil",
@@ -23,180 +32,158 @@ _TOOL_LABELS = {
 }
 
 
-class MetadataTab(ttk.Frame):
+class MetadataTab(QWidget):
     """Zakładka do przeglądania i edycji metadanych EPUB."""
 
     def __init__(
         self,
-        parent: tk.Misc,
+        parent: QWidget | None = None,
         *,
         tools: dict[str, Tool] | None = None,
     ) -> None:
-        super().__init__(parent, padding=12)
+        super().__init__(parent)
         self.tools = tools if tools is not None else _detect_tools()
         self.current_path: Path | None = None
         self._loaded_metadata: Metadata | None = None
-        self.tool_buttons: dict[str, ttk.Button] = {}
-
-        self.title_var = tk.StringVar()
-        self.series_var = tk.StringVar()
-        self.series_index_var = tk.StringVar()
-        self.language_var = tk.StringVar(value="en")
-        self.publisher_var = tk.StringVar()
-        self.date_var = tk.StringVar()
-        self.identifier_var = tk.StringVar()
-        self.status_var = tk.StringVar(value="Wybierz plik EPUB")
+        self.tool_buttons: dict[str, QPushButton] = {}
 
         self._build_layout()
         self._refresh_tool_buttons()
 
     def _build_layout(self) -> None:
         """Buduje dwukolumnowy układ zakładki."""
-        panes = ttk.PanedWindow(self, orient="horizontal")
-        panes.pack(fill="both", expand=True)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(12, 12, 12, 12)
 
-        left = ttk.Frame(panes, padding=(0, 0, 10, 0))
-        right = ttk.Frame(panes)
-        panes.add(left, weight=1)
-        panes.add(right, weight=2)
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        outer.addWidget(splitter, stretch=1)
 
+        left = QWidget()
         self._build_file_browser(left)
+        right = QWidget()
         self._build_form(right)
+        splitter.addWidget(left)
+        splitter.addWidget(right)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 2)
 
-        status = ttk.Label(self, textvariable=self.status_var, style="Muted.TLabel")
-        status.pack(fill="x", pady=(10, 0))
+        self.status_label = QLabel("Wybierz plik EPUB")
+        outer.addWidget(self.status_label)
 
-    def _build_file_browser(self, parent: tk.Misc) -> None:
+    def _build_file_browser(self, parent: QWidget) -> None:
         """Buduje panel wyboru folderu i listy EPUB."""
-        browser = Section(parent, "Pliki EPUB")
-        browser.pack(fill="both", expand=True)
+        layout = QVBoxLayout(parent)
+        layout.setContentsMargins(0, 0, 10, 0)
+        browser = Section("Pliki EPUB")
+        layout.addWidget(browser)
 
-        self.folder_entry = PathEntry(browser, mode="dir", on_change=self._load_folder)
-        self.folder_entry.pack(fill="x", pady=(0, 8))
-        Tooltip(self.folder_entry.entry, "Folder z plikami EPUB do edycji metadanych")
+        self.folder_entry = PathEntry(mode="dir", placeholder="Folder z plikami EPUB")
+        self.folder_entry.entry.setToolTip("Folder z plikami EPUB do edycji metadanych")
+        self.folder_entry.path_changed.connect(self._load_folder)
+        browser.add_widget(self.folder_entry)
 
-        self.file_list = FileList(browser, extensions={".epub"}, on_change=self._on_files_changed)
-        self.file_list.pack(fill="both", expand=True)
-        self.file_list.listbox.bind("<<ListboxSelect>>", self._on_file_selected)
+        self.file_list = FileList(extensions={".epub"})
+        self.file_list.files_changed.connect(self._on_files_changed)
+        self.file_list.selection_changed.connect(self._on_file_selected)
+        browser.add_widget(self.file_list)
 
-    def _build_form(self, parent: tk.Misc) -> None:
+    def _build_form(self, parent: QWidget) -> None:
         """Buduje formularz metadanych i przyciski akcji."""
-        form = Section(parent, "Metadane Dublin Core")
-        form.pack(fill="both", expand=True)
-        form.columnconfigure(1, weight=1)
-        form.rowconfigure(8, weight=1)
+        layout = QVBoxLayout(parent)
+        layout.setContentsMargins(0, 0, 0, 0)
+        form_section = Section("Metadane Dublin Core")
+        layout.addWidget(form_section, stretch=1)
 
-        self._add_entry(form, "Tytuł", self.title_var, 0, tooltip="Tytuł książki (dc:title)")
-        self._add_series_row(form, 1)
-        self.creators_text = self._add_text(
-            form, "Autorzy", 2, height=3, tooltip="Autorzy — jeden na linię; format: Nazwisko, Imię"
-        )
-        self._add_entry(
-            form, "Język", self.language_var, 3, tooltip="Kod języka, np. pl, en (dc:language)"
-        )
-        self._add_entry(form, "Wydawca", self.publisher_var, 4, tooltip="Wydawca (dc:publisher)")
-        self._add_entry(
-            form, "Data", self.date_var, 5, tooltip="Data publikacji w formacie ISO: RRRR-MM-DD"
-        )
-        self._add_entry(
-            form,
-            "ISBN",
-            self.identifier_var,
-            6,
-            tooltip="Identyfikator: ISBN lub UUID (dc:identifier)",
-        )
-        self.subjects_text = self._add_text(
-            form, "Tematy", 7, height=3, tooltip="Tematy/tagi — jeden na linię (dc:subject)"
-        )
-        self.description_text = self._add_text(
-            form, "Opis", 8, height=7, tooltip="Opis/streszczenie książki (dc:description)"
-        )
+        form = QFormLayout()
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        form_section.content_layout().addLayout(form)
 
-        actions = ttk.Frame(form)
-        actions.grid(row=9, column=0, columnspan=2, sticky="ew", pady=(10, 0))
-        actions.columnconfigure(0, weight=1)
+        self.title_edit = self._line_edit("Tytuł książki (dc:title)")
+        form.addRow("Tytuł", self.title_edit)
+        form.addRow("Cykl", self._build_series_row())
+        self.creators_edit = self._text_edit(
+            "Autorzy — jeden na linię; format: Nazwisko, Imię", height=3
+        )
+        form.addRow("Autorzy", self.creators_edit)
+        self.language_edit = self._line_edit("Kod języka, np. pl, en (dc:language)")
+        self.language_edit.setText("en")
+        form.addRow("Język", self.language_edit)
+        self.publisher_edit = self._line_edit("Wydawca (dc:publisher)")
+        form.addRow("Wydawca", self.publisher_edit)
+        self.date_edit = self._line_edit("Data publikacji w formacie ISO: RRRR-MM-DD")
+        form.addRow("Data", self.date_edit)
+        self.identifier_edit = self._line_edit("Identyfikator: ISBN lub UUID (dc:identifier)")
+        form.addRow("ISBN", self.identifier_edit)
+        self.subjects_edit = self._text_edit("Tematy/tagi — jeden na linię (dc:subject)", height=3)
+        form.addRow("Tematy", self.subjects_edit)
+        self.description_edit = self._text_edit(
+            "Opis/streszczenie książki (dc:description)", height=7
+        )
+        form.addRow("Opis", self.description_edit)
 
-        save = ttk.Button(actions, text="Zapisz", command=self._save_metadata)
-        save.grid(row=0, column=0, sticky="w")
-        Tooltip(save, "Zapisuje metadane do wybranego EPUB (tworzy kopię .bak)")
+        form_section.content_layout().addLayout(self._build_actions())
 
-        tools_frame = ttk.Frame(actions)
-        tools_frame.grid(row=0, column=1, sticky="e")
+    def _build_series_row(self) -> QWidget:
+        """Buduje wiersz z nazwą cyklu i numerem tomu."""
+        widget = QWidget()
+        row = QHBoxLayout(widget)
+        row.setContentsMargins(0, 0, 0, 0)
+        self.series_edit = self._line_edit("Nazwa cyklu/serii, np. Wiedźmin")
+        row.addWidget(self.series_edit, stretch=1)
+        label = QLabel("Tom nr:")
+        row.addWidget(label)
+        self.series_index_edit = QLineEdit()
+        self.series_index_edit.setToolTip("Numer tomu w cyklu, np. 2 (można 1.5)")
+        self.series_index_edit.setMaximumWidth(80)
+        row.addWidget(self.series_index_edit)
+        return widget
+
+    def _build_actions(self) -> QHBoxLayout:
+        """Buduje pasek akcji: Zapisz po lewej, narzędzia po prawej."""
+        actions = QHBoxLayout()
+        save = QPushButton("Zapisz")
+        save.setToolTip("Zapisuje metadane do wybranego EPUB")
+        save.clicked.connect(self._save_metadata)
+        actions.addWidget(save)
+        actions.addStretch(1)
         for key, label in _TOOL_LABELS.items():
-            button = ttk.Button(
-                tools_frame,
-                text=label,
-                command=_make_external_callback(self, key, label),
-            )
-            button.pack(side="left", padx=(6, 0))
+            button = QPushButton(label)
+            button.clicked.connect(_make_external_callback(self, key, label))
+            actions.addWidget(button)
             self.tool_buttons[key] = button
+        return actions
 
-    def _add_entry(
-        self,
-        parent: tk.Misc,
-        label: str,
-        variable: tk.StringVar,
-        row: int,
-        *,
-        tooltip: str = "",
-    ) -> ttk.Entry:
-        """Dodaje podpisane pole tekstowe (z opcjonalnym tooltipem)."""
-        ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", pady=3, padx=(0, 8))
-        entry = ttk.Entry(parent, textvariable=variable)
-        entry.grid(row=row, column=1, sticky="ew", pady=3)
-        if tooltip:
-            Tooltip(entry, tooltip)
-        return entry
+    def _line_edit(self, tooltip: str) -> QLineEdit:
+        """Tworzy jednolinijkowe pole z tooltipem."""
+        edit = QLineEdit()
+        edit.setToolTip(tooltip)
+        return edit
 
-    def _add_series_row(self, parent: tk.Misc, row: int) -> None:
-        """Dodaje pola cyklu i numeru tomu w jednym wierszu."""
-        ttk.Label(parent, text="Cykl:").grid(row=row, column=0, sticky="w", pady=3, padx=(0, 8))
-        frame = ttk.Frame(parent)
-        frame.grid(row=row, column=1, sticky="ew", pady=3)
-        frame.columnconfigure(0, weight=1)
+    def _text_edit(self, tooltip: str, *, height: int) -> QPlainTextEdit:
+        """Tworzy wielowierszowe pole o przybliżonej wysokości w liniach."""
+        edit = QPlainTextEdit()
+        edit.setToolTip(tooltip)
+        edit.setTabChangesFocus(True)
+        line_height = edit.fontMetrics().lineSpacing()
+        edit.setFixedHeight(line_height * height + 12)
+        return edit
 
-        series_entry = ttk.Entry(frame, textvariable=self.series_var)
-        series_entry.grid(row=0, column=0, sticky="ew")
-        Tooltip(series_entry, "Nazwa cyklu/serii, np. Wiedźmin")
-
-        ttk.Label(frame, text="Tom nr:").grid(row=0, column=1, sticky="w", padx=(12, 6))
-        series_index_entry = ttk.Entry(frame, textvariable=self.series_index_var, width=10)
-        series_index_entry.grid(row=0, column=2, sticky="w")
-        Tooltip(series_index_entry, "Numer tomu w cyklu, np. 2 (można 1.5)")
-
-    def _add_text(
-        self, parent: tk.Misc, label: str, row: int, *, height: int, tooltip: str = ""
-    ) -> tk.Text:
-        """Dodaje podpisane pole wielowierszowe (z opcjonalnym tooltipem)."""
-        ttk.Label(parent, text=label).grid(row=row, column=0, sticky="nw", pady=3, padx=(0, 8))
-        frame = ttk.Frame(parent)
-        frame.grid(row=row, column=1, sticky="nsew", pady=3)
-        frame.columnconfigure(0, weight=1)
-        frame.rowconfigure(0, weight=1)
-
-        text = tk.Text(frame, height=height, wrap="word", undo=True)
-        scroll = ttk.Scrollbar(frame, orient="vertical", command=text.yview)
-        text.configure(yscrollcommand=scroll.set)
-        text.grid(row=0, column=0, sticky="nsew")
-        scroll.grid(row=0, column=1, sticky="ns")
-        if tooltip:
-            Tooltip(text, tooltip)
-        return text
+    # ── Logika ────────────────────────────────────────────────────────────────
 
     def _load_folder(self, raw_path: str) -> None:
         """Wczytuje EPUB-y z podanego folderu do listy plików."""
-        path = Path(raw_path).expanduser()
         if not raw_path:
             return
+        path = Path(raw_path).expanduser()
         if not path.is_dir():
-            self.status_var.set("Wybrany folder nie istnieje")
+            self._set_status("Wybrany folder nie istnieje")
             return
         self.current_path = None
         self._clear_form()
         self.file_list.clear()
         self.file_list.add_files(sorted(path.glob("*.epub")))
         count = len(self.file_list.files())
-        self.status_var.set(f"Wczytano {count} {_plural_files(count)} EPUB")
+        self._set_status(f"Wczytano {count} {_plural_files(count)} EPUB")
 
     def _on_files_changed(self, files: list[Path]) -> None:
         """Czyści wybór lub automatycznie ładuje pierwszy plik z listy."""
@@ -205,22 +192,12 @@ class MetadataTab(ttk.Frame):
         self.current_path = None
         self._clear_form()
         if files:
-            self.file_list.listbox.selection_clear(0, "end")
-            self.file_list.listbox.selection_set(0)
-            self.file_list.listbox.activate(0)
-            self._load_metadata(files[0])
+            self.file_list.select_first()
 
-    def _on_file_selected(self, _event: tk.Event[Any] | None = None) -> None:
+    def _on_file_selected(self, path: Path | None) -> None:
         """Ładuje metadane zaznaczonego pliku."""
-        listbox = cast(Any, self.file_list.listbox)
-        selection = tuple(int(index) for index in listbox.curselection())
-        if not selection:
-            return
-        files = self.file_list.files()
-        index = selection[0]
-        if index >= len(files):
-            return
-        self._load_metadata(files[index])
+        if path is not None:
+            self._load_metadata(path)
 
     def _load_metadata(self, path: Path) -> None:
         """Czyta metadane z EPUB i wypełnia formularz."""
@@ -228,47 +205,47 @@ class MetadataTab(ttk.Frame):
             with Epub(path) as epub:
                 metadata = epub.metadata
         except (EpubError, OSError, KeyError) as exc:
-            self.status_var.set(f"Nie udało się wczytać metadanych: {exc}")
-            messagebox.showerror("Metadane", f"Nie udało się wczytać metadanych:\n{exc}")
+            self._set_status(f"Nie udało się wczytać metadanych: {exc}")
+            QMessageBox.critical(self, "Metadane", f"Nie udało się wczytać metadanych:\n{exc}")
             return
         self.current_path = path
         self._loaded_metadata = metadata
         self._set_form(metadata)
-        self.status_var.set(f"Wczytano metadane: {path.name}")
+        self._set_status(f"Wczytano metadane: {path.name}")
 
     def _save_metadata(self) -> None:
         """Zapisuje metadane do aktualnego EPUB przez setter Epub.metadata."""
         if self.current_path is None:
-            self.status_var.set("Wybierz plik EPUB przed zapisem")
+            self._set_status("Wybierz plik EPUB przed zapisem")
             return
         metadata = self._metadata_from_form()
         try:
             with Epub(self.current_path) as epub:
                 epub.metadata = metadata
         except (EpubError, OSError, KeyError) as exc:
-            self.status_var.set(f"Nie udało się zapisać metadanych: {exc}")
-            messagebox.showerror("Metadane", f"Nie udało się zapisać metadanych:\n{exc}")
+            self._set_status(f"Nie udało się zapisać metadanych: {exc}")
+            QMessageBox.critical(self, "Metadane", f"Nie udało się zapisać metadanych:\n{exc}")
             return
         self._loaded_metadata = metadata
-        self.status_var.set(f"Zapisano metadane: {self.current_path.name}")
+        self._set_status(f"Zapisano metadane: {self.current_path.name}")
 
     def _open_external(self, key: str, label: str) -> None:
         """Uruchamia zewnętrzny edytor/podgląd dla aktualnego EPUB."""
         tool = self.tools.get(key)
         if tool is None or not tool.available or tool.path is None:
-            self.status_var.set(f"Nie wykryto {label}")
+            self._set_status(f"Nie wykryto {label}")
             return
         if self.current_path is None:
-            self.status_var.set("Wybierz plik EPUB")
+            self._set_status("Wybierz plik EPUB")
             return
         try:
             subprocess.Popen(
                 [str(tool.path), str(self.current_path)],
-                creationflags=_NO_WINDOW,
+                creationflags=CREATE_NO_WINDOW,
             )
         except OSError as exc:
-            self.status_var.set(f"Nie udało się uruchomić {label}: {exc}")
-            messagebox.showerror(label, f"Nie udało się uruchomić programu:\n{exc}")
+            self._set_status(f"Nie udało się uruchomić {label}: {exc}")
+            QMessageBox.critical(self, label, f"Nie udało się uruchomić programu:\n{exc}")
 
     def _refresh_tool_buttons(self) -> None:
         """Aktualizuje stan przycisków narzędzi zewnętrznych."""
@@ -276,39 +253,38 @@ class MetadataTab(ttk.Frame):
             button = self.tool_buttons[key]
             tool = self.tools.get(key)
             if tool is not None and tool.available and tool.path is not None:
-                button.state(["!disabled"])
-                Tooltip(button, str(tool.path))
+                button.setEnabled(True)
+                button.setToolTip(str(tool.path))
             else:
-                button.state(["disabled"])
-                Tooltip(button, f"Nie wykryto {label}")
+                button.setEnabled(False)
+                button.setToolTip(f"Nie wykryto {label}")
 
     def _set_form(self, metadata: Metadata) -> None:
         """Przepisuje obiekt Metadata do pól formularza."""
-        self.title_var.set(metadata.title)
-        self.series_var.set(metadata.series)
-        self.series_index_var.set(_format_series_index(metadata.series_index))
-        self.language_var.set(metadata.language)
-        self.publisher_var.set(metadata.publisher)
-        self.date_var.set(metadata.date)
-        self.identifier_var.set(metadata.identifier)
-        _set_text(self.creators_text, "\n".join(metadata.creators))
-        _set_text(self.subjects_text, "\n".join(metadata.subjects))
-        _set_text(self.description_text, metadata.description)
+        self.title_edit.setText(metadata.title)
+        self.series_edit.setText(metadata.series)
+        self.series_index_edit.setText(_format_series_index(metadata.series_index))
+        self.language_edit.setText(metadata.language)
+        self.publisher_edit.setText(metadata.publisher)
+        self.date_edit.setText(metadata.date)
+        self.identifier_edit.setText(metadata.identifier)
+        self.creators_edit.setPlainText("\n".join(metadata.creators))
+        self.subjects_edit.setPlainText("\n".join(metadata.subjects))
+        self.description_edit.setPlainText(metadata.description)
 
     def _metadata_from_form(self) -> Metadata:
         """Buduje Metadata z aktualnych wartości formularza."""
-        series_index = self._series_index_from_form()
         return Metadata(
-            title=self.title_var.get().strip(),
-            creators=_split_lines(_get_text(self.creators_text)),
-            language=self.language_var.get().strip() or "en",
-            identifier=self.identifier_var.get().strip(),
-            publisher=self.publisher_var.get().strip(),
-            date=self.date_var.get().strip(),
-            description=_get_text(self.description_text).strip(),
-            subjects=_split_lines(_get_text(self.subjects_text)),
-            series=self.series_var.get().strip(),
-            series_index=series_index,
+            title=self.title_edit.text().strip(),
+            creators=_split_lines(self.creators_edit.toPlainText()),
+            language=self.language_edit.text().strip() or "en",
+            identifier=self.identifier_edit.text().strip(),
+            publisher=self.publisher_edit.text().strip(),
+            date=self.date_edit.text().strip(),
+            description=self.description_edit.toPlainText().strip(),
+            subjects=_split_lines(self.subjects_edit.toPlainText()),
+            series=self.series_edit.text().strip(),
+            series_index=self._series_index_from_form(),
         )
 
     def _clear_form(self) -> None:
@@ -318,7 +294,7 @@ class MetadataTab(ttk.Frame):
 
     def _series_index_from_form(self) -> float | None:
         """Parsuje numer tomu, łagodnie ignorując niepoprawną wartość."""
-        raw_value = self.series_index_var.get().strip()
+        raw_value = self.series_index_edit.text().strip()
         if not raw_value:
             return None
         try:
@@ -332,12 +308,17 @@ class MetadataTab(ttk.Frame):
     def _warn_invalid_series_index(self) -> float | None:
         """Pokazuje ostrzeżenie i zachowuje poprzedni numer tomu."""
         previous = self._loaded_metadata.series_index if self._loaded_metadata is not None else None
-        self.status_var.set("Tom nr nie jest liczbą; zapisano pozostałe metadane")
-        messagebox.showwarning(
+        self._set_status("Tom nr nie jest liczbą; zapisano pozostałe metadane")
+        QMessageBox.warning(
+            self,
             "Metadane",
             "Pole „Tom nr” musi być liczbą, np. 2 albo 1.5. Ta wartość nie zostanie zmieniona.",
         )
         return previous
+
+    def _set_status(self, text: str) -> None:
+        """Ustawia tekst paska statusu zakładki."""
+        self.status_label.setText(text)
 
 
 def _detect_tools() -> dict[str, Tool]:
@@ -349,28 +330,13 @@ def _detect_tools() -> dict[str, Tool]:
     }
 
 
-def _make_external_callback(
-    tab: MetadataTab,
-    key: str,
-    label: str,
-) -> Callable[[], None]:
+def _make_external_callback(tab: MetadataTab, key: str, label: str) -> Callable[[], None]:
     """Tworzy callback bez późnego wiązania zmiennych pętli."""
 
     def callback() -> None:
         tab._open_external(key, label)
 
     return callback
-
-
-def _get_text(widget: tk.Text) -> str:
-    """Zwraca zawartość pola Text bez końcowego znaku nowej linii."""
-    return widget.get("1.0", "end-1c")
-
-
-def _set_text(widget: tk.Text, value: str) -> None:
-    """Ustawia zawartość pola Text."""
-    widget.delete("1.0", "end")
-    widget.insert("1.0", value)
 
 
 def _format_series_index(value: float | None) -> str:

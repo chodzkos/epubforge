@@ -7,13 +7,11 @@ import sys
 
 _REQUIRED_MODULES = {
     "PyInstaller": "pyinstaller",
-    "PIL": "Pillow",
-    "darkdetect": "darkdetect",
+    "PySide6.QtWidgets": "PySide6",
+    "qdarktheme": "pyqtdarktheme-fork",
     "lxml.etree": "lxml",
     "pyphen": "pyphen",
     "tinycss2": "tinycss2",
-    "tkinter": "tkinter",
-    "tkinterdnd2": "tkinterdnd2",
 }
 
 
@@ -42,7 +40,7 @@ def main() -> int:
         print('Uruchom z katalogu repo Pythonem 3.10+: python -m pip install -e ".[build,gui]"')
         return 1
 
-    # Import aplikacji łapie zależności ukryte w modułach GUI, np. darkdetect.
+    # Import aplikacji łapie zależności ukryte w modułach GUI (np. qdarktheme).
     importlib.import_module("epubforge.gui.app")
     print("[OK] Srodowisko buildu zawiera wymagane zaleznosci.")
     return 0

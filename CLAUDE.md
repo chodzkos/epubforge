@@ -59,12 +59,12 @@ Licencja: MIT
 | Element | Wybór | Wersja |
 |---|---|---|
 | Python | 3.10+ | match statements, type hints |
-| GUI | tkinter | wbudowany w Pythona |
+| GUI | PySide6 (Qt) | motyw ciemny przez qdarktheme |
 | XML/HTML | lxml | szybki, robust |
 | CSS | tinycss2 | nowoczesny parser (NIE cssutils) |
 | Hyphenation | pyphen | 50+ języków |
-| Drag&Drop | tkinterdnd2 | opcjonalne |
-| Obrazy | Pillow | dla ikon |
+| Drag&Drop | PySide6 (natywne) | bez tkinterdnd2 |
+| Obrazy | Pillow | tylko build (generator ikony) |
 | Packaging | hatchling + pyproject.toml | nowoczesny |
 | Test | pytest + pytest-cov | standard |
 | Lint | ruff | szybki, all-in-one |
@@ -86,7 +86,7 @@ Skrypt:
 1. wybiera Pythona 3.10+ (`py -3.12`, `py -3.11`, `py -3.10`, a dopiero potem
    `python`),
 2. instaluje projekt z dodatkami `build,gui`, żeby PyInstaller widział m.in.
-   `darkdetect`, `tkinterdnd2` i Pillow,
+   `PySide6`, `qdarktheme` i Pillow,
 3. sprawdza środowisko przez `build/check_build_env.py`,
 4. buduje `build\dist\epubforge.exe` (portable),
 5. buduje `build\dist\epubforge\` (onedir pod instalator),
@@ -182,14 +182,17 @@ for kfx_file in temp_outdir.rglob("*.kfx"):
 **WAŻNE:** Główny silnik to **Calibre + wtyczka KFX Output** (sprawdzony, mniej wrażliwy na formatowanie).  
 Kindle Previewer 3 jest **EXPERIMENTAL** — wrażliwy na nieidealne formatowanie EPUB. Zawsze oznaczaj jako "experimental" w UI.
 
-### 6. tkinter w testach na Linux CI
+### 6. Qt w testach na Linux CI (headless)
 **Problem:** Brak displayu w GitHub Actions Ubuntu runner.
 
-**Rozwiązanie:**
+**Rozwiązanie:** platforma `offscreen` Qt (bez xvfb) + biblioteki systemowe Qt:
 ```yaml
-- run: sudo apt-get install -y xvfb
-- run: xvfb-run -a pytest tests/gui/
+- run: sudo apt-get install -y libegl1 libxkbcommon0 libdbus-1-3
+- env: { QT_QPA_PLATFORM: offscreen }
+  run: pytest
 ```
+`QT_QPA_PLATFORM` ustaw w `tests/gui/conftest.py` PRZED utworzeniem `QApplication`.
+Testy używają `pytest-qt` (fixtures `qtbot`, `qapp`).
 
 ### 7. Czysty subprocess na Windows
 **Problem:** Subprocess otwiera czarne okno CMD podczas konwersji.
@@ -201,20 +204,18 @@ FLAGS = 0x08000000 if sys.platform == "win32" else 0  # CREATE_NO_WINDOW
 subprocess.run(cmd, creationflags=FLAGS, ...)
 ```
 
-### 8. tkinterdnd2 — opcjonalna zależność
-**Problem:** Drag&drop wymaga `tkinterdnd2`, ale niektórzy użytkownicy mogą nie mieć.
+### 8. Drag&drop w Qt — natywny, ale wątki to pułapka
+**Drag&drop:** w PySide6 jest wbudowany (`setAcceptDrops(True)` + `dropEvent`),
+bez zewnętrznej zależności i bez binariów `tkdnd` w buildzie.
 
-**Rozwiązanie:**
-```python
-try:
-    from tkinterdnd2 import DND_FILES, TkinterDnD
-    HAS_DND = True
-except ImportError:
-    HAS_DND = False
-# W kodzie warunek - jeśli HAS_DND to rejestruj D&D, inaczej nie
-```
+**ŻELAZNA ZASADA wątków Qt:** nigdy nie dotykaj widgetów z `QThread`. Worker tylko
+emituje sygnały (`line`, `progress`, `done`, `failed`), GUI je odbiera w głównym
+wątku. `winId()` pobieraj wyłącznie w `showEvent`; przekazuj `int(window.winId())`
+do ctypes. `QFileDialog.getOpenFileNames` zwraca krotkę `(list, filter)`.
 
-**Dodatkowo przy PyInstaller:** `tkinterdnd2` dołącza natywne binaria `tkdnd`, których PyInstaller domyślnie nie pakuje → `.exe` wywala się z `can't find package tkdnd`. W `.spec` trzeba jawnie dodać katalog `tkdnd` do `datas` (lub `--collect-all tkinterdnd2`).
+**PyInstaller:** zasoby `qdarktheme` (svg/json) dopinaj przez
+`collect_data_files("qdarktheme")`; ciężkie moduły Qt (WebEngine, Quick, Qml,
+Multimedia…) wykluczaj w `.spec`, żeby build nie spuchł.
 
 ### 9. Duże pliki EPUB — nie ładuj wszystkiego do RAM
 **Problem:** EPUB z grafiką/wideo może mieć 50-150 MB. Trzymanie całości w `dict[str, bytes]` zjada RAM przy batch processing.

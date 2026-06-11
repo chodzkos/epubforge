@@ -1,238 +1,157 @@
-"""Testy zakładki GUI konwersji do KFX."""
+"""Testy zakładki GUI eksportu do formatów Kindle (PySide6)."""
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
 
 import pytest
-
-if TYPE_CHECKING:
-    import tkinter as tk
-else:
-    tk = pytest.importorskip("tkinter")
+from pytestqt.qtbot import QtBot
 
 from epubforge.converters import ConversionResult, KfxOptions, MobiOptions
 from epubforge.core import Tool
 from epubforge.gui.tabs import kfx as kfx_module
-from epubforge.gui.tabs.kfx import KfxTab
+from epubforge.gui.tabs.kfx import KfxTab, _run_kfx_worker, _run_mobi_worker
 
 pytestmark = pytest.mark.gui
-
-
-@pytest.fixture
-def root() -> Iterator[tk.Tk]:
-    """Tworzy root tkinter albo pomija test, gdy środowisko nie ma display."""
-    try:
-        window = tk.Tk()
-    except tk.TclError as exc:
-        pytest.skip(f"Tk display unavailable: {exc}")
-    window.withdraw()
-    try:
-        yield window
-    finally:
-        window.destroy()
 
 
 def _tools() -> dict[str, Tool]:
     return {
         "calibre_ebook_convert": Tool(
-            "calibre_ebook_convert",
-            Path("/bin/ebook-convert"),
-            available=True,
+            "calibre_ebook_convert", Path("/bin/ebook-convert"), available=True
         ),
         "kindle_previewer": Tool("kindle_previewer", None, available=False),
     }
 
 
-def test_kfx_tab_creates_without_errors(root: tk.Tk) -> None:
-    """Zakładka tworzy się z Calibre jako domyślnym silnikiem."""
-    tab = KfxTab(root, tools=_tools())
-    tab.pack(fill="both", expand=True)
-    root.update_idletasks()
+def _select(group: object, prop: str, value: str) -> None:
+    for button in group.buttons():  # type: ignore[attr-defined]
+        if button.property(prop) == value:
+            button.setChecked(True)
 
-    assert tab.winfo_exists()
+
+def test_kfx_creates_with_calibre_default(qtbot: QtBot) -> None:
+    """Zakładka startuje z Calibre jako domyślnym silnikiem KFX."""
+    tab = KfxTab(tools=_tools())
+    qtbot.addWidget(tab)
     assert tab.file_list.files() == []
-    assert tab.engine_var.get() == "calibre"
-    assert tab.fix_epub_toggle.get() is True
-    assert tab.kp3_warning_text.winfo_manager() == ""
+    assert tab._kfx_engine() == "calibre"
+    assert tab.fix_epub_check.isChecked() is True
+    assert tab.kp3_warning.isHidden() is True
 
 
-def test_kfx_tab_builds_options_and_shows_kp3_warning(root: tk.Tk) -> None:
-    """Wybranie KP3 ustawia opcje i pokazuje pole tekstowe z poradami."""
-    tab = KfxTab(root, tools=_tools())
+def test_kfx_kp3_warning_and_options(qtbot: QtBot) -> None:
+    """Wybór KP3 buduje KfxOptions i pokazuje ostrzeżenie z poradami."""
+    tab = KfxTab(tools=_tools())
+    qtbot.addWidget(tab)
 
-    tab.engine_var.set("kindle-previewer")
-    tab.fix_epub_toggle.set(False)
-    tab._refresh_kp3_warning()
+    _select(tab.kfx_engine_group, "engine", "kindle-previewer")
+    tab.fix_epub_check.setChecked(False)
 
     opts = tab._build_options_obj()
-    warning = tab.kp3_warning_text.get("1.0", "end-1c")
-
     assert isinstance(opts, KfxOptions)
     assert opts.engine == "kindle-previewer"
     assert opts.fix_epub_first is False
-    assert tab.kp3_warning_text.winfo_manager() == "pack"
-    assert "niestandardowe fonty" in warning
-    assert "uprość CSS" in warning
+    assert tab.kp3_warning.isHidden() is False
+    assert "niestandardowe fonty" in tab.kp3_warning.text()
+    assert "uprość CSS" in tab.kp3_warning.text()
 
 
-def test_kfx_tab_empty_output_passes_none(
-    root: tk.Tk,
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Puste pole katalogu → worker dostaje None (zapis obok źródła)."""
-    calls: list[tuple[list[Path], Path | None, KfxOptions]] = []
+def test_kfx_format_switch_shows_mobi_engine(qtbot: QtBot) -> None:
+    """Wybór formatu MOBI pokazuje sekcję silnika MOBI i chowa KFX."""
+    tab = KfxTab(tools=_tools())
+    qtbot.addWidget(tab)
 
-    class ImmediateThread:
-        def __init__(self, *, target: Any, args: tuple[Any, ...], daemon: bool) -> None:
-            self.target = target
-            self.args = args
+    assert tab.kfx_engine_section.isHidden() is False
+    assert tab.mobi_engine_section.isHidden() is True
 
-        def start(self) -> None:
-            self.target(*self.args)
-
-    def fake_worker(
-        self: KfxTab, files: list[Path], target_dir: Path | None, options: KfxOptions
-    ) -> None:
-        calls.append((files, target_dir, options))
-
-    monkeypatch.setattr("epubforge.gui.tabs.kfx.threading.Thread", ImmediateThread)
-    monkeypatch.setattr(KfxTab, "_run_worker", fake_worker)
-
-    tab = KfxTab(root, tools=_tools())
-    tab.file_list.add_files([tmp_path / "book.epub"])
-    tab.output_dir.set("")  # wyczyść ewentualną podpowiedź
-    tab._run_conversion()
-
-    assert len(calls) == 1
-    assert calls[0][1] is None
+    _select(tab.format_group, "fmt", "mobi")
+    assert tab.mobi_engine_section.isHidden() is False
+    assert tab.kfx_engine_section.isHidden() is True
+    assert "MOBI" in tab.convert_button.text()
 
 
-def test_kfx_tab_prefills_output_from_first_file(root: tk.Tk, tmp_path: Path) -> None:
+def test_kfx_prefills_output_from_first_file(qtbot: QtBot, tmp_path: Path) -> None:
     """Dodanie pierwszego pliku podpowiada jego katalog, gdy pole puste."""
-    tab = KfxTab(root, tools=_tools())
+    tab = KfxTab(tools=_tools())
+    qtbot.addWidget(tab)
     book = tmp_path / "sub" / "book.epub"
     book.parent.mkdir()
     tab.file_list.add_files([book])
     assert tab.output_dir.get() == str(book.parent)
 
 
-def test_kfx_tab_init_prefills_from_config(root: tk.Tk) -> None:
+def test_kfx_init_prefills_from_config(qtbot: QtBot) -> None:
     """Zapamiętany katalog z configu jest podpowiadany na starcie."""
-    tab = KfxTab(root, tools=_tools(), config={"last_output_dir": "/remembered"})
+    tab = KfxTab(tools=_tools(), config={"last_output_dir": "/remembered"})
+    qtbot.addWidget(tab)
     assert tab.output_dir.get() == "/remembered"
 
 
-def test_kfx_tab_runs_conversion_in_worker(
-    root: tk.Tk,
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
+def test_kfx_run_button_starts_worker(
+    qtbot: QtBot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fake_worker: type
 ) -> None:
-    """Worker woła prawdziwe API to_kfx przez import modułu dla każdego pliku."""
-    calls: list[tuple[Path, Path, KfxOptions]] = []
+    """Klik startuje workera KFX z plikami, katalogiem i KfxOptions; pamięta katalog."""
+    monkeypatch.setattr(kfx_module, "Worker", fake_worker)
+    config: dict = {}
+    tab = KfxTab(tools=_tools(), config=config)
+    qtbot.addWidget(tab)
 
-    def fake_to_kfx(source: Path, target_dir: Path, options: KfxOptions) -> ConversionResult:
-        calls.append((source, target_dir, options))
-        return ConversionResult(
-            success=True,
-            output_path=target_dir / f"{source.stem}.kfx",
-            log="done",
-            engine="calibre",
-        )
-
-    monkeypatch.setattr(kfx_module, "to_kfx", fake_to_kfx)
-
-    tab = KfxTab(root, tools=_tools())
-    book = tmp_path / "book.epub"
-    output = tmp_path / "out"
-    options = KfxOptions(engine="calibre", fix_epub_first=True)
-
-    tab._run_worker([book], output, options)
-    root.update()
-
-    assert calls == [(book, output, options)]
-    assert tab.progress_var.get() == 1
-    assert tab.status_var.get() == "Zakończono: 1/1 OK"
-
-
-def test_kfx_tab_run_button_starts_thread(
-    root: tk.Tk,
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Kliknięcie przycisku tworzy wątek z plikami, folderem i KfxOptions."""
-    calls: list[tuple[list[Path], Path, KfxOptions]] = []
-
-    class ImmediateThread:
-        def __init__(
-            self,
-            *,
-            target: Any,
-            args: tuple[Any, ...],
-            daemon: bool,
-        ) -> None:
-            self.target = target
-            self.args = args
-            self.daemon = daemon
-
-        def start(self) -> None:
-            self.target(*self.args)
-
-    def fake_worker(
-        self: KfxTab,
-        files: list[Path],
-        target_dir: Path,
-        options: KfxOptions,
-    ) -> None:
-        calls.append((files, target_dir, options))
-
-    monkeypatch.setattr("epubforge.gui.tabs.kfx.threading.Thread", ImmediateThread)
-    monkeypatch.setattr(KfxTab, "_run_worker", fake_worker)
-
-    tab = KfxTab(root, tools=_tools())
     book = tmp_path / "book.epub"
     output = tmp_path / "out"
     tab.file_list.add_files([book])
     tab.output_dir.set(str(output))
-
     tab._run_conversion()
 
-    assert len(calls) == 1
-    files, target_dir, options = calls[0]
-    assert files == [book]
-    assert target_dir == output
-    assert options.engine == "calibre"
-    assert options.fix_epub_first is True
+    assert config["last_output_dir"] == str(output)
+    fn, args, _kwargs = fake_worker.captured[-1]  # type: ignore[attr-defined]
+    assert fn is _run_kfx_worker
+    assert args[0] == [book]
+    assert args[1] == output
+    assert isinstance(args[2], KfxOptions)
 
 
-def test_format_switch_shows_mobi_engine(root: tk.Tk) -> None:
-    """Wybór formatu MOBI pokazuje sekcję silnika MOBI i chowa sekcję KFX."""
-    tab = KfxTab(root, tools=_tools())
-    tab.pack(fill="both", expand=True)
-    root.update_idletasks()
-
-    # Domyślnie KFX: sekcja KFX widoczna, MOBI ukryta.
-    assert tab.kfx_engine_section.winfo_manager() == "pack"
-    assert tab.mobi_engine_section.winfo_manager() == ""
-
-    tab.format_var.set("mobi")
-    tab._on_format_change()
-    root.update_idletasks()
-
-    assert tab.mobi_engine_section.winfo_manager() == "pack"
-    assert tab.kfx_engine_section.winfo_manager() == ""
-    assert "MOBI" in tab.convert_button.cget("text")
-
-
-def test_mobi_worker_calls_to_mobi(
-    root: tk.Tk,
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
+def test_kfx_empty_output_passes_none(
+    qtbot: QtBot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fake_worker: type
 ) -> None:
-    """Worker MOBI woła to_mobi z celem o właściwym rozszerzeniu i opcjami."""
+    """Puste pole katalogu → worker dostaje None (zapis obok źródła)."""
+    monkeypatch.setattr(kfx_module, "Worker", fake_worker)
+    tab = KfxTab(tools=_tools())
+    qtbot.addWidget(tab)
+    tab.file_list.add_files([tmp_path / "book.epub"])
+    tab.output_dir.set("")
+    tab._run_conversion()
+
+    _fn, args, _kwargs = fake_worker.captured[-1]  # type: ignore[attr-defined]
+    assert args[1] is None
+
+
+def test_run_kfx_worker_calls_to_kfx(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Funkcja robocza woła to_kfx dla każdego pliku i liczy sukcesy."""
+    calls: list[tuple[Path, Path, KfxOptions]] = []
+
+    def fake_to_kfx(source: Path, target_dir: Path, options: KfxOptions) -> ConversionResult:
+        calls.append((source, target_dir, options))
+        return ConversionResult(True, target_dir / f"{source.stem}.kfx", "done", "calibre")
+
+    monkeypatch.setattr(kfx_module, "to_kfx", fake_to_kfx)
+    book = tmp_path / "book.epub"
+    output = tmp_path / "out"
+    options = KfxOptions(engine="calibre", fix_epub_first=True)
+
+    succeeded, total = _run_kfx_worker(
+        lambda text, level: None, lambda c, t: None, [book], output, options
+    )
+    assert (succeeded, total) == (1, 1)
+    assert calls == [(book, output, options)]
+
+
+def test_run_mobi_worker_calls_to_mobi(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Funkcja robocza MOBI woła to_mobi z celem o właściwym rozszerzeniu."""
     calls: list[tuple[Path, Path, MobiOptions]] = []
 
     def fake_to_mobi(source: Path, target: Path, options: MobiOptions) -> ConversionResult:
@@ -240,21 +159,15 @@ def test_mobi_worker_calls_to_mobi(
         return ConversionResult(True, target, "done", "calibre")
 
     monkeypatch.setattr(kfx_module, "to_mobi", fake_to_mobi)
-
-    tab = KfxTab(root, tools=_tools())
-    tab.format_var.set("azw3")
-    tab.mobi_engine_var.set("calibre")
-    options = tab._build_mobi_options()
-
     book = tmp_path / "book.epub"
     output = tmp_path / "out"
-    tab._run_mobi_worker([book], output, options)
-    root.update()
+    options = MobiOptions(fmt="azw3", engine="calibre", fix_epub_first=True)
 
-    assert len(calls) == 1
+    succeeded, total = _run_mobi_worker(
+        lambda text, level: None, lambda c, t: None, [book], output, options
+    )
+    assert (succeeded, total) == (1, 1)
     source, target, opts = calls[0]
     assert source == book
     assert target == output / "book.azw3"
     assert opts.fmt == "azw3"
-    assert opts.engine == "calibre"
-    assert tab.status_var.get() == "Zakończono: 1/1 OK"

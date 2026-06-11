@@ -1,230 +1,247 @@
-"""Główna aplikacja tkinter dla EpubForge."""
+"""Główne okno aplikacji EpubForge (PySide6) i entry point GUI."""
 
 from __future__ import annotations
 
 import logging
-import tkinter as tk
-from contextlib import suppress
+import sys
+import traceback
 from pathlib import Path
-from tkinter import ttk
+from types import TracebackType
+
+from PySide6.QtCore import QByteArray, QEvent
+from PySide6.QtGui import QActionGroup, QCloseEvent, QShowEvent
+from PySide6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QDialogButtonBox,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QMenu,
+    QMessageBox,
+    QTabWidget,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from epubforge import __version__
 from epubforge.core import Tool, default_config_path, detect_with_cache, load_config, save_config
 from epubforge.core.config import Config
-from epubforge.gui.tabs import AboutTab, ConverterTab, FixerTab, KfxTab, MetadataTab
-from epubforge.gui.theme import Theme, apply_theme, resolve_theme_name, theme_for_name
-from epubforge.gui.widgets import Tooltip
+from epubforge.gui.tabs import ConverterTab, FixerTab, KfxTab, MetadataTab
+from epubforge.gui.theme import ThemeManager, ThemeSetting
+from epubforge.gui.widgets import AboutPanel, LogView
 from epubforge.gui.window_theme import set_titlebar_dark
 
 logger = logging.getLogger(__name__)
 
-# Dozwolone wartości ustawienia motywu w config.json i ich krótkie etykiety.
-_THEME_SETTINGS = ("auto", "light", "dark")
-_THEME_LABELS = {"auto": "Auto", "light": "Jasny", "dark": "Ciemny"}
+# Etykiety trybów motywu w przycisku górnego paska.
+_THEME_LABELS: dict[ThemeSetting, str] = {"auto": "Auto", "light": "Jasny", "dark": "Ciemny"}
+_THEME_MENU_ITEMS: tuple[tuple[str, ThemeSetting], ...] = (
+    ("Automatyczny", "auto"),
+    ("Jasny", "light"),
+    ("Ciemny", "dark"),
+)
+
+_GEOMETRY_KEY = "window_geometry"
 
 
-class App(tk.Tk):
-    """Główne okno aplikacji EpubForge."""
+class AboutDialog(QDialog):
+    """Małe okno „O programie" z panelem :class:`AboutPanel`."""
 
-    def __init__(self, config_path: Path | None = None) -> None:
+    def __init__(self, parent: QWidget, dark: bool) -> None:
+        super().__init__(parent)
+        self._dark = dark
+        self.setWindowTitle("O programie")
+        layout = QVBoxLayout(self)
+        layout.addWidget(AboutPanel())
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        buttons.rejected.connect(self.reject)
+        buttons.accepted.connect(self.accept)
+        layout.addWidget(buttons)
+        self.resize(440, 380)
+
+    def set_dark(self, dark: bool) -> None:
+        """Aktualizuje pożądany kolor paska tytułu i wymusza jego odświeżenie."""
+        self._dark = dark
+        set_titlebar_dark(self, dark)
+
+    def showEvent(self, event: QShowEvent) -> None:  # noqa: N802 — Qt API
+        """Po utworzeniu natywnego okna ustawia kolor paska tytułu."""
+        super().showEvent(event)
+        set_titlebar_dark(self, self._dark)
+
+
+class MainWindow(QMainWindow):
+    """Główne okno aplikacji EpubForge.
+
+    Geometria zapisywana jest w configu jako szesnastkowy zrzut
+    ``QMainWindow.saveGeometry`` pod kluczem ``window_geometry``.
+    """
+
+    def __init__(
+        self,
+        config_path: Path,
+        config: Config,
+        tools: dict[str, Tool],
+        theme_manager: ThemeManager,
+    ) -> None:
         super().__init__()
-        # Załaduj natywny tkdnd do interpretera Tk — bez tego widgety mają
-        # metody drag&drop (monkeypatch tkinterdnd2), ale komendy Tcl nie istnieją.
-        self.dnd_available = self._init_tkdnd()
-        self.config_path = default_config_path() if config_path is None else config_path
-        self.config_data: Config = load_config(self.config_path)
-        self.tools: dict[str, Tool] = {}
-        self.status_var = tk.StringVar(value="Wykrywanie narzędzi...")
-        self.theme_setting = self._initial_theme_setting()
-        self.theme_var = tk.StringVar(value=self.theme_setting)
-        self.theme_name = resolve_theme_name(self.theme_setting)
-        self.theme: Theme = theme_for_name(self.theme_name)
-        self._about_window: tk.Toplevel | None = None
+        self.config_path = config_path
+        self.config_data = config
+        self.tools = tools
+        self.theme_manager = theme_manager
+        self._about_dialog: AboutDialog | None = None
 
-        self.title(f"EpubForge {__version__}")
-        self.geometry(str(self.config_data.get("geometry") or "980x680"))
-        self.minsize(760, 520)
-        self.protocol("WM_DELETE_WINDOW", self._on_close)
-        self._refresh_status()
+        self.setWindowTitle(f"EpubForge {__version__}")
+        self.setMinimumSize(760, 520)
+        self._restore_geometry()
 
-        # Buduj okno ukryte — ustawiamy ciemny pasek tytułu przed pierwszym
-        # pokazaniem, żeby uniknąć jasnego mignięcia (PROBLEM 1).
-        self.withdraw()
-        self.root_frame = ttk.Frame(self, style="Root.TFrame", padding=12)
-        self.root_frame.pack(fill="both", expand=True)
-        self._build_topbar()
-        self._build_notebook()
+        central = QWidget()
+        self.setCentralWidget(central)
+        layout = QVBoxLayout(central)
+        layout.setContentsMargins(12, 12, 12, 12)
+        self._build_topbar(layout)
+        self._build_tabs(layout)
         self._build_status_bar()
-        self._apply_current_theme()
 
-        self.update_idletasks()
-        self._apply_titlebar()  # poprawny HWND, póki okno ukryte
-        self.deiconify()
-        # Win10 bywa, że dopiero po zmapowaniu przyjmuje atrybut — ponów po chwili.
-        self.after(10, self._apply_titlebar)
+        self.theme_manager.theme_changed.connect(self._on_theme_changed)
+        self._sync_theme_actions()
 
-    def _init_tkdnd(self) -> bool:
-        """Ładuje pakiet tkdnd do tego okna (jak robi ``TkinterDnD.Tk``).
+    # ── Budowa UI ─────────────────────────────────────────────────────────────
 
-        Robimy to na już utworzonym ``tk.Tk``, więc gdy natywna biblioteka tkdnd
-        jest niedostępna, aplikacja działa dalej — tylko bez przeciągania plików.
+    def _build_topbar(self, layout: QVBoxLayout) -> None:
+        """Buduje górny pasek: nazwa po lewej, motyw i About po prawej."""
+        topbar = QHBoxLayout()
+        title = QLabel("EpubForge")
+        title_font = title.font()
+        title_font.setBold(True)
+        title_font.setPointSize(title_font.pointSize() + 4)
+        title.setFont(title_font)
+        topbar.addWidget(title)
+        topbar.addStretch(1)
 
-        Returns:
-            ``True`` gdy tkdnd się załadował, inaczej ``False``.
-        """
-        try:
-            from tkinterdnd2 import TkinterDnD
+        self.theme_button = QToolButton()
+        self.theme_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.theme_button.setToolTip("Motyw: Automatyczny / Jasny / Ciemny")
+        self.theme_menu = QMenu(self.theme_button)
+        self.theme_group = QActionGroup(self)
+        self.theme_group.setExclusive(True)
+        self._theme_actions: dict[ThemeSetting, object] = {}
+        for label, value in _THEME_MENU_ITEMS:
+            action = self.theme_menu.addAction(label)
+            action.setCheckable(True)
+            action.triggered.connect(lambda _checked=False, v=value: self._select_theme(v))
+            self.theme_group.addAction(action)
+            self._theme_actions[value] = action
+        self.theme_button.setMenu(self.theme_menu)
+        topbar.addWidget(self.theme_button)
 
-            TkinterDnD._require(self)
-        except (ImportError, tk.TclError, RuntimeError) as exc:
-            logger.warning("Drag&drop niedostępne — tkdnd nie załadowane: %s", exc)
-            return False
-        return True
+        self.about_button = QToolButton()
+        self.about_button.setText("ⓘ")
+        self.about_button.setToolTip("O programie")
+        self.about_button.clicked.connect(self._open_about)
+        topbar.addWidget(self.about_button)
 
-    def _build_topbar(self) -> None:
-        """Buduje lekki górny pasek: nazwa po lewej, motyw i About po prawej."""
-        topbar = ttk.Frame(self.root_frame, style="Root.TFrame")
-        topbar.pack(fill="x", pady=(0, 10))
+        layout.addLayout(topbar)
 
-        ttk.Label(topbar, text="EpubForge", style="Title.TLabel").pack(side="left")
-
-        # Po prawej: przycisk About (mała ikonka) + przełącznik motywu (dropdown).
-        self.about_button = ttk.Button(topbar, text="ⓘ", width=3, command=self._open_about)
-        self.about_button.pack(side="right")
-        Tooltip(self.about_button, "O programie")
-
-        self.theme_menubutton = ttk.Menubutton(topbar, text="Motyw")
-        self.theme_menubutton.pack(side="right", padx=(0, 8))
-        self.theme_menu = tk.Menu(self.theme_menubutton, tearoff=False)
-        for label, value in (("Automatyczny", "auto"), ("Jasny", "light"), ("Ciemny", "dark")):
-            self.theme_menu.add_radiobutton(
-                label=label,
-                value=value,
-                variable=self.theme_var,
-                command=self._on_theme_menu,
-            )
-        self.theme_menubutton["menu"] = self.theme_menu
-        Tooltip(self.theme_menubutton, "Motyw: Automatyczny / Jasny / Ciemny")
-
-    def _build_notebook(self) -> None:
+    def _build_tabs(self, layout: QVBoxLayout) -> None:
         """Buduje notebook z zakładkami roboczymi (bez meta-zakładek)."""
-        self.notebook = ttk.Notebook(self.root_frame)
-        self.notebook.pack(fill="both", expand=True)
-        self.metadata_tab = MetadataTab(self.notebook, tools=self.tools)
-        self.notebook.add(self.metadata_tab, text="Metadane")
-        self.converter_tab = ConverterTab(self.notebook, config=self.config_data)
-        self.notebook.add(self.converter_tab, text="Konwerter")
-        self.fixer_tab = FixerTab(self.notebook, tools=self.tools)
-        self.notebook.add(self.fixer_tab, text="Fixer")
-        self.kfx_tab = KfxTab(self.notebook, tools=self.tools, config=self.config_data)
-        self.notebook.add(self.kfx_tab, text="Eksport Kindle")
+        self.tabs = QTabWidget()
+        self.metadata_tab = MetadataTab(tools=self.tools)
+        self.converter_tab = ConverterTab(config=self.config_data)
+        self.fixer_tab = FixerTab(tools=self.tools)
+        self.kfx_tab = KfxTab(tools=self.tools, config=self.config_data)
+        self.tabs.addTab(self.metadata_tab, "Metadane")
+        self.tabs.addTab(self.converter_tab, "Konwerter")
+        self.tabs.addTab(self.fixer_tab, "Fixer")
+        self.tabs.addTab(self.kfx_tab, "Eksport Kindle")
+        layout.addWidget(self.tabs, stretch=1)
 
     def _build_status_bar(self) -> None:
-        """Buduje dolny pasek statusu narzędzi."""
-        status = ttk.Frame(self.root_frame, style="Root.TFrame")
-        status.pack(fill="x", pady=(10, 0))
-        self.status_label = ttk.Label(status, textvariable=self.status_var, style="Muted.TLabel")
-        self.status_label.pack(side="left")
-
-    def _refresh_status(self) -> None:
-        """Wykrywa narzędzia i odświeża pasek statusu."""
-        try:
-            self.tools = detect_with_cache(self.config_path)
-        except OSError:
-            self.status_var.set("Nie udało się odczytać statusu narzędzi")
-            return
-        self.status_var.set(_format_tools_status(self.tools))
+        """Buduje dolny pasek statusu wykrytych narzędzi."""
+        self.statusBar().showMessage(_format_tools_status(self.tools))
 
     # ── Motyw ────────────────────────────────────────────────────────────────
 
-    def _initial_theme_setting(self) -> str:
-        """Zwraca ustawienie motywu z configu (auto/light/dark), domyślnie auto."""
-        value = self.config_data.get("theme")
-        return value if value in _THEME_SETTINGS else "auto"
+    def _select_theme(self, setting: ThemeSetting) -> None:
+        """Stosuje wybrany tryb motywu."""
+        self.theme_manager.apply(setting)
 
-    def _on_theme_menu(self) -> None:
-        """Reaguje na wybór motywu z dropdownu w górnym pasku."""
-        self._set_theme_setting(self.theme_var.get())
+    def _sync_theme_actions(self) -> None:
+        """Zaznacza akcję menu odpowiadającą bieżącemu ustawieniu i odświeża etykietę."""
+        setting = self.theme_manager.setting
+        action = self._theme_actions.get(setting)
+        if action is not None:
+            action.setChecked(True)  # type: ignore[attr-defined]
+        self.theme_button.setText(f"Motyw: {_THEME_LABELS[setting]}")
 
-    def _set_theme_setting(self, setting: str) -> None:
-        """Ustawia tryb motywu, zapisuje w configu i stosuje go."""
-        self.theme_setting = setting
-        self.theme_var.set(setting)
-        self.config_data["theme"] = setting
-        self._apply_current_theme()
+    def _on_theme_changed(self, _theme: object) -> None:
+        """Reaguje na zmianę motywu: pasek tytułu, log, etykieta, okno About."""
+        dark = self.theme_manager.theme.name == "dark"
+        set_titlebar_dark(self, dark)
+        self._sync_theme_actions()
+        for log_view in self._log_views():
+            log_view.set_theme(self.theme_manager.theme)
+        if self._about_dialog is not None:
+            self._about_dialog.set_dark(dark)
 
-    def _apply_current_theme(self) -> None:
-        """Rozwiązuje ustawienie na konkretny motyw i stosuje go do okna."""
-        self.theme_name = resolve_theme_name(self.theme_setting)
-        self.theme = theme_for_name(self.theme_name)
-        apply_theme(self, self.theme)
-        self._apply_menu_theme()
-        self._update_theme_button()
-        set_titlebar_dark(self, self.theme_name == "dark")
-        # Otwarte okno About też przemaluj.
-        if self._about_window is not None and self._about_window.winfo_exists():
-            apply_theme(self._about_window, self.theme)
-            set_titlebar_dark(self._about_window, self.theme_name == "dark")
-
-    def _apply_titlebar(self) -> None:
-        """Ustawia kolor paska tytułu zgodnie z bieżącym motywem."""
-        set_titlebar_dark(self, self.theme_name == "dark")
-
-    def _apply_menu_theme(self) -> None:
-        """Koloruje rozwijane menu motywu (tło pozycji zmienia się w dark/light).
-
-        Uwaga: na Windows obwódka ramki menu bywa rysowana przez system — to
-        ograniczenie tkinter; kolorujemy to, co się da.
-        """
-        with suppress(tk.TclError):
-            self.theme_menu.configure(
-                bg=self.theme["bg2"],
-                fg=self.theme["fg"],
-                activebackground=self.theme["accent2"],
-                activeforeground=self.theme["fg"],
-                relief="flat",
-            )
-
-    def _update_theme_button(self) -> None:
-        """Aktualizuje etykietę przełącznika motywu na bieżący tryb."""
-        with suppress(tk.TclError):
-            self.theme_menubutton.configure(text=f"Motyw: {_THEME_LABELS[self.theme_setting]}")
+    def _log_views(self) -> list[LogView]:
+        """Zbiera widgety logu z zakładek (do przemalowania przy zmianie motywu)."""
+        views: list[LogView] = []
+        for tab in (self.converter_tab, self.fixer_tab, self.kfx_tab):
+            view = getattr(tab, "log_view", None)
+            if isinstance(view, LogView):
+                views.append(view)
+        return views
 
     # ── Okno „O programie" ──────────────────────────────────────────────────
 
     def _open_about(self) -> None:
-        """Otwiera „O programie" jako małe okno (pojedyncza instancja)."""
-        if self._about_window is not None and self._about_window.winfo_exists():
-            self._about_window.lift()
-            self._about_window.focus_set()
+        """Otwiera „O programie" jako okno modalne (pojedyncza instancja)."""
+        if self._about_dialog is not None:
+            self._about_dialog.raise_()
+            self._about_dialog.activateWindow()
             return
-        window = tk.Toplevel(self)
-        window.title("O programie")
-        window.transient(self)
-        window.resizable(False, False)
-        window.geometry("440x360")
-        AboutTab(window).pack(fill="both", expand=True)
-        apply_theme(window, self.theme)
-        window.update_idletasks()
-        set_titlebar_dark(window, self.theme_name == "dark")
-        window.protocol("WM_DELETE_WINDOW", self._close_about)
-        self._about_window = window
+        dialog = AboutDialog(self, self.theme_manager.theme.name == "dark")
+        dialog.finished.connect(self._on_about_closed)
+        self._about_dialog = dialog
+        dialog.show()
 
-    def _close_about(self) -> None:
-        """Zamyka okno About i czyści referencję."""
-        if self._about_window is not None:
-            self._about_window.destroy()
-            self._about_window = None
+    def _on_about_closed(self, _result: int) -> None:
+        """Czyści referencję po zamknięciu okna About."""
+        self._about_dialog = None
 
-    def _on_close(self) -> None:
-        """Zapisuje konfigurację i zamyka okno."""
+    # ── Pasek tytułu / cykl życia okna ─────────────────────────────────────────
+
+    def showEvent(self, event: QShowEvent) -> None:  # noqa: N802 — Qt API
+        """Ustawia kolor paska tytułu po utworzeniu natywnego okna (winId)."""
+        super().showEvent(event)
+        set_titlebar_dark(self, self.theme_manager.theme.name == "dark")
+
+    def changeEvent(self, event: QEvent) -> None:  # noqa: N802 — Qt API
+        """Po (de)aktywacji okna ponownie wymusza kolor paska tytułu (Win10)."""
+        super().changeEvent(event)
+        if event.type() == QEvent.Type.ActivationChange:
+            set_titlebar_dark(self, self.theme_manager.theme.name == "dark")
+
+    def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802 — Qt API
+        """Zapisuje konfigurację (motyw, geometria) przy zamknięciu."""
         current = load_config(self.config_path)
         current.update(self.config_data)
-        current["theme"] = self.theme_setting
-        current["geometry"] = self.geometry()
+        current["theme"] = self.theme_manager.setting
+        current[_GEOMETRY_KEY] = bytes(self.saveGeometry().toHex().data()).decode("ascii")
         self.config_data = current
         save_config(self.config_path, current)
-        self.destroy()
+        super().closeEvent(event)
+
+    def _restore_geometry(self) -> None:
+        """Przywraca zapisaną geometrię okna albo ustawia domyślny rozmiar."""
+        raw = self.config_data.get(_GEOMETRY_KEY)
+        if isinstance(raw, str) and raw:
+            self.restoreGeometry(QByteArray.fromHex(raw.encode("ascii")))
+        else:
+            self.resize(980, 680)
 
 
 def _format_tools_status(tools: dict[str, Tool]) -> str:
@@ -245,10 +262,46 @@ def _format_tools_status(tools: dict[str, Tool]) -> str:
     return " | ".join(parts)
 
 
+def _install_excepthook(config_path: Path) -> None:
+    """Instaluje globalny hook wyjątków: dialog + zrzut traceby do ``error.txt``."""
+    error_file = config_path.parent / "error.txt"
+
+    def handle(
+        exc_type: type[BaseException],
+        exc: BaseException,
+        tb: TracebackType | None,
+    ) -> None:
+        text = "".join(traceback.format_exception(exc_type, exc, tb))
+        logger.error("Nieobsłużony wyjątek:\n%s", text)
+        try:
+            error_file.write_text(text, encoding="utf-8")
+        except OSError:
+            logger.warning("Nie udało się zapisać %s", error_file)
+        QMessageBox.critical(None, "Błąd krytyczny", f"Wystąpił nieoczekiwany błąd:\n{exc}")
+
+    sys.excepthook = handle
+
+
 def main() -> None:
     """Entry point ``epubforge-gui``."""
-    app = App()
-    app.mainloop()
+    app = QApplication(sys.argv)
+    app.setApplicationName("EpubForge")
+
+    config_path = default_config_path()
+    config = load_config(config_path)
+    theme_manager = ThemeManager(app, config)
+
+    try:
+        tools = detect_with_cache(config_path)
+    except OSError:
+        tools = {}
+
+    theme_manager.apply(theme_manager.setting)
+    _install_excepthook(config_path)
+
+    window = MainWindow(config_path, config, tools, theme_manager)
+    window.show()
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":

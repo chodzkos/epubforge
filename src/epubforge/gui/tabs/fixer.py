@@ -1,366 +1,336 @@
-"""Zakładka GUI do naprawy plików EPUB."""
+"""Zakładka GUI do naprawy plików EPUB (Qt)."""
 
 from __future__ import annotations
 
 import logging
 import subprocess
-import threading
-import tkinter as tk
 from pathlib import Path
-from tkinter import ttk
 from typing import cast
+
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QButtonGroup,
+    QCheckBox,
+    QComboBox,
+    QFormLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QRadioButton,
+    QSpinBox,
+    QSplitter,
+    QVBoxLayout,
+    QWidget,
+)
 
 from epubforge.core import Epub, Tool, Tools
 from epubforge.fixers import CssFixOptions, HyphenationOptions, fix_css, hyphenate
 from epubforge.fixers.hyphenator import HyphenationMethod
-from epubforge.gui.streaming import CREATE_NO_WINDOW, LogStreamer
-from epubforge.gui.widgets import FileList, Section, Toggle, Tooltip
+from epubforge.gui.widgets import FileList, LogView, Section
+from epubforge.gui.workers import CREATE_NO_WINDOW, EmitLine, EmitProgress, Worker
 
 logger = logging.getLogger(__name__)
 
 _LANGUAGES = ["pl", "en", "en_US", "en_GB", "de", "fr", "es", "it", "cs", "uk"]
 
+_METHOD_TOOLTIPS = {
+    "soft-hyphen": (
+        "Wstawia miękkie myślniki (\\u00ad) w tekście. Działa na KAŻDYM czytniku "
+        "(też starym Kindle), ALE psuje słownik i wyszukiwarkę na czytniku."
+    ),
+    "css": ("Wstrzykuje regułę CSS 'hyphens: auto' — czysty tekst, ale słabo wspierane na Kindle."),
+}
 
-class FixerTab(ttk.Frame):
+
+class FixerTab(QWidget):
     """Zakładka do hyphenacji i normalizacji CSS w plikach EPUB."""
 
     def __init__(
         self,
-        parent: tk.Misc,
+        parent: QWidget | None = None,
         *,
         tools: dict[str, Tool] | None = None,
     ) -> None:
-        super().__init__(parent, padding=12)
+        super().__init__(parent)
         self.tools = tools if tools is not None else {"calibre_viewer": Tools.calibre_viewer()}
         self.last_fixed_file: Path | None = None
         self._running = False
-
-        self.hyphen_lang_var = tk.StringVar(value="pl")
-        self.hyphen_method_var = tk.StringVar(value="soft-hyphen")
-        self.css_margin_px_var = tk.StringVar(value="20")
-        self.status_var = tk.StringVar(value="Dodaj pliki EPUB")
+        self._worker: Worker | None = None
 
         self._build_layout()
-        self.streamer = LogStreamer(self.log_text)
-        self.streamer.start_polling()
+        self._refresh_hyphen_warning()
         self._refresh_preview_button()
 
     # ── Budowa UI ─────────────────────────────────────────────────────────────
 
     def _build_layout(self) -> None:
         """Buduje dwukolumnowy układ: pliki po lewej, opcje po prawej."""
-        panes = ttk.PanedWindow(self, orient="horizontal")
-        panes.pack(fill="both", expand=True)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(12, 12, 12, 12)
 
-        left = ttk.Frame(panes, padding=(0, 0, 10, 0))
-        right = ttk.Frame(panes)
-        panes.add(left, weight=1)
-        panes.add(right, weight=2)
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        outer.addWidget(splitter, stretch=1)
 
+        left = QWidget()
         self._build_file_list(left)
-        self._build_options(right)
-        self._build_log(right)
-        self._build_actions(right)
+        right = QWidget()
+        self._build_right(right)
+        splitter.addWidget(left)
+        splitter.addWidget(right)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 2)
 
-        status = ttk.Label(self, textvariable=self.status_var, style="Muted.TLabel")
-        status.pack(fill="x", pady=(10, 0))
+        self.status_label = QLabel("Dodaj pliki EPUB")
+        outer.addWidget(self.status_label)
 
-    def _build_file_list(self, parent: tk.Misc) -> None:
+    def _build_file_list(self, parent: QWidget) -> None:
         """Buduje listę plików EPUB."""
-        section = Section(parent, "Pliki EPUB")
-        section.pack(fill="both", expand=True)
-        self.file_list = FileList(section, extensions={".epub"}, on_change=self._on_files_changed)
-        self.file_list.pack(fill="both", expand=True)
+        layout = QVBoxLayout(parent)
+        layout.setContentsMargins(0, 0, 10, 0)
+        section = Section("Pliki EPUB")
+        layout.addWidget(section)
+        self.file_list = FileList(extensions={".epub"})
+        self.file_list.files_changed.connect(self._on_files_changed)
+        section.add_widget(self.file_list)
 
-    def _build_options(self, parent: tk.Misc) -> None:
-        """Buduje sekcje opcji hyphenacji i CSS."""
-        options = ttk.Frame(parent)
-        options.pack(fill="x")
-        options.columnconfigure(0, weight=1)
-        options.columnconfigure(1, weight=1)
+    def _build_right(self, parent: QWidget) -> None:
+        """Buduje kolumnę opcji, logu i akcji."""
+        layout = QVBoxLayout(parent)
+        layout.setContentsMargins(0, 0, 0, 0)
 
-        self._build_hyphenation_section(options)
-        self._build_css_section(options)
+        options = QHBoxLayout()
+        options.addWidget(self._build_hyphenation_section(), stretch=1)
+        options.addWidget(self._build_css_section(), stretch=1)
+        layout.addLayout(options)
 
-    def _build_hyphenation_section(self, parent: tk.Misc) -> None:
+        self._build_log(layout)
+        self._build_actions(layout)
+
+    def _build_hyphenation_section(self) -> Section:
         """Buduje opcje dzielenia wyrazów."""
-        section = Section(parent, "Hyphenation")
-        section.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
-        section.columnconfigure(1, weight=1)
+        section = Section("Hyphenation")
 
-        self.hyphen_enabled_toggle = Toggle(section, text="Włącz", value=True)
-        self.hyphen_enabled_toggle.grid(row=0, column=0, columnspan=2, sticky="w")
-        Tooltip(
-            self.hyphen_enabled_toggle.checkbutton, "Włącz dzielenie wyrazów dla wybranych EPUB"
+        self.hyphen_enabled = QCheckBox("Włącz")
+        self.hyphen_enabled.setChecked(True)
+        self.hyphen_enabled.setToolTip("Włącz dzielenie wyrazów dla wybranych EPUB")
+        section.add_widget(self.hyphen_enabled)
+
+        form = QFormLayout()
+        section.content_layout().addLayout(form)
+        self.hyphen_lang_box = QComboBox()
+        self.hyphen_lang_box.addItems(_LANGUAGES)
+        self.hyphen_lang_box.setCurrentText("pl")
+        self.hyphen_lang_box.setToolTip("Język słownika dzielenia wyrazów (pyphen), np. pl, en_US")
+        form.addRow("Język", self.hyphen_lang_box)
+
+        methods = QVBoxLayout()
+        self.hyphen_method_group = QButtonGroup(self)
+        for value in ("soft-hyphen", "css"):
+            radio = QRadioButton(value)
+            radio.setToolTip(_METHOD_TOOLTIPS[value])
+            radio.setProperty("method", value)
+            if value == "soft-hyphen":
+                radio.setChecked(True)
+            radio.toggled.connect(self._refresh_hyphen_warning)
+            self.hyphen_method_group.addButton(radio)
+            methods.addWidget(radio)
+        form.addRow("Metoda", self._wrap(methods))
+
+        self.hyphen_warning_label = QLabel(
+            "Soft-hyphen może psuć słownik i wyszukiwarkę na czytniku Kindle."
         )
+        self.hyphen_warning_label.setWordWrap(True)
+        section.add_widget(self.hyphen_warning_label)
 
-        ttk.Label(section, text="Język").grid(row=1, column=0, sticky="w", pady=4, padx=(0, 8))
-        lang_box = ttk.Combobox(
-            section,
-            textvariable=self.hyphen_lang_var,
-            values=_LANGUAGES,
-            state="readonly",
-            width=10,
-        )
-        lang_box.grid(row=1, column=1, sticky="w", pady=4)
-        Tooltip(lang_box, "Język słownika dzielenia wyrazów (pyphen), np. pl, en_US")
+        self.hyphen_skip_headers = QCheckBox("Pomiń nagłówki")
+        self.hyphen_skip_headers.setChecked(True)
+        self.hyphen_skip_headers.setToolTip("Nie dziel wyrazów w nagłówkach (h1-h3)")
+        section.add_widget(self.hyphen_skip_headers)
+        section.content_layout().addStretch(1)
+        return section
 
-        ttk.Label(section, text="Metoda").grid(row=2, column=0, sticky="nw", pady=4, padx=(0, 8))
-        methods = ttk.Frame(section)
-        methods.grid(row=2, column=1, sticky="w", pady=4)
-        _method_tooltips = {
-            "soft-hyphen": (
-                "Wstawia miękkie myślniki (\\u00ad) w tekście. Działa na KAŻDYM "
-                "czytniku (też starym Kindle), ALE psuje słownik i wyszukiwarkę "
-                "na czytniku."
-            ),
-            "css": (
-                "Wstrzykuje regułę CSS 'hyphens: auto' — czysty tekst, ale słabo "
-                "wspierane na Kindle."
-            ),
-        }
-        for value, label in (("soft-hyphen", "soft-hyphen"), ("css", "css")):
-            radio = ttk.Radiobutton(
-                methods,
-                text=label,
-                value=value,
-                variable=self.hyphen_method_var,
-                command=self._refresh_hyphen_warning,
-            )
-            radio.pack(anchor="w")
-            Tooltip(radio, _method_tooltips[value])
-
-        self.hyphen_warning_label = ttk.Label(
-            section,
-            text="Soft-hyphen może psuć słownik i wyszukiwarkę na czytniku Kindle.",
-            style="Muted.TLabel",
-            wraplength=260,
-        )
-        self.hyphen_warning_label.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(2, 6))
-
-        self.hyphen_skip_headers_toggle = Toggle(
-            section,
-            text="Pomiń nagłówki",
-            value=True,
-        )
-        self.hyphen_skip_headers_toggle.grid(row=4, column=0, columnspan=2, sticky="w")
-        Tooltip(
-            self.hyphen_skip_headers_toggle.checkbutton,
-            "Nie dziel wyrazów w nagłówkach (h1-h3)",
-        )
-
-    def _build_css_section(self, parent: tk.Misc) -> None:
+    def _build_css_section(self) -> Section:
         """Buduje opcje normalizacji CSS."""
-        section = Section(parent, "CSS Fixer")
-        section.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
+        section = Section("CSS Fixer")
 
-        self.css_remove_colors_toggle = Toggle(section, text="Usuń kolory", value=False)
-        self.css_remove_colors_toggle.pack(anchor="w")
-        Tooltip(
-            self.css_remove_colors_toggle.checkbutton,
-            "Usuwa deklaracje color/background z CSS (czytnik narzuca własne)",
-        )
-
-        self.css_remove_fonts_toggle = Toggle(section, text="Usuń fonty", value=False)
-        self.css_remove_fonts_toggle.pack(anchor="w")
-        Tooltip(
-            self.css_remove_fonts_toggle.checkbutton,
-            "UWAGA: usuwa @font-face i pliki fontów z EPUB — nieodwracalne dla danej kopii",
-        )
-
-        self.css_inject_reset_toggle = Toggle(section, text="Dodaj reset CSS", value=True)
-        self.css_inject_reset_toggle.pack(anchor="w")
-        Tooltip(
-            self.css_inject_reset_toggle.checkbutton,
-            "Dodaje delikatny reset (marginesy/padding) dla spójnego renderowania",
-        )
-
-        self.css_replace_justify_toggle = Toggle(
+        self.css_remove_colors = self._add_check(
             section,
-            text="Zamień justowanie na lewe",
-            value=False,
+            "Usuń kolory",
+            checked=False,
+            tooltip="Usuwa deklaracje color/background z CSS (czytnik narzuca własne)",
         )
-        self.css_replace_justify_toggle.pack(anchor="w")
-        Tooltip(
-            self.css_replace_justify_toggle.checkbutton,
-            "Zamienia text-align: justify na left (mniej dużych odstępów)",
-        )
-
-        self.css_skip_hyphen_headers_toggle = Toggle(
+        self.css_remove_fonts = self._add_check(
             section,
-            text="Wyłącz hyphenację nagłówków",
-            value=True,
+            "Usuń fonty",
+            checked=False,
+            tooltip="UWAGA: usuwa @font-face i pliki fontów z EPUB — nieodwracalne dla danej kopii",
         )
-        self.css_skip_hyphen_headers_toggle.pack(anchor="w")
-        Tooltip(
-            self.css_skip_hyphen_headers_toggle.checkbutton,
-            "Dodaje regułę CSS wyłączającą dzielenie wyrazów w nagłówkach",
+        self.css_inject_reset = self._add_check(
+            section,
+            "Dodaj reset CSS",
+            checked=True,
+            tooltip="Dodaje delikatny reset (marginesy/padding) dla spójnego renderowania",
+        )
+        self.css_replace_justify = self._add_check(
+            section,
+            "Zamień justowanie na lewe",
+            checked=False,
+            tooltip="Zamienia text-align: justify na left (mniej dużych odstępów)",
+        )
+        self.css_skip_hyphen_headers = self._add_check(
+            section,
+            "Wyłącz hyphenację nagłówków",
+            checked=True,
+            tooltip="Dodaje regułę CSS wyłączającą dzielenie wyrazów w nagłówkach",
         )
 
-        margin = ttk.Frame(section)
-        margin.pack(fill="x", pady=(6, 0))
-        self.css_book_margin_toggle = Toggle(margin, text="Margines książki", value=False)
-        self.css_book_margin_toggle.pack(side="left")
-        Tooltip(
-            self.css_book_margin_toggle.checkbutton,
-            "Wstrzykuje margines strony (w px) z pola obok",
-        )
-        self.margin_spinbox = ttk.Spinbox(
-            margin,
-            from_=0,
-            to=120,
-            increment=1,
-            textvariable=self.css_margin_px_var,
-            width=5,
-        )
-        self.margin_spinbox.pack(side="left", padx=(6, 3))
-        Tooltip(self.margin_spinbox, "Szerokość marginesu strony w pikselach (0-120)")
-        ttk.Label(margin, text="px").pack(side="left")
+        margin = QHBoxLayout()
+        self.css_book_margin = QCheckBox("Margines książki")
+        self.css_book_margin.setToolTip("Wstrzykuje margines strony (w px) z pola obok")
+        margin.addWidget(self.css_book_margin)
+        self.margin_spin = QSpinBox()
+        self.margin_spin.setRange(0, 120)
+        self.margin_spin.setValue(20)
+        self.margin_spin.setToolTip("Szerokość marginesu strony w pikselach (0-120)")
+        margin.addWidget(self.margin_spin)
+        margin.addWidget(QLabel("px"))
+        margin.addStretch(1)
+        section.content_layout().addLayout(margin)
+        section.content_layout().addStretch(1)
+        return section
 
-    def _build_log(self, parent: tk.Misc) -> None:
+    def _build_log(self, layout: QVBoxLayout) -> None:
         """Buduje pole logu naprawy EPUB."""
-        section = Section(parent, "Log")
-        section.pack(fill="both", expand=True, pady=(10, 0))
-        section.columnconfigure(0, weight=1)
-        section.rowconfigure(0, weight=1)
+        section = Section("Log")
+        layout.addWidget(section, stretch=1)
+        self.log_view = LogView()
+        section.add_widget(self.log_view)
 
-        self.log_text = tk.Text(section, height=10, wrap="word", state="disabled")
-        scroll = ttk.Scrollbar(section, orient="vertical", command=self.log_text.yview)
-        self.log_text.configure(yscrollcommand=scroll.set)
-        self.log_text.grid(row=0, column=0, sticky="nsew")
-        scroll.grid(row=0, column=1, sticky="ns")
-
-    def _build_actions(self, parent: tk.Misc) -> None:
+    def _build_actions(self, layout: QVBoxLayout) -> None:
         """Buduje przyciski uruchomienia i podglądu."""
-        actions = ttk.Frame(parent)
-        actions.pack(fill="x", pady=(10, 0))
+        actions = QHBoxLayout()
+        self.fix_button = QPushButton("Napraw")
+        self.fix_button.setToolTip("Hyphenacja i naprawa CSS wybranych plików (zapis w miejscu).")
+        self.fix_button.setEnabled(False)
+        self.fix_button.clicked.connect(self._run_fix)
+        actions.addWidget(self.fix_button)
+        actions.addStretch(1)
 
-        self.fix_button = ttk.Button(actions, text="Napraw", command=self._run_fix)
-        self.fix_button.pack(side="left")
-        self.fix_button.state(["disabled"])
-        Tooltip(self.fix_button, "Hyphenacja i naprawa CSS wybranych plików (zapis w miejscu).")
+        self.preview_button = QPushButton("Podgląd w Calibre Viewer")
+        self.preview_button.setToolTip("Otwiera ostatni naprawiony EPUB w Calibre Viewer")
+        self.preview_button.clicked.connect(self._view_result)
+        actions.addWidget(self.preview_button)
+        layout.addLayout(actions)
 
-        self.preview_button = ttk.Button(
-            actions,
-            text="Podgląd w Calibre Viewer",
-            command=self._view_result,
-        )
-        self.preview_button.pack(side="right")
-        Tooltip(self.preview_button, "Otwiera ostatni naprawiony EPUB w Calibre Viewer")
+    def _add_check(self, section: Section, text: str, *, checked: bool, tooltip: str) -> QCheckBox:
+        """Dodaje checkbox CSS do sekcji."""
+        check = QCheckBox(text)
+        check.setChecked(checked)
+        check.setToolTip(tooltip)
+        section.add_widget(check)
+        return check
+
+    def _wrap(self, layout: QVBoxLayout) -> QWidget:
+        """Owija layout w widget (do osadzenia w QFormLayout)."""
+        widget = QWidget()
+        widget.setLayout(layout)
+        return widget
 
     # ── Logika ────────────────────────────────────────────────────────────────
 
     def _on_files_changed(self, files: list[Path]) -> None:
         """Aktualizuje stan przycisków po zmianie listy plików."""
         self.last_fixed_file = None
-        self.fix_button.state(["!disabled"] if files and not self._running else ["disabled"])
+        self.fix_button.setEnabled(bool(files) and not self._running)
         self._refresh_preview_button()
-        self.status_var.set(f"Wybrano {len(files)} {_plural_files(len(files))}")
+        self._set_status(f"Wybrano {len(files)} {_plural_files(len(files))}")
 
     def _refresh_hyphen_warning(self) -> None:
         """Pokazuje ostrzeżenie tylko przy metodzie soft-hyphen."""
-        if self.hyphen_method_var.get() == "soft-hyphen":
-            self.hyphen_warning_label.grid()
-        else:
-            self.hyphen_warning_label.grid_remove()
+        self.hyphen_warning_label.setVisible(self._hyphen_method() == "soft-hyphen")
+
+    def _hyphen_method(self) -> str:
+        """Zwraca wybraną metodę dzielenia wyrazów."""
+        button = self.hyphen_method_group.checkedButton()
+        return cast(str, button.property("method")) if button is not None else "soft-hyphen"
 
     def _build_hyphen_options(self) -> HyphenationOptions | None:
         """Składa opcje hyphenacji z aktualnego stanu UI."""
-        if not self.hyphen_enabled_toggle.get():
+        if not self.hyphen_enabled.isChecked():
             return None
         return HyphenationOptions(
-            language=self.hyphen_lang_var.get(),
-            method=cast(HyphenationMethod, self.hyphen_method_var.get()),
-            skip_headers=self.hyphen_skip_headers_toggle.get(),
+            language=self.hyphen_lang_box.currentText(),
+            method=cast(HyphenationMethod, self._hyphen_method()),
+            skip_headers=self.hyphen_skip_headers.isChecked(),
         )
 
     def _build_css_options(self) -> CssFixOptions:
         """Składa opcje CSS fixer z aktualnego stanu UI."""
         return CssFixOptions(
-            remove_colors=self.css_remove_colors_toggle.get(),
-            remove_fonts=self.css_remove_fonts_toggle.get(),
-            inject_reset=self.css_inject_reset_toggle.get(),
-            replace_justify="left" if self.css_replace_justify_toggle.get() else "keep",
+            remove_colors=self.css_remove_colors.isChecked(),
+            remove_fonts=self.css_remove_fonts.isChecked(),
+            inject_reset=self.css_inject_reset.isChecked(),
+            replace_justify="left" if self.css_replace_justify.isChecked() else "keep",
             inject_book_margin_px=self._book_margin_px(),
-            skip_hyphenation_headers=self.css_skip_hyphen_headers_toggle.get(),
+            skip_hyphenation_headers=self.css_skip_hyphen_headers.isChecked(),
         )
 
     def _book_margin_px(self) -> int | None:
         """Zwraca margines książki w px albo None, jeśli opcja jest wyłączona."""
-        if not self.css_book_margin_toggle.get():
+        if not self.css_book_margin.isChecked():
             return None
-        try:
-            return max(0, int(self.css_margin_px_var.get()))
-        except ValueError:
-            return None
+        return max(0, self.margin_spin.value())
 
     def _run_fix(self) -> None:
-        """Waliduje wejście i uruchamia naprawę w osobnym wątku."""
+        """Waliduje wejście i uruchamia naprawę w wątku roboczym."""
         if self._running:
             return
         files = self.file_list.files()
         if not files:
-            self.status_var.set("Brak plików EPUB do naprawy")
+            self._set_status("Brak plików EPUB do naprawy")
             return
 
         self._running = True
         self.last_fixed_file = None
-        self.fix_button.state(["disabled"])
-        self.preview_button.state(["disabled"])
-        self.streamer.clear()
-        self.status_var.set("Naprawianie...")
+        self.fix_button.setEnabled(False)
+        self.preview_button.setEnabled(False)
+        self.log_view.clear()
+        self._set_status("Naprawianie...")
 
-        thread = threading.Thread(
-            target=self._run_worker,
-            args=(files, self._build_hyphen_options(), self._build_css_options()),
-            daemon=True,
+        self._worker = Worker(
+            _run_fix_worker, files, self._build_hyphen_options(), self._build_css_options()
         )
-        thread.start()
+        self._worker.line.connect(self.log_view.append_line)
+        self._worker.progress.connect(self._on_progress)
+        self._worker.done.connect(self._finish_fix)
+        self._worker.failed.connect(self._on_failed)
+        self._worker.start()
 
-    def _run_worker(
-        self,
-        files: list[Path],
-        hyphen_options: HyphenationOptions | None,
-        css_options: CssFixOptions,
-    ) -> None:
-        """Naprawia pliki po kolei w wątku roboczym."""
-        succeeded = 0
-        last_fixed: Path | None = None
-        total = len(files)
-        for index, path in enumerate(files, start=1):
-            self.after(0, self.status_var.set, f"Naprawianie {index}/{total}: {path.name}")
-            self.streamer.write(f"→ {path.name}\n", "cmd")
-            try:
-                with Epub(path) as epub:
-                    if hyphen_options is not None:
-                        self.streamer.write("Hyphenation...\n", "info")
-                        hyphenate(epub, hyphen_options)
-                    self.streamer.write("CSS Fixer...\n", "info")
-                    fix_css(epub, css_options)
-                    last_fixed = epub.save()
-            except Exception as exc:
-                logger.exception("Nie udało się naprawić EPUB: %s", path)
-                self.streamer.write(f"BŁĄD: {exc}\n", "err")
-                continue
-            self.streamer.write(f"OK: {last_fixed}\n", "ok")
-            succeeded += 1
+    def _on_progress(self, current: int, total: int) -> None:
+        """Aktualizuje status w trakcie batcha."""
+        self._set_status(f"Naprawianie {current}/{total}")
 
-        self.after(0, self._finish_fix, succeeded, total, last_fixed)
-
-    def _finish_fix(self, succeeded: int, total: int, last_fixed: Path | None) -> None:
+    def _finish_fix(self, result: object) -> None:
         """Aktualizuje UI po zakończeniu pracy wątku."""
+        succeeded, total, last_fixed = cast(tuple[int, int, Path | None], result)
         self._running = False
         self.last_fixed_file = last_fixed
-        self.fix_button.state(["!disabled"] if self.file_list.files() else ["disabled"])
+        self.fix_button.setEnabled(bool(self.file_list.files()))
         self._refresh_preview_button()
-        self.status_var.set(f"Zakończono: {succeeded}/{total} OK")
+        self._set_status(f"Zakończono: {succeeded}/{total} OK")
+
+    def _on_failed(self, message: str) -> None:
+        """Obsługuje nieoczekiwany błąd wątku naprawy."""
+        self._running = False
+        self.fix_button.setEnabled(bool(self.file_list.files()))
+        self.log_view.append_line(f"BŁĄD: {message}", "err")
+        self._set_status("Naprawa przerwana błędem")
 
     def _refresh_preview_button(self) -> None:
         """Włącza podgląd tylko po sukcesie i przy wykrytym Calibre Viewer."""
-        if self.last_fixed_file is not None and self._viewer_tool() is not None:
-            self.preview_button.state(["!disabled"])
-        else:
-            self.preview_button.state(["disabled"])
+        self.preview_button.setEnabled(
+            self.last_fixed_file is not None and self._viewer_tool() is not None
+        )
 
     def _viewer_tool(self) -> Tool | None:
         """Zwraca dostępny Calibre Viewer albo None."""
@@ -373,7 +343,7 @@ class FixerTab(ttk.Frame):
         """Otwiera ostatni naprawiony EPUB w Calibre Viewer."""
         viewer = self._viewer_tool()
         if self.last_fixed_file is None or viewer is None or viewer.path is None:
-            self.status_var.set("Nie wykryto Calibre Viewer albo brak wyniku")
+            self._set_status("Nie wykryto Calibre Viewer albo brak wyniku")
             return
         try:
             subprocess.Popen(
@@ -381,9 +351,47 @@ class FixerTab(ttk.Frame):
                 creationflags=CREATE_NO_WINDOW,
             )
         except OSError as exc:
-            self.streamer.write(f"BŁĄD: Nie udało się otworzyć podglądu: {exc}\n", "err")
+            self.log_view.append_line(f"BŁĄD: Nie udało się otworzyć podglądu: {exc}", "err")
             return
-        self.streamer.write(f"Uruchomiono podgląd: {self.last_fixed_file.name}\n", "info")
+        self.log_view.append_line(f"Uruchomiono podgląd: {self.last_fixed_file.name}", "info")
+
+    def _set_status(self, text: str) -> None:
+        """Ustawia tekst paska statusu zakładki."""
+        self.status_label.setText(text)
+
+
+def _run_fix_worker(
+    emit_line: EmitLine,
+    emit_progress: EmitProgress,
+    files: list[Path],
+    hyphen_options: HyphenationOptions | None,
+    css_options: CssFixOptions,
+) -> tuple[int, int, Path | None]:
+    """Naprawia pliki po kolei w wątku roboczym.
+
+    Zwraca krotkę ``(udane, łącznie, ostatni_naprawiony)``.
+    """
+    succeeded = 0
+    last_fixed: Path | None = None
+    total = len(files)
+    for index, path in enumerate(files, start=1):
+        emit_progress(index, total)
+        emit_line(f"→ {path.name}", "cmd")
+        try:
+            with Epub(path) as epub:
+                if hyphen_options is not None:
+                    emit_line("Hyphenation...", "info")
+                    hyphenate(epub, hyphen_options)
+                emit_line("CSS Fixer...", "info")
+                fix_css(epub, css_options)
+                last_fixed = epub.save()
+        except Exception as exc:
+            logger.exception("Nie udało się naprawić EPUB: %s", path)
+            emit_line(f"BŁĄD: {exc}", "err")
+            continue
+        emit_line(f"OK: {last_fixed}", "ok")
+        succeeded += 1
+    return succeeded, total, last_fixed
 
 
 def _plural_files(count: int) -> str:

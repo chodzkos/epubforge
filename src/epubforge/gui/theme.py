@@ -1,47 +1,111 @@
-"""Motywy jasny i ciemny dla GUI."""
+"""Motyw aplikacji: ciemny (qdarktheme) i jasny (natywny styl Qt).
+
+Zgodnie z GUI_STANDARD §4: tryb ciemny realizuje ``qdarktheme`` z akcentem
+marki, a tryb jasny **przywraca natywny styl Qt** (nie ``qdarktheme("light")``,
+który bywa „wyprany") wzbogacony o minimalny akcent. Role palety (§5) trzymamy
+w dataclassie :class:`Theme`, żeby widgety nie używały sztywnych hexów.
+"""
 
 from __future__ import annotations
 
-import tkinter as tk
-from contextlib import suppress
-from tkinter import ttk
-from typing import Any, cast
+import logging
+from dataclasses import dataclass
+from typing import Literal
 
-import darkdetect
+import qdarktheme
+from PySide6.QtCore import QObject, Qt, Signal
+from PySide6.QtGui import QColor, QPalette
+from PySide6.QtWidgets import QApplication
 
-Theme = dict[str, str]
+from epubforge.core.config import Config
 
-DARK: Theme = {
-    "bg": "#1e2028",
-    "bg2": "#252830",
-    "bg3": "#2d3040",
-    "fg": "#dde1ec",
-    "fg2": "#8b90a7",
-    "fg3": "#555a70",
-    "accent": "#5dcaa5",
-    "accent2": "#1d9e75",
-    "border": "#383c50",
-    "red": "#e25454",
-    "amber": "#ef9f27",
-}
+logger = logging.getLogger(__name__)
 
-LIGHT: Theme = {
-    "bg": "#ffffff",
-    "bg2": "#f5f5f5",
-    "bg3": "#e8e8ed",
-    "fg": "#1d1d1f",
-    "fg2": "#515154",
-    "fg3": "#86868b",
-    "accent": "#1d9e75",
-    "accent2": "#0f7c5b",
-    "border": "#d1d1d6",
-    "red": "#d70015",
-    "amber": "#b25000",
-}
+ThemeSetting = Literal["auto", "light", "dark"]
+ThemeName = Literal["dark", "light"]
+
+_THEME_SETTINGS: tuple[ThemeSetting, ...] = ("auto", "light", "dark")
+
+# Akcent marki (znak rozpoznawczy aplikacji chodzkos) — GUI_STANDARD §5.
+PRIMARY = "#5DCAA5"
+PRIMARY_DARK = "#1D9E75"
 
 
-# Aktualnie zastosowany motyw — odczytywany przez widgety budowane dynamicznie
-# (np. Tooltip tworzy okno dopiero po najechaniu, więc musi znać bieżący motyw).
+@dataclass(frozen=True)
+class Theme:
+    """Role palety motywu (GUI_STANDARD §5).
+
+    Attributes:
+        name: ``"dark"`` albo ``"light"``.
+        bg: tło główne.
+        bg2: tło sekcji / paneli.
+        bg3: tło pól / inputów.
+        fg: tekst główny.
+        fg2: tekst drugorzędny.
+        fg3: tekst wyciszony / hinty.
+        accent: akcent główny (jasny).
+        accent2: akcent ciemniejszy (przyciski).
+        border: ramki / separatory.
+        red: błędy / akcje destrukcyjne.
+        amber: ostrzeżenia.
+    """
+
+    name: ThemeName
+    bg: str
+    bg2: str
+    bg3: str
+    fg: str
+    fg2: str
+    fg3: str
+    accent: str
+    accent2: str
+    border: str
+    red: str
+    amber: str
+
+
+DARK = Theme(
+    name="dark",
+    bg="#1e2028",
+    bg2="#252830",
+    bg3="#2d3040",
+    fg="#dde1ec",
+    fg2="#8b90a7",
+    fg3="#555a70",
+    accent="#5DCAA5",
+    accent2="#1D9E75",
+    border="#383c50",
+    red="#e25454",
+    amber="#EF9F27",
+)
+
+LIGHT = Theme(
+    name="light",
+    bg="#ffffff",
+    bg2="#f5f5f7",
+    bg3="#e8e8ed",
+    fg="#1d1d1f",
+    fg2="#515154",
+    fg3="#86868b",
+    accent="#1D9E75",
+    accent2="#0F7C5B",
+    border="#d1d1d6",
+    red="#d70015",
+    amber="#b25000",
+)
+
+# Minimalny akcent dla trybu jasnego (natywny styl + odrobina marki).
+_LIGHT_ACCENT_QSS = f"""
+QPushButton:default {{
+    border: 1px solid {LIGHT.accent2};
+}}
+QTabBar::tab:selected {{
+    color: {LIGHT.accent2};
+}}
+"""
+
+# Bieżący motyw — odczytywany przez widgety budowane dynamicznie (log, tooltipy
+# kolorów, wybór natywnego/ciemnego dialogu plików). Ustawiany przez ThemeManager.
 _current_theme: Theme = DARK
 
 
@@ -50,122 +114,104 @@ def current_theme() -> Theme:
     return _current_theme
 
 
-def system_theme() -> str:
-    """Zwraca motyw systemowy jako ``"dark"`` albo ``"light"``.
+def native_file_dialogs() -> bool:
+    """Czy używać natywnych dialogów plików.
 
-    Korzysta z ``darkdetect`` (cross-platform). Gdy systemu nie da się odpytać,
-    przyjmuje ``light``.
+    W trybie ciemnym natywny dialog systemu jest jasny i psuje spójność — wtedy
+    używamy dialogu Qt (``DontUseNativeDialog``). W trybie jasnym natywny jest OK.
     """
-    return (darkdetect.theme() or "Light").lower()
+    return _current_theme.name == "light"
 
 
-def resolve_theme_name(setting: str) -> str:
-    """Mapuje ustawienie (``auto``/``dark``/``light``) na konkretny motyw.
+class ThemeManager(QObject):
+    """Zarządza motywem aplikacji (auto/jasny/ciemny) i jego trwałością.
 
-    ``auto`` rozwiązywane jest przez :func:`system_theme`; nieznane wartości
-    traktujemy jak ``dark``.
+    Emituje sygnał :attr:`theme_changed` z obiektem :class:`Theme` po każdej
+    zmianie — np. widgety logu odświeżają wtedy kolory ról.
     """
-    if setting == "auto":
-        return system_theme()
-    return "light" if setting == "light" else "dark"
 
+    theme_changed = Signal(object)
 
-def theme_for_name(name: str) -> Theme:
-    """Zwraca słownik motywu dla nazwy ``dark``/``light``."""
-    return LIGHT if name == "light" else DARK
+    def __init__(self, app: QApplication, config: Config) -> None:
+        super().__init__()
+        self._app = app
+        self._config = config
+        self._setting: ThemeSetting = self._initial_setting()
+        self._theme: Theme = DARK
 
+        # Zapamiętaj natywny styl PRZED pierwszą zmianą (pułapka „wyprany light").
+        self._native_style_name = app.style().objectName()
+        self._native_palette = QPalette(app.palette())
+        self._native_stylesheet = app.styleSheet()
 
-def apply_theme(root: tk.Misc, theme: Theme) -> None:
-    """Aplikuje motyw do ttk style i rekurencyjnie do widgetów klasycznych."""
-    global _current_theme
-    _current_theme = theme
-    _configure_ttk_style(root, theme)
-    _apply_widget_theme(root, theme)
+        # Reakcja na zmianę motywu systemowego w locie (tania) — tylko gdy auto.
+        app.styleHints().colorSchemeChanged.connect(self._on_system_scheme_changed)
 
+    @property
+    def setting(self) -> ThemeSetting:
+        """Aktualne ustawienie trybu (auto/light/dark)."""
+        return self._setting
 
-def _configure_ttk_style(root: tk.Misc, theme: Theme) -> None:
-    """Konfiguruje style ttk dla danego motywu."""
-    style = ttk.Style(root)
-    with suppress(tk.TclError):
-        style.theme_use("clam")
+    @property
+    def theme(self) -> Theme:
+        """Aktualnie zastosowany motyw (rozwiązany z ustawienia)."""
+        return self._theme
 
-    style.configure(
-        ".", background=theme["bg2"], foreground=theme["fg"], fieldbackground=theme["bg3"]
-    )
-    style.configure("TFrame", background=theme["bg2"])
-    style.configure("Root.TFrame", background=theme["bg"])
-    style.configure("TLabel", background=theme["bg2"], foreground=theme["fg"])
-    style.configure("Muted.TLabel", background=theme["bg2"], foreground=theme["fg2"])
-    style.configure(
-        "Link.TLabel",
-        background=theme["bg2"],
-        foreground=theme["accent"],
-        font=("TkDefaultFont", 10, "underline"),
-    )
-    style.configure(
-        "Title.TLabel",
-        background=theme["bg"],
-        foreground=theme["fg"],
-        font=("TkDefaultFont", 15, "bold"),
-    )
-    style.configure(
-        "TButton", background=theme["bg3"], foreground=theme["fg"], bordercolor=theme["border"]
-    )
-    style.map("TButton", background=[("active", theme["bg2"])])
-    style.configure("TCheckbutton", background=theme["bg2"], foreground=theme["fg"])
-    style.map("TCheckbutton", background=[("active", theme["bg2"])])
-    style.configure(
-        "TEntry", fieldbackground=theme["bg3"], foreground=theme["fg"], insertcolor=theme["accent"]
-    )
-    style.configure("TLabelframe", background=theme["bg2"], bordercolor=theme["border"])
-    style.configure("TLabelframe.Label", background=theme["bg2"], foreground=theme["fg"])
-    style.configure("TNotebook", background=theme["bg"], borderwidth=0)
-    style.configure(
-        "TNotebook.Tab", background=theme["bg3"], foreground=theme["fg"], padding=(12, 6)
-    )
-    style.map("TNotebook.Tab", background=[("selected", theme["bg2"])])
+    def _initial_setting(self) -> ThemeSetting:
+        """Wczytuje ustawienie motywu z configu (domyślnie auto)."""
+        value = self._config.get("theme")
+        return value if value in _THEME_SETTINGS else "auto"
 
+    def resolved_name(self, setting: ThemeSetting | None = None) -> ThemeName:
+        """Mapuje ustawienie na konkretny motyw (``auto`` → motyw systemu)."""
+        chosen = setting if setting is not None else self._setting
+        if chosen == "auto":
+            return self._system_name()
+        return "light" if chosen == "light" else "dark"
 
-def _apply_widget_theme(widget: tk.Misc, theme: Theme) -> None:
-    """Aplikuje kolory do widgetów tkinter, które nie korzystają ze style ttk."""
-    class_name = widget.winfo_class()
-    try:
-        if class_name in {"Tk", "Toplevel"}:
-            _safe_configure(widget, bg=theme["bg"])
-        elif class_name in {"Frame", "Labelframe"}:
-            _safe_configure(widget, bg=theme["bg2"])
-        elif class_name == "Label":
-            _safe_configure(widget, bg=theme["bg2"], fg=theme["fg"])
-        elif class_name == "Button":
-            _safe_configure(widget, bg=theme["bg3"], fg=theme["fg"], activebackground=theme["bg2"])
-        elif class_name == "Entry":
-            _safe_configure(
-                widget, bg=theme["bg3"], fg=theme["fg"], insertbackground=theme["accent"]
-            )
-        elif class_name == "Listbox":
-            _safe_configure(
-                widget,
-                bg=theme["bg3"],
-                fg=theme["fg"],
-                selectbackground=theme["accent2"],
-                selectforeground=theme["bg"],
-                highlightbackground=theme["border"],
-            )
-        elif class_name == "Text":
-            _safe_configure(
-                widget, bg=theme["bg3"], fg=theme["fg"], insertbackground=theme["accent"]
-            )
-        elif class_name == "Canvas":
-            _safe_configure(widget, bg=theme["bg2"], highlightbackground=theme["border"])
-        elif class_name in {"Checkbutton", "Radiobutton"}:
-            _safe_configure(widget, bg=theme["bg2"], fg=theme["fg"], activebackground=theme["bg2"])
-    except tk.TclError:
-        pass
+    def _system_name(self) -> ThemeName:
+        """Zwraca motyw systemu z ``QStyleHints`` (domyślnie ciemny)."""
+        scheme = self._app.styleHints().colorScheme()
+        return "light" if scheme == Qt.ColorScheme.Light else "dark"
 
-    for child in widget.winfo_children():
-        _apply_widget_theme(child, theme)
+    def apply(self, setting: ThemeSetting) -> None:
+        """Ustawia tryb, zapisuje go w configu i stosuje do aplikacji."""
+        global _current_theme
+        self._setting = setting
+        self._config["theme"] = setting
+        name = self.resolved_name(setting)
+        if name == "dark":
+            self._apply_dark()
+            self._theme = DARK
+        else:
+            self._apply_light()
+            self._theme = LIGHT
+        _current_theme = self._theme
+        self._repolish()
+        self.theme_changed.emit(self._theme)
 
+    def _apply_dark(self) -> None:
+        """Stosuje ciemny motyw qdarktheme z akcentem marki."""
+        qdarktheme.setup_theme("dark", custom_colors={"primary": PRIMARY})
 
-def _safe_configure(widget: tk.Misc, **options: str) -> None:
-    """Konfiguruje widget dynamicznymi opcjami tkinter."""
-    cast(Any, widget).configure(**options)
+    def _apply_light(self) -> None:
+        """Przywraca natywny styl Qt i dokłada minimalny akcent marki."""
+        if self._native_style_name:
+            self._app.setStyle(self._native_style_name)
+        palette = QPalette(self._native_palette)
+        palette.setColor(QPalette.ColorRole.Highlight, QColor(LIGHT.accent2))
+        palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#ffffff"))
+        self._app.setPalette(palette)
+        self._app.setStyleSheet(self._native_stylesheet + _LIGHT_ACCENT_QSS)
+
+    def _on_system_scheme_changed(self, _scheme: Qt.ColorScheme) -> None:
+        """Gdy zmienia się motyw systemu, odśwież w trybie auto."""
+        if self._setting == "auto":
+            self.apply("auto")
+
+    def _repolish(self) -> None:
+        """Wymusza przemalowanie wszystkich widgetów po zmianie motywu."""
+        style = self._app.style()
+        for widget in self._app.allWidgets():
+            style.unpolish(widget)
+            style.polish(widget)

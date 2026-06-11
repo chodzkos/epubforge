@@ -100,8 +100,9 @@ Każda komenda ma `--help` z pełną listą opcji.
 `build\build.bat` sam wybiera `py -3.12/3.11/3.10`; jeśli żadnej nie ma — zainstaluj
 Python 3.12 z python.org.
 
-**Okno Otwórz/Zapisz jest jasne mimo ciemnego motywu.** To natywny dialog systemu
-Windows — w czystym tkinter nie da się go przemalować. Reszta aplikacji respektuje motyw.
+**Motyw aplikacji.** Wybierasz go przyciskiem **Motyw** (Automatyczny / Jasny /
+Ciemny). W trybie ciemnym okna Otwórz/Zapisz są również ciemne (dialogi Qt); w
+trybie jasnym używane są natywne dialogi systemu.
 
 **Soft-hyphen psuje wyszukiwarkę na czytniku.** Tak — to świadomy kompromis. Jeśli to
 przeszkadza, użyj metody CSS (`hyphens: auto`), choć jest słabiej wspierana na Kindle.
