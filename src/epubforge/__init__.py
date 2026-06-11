@@ -2,6 +2,6 @@
 
 from epubforge.core import Epub, ManifestItem, Metadata
 
-__version__ = "0.1.0-dev"
+__version__ = "1.0.0"
 
 __all__ = ["Epub", "ManifestItem", "Metadata", "__version__"]

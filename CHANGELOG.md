@@ -7,30 +7,42 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-11
+
+Pierwsze stabilne wydanie — komplet funkcji biblioteki, CLI i GUI.
+
 ### Added
-- Struktura projektu i konfiguracja narzędzi developerskich (pyproject.toml, ruff, mypy, pytest)
-- CI/CD przez GitHub Actions (testy na Linux/Windows/macOS × Python 3.10-3.12)
-- Pre-commit hooks (ruff, mypy, podstawowe sprawdzenia)
-- Dokumentacja: README, ROADMAP, CLAUDE.md, PROMPTS, FEATURES
+- **Core `Epub`** — odczyt/edycja/bezpieczny zapis EPUB (mimetype pierwszy i
+  nieskompresowany, zapis atomowy, kopiowanie strumieniowe niezmienionych wpisów,
+  backup `.bak`, `opf_path` z `container.xml`, leniwy manifest/spine).
+- **Metadane Dublin Core** — `Metadata` (tytuł, autorzy, język, identyfikator,
+  wydawca, data, opis, tematy) z `from_opf`/`to_opf` zachowującym resztę OPF.
+- **Seria/cykl** — `series` + `series_index` w formacie Calibre (EPUB 2) i EPUB 3
+  (`belongs-to-collection`).
+- **Wykrywanie narzędzi** — Pandoc, Calibre (ebook-convert/viewer/editor), Sigil,
+  Kindle Previewer 3, kindlegen, wtyczka KFX; cache w `config.json` z re-detekcją.
+- **Konwersja → EPUB** — TXT/MD/DOCX/HTML/ODT/RTF/PDF przez Pandoc lub Calibre.
+- **Eksport Kindle** — EPUB → KFX (Calibre + wtyczka KFX / KP3 eksperymentalny)
+  oraz MOBI/AZW3 (Calibre / kindlegen wycofany).
+- **Hyphenacja** — `pyphen`, metody soft-hyphen i CSS (z ostrzeżeniem o kompromisie).
+- **CSS Fixer** — `tinycss2`: usuwanie kolorów/fontów, reset, justify→left, marginesy.
+- **CLI** — `convert`, `fix`, `hyphenate`, `meta`, `kfx`, `mobi`.
+- **GUI (tkinter)** — zakładki Metadane / Konwerter / Fixer / Eksport Kindle,
+  górny pasek z przełącznikiem motywu i oknem „O programie", tooltipy na wszystkich
+  kontrolkach, motyw jasny/ciemny/auto (`darkdetect`) z ciemnym paskiem tytułu na
+  Windows, domyślny katalog wyjścia = katalog pliku źródłowego.
+- **Build** — PyInstaller (portable `epubforge.exe` + onedir), instalator Inno Setup
+  (`epubforge-setup.exe`), generator placeholderowej ikony, build na tag `v*` w CI.
+- **CI/CD** — testy na Linux/Windows/macOS × Python 3.10–3.12, ruff, `mypy --strict`
+  (linux/darwin/win32), pre-commit hooks.
 
-### Decyzje techniczne (na podstawie analiz)
-- CSS: `tinycss2` zamiast `cssutils` (nowocześniejszy, nie psuje CSS3)
-- Zapis EPUB: kopiowanie strumieniowe ze źródła zamiast ładowania całości do RAM
-- Hyphenacja: dwie metody (soft-hyphen / CSS) z ostrzeżeniem o kompromisie Kindle
-- PyInstaller: jawny hook dla natywnych binariów tkdnd (drag&drop)
-- PDF → EPUB: oznaczone jako eksperymentalne, za potwierdzeniem w GUI
-
-### Planowane (zgodnie z ROADMAP.md)
-- Etap 1: Klasa `Epub` (odczyt/zapis z poprawną obsługą mimetype)
-- Etap 2: Metadane Dublin Core
-- Etap 3: Wykrywanie narzędzi zewnętrznych
-- Etap 4: Konwersja → EPUB (Pandoc/Calibre)
-- Etap 5: Hyphenacja (pyphen)
-- Etap 6: CSS Fixer
-- Etap 7: Konwersja → KFX
-- Etap 8-12: GUI (tkinter)
-- Etap 13: Build pipeline (PyInstaller)
-- Etap 14: Dokumentacja v1.0
+### Decyzje techniczne
+- CSS: `tinycss2` zamiast `cssutils` (nie psuje CSS3).
+- Zapis EPUB: kopiowanie strumieniowe ze źródła zamiast ładowania całości do RAM.
+- Hyphenacja: dwie metody (soft-hyphen / CSS) — wybór należy do użytkownika.
+- PyInstaller: jawny hook dla natywnych binariów `tkdnd` (drag&drop w `.exe`).
+- PDF → EPUB: eksperymentalne, za jawnym potwierdzeniem w GUI.
+- Dialogi plików: pozostają natywne (jasne) — ograniczenie tkinter (udokumentowane).
 
 ---
 
@@ -58,4 +70,5 @@ Szablon wpisu dla nowej wersji:
 - poprawki bezpieczeństwa
 -->
 
-[Unreleased]: https://github.com/chodzkos/epubforge/commits/main
+[Unreleased]: https://github.com/chodzkos/epubforge/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/chodzkos/epubforge/releases/tag/v1.0.0
