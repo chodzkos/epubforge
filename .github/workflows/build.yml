@@ -5,6 +5,10 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
+# Tworzenie Release wymaga zapisu w repo (inaczej GITHUB_TOKEN dostaje 403).
+permissions:
+  contents: write
+
 jobs:
   build-windows:
     runs-on: windows-latest
