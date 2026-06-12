@@ -27,7 +27,7 @@ from typing import Literal
 
 from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtGui import QColor, QGuiApplication, QPalette
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QToolTip
 
 from epubforge.core.config import Config
 
@@ -245,11 +245,13 @@ def apply_theme(app: QApplication, theme: Theme) -> None:
 
     Kolejność jest istotna: najpierw styl ``Fusion`` (inaczej natywny styl
     Windows zignoruje paletę), potem paleta, potem QSS na akcenty, na końcu
-    przemalowanie istniejących widgetów.
+    jawna paleta tooltipów i przemalowanie istniejących widgetów.
     """
     app.setStyle("Fusion")
-    app.setPalette(_build_palette(theme))
+    palette = _build_palette(theme)
+    app.setPalette(palette)
     app.setStyleSheet(_build_qss(theme))
+    QToolTip.setPalette(palette)
     _repolish(app)
 
 

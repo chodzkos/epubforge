@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 from PySide6.QtGui import QPalette
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QToolTip
 
 from epubforge.gui import theme as theme_mod
 from epubforge.gui.theme import (
@@ -139,3 +139,27 @@ def test_apply_theme_repolishes_without_error(qapp: QApplication) -> None:
     assert qapp.styleSheet() != ""
     qapp.setStyleSheet("")  # odsłoń styl bazowy
     assert "fusion" in qapp.style().metaObject().className().lower()
+
+
+def test_tooltip_palette_and_qss_refresh_on_runtime_theme_switch(qapp: QApplication) -> None:
+    """Tooltip i QSS dostają świeże kolory przy zmianie motywu w locie."""
+    manager = ThemeManager(qapp, {})
+    role = QPalette.ColorRole
+
+    manager.apply("dark")
+    assert QToolTip.palette().color(role.ToolTipBase).name() == DARK.bg2.lower()
+    assert QToolTip.palette().color(role.ToolTipText).name() == DARK.fg.lower()
+
+    manager.apply("light")
+    light_qss = qapp.styleSheet().lower()
+    assert QToolTip.palette().color(role.ToolTipBase).name() == LIGHT.bg2.lower()
+    assert QToolTip.palette().color(role.ToolTipText).name() == LIGHT.fg.lower()
+    assert DARK.bg2.lower() not in light_qss
+    assert DARK.fg.lower() not in light_qss
+
+    manager.apply("dark")
+    dark_qss = qapp.styleSheet().lower()
+    assert QToolTip.palette().color(role.ToolTipBase).name() == DARK.bg2.lower()
+    assert QToolTip.palette().color(role.ToolTipText).name() == DARK.fg.lower()
+    assert LIGHT.bg2.lower() not in dark_qss
+    assert LIGHT.fg.lower() not in dark_qss

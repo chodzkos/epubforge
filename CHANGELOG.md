@@ -14,6 +14,9 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
   i sprawdza obecność plików `.mo`.
 
 ### Fixed
+- **Tooltipy po zmianie motywu w locie** — `QToolTip` dostaje jawnie świeżą
+  paletę po każdym `apply()`, a QSS jest ponownie generowany i ustawiany dla
+  bieżących kolorów.
 - **Dopieszczony fallbackowy dialog Qt** (gdy motyw aplikacji ≠ motyw systemu):
   pasek boczny (Pulpit / Dokumenty / Pobrane / dyski / ostatni katalog), widok
   szczegółowy (`Detail`) i zapamiętywany rozmiar okna (~900×550 domyślnie, zapis
