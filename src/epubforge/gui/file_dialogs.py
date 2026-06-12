@@ -22,11 +22,12 @@ from epubforge.gui.window_theme import sync_titlebar
 def use_native_dialog(app_mode: ThemeName, system: ThemeName) -> bool:
     """Czy użyć natywnego dialogu systemu.
 
-    Natywny wszędzie poza jednym rozjazdem: aplikacja ciemna + system jasny.
-    To jedyny przypadek, gdy natywny dialog (idący za jasnym systemem) kłóci się
-    z ciemną aplikacją — wtedy dialog Qt z ciemnym paskiem tytułu.
+    Reguła symetryczna: natywny dialog (idący za motywem systemu) jest spójny
+    TYLKO gdy efektywny motyw aplikacji == motyw systemu. Przy KAŻDYM rozjeździe
+    (ciemny↔jasny w obie strony) używamy dialogu Qt z paskiem tytułu zgodnym z
+    aplikacją. W trybie auto motywy są z definicji zgodne → zawsze natywny.
     """
-    return not (app_mode == "dark" and system == "light")
+    return app_mode == system
 
 
 def open_file(parent: QWidget, title: str, start_dir: str, name_filter: str) -> str:

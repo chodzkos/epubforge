@@ -6,6 +6,7 @@
 
 | Wersja | Data | Zmiany |
 |---|---|---|
+| 2.1 | 2026-06-12 | symetryczna reguła rozjazdu motywów (dialogi natywne I pasek tytułu — oba kierunki, nie tylko app dark + system light); odczyt motywu systemu przy otwarciu dialogu; update() po re-aplikacji motywu (usterka z EpubForge F-S) |
 | 2.0 | 2026-06-12 | usunięcie qdarktheme (projekt porzucony) → własny theme.py; platformdirs; stany palety; pułapki PyInstaller+Qt; niuanse DWM/Qt 6.5+ |
 | 1.0 | — | wersja pierwotna |
 
@@ -121,8 +122,17 @@ Aplikacje docelowe, większe projekty, wszystko gdzie ciemny motyw i wygląd maj
 3. **Auto-motyw:** `colorScheme()` → `Dark`/`Light`; wartość `Unknown`
    (Linux bez portalu XDG) traktuj jako fallback → dark.
 4. **Reakcja na zmianę systemu:** podłącz `styleHints().colorSchemeChanged`
-   tylko w trybie auto; w trybie wymuszonym ignoruj sygnał.
-5. Tryb użytkownika (auto/jasny/ciemny) zapisywany w config (sekcja 8).
+   tylko w trybie auto; w trybie wymuszonym ignoruj sygnał. Po każdej
+   re-aplikacji motywu (także z sygnału) wykonaj `unpolish()/polish()`
+   po `app.allWidgets()` **i zawołaj `update()` na każdym widgecie** —
+   bez tego okna częściowo zasłonięte / w tle nie przerysują się aż do
+   ekspozycji (kompozytor Windows nie wymusi repaint sam).
+5. **Pojęcie ROZJAZDU motywów** (używane niżej w pułapkach):
+   rozjazd ⇔ efektywny motyw aplikacji ≠ motyw systemu
+   (`colorScheme()`, Unknown → traktuj jako dark). Tryb auto z definicji
+   nie ma rozjazdu. Reguła jest SYMETRYCZNA — „app light + system dark"
+   to taki sam rozjazd jak „app dark + system light".
+6. Tryb użytkownika (auto/jasny/ciemny) zapisywany w config (sekcja 8).
 
 ### Mocne strony
 - natywny, nowoczesny wygląd
@@ -137,19 +147,29 @@ Aplikacje docelowe, większe projekty, wszystko gdzie ciemny motyw i wygląd maj
 - stromsza krzywa nauki
 - PySide6 jako zależność (~100 MB przy instalacji)
 
-### Pułapki techniczne (z IcoForge + theme.py)
-- **Pasek tytułu a wersja Qt:** od Qt 6.5+ na Windows pasek tytułu sam podąża
-  za motywem **systemu**. Ręczny `DwmSetWindowAttribute(20)` + `WM_NCACTIVATE`
-  + `RedrawWindow(RDW_FRAME)` potrzebny TYLKO gdy użytkownik wymusił motyw
-  inny niż systemowy. `winId()` wołaj w `showEvent`, nie w `__init__`.
-- **Dialog odbiera focus → główny pasek jaśnieje:** nadpisz `changeEvent`
-  na `ActivationChange` i ponownie wymuś ciemny pasek (dotyczy tylko
-  scenariusza wymuszonego motywu jw.).
-- **Natywne dialogi plików:** na Win11 same są ciemne, gdy system jest ciemny.
-  `DontUseNativeDialog` stosuj tylko przy rozjeździe motywów (app dark +
-  system light) — kosztem jest brak paska Szybki dostęp w dialogu.
+### Pułapki techniczne (z IcoForge + EpubForge + theme.py)
+- **Pasek tytułu a rozjazd motywów (SYMETRYCZNIE):** od Qt 6.5+ na Windows
+  pasek sam podąża za motywem **systemu** — przy zgodności nic nie rób.
+  Przy rozjeździe (w OBU kierunkach!) ustaw `DwmSetWindowAttribute(20)`
+  zgodnie z motywem **aplikacji**: app dark → TRUE, app light → **FALSE**
+  (jawnie! inaczej app wymuszona jasna na ciemnym systemie dostaje ciemny
+  pasek). Dalej: `WM_NCACTIVATE` + `RedrawWindow(RDW_FRAME)`; `winId()`
+  wołaj w `showEvent`, nie w `__init__`.
+- **Dialog odbiera focus → pasek głównego okna wraca do systemowego:**
+  nadpisz `changeEvent` na `ActivationChange` i ponownie wymuś atrybut DWM
+  (dotyczy tylko scenariusza rozjazdu jw.).
+- **Natywne dialogi plików (SYMETRYCZNIE):** natywny ⇔ brak rozjazdu.
+  Cztery kombinacje: dark+dark → natywny (Win11 sam da ciemny);
+  light+light → natywny; dark+light → `DontUseNativeDialog`;
+  **light+dark → `DontUseNativeDialog`** (natywny byłby ciemny nad jasną
+  aplikacją). Tryb auto → zawsze natywny. Motyw systemu sprawdzaj
+  **w momencie otwierania dialogu**, nie cache'uj ze startu (system mógł
+  się zmienić w trakcie sesji). Koszt dialogu Qt: brak paska Szybki dostęp.
+- **Testy reguły rozjazdu:** mockuj `styleHints().colorScheme()` —
+  test 4 kombinacji + auto nie może zależeć od motywu maszyny CI.
 - **Repaint pozostałości motywu:** po zmianie palety/QSS przejdź
-  `style.unpolish()/polish()` po `app.allWidgets()`.
+  `style.unpolish()/polish()` po `app.allWidgets()` **+ `update()`**
+  (patrz kontrakt theme.py pkt 4 — okna w tle).
 - **Hardcoded kolory:** w kodzie widgetów używaj ról palety
   (`palette(base)`, `palette(text)`), nie sztywnych hexów — inaczej
   nie zmieniają się z motywem. Hexy żyją wyłącznie w theme.py.
@@ -277,7 +297,7 @@ Biblioteka widgetów do reużycia w każdym projekcie. Docelowo: prywatny pakiet
 | Komponent | Rola | tkinter | Qt |
 |---|---|---|---|
 | `ThemeManager` | motyw auto/jasny/ciemny + persist | słownik + apply_theme + darkdetect | theme.py: Fusion + QPalette + QSS, auto przez styleHints |
-| `set_titlebar_dark` | ciemny pasek tytułu Windows | GetParent(winfo_id) | winId() (tylko gdy motyw ≠ system, Qt 6.5+) |
+| `set_titlebar_dark` | pasek tytułu zgodny z motywem app | GetParent(winfo_id) | winId(); tylko przy rozjeździe, w obu kierunkach (dark→TRUE, light→FALSE) |
 | `PathEntry` | pole + przycisk wyboru | tk.Frame | QWidget |
 | `FileList` | lista plików z toolbar + D&D | tk.Listbox | QListWidget |
 | `Checkbox` | stylizowany checkbox (nie switch!) | tk.Checkbutton | QCheckBox |
@@ -379,7 +399,8 @@ Przy starcie nowej aplikacji:
 [ ] config przez platformdirs + zapis atomowy + debounce (sekcja 8)
 [ ] ThemeManager z auto/jasny/ciemny (paleta + stany z sekcji 5)
 [ ] Qt: theme.py wymusza Fusion przed setPalette
-[ ] Ciemny pasek tytułu Windows (tylko gdy motyw ≠ system w Qt 6.5+)
+[ ] Pasek tytułu Windows: zgodność = nic; rozjazd = atrybut DWM wg motywu APP (oba kierunki)
+[ ] Dialogi natywne ⇔ brak rozjazdu motywów (reguła symetryczna, odczyt systemu przy otwarciu)
 [ ] Górny pasek wg układu z sekcji 6 (logo + motyw + about)
 [ ] Komponenty z gui-kit (sekcja 7) zamiast pisać od zera
 [ ] Tooltipy na wszystkich interaktywnych elementach
