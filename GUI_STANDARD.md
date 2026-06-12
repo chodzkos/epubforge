@@ -6,6 +6,7 @@
 
 | Wersja | Data | Zmiany |
 |---|---|---|
+| 2.3 | 2026-06-12 | zmiana motywu w locie: QSS regenerowany przy każdym apply() (zakaz cache'owania stringa z hexami), jawne QToolTip.setPalette() — elementy statyczne Qt nie podążają za app.setPalette() (usterka z EpubForge F-A) |
 | 2.2 | 2026-06-12 | dialog fallback: jawny binarny trade-off przy rozjeździe + standard konfiguracji nienatywnego QFileDialog (sidebar, Detail, rozmiar, instancyjne API); odrzucona opcja „zawsze natywne" z warunkiem rewizji |
 | 2.1 | 2026-06-12 | symetryczna reguła rozjazdu motywów (dialogi natywne I pasek tytułu — oba kierunki, nie tylko app dark + system light); odczyt motywu systemu przy otwarciu dialogu; update() po re-aplikacji motywu (usterka z EpubForge F-S) |
 | 2.0 | 2026-06-12 | usunięcie qdarktheme (projekt porzucony) → własny theme.py; platformdirs; stany palety; pułapki PyInstaller+Qt; niuanse DWM/Qt 6.5+ |
@@ -119,15 +120,22 @@ Aplikacje docelowe, większe projekty, wszystko gdzie ciemny motyw i wygląd maj
    przyciski, menu i scrollbary zostaną jasne mimo ciemnej palety.
 2. **QPalette = baza kolorów, QSS = tylko akcenty** (border-radius, hover,
    accent #5DCAA5, tooltips). Nie dublować kolorów w obu miejscach — QSS
-   nadpisuje paletę i przy zmianie motywu zostają plamy.
+   nadpisuje paletę i przy zmianie motywu zostają plamy. **QSS jest
+   FUNKCJĄ palety, nie stałą:** generowany od zera przy KAŻDYM `apply()`
+   z bieżących kolorów — nigdy cache'owany string z hexami (zamraża
+   motyw startowy przy przełączeniu w locie).
 3. **Auto-motyw:** `colorScheme()` → `Dark`/`Light`; wartość `Unknown`
    (Linux bez portalu XDG) traktuj jako fallback → dark.
 4. **Reakcja na zmianę systemu:** podłącz `styleHints().colorSchemeChanged`
-   tylko w trybie auto; w trybie wymuszonym ignoruj sygnał. Po każdej
-   re-aplikacji motywu (także z sygnału) wykonaj `unpolish()/polish()`
-   po `app.allWidgets()` **i zawołaj `update()` na każdym widgecie** —
-   bez tego okna częściowo zasłonięte / w tle nie przerysują się aż do
-   ekspozycji (kompozytor Windows nie wymusi repaint sam).
+   tylko w trybie auto; w trybie wymuszonym ignoruj sygnał. **Kanoniczna
+   sekwencja `apply()`** (zawsze w tej kolejności):
+   `setPalette(nowa)` → `setStyleSheet(QSS wygenerowany z nowej palety)` →
+   `QToolTip.setPalette(...)` (ToolTipBase=bg2, ToolTipText=fg) →
+   `unpolish()/polish()` + `update()` po `app.allWidgets()`.
+   Bez jawnego kroku QToolTip dymki zostają w motywie startowym —
+   elementy statyczne/singletonowe Qt (QToolTip, QWhatsThis) NIE podążają
+   za `app.setPalette()` przy zmianie w locie. Bez `update()` okna
+   częściowo zasłonięte / w tle nie przerysują się aż do ekspozycji.
 5. **Pojęcie ROZJAZDU motywów** (używane niżej w pułapkach):
    rozjazd ⇔ efektywny motyw aplikacji ≠ motyw systemu
    (`colorScheme()`, Unknown → traktuj jako dark). Tryb auto z definicji
@@ -187,6 +195,17 @@ Aplikacje docelowe, większe projekty, wszystko gdzie ciemny motyw i wygląd maj
     gałąź natywna może pozostać statyczna.
 - **Testy reguły rozjazdu:** mockuj `styleHints().colorScheme()` —
   test 4 kombinacji + auto nie może zależeć od motywu maszyny CI.
+- **Zmiana motywu w locie — zamrożone elementy:** `QToolTip` (i pokrewne
+  statyczne: QWhatsThis) trzymają WŁASNĄ paletę pobraną raz — po
+  `app.setPalette()` dymki zostają w starym motywie. Fix: kanoniczna
+  sekwencja apply() z kontraktu theme.py (regeneracja QSS + jawne
+  `QToolTip.setPalette(...)` — metoda STATYCZNA klasy, import z
+  QtWidgets). Test regresji: po `apply("dark")→apply("light")`
+  `QToolTip.palette().color(ToolTipBase)` == bg2 nowego motywu ORAZ
+  `app.styleSheet()` nie zawiera hexów poprzedniego motywu (łapie powrót
+  cache'owania QSS). Test regresji dla `QToolTip.palette()` musi używać
+  fixture `qapp` z pytest-qt (lub istniejącej w `conftest`) — bez aktywnej
+  instancji `QApplication` wywraca się na CI, zanim cokolwiek sprawdzi.
 - **Repaint pozostałości motywu:** po zmianie palety/QSS przejdź
   `style.unpolish()/polish()` po `app.allWidgets()` **+ `update()`**
   (patrz kontrakt theme.py pkt 4 — okna w tle).
@@ -322,7 +341,7 @@ Biblioteka widgetów do reużycia w każdym projekcie. Docelowo: prywatny pakiet
 | `FileDialogs` | dialogi wg reguły rozjazdu + skonfigurowany fallback | tk.filedialog (zawsze natywne-jasne, ograniczenie toru) | natywny: statyczne get*; fallback: instancja QFileDialog (sidebar, Detail, rozmiar z config) |
 | `FileList` | lista plików z toolbar + D&D | tk.Listbox | QListWidget |
 | `Checkbox` | stylizowany checkbox (nie switch!) | tk.Checkbutton | QCheckBox |
-| `Tooltip` | podpowiedź reagująca na motyw | Toplevel | QToolTip stylowany przez QSS z theme.py |
+| `Tooltip` | podpowiedź reagująca na motyw | Toplevel | QToolTip: QSS z theme.py + setPalette przy każdym apply() (statyczna paleta!) |
 | `Section` | sekcja z tytułem | ttk.LabelFrame | QGroupBox |
 | `LogStreamer` | strumień subprocess → log | kolejka + after | QThread + signal |
 | `AboutPanel` | logo, wersja, linki | Frame | QWidget |
