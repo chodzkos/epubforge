@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 
 from epubforge.core.config import Config
 from epubforge.gui.file_dialogs import open_files, pick_dir
+from epubforge.i18n import _, ngettext
 
 DEFAULT_EXTENSIONS = {".epub", ".txt", ".md", ".markdown", ".docx", ".html", ".htm", ".pdf"}
 
@@ -60,29 +61,31 @@ class FileList(QWidget):
 
         toolbar = QHBoxLayout()
         toolbar.setSpacing(6)
-        self._add_files_btn = self._make_button("+ Pliki", "Dodaj pliki przez okno wyboru")
+        self._add_files_btn = self._make_button(
+            "+ " + _("Pliki"), _("Dodaj pliki przez okno wyboru")
+        )
         self._add_files_btn.clicked.connect(self._add_files)
         self._add_folder_btn = self._make_button(
-            "+ Folder", "Dodaj obsługiwane pliki z wybranego folderu"
+            "+ " + _("Folder"), _("Dodaj obsługiwane pliki z wybranego folderu")
         )
         self._add_folder_btn.clicked.connect(self._add_folder)
-        self._remove_btn = self._make_button("Usuń", "Usuń zaznaczone pozycje z listy")
+        self._remove_btn = self._make_button(_("Usuń"), _("Usuń zaznaczone pozycje z listy"))
         self._remove_btn.clicked.connect(self._remove_selected)
-        self._clear_btn = self._make_button("Wyczyść", "Usuń wszystkie pozycje z listy")
+        self._clear_btn = self._make_button(_("Wyczyść"), _("Usuń wszystkie pozycje z listy"))
         self._clear_btn.clicked.connect(self.clear)
         toolbar.addWidget(self._add_files_btn)
         toolbar.addWidget(self._add_folder_btn)
         toolbar.addWidget(self._remove_btn)
         toolbar.addWidget(self._clear_btn)
         toolbar.addStretch(1)
-        self.count_label = QLabel("0 plików")
+        self.count_label = QLabel(ngettext("{n} plik", "{n} plików", 0).format(n=0))
         toolbar.addWidget(self.count_label)
         layout.addLayout(toolbar)
 
         self.listbox = QListWidget(self)
         self.listbox.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
         self.listbox.setToolTip(
-            "Lista plików — przeciągnij pliki tutaj lub użyj przycisków powyżej"
+            _("Lista plików — przeciągnij pliki tutaj lub użyj przycisków powyżej")
         )
         self.listbox.currentRowChanged.connect(self._on_current_row_changed)
         layout.addWidget(self.listbox, stretch=1)
@@ -165,12 +168,17 @@ class FileList(QWidget):
     def _add_files(self) -> None:
         """Dodaje pliki wybrane w dialogu."""
         pattern = " ".join(f"*{ext}" for ext in sorted(self.extensions))
-        paths = open_files(self, "Dodaj pliki", f"Obsługiwane ({pattern})", self._config)
+        paths = open_files(
+            self,
+            _("Dodaj pliki"),
+            _("Obsługiwane ({pattern})").format(pattern=pattern),
+            self._config,
+        )
         self.add_files(Path(path) for path in paths)
 
     def _add_folder(self) -> None:
         """Dodaje obsługiwane pliki z wybranego katalogu (bez rekursji)."""
-        folder = pick_dir(self, "Dodaj folder", "", self._config)
+        folder = pick_dir(self, _("Dodaj folder"), "", self._config)
         if not folder:
             return
         self.add_files(path for path in Path(folder).iterdir() if path.is_file())
@@ -194,14 +202,5 @@ class FileList(QWidget):
         for path in self._files:
             QListWidgetItem(f"{path.name}  ({path.parent})", self.listbox)
         count = len(self._files)
-        self.count_label.setText(f"{count} {_plural_files(count)}")
+        self.count_label.setText(ngettext("{n} plik", "{n} plików", count).format(n=count))
         self.files_changed.emit(self.files())
-
-
-def _plural_files(count: int) -> str:
-    """Zwraca polską odmianę słowa plik dla licznika."""
-    if count == 1:
-        return "plik"
-    if 2 <= count <= 4:
-        return "pliki"
-    return "plików"

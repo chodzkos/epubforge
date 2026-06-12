@@ -16,6 +16,7 @@ for required_module in (
 # Katalog tego spec-a (SPECPATH wstrzykiwany przez PyInstaller).
 spec_dir = os.path.abspath(SPECPATH)
 assets_dir = os.path.abspath(os.path.join(spec_dir, "..", "src", "epubforge", "gui", "assets"))
+locale_dir = os.path.abspath(os.path.join(spec_dir, "..", "src", "epubforge", "locale"))
 
 # Ikona: użyj prawdziwej z assets, gdy dostarczona; inaczej placeholder z build/.
 _assets_icon = os.path.join(assets_dir, "icon.ico")
@@ -54,6 +55,7 @@ a = Analysis(
     binaries=[],
     datas=[
         (assets_dir, "epubforge/gui/assets"),  # logo/ikona dla okna About
+        (locale_dir, "epubforge/locale"),
     ],
     hiddenimports=[
         "PySide6.QtCore",

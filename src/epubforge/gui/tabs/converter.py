@@ -29,21 +29,10 @@ from epubforge.core.exceptions import ConversionError, ConverterNotFoundError
 from epubforge.gui.output import remember_output_dir, remembered_output_dir, resolve_output_dir
 from epubforge.gui.widgets import FileList, LogView, PathEntry, Section
 from epubforge.gui.workers import EmitLine, EmitProgress, Worker
+from epubforge.i18n import _
 
 # Najczęstsze kody języków dla dropdownu (kolejność = priorytet wyświetlania).
 _LANGUAGES = ["pl", "en", "de", "fr", "es", "it", "ru", "cs", "uk", "nl", "pt"]
-
-_PDF_WARNING = (
-    "Konwersja PDF → EPUB jest eksperymentalna. Calibre wstawia sztywne "
-    "marginesy i może łamać akapity. Najlepsze wyniki dla prostych PDF "
-    "tekstowych. Kontynuować?"
-)
-
-_ENGINE_TOOLTIPS = {
-    "auto": "Auto: PDF → Calibre, pozostałe → Pandoc (fallback Calibre)",
-    "pandoc": "Wymusza Pandoc (TXT/MD/DOCX/HTML/ODT/RTF)",
-    "calibre": "Wymusza Calibre ebook-convert (obsługuje też PDF/MOBI/FB2)",
-}
 
 
 class ConverterTab(QWidget):
@@ -80,14 +69,14 @@ class ConverterTab(QWidget):
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 2)
 
-        self.status_label = QLabel("Dodaj pliki wejściowe")
+        self.status_label = QLabel(_("Dodaj pliki wejściowe"))
         outer.addWidget(self.status_label)
 
     def _build_file_list(self, parent: QWidget) -> None:
         """Buduje listę plików wejściowych z potwierdzeniem PDF."""
         layout = QVBoxLayout(parent)
         layout.setContentsMargins(0, 0, 10, 0)
-        section = Section("Pliki wejściowe")
+        section = Section(_("Pliki wejściowe"))
         layout.addWidget(section)
         self.file_list = FileList(
             extensions=SUPPORTED_INPUT_EXTENSIONS,
@@ -106,7 +95,7 @@ class ConverterTab(QWidget):
 
     def _build_options(self, layout: QVBoxLayout) -> None:
         """Buduje formularz metadanych, okładki, silnika i wyjścia."""
-        section = Section("Opcje konwersji")
+        section = Section(_("Opcje konwersji"))
         layout.addWidget(section)
 
         form = QFormLayout()
@@ -114,40 +103,42 @@ class ConverterTab(QWidget):
         section.content_layout().addLayout(form)
 
         self.title_edit = QLineEdit()
-        self.title_edit.setToolTip("Tytuł książki w wynikowym EPUB (opcjonalny)")
-        form.addRow("Tytuł", self.title_edit)
+        self.title_edit.setToolTip(_("Tytuł książki w wynikowym EPUB (opcjonalny)"))
+        form.addRow(_("Tytuł"), self.title_edit)
 
         self.author_edit = QLineEdit()
-        self.author_edit.setToolTip("Autor; zalecany format: Nazwisko, Imię (opcjonalny)")
-        form.addRow("Autor", self.author_edit)
+        self.author_edit.setToolTip(_("Autor; zalecany format: Nazwisko, Imię (opcjonalny)"))
+        form.addRow(_("Autor"), self.author_edit)
 
         self.language_box = QComboBox()
         self.language_box.addItems(_LANGUAGES)
         self.language_box.setCurrentText("pl")
-        self.language_box.setToolTip("Kod języka treści, np. pl, en, de")
-        form.addRow("Język", self.language_box)
+        self.language_box.setToolTip(_("Kod języka treści, np. pl, en, de"))
+        form.addRow(_("Język"), self.language_box)
 
         self.cover_entry = PathEntry(
             mode="file",
-            filetypes=[("Obrazy", "*.jpg *.jpeg *.png *.gif"), ("Wszystkie pliki", "*.*")],
+            filetypes=[(_("Obrazy"), "*.jpg *.jpeg *.png *.gif"), (_("Wszystkie pliki"), "*.*")],
         )
-        self.cover_entry.entry.setToolTip("Opcjonalny obraz okładki (jpg/png/gif)")
-        form.addRow("Okładka", self.cover_entry)
+        self.cover_entry.entry.setToolTip(_("Opcjonalny obraz okładki (jpg/png/gif)"))
+        form.addRow(_("Okładka"), self.cover_entry)
 
-        form.addRow("Silnik", self._build_engine_row())
+        form.addRow(_("Silnik"), self._build_engine_row())
 
         self.output_entry = PathEntry(
             mode="dir", config=self.config_data, remember_key="last_output_dir"
         )
         self.output_entry.entry.setToolTip(
-            "Folder na pliki .epub; puste = zapis obok pliku źródłowego"
+            _("Folder na pliki .epub; puste = zapis obok pliku źródłowego")
         )
-        form.addRow("Folder wyjściowy", self.output_entry)
+        form.addRow(_("Folder wyjściowy"), self.output_entry)
 
-        self.convert_button = QPushButton("Konwertuj")
+        self.convert_button = QPushButton(_("Konwertuj"))
         self.convert_button.setToolTip(
-            "Konwertuje wybrane pliki do EPUB wybranym silnikiem.\n"
-            "Puste pole 'Folder wyjściowy' = zapis obok pliku źródłowego."
+            _(
+                "Konwertuje wybrane pliki do EPUB wybranym silnikiem.\n"
+                "Puste pole 'Folder wyjściowy' = zapis obok pliku źródłowego."
+            )
         )
         self.convert_button.clicked.connect(self._convert)
         section.content_layout().addWidget(self.convert_button)
@@ -160,7 +151,7 @@ class ConverterTab(QWidget):
         self.engine_group = QButtonGroup(self)
         for value, label in (("auto", "Auto"), ("pandoc", "Pandoc"), ("calibre", "Calibre")):
             radio = QRadioButton(label)
-            radio.setToolTip(_ENGINE_TOOLTIPS[value])
+            radio.setToolTip(_engine_tooltip(value))
             radio.setProperty("engine", value)
             if value == "auto":
                 radio.setChecked(True)
@@ -171,7 +162,7 @@ class ConverterTab(QWidget):
 
     def _build_log(self, layout: QVBoxLayout) -> None:
         """Buduje pole logu konwersji."""
-        section = Section("Log")
+        section = Section(_("Log"))
         layout.addWidget(section, stretch=1)
         self.log_view = LogView()
         section.add_widget(self.log_view)
@@ -187,7 +178,15 @@ class ConverterTab(QWidget):
         """Dla plików PDF wymaga potwierdzenia (konwersja eksperymentalna)."""
         if path.suffix.lower() != ".pdf":
             return True
-        answer = QMessageBox.question(self, "Konwersja PDF → EPUB", _PDF_WARNING)
+        answer = QMessageBox.question(
+            self,
+            _("Konwersja PDF → EPUB"),
+            _(
+                "Konwersja PDF → EPUB jest eksperymentalna. Calibre wstawia sztywne "
+                "marginesy i może łamać akapity. Najlepsze wyniki dla prostych PDF "
+                "tekstowych. Kontynuować?"
+            ),
+        )
         return answer == QMessageBox.StandardButton.Yes
 
     def _selected_engine(self) -> Engine:
@@ -212,14 +211,14 @@ class ConverterTab(QWidget):
             return
         files = self.file_list.files()
         if not files:
-            self._set_status("Brak plików do konwersji")
+            self._set_status(_("Brak plików do konwersji"))
             return
         output = self.output_entry.get().strip()
 
         self._converting = True
         self.convert_button.setEnabled(False)
         self.log_view.clear()
-        self._set_status("Konwertowanie...")
+        self._set_status(_("Konwertowanie..."))
 
         remember_output_dir(self.config_data, output)
         options = self._build_convert_options()
@@ -237,14 +236,14 @@ class ConverterTab(QWidget):
         succeeded, total = cast(tuple[int, int], result)
         self._converting = False
         self.convert_button.setEnabled(True)
-        self._set_status(f"Zakończono: {succeeded}/{total} OK")
+        self._set_status(_("Zakończono: {done}/{total} OK").format(done=succeeded, total=total))
 
     def _on_failed(self, message: str) -> None:
         """Obsługuje nieoczekiwany błąd wątku konwersji."""
         self._converting = False
         self.convert_button.setEnabled(True)
-        self.log_view.append_line(f"BŁĄD: {message}", "err")
-        self._set_status("Konwersja przerwana błędem")
+        self.log_view.append_line(_("BŁĄD: {message}").format(message=message), "err")
+        self._set_status(_("Konwersja przerwana błędem"))
 
     def _set_status(self, text: str) -> None:
         """Ustawia tekst paska statusu zakładki."""
@@ -271,10 +270,19 @@ def _run_conversion(
         try:
             result = to_epub(source, target, options, engine)
         except (ConverterNotFoundError, ConversionError) as exc:
-            emit_line(f"BŁĄD: {exc}", "err")
+            emit_line(_("BŁĄD: {error}").format(error=exc), "err")
             continue
         if result.log:
             emit_line(result.log, "info")
-        emit_line(f"OK [{result.engine}]: {target.name}", "ok")
+        emit_line(_("OK [{engine}]: {name}").format(engine=result.engine, name=target.name), "ok")
         succeeded += 1
     return succeeded, len(files)
+
+
+def _engine_tooltip(value: str) -> str:
+    """Zwraca tooltip silnika konwersji jako literal gettext dla Babel."""
+    if value == "pandoc":
+        return _("Wymusza Pandoc (TXT/MD/DOCX/HTML/ODT/RTF)")
+    if value == "calibre":
+        return _("Wymusza Calibre ebook-convert (obsługuje też PDF/MOBI/FB2)")
+    return _("Auto: PDF → Calibre, pozostałe → Pandoc (fallback Calibre)")

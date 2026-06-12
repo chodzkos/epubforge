@@ -10,24 +10,25 @@ from typing import cast
 from epubforge.converters import KfxOptions, to_kfx
 from epubforge.converters.to_kfx import KfxEngine
 from epubforge.core import ConversionError, ConverterNotFoundError
+from epubforge.i18n import _
 
 
 def add_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     """Rejestruje subkomendę ``kfx`` w głównym parserze argparse."""
-    parser = subparsers.add_parser("kfx", help="Konwertuj EPUB do KFX")
-    parser.add_argument("file", type=Path, help="Plik EPUB do konwersji")
+    parser = subparsers.add_parser("kfx", help=_("Konwertuj EPUB do KFX"))
+    parser.add_argument("file", type=Path, help=_("Plik EPUB do konwersji"))
     parser.add_argument(
         "--engine",
         choices=("calibre", "kindle-previewer"),
         default="auto",
-        help="Silnik KFX; domyślnie auto: Calibre+KFX Output, potem Kindle Previewer",
+        help=_("Silnik KFX; domyślnie auto: Calibre+KFX Output, potem Kindle Previewer"),
     )
     parser.add_argument(
         "--no-fix",
         dest="fix_epub_first",
         action="store_false",
         default=True,
-        help="Nie uruchamiaj CSS fixera przed konwersją",
+        help=_("Nie uruchamiaj CSS fixera przed konwersją"),
     )
     parser.set_defaults(func=run)
 
@@ -39,13 +40,13 @@ def run(args: argparse.Namespace) -> int:
     try:
         result = to_kfx(args.file, args.file.parent, options)
     except ConverterNotFoundError as exc:
-        print(f"Błąd: {exc}", file=sys.stderr)
+        print(_("Błąd: {error}").format(error=exc), file=sys.stderr)
         return 2
     except ConversionError as exc:
-        print(f"Błąd: {exc}", file=sys.stderr)
+        print(_("Błąd: {error}").format(error=exc), file=sys.stderr)
         return 1
 
     if result.log:
         print(result.log)
-    print(f"Utworzono KFX: {result.output_path}")
+    print(_("Utworzono KFX: {path}").format(path=result.output_path))
     return 0

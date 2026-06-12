@@ -60,6 +60,13 @@ if exist "..\src\epubforge\gui\assets\icon.ico" (
     )
 )
 
+echo === Kompilacja tlumaczen gettext ===
+!PYTHON_CMD! compile_locales.py
+if errorlevel 1 (
+    echo [BLAD] Nie udalo sie skompilowac tlumaczen gettext.
+    exit /b 1
+)
+
 echo === [1/3] Build PORTABLE (onefile) ===
 !PYTHON_CMD! -m PyInstaller epubforge-portable.spec --clean --noconfirm --distpath dist --workpath build-tmp
 if not exist "dist\epubforge.exe" (

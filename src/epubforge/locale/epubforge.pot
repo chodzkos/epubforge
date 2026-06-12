@@ -1,0 +1,1048 @@
+# Translations template for PROJECT.
+# Copyright (C) 2026 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-06-12 13:24+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: src/epubforge/cli/convert.py:15
+msgid "Konwertuj plik wejściowy do EPUB"
+msgstr ""
+
+#: src/epubforge/cli/convert.py:16
+msgid "Plik wejściowy"
+msgstr ""
+
+#: src/epubforge/cli/convert.py:17
+msgid "Docelowy plik EPUB"
+msgstr ""
+
+#: src/epubforge/cli/convert.py:22
+msgid "Silnik konwersji (domyślnie: auto)"
+msgstr ""
+
+#: src/epubforge/cli/convert.py:32 src/epubforge/cli/convert.py:35
+#: src/epubforge/cli/fix.py:58 src/epubforge/cli/hyphenate.py:57
+#: src/epubforge/cli/kfx.py:43 src/epubforge/cli/kfx.py:46
+#: src/epubforge/cli/meta.py:40 src/epubforge/cli/mobi.py:54
+#: src/epubforge/cli/mobi.py:57
+#, python-brace-format
+msgid "Błąd: {error}"
+msgstr ""
+
+#: src/epubforge/cli/convert.py:40
+#, python-brace-format
+msgid "Utworzono EPUB: {path}"
+msgstr ""
+
+#: src/epubforge/cli/fix.py:16
+msgid "Normalizuj CSS w EPUB"
+msgstr ""
+
+#: src/epubforge/cli/fix.py:17 src/epubforge/cli/hyphenate.py:19
+msgid "Plik EPUB do modyfikacji"
+msgstr ""
+
+#: src/epubforge/cli/fix.py:18
+msgid "Usuń kolory i tła z CSS"
+msgstr ""
+
+#: src/epubforge/cli/fix.py:19
+msgid "Usuń fonty z CSS i EPUB"
+msgstr ""
+
+#: src/epubforge/cli/fix.py:25
+msgid "Nie dodawaj resetu margin/padding"
+msgstr ""
+
+#: src/epubforge/cli/fix.py:30
+msgid "Zamień text-align: justify na left"
+msgstr ""
+
+#: src/epubforge/cli/fix.py:32
+msgid "Dodaj @page margin w px"
+msgstr ""
+
+#: src/epubforge/cli/fix.py:38
+#, python-brace-format
+msgid "Nie dodawaj reguły h1-h3 { hyphens: none }"
+msgstr ""
+
+#: src/epubforge/cli/fix.py:61 src/epubforge/cli/hyphenate.py:60
+#, python-brace-format
+msgid "Zaktualizowano EPUB: {path}"
+msgstr ""
+
+#: src/epubforge/cli/hyphenate.py:18
+msgid "Dodaj dzielenie wyrazów do EPUB"
+msgstr ""
+
+#: src/epubforge/cli/hyphenate.py:20
+msgid "Język słownika Pyphen (domyślnie: pl)"
+msgstr ""
+
+#: src/epubforge/cli/hyphenate.py:25
+msgid "Metoda dzielenia wyrazów (domyślnie: soft-hyphen)"
+msgstr ""
+
+#: src/epubforge/cli/hyphenate.py:33
+msgid "Pomijaj nagłówki h1-h3 przy metodzie soft-hyphen (domyślnie)"
+msgstr ""
+
+#: src/epubforge/cli/hyphenate.py:39
+msgid "Dziel także nagłówki h1-h3 przy metodzie soft-hyphen"
+msgstr ""
+
+#: src/epubforge/cli/kfx.py:18
+msgid "Konwertuj EPUB do KFX"
+msgstr ""
+
+#: src/epubforge/cli/kfx.py:19 src/epubforge/cli/mobi.py:19
+msgid "Plik EPUB do konwersji"
+msgstr ""
+
+#: src/epubforge/cli/kfx.py:24
+msgid "Silnik KFX; domyślnie auto: Calibre+KFX Output, potem Kindle Previewer"
+msgstr ""
+
+#: src/epubforge/cli/kfx.py:31 src/epubforge/cli/mobi.py:38
+msgid "Nie uruchamiaj CSS fixera przed konwersją"
+msgstr ""
+
+#: src/epubforge/cli/kfx.py:51
+#, python-brace-format
+msgid "Utworzono KFX: {path}"
+msgstr ""
+
+#: src/epubforge/cli/main.py:30
+msgid "Nowoczesny zestaw narzędzi do EPUB — walidacja, naprawa, konwersja."
+msgstr ""
+
+#: src/epubforge/cli/main.py:38
+msgid "Dostępne komendy"
+msgstr ""
+
+#: src/epubforge/cli/main.py:39
+msgid "Wyświetl informacje o wersji i wykrytych narzędziach"
+msgstr ""
+
+#: src/epubforge/cli/main.py:55
+msgid "Wykryte narzędzia: (TODO - etap 3)"
+msgstr ""
+
+#: src/epubforge/cli/meta.py:15
+msgid "Podgląd i edycja metadanych EPUB"
+msgstr ""
+
+#: src/epubforge/cli/meta.py:16
+msgid "Plik EPUB"
+msgstr ""
+
+#: src/epubforge/cli/meta.py:17
+msgid "Ustaw tytuł"
+msgstr ""
+
+#: src/epubforge/cli/meta.py:19
+msgid "Ustaw autora (można podać wielokrotnie)"
+msgstr ""
+
+#: src/epubforge/cli/meta.py:21
+msgid "Ustaw kod języka (np. pl)"
+msgstr ""
+
+#: src/epubforge/cli/meta.py:22
+msgid "Ustaw wydawcę"
+msgstr ""
+
+#: src/epubforge/cli/meta.py:23
+msgid "Ustaw datę (ISO: RRRR-MM-DD)"
+msgstr ""
+
+#: src/epubforge/cli/meta.py:24
+msgid "Ustaw identyfikator (ISBN/UUID)"
+msgstr ""
+
+#: src/epubforge/cli/meta.py:25
+msgid "Ustaw nazwę cyklu (pusty łańcuch usuwa serię)"
+msgstr ""
+
+#: src/epubforge/cli/meta.py:26
+msgid "Ustaw numer tomu (np. 2 lub 1.5)"
+msgstr ""
+
+#: src/epubforge/cli/meta.py:37
+#, python-brace-format
+msgid "Zapisano metadane: {path}\n"
+msgstr ""
+
+#: src/epubforge/cli/meta.py:77
+msgid "—"
+msgstr ""
+
+#: src/epubforge/cli/meta.py:86
+#, python-brace-format
+msgid "Tytuł:    {value}"
+msgstr ""
+
+#: src/epubforge/cli/meta.py:87
+#, python-brace-format
+msgid "Autorzy:  {value}"
+msgstr ""
+
+#: src/epubforge/cli/meta.py:88
+#, python-brace-format
+msgid "Język:    {value}"
+msgstr ""
+
+#: src/epubforge/cli/meta.py:89
+#, python-brace-format
+msgid "Wydawca:  {value}"
+msgstr ""
+
+#: src/epubforge/cli/meta.py:90
+#, python-brace-format
+msgid "Data:     {value}"
+msgstr ""
+
+#: src/epubforge/cli/meta.py:91
+#, python-brace-format
+msgid "ISBN:     {value}"
+msgstr ""
+
+#: src/epubforge/cli/meta.py:92
+#, python-brace-format
+msgid "Tematy:   {value}"
+msgstr ""
+
+#: src/epubforge/cli/meta.py:93
+#, python-brace-format
+msgid "Cykl:     {value}"
+msgstr ""
+
+#: src/epubforge/cli/mobi.py:18
+msgid "Konwertuj EPUB do MOBI/AZW3"
+msgstr ""
+
+#: src/epubforge/cli/mobi.py:25
+msgid "Format docelowy (domyślnie mobi)"
+msgstr ""
+
+#: src/epubforge/cli/mobi.py:31
+msgid "Silnik konwersji; Calibre zalecany, kindlegen wycofany (domyślnie calibre)"
+msgstr ""
+
+#: src/epubforge/cli/mobi.py:62
+#, python-brace-format
+msgid "Utworzono {format}: {path}"
+msgstr ""
+
+#: src/epubforge/gui/app.py:59 src/epubforge/gui/app.py:179
+msgid "O programie"
+msgstr ""
+
+#: src/epubforge/gui/app.py:65
+msgid "Zamknij"
+msgstr ""
+
+#: src/epubforge/gui/app.py:145
+msgid "Motyw: Automatyczny / Jasny / Ciemny"
+msgstr ""
+
+#: src/epubforge/gui/app.py:161
+msgid "Język interfejsu"
+msgstr ""
+
+#: src/epubforge/gui/app.py:192 src/epubforge/gui/tabs/metadata.py:216
+#: src/epubforge/gui/tabs/metadata.py:238
+#: src/epubforge/gui/tabs/metadata.py:333
+msgid "Metadane"
+msgstr ""
+
+#: src/epubforge/gui/app.py:193
+msgid "Konwerter"
+msgstr ""
+
+#: src/epubforge/gui/app.py:194
+msgid "Fixer"
+msgstr ""
+
+#: src/epubforge/gui/app.py:195
+msgid "Eksport Kindle"
+msgstr ""
+
+#: src/epubforge/gui/app.py:214
+#, python-brace-format
+msgid "Motyw: {theme}"
+msgstr ""
+
+#: src/epubforge/gui/app.py:222 src/epubforge/gui/tabs/converter.py:117
+#: src/epubforge/gui/tabs/fixer.py:119 src/epubforge/gui/tabs/metadata.py:111
+msgid "Język"
+msgstr ""
+
+#: src/epubforge/gui/app.py:223
+msgid "Zmiana języka zadziała po ponownym uruchomieniu aplikacji."
+msgstr ""
+
+#: src/epubforge/gui/app.py:236
+#, python-brace-format
+msgid "Język: {language}"
+msgstr ""
+
+#: src/epubforge/gui/app.py:336
+msgid "brak"
+msgstr ""
+
+#: src/epubforge/gui/app.py:344
+msgid "Automatyczny"
+msgstr ""
+
+#: src/epubforge/gui/app.py:345 src/epubforge/gui/app.py:353
+msgid "Jasny"
+msgstr ""
+
+#: src/epubforge/gui/app.py:346 src/epubforge/gui/app.py:355
+msgid "Ciemny"
+msgstr ""
+
+#: src/epubforge/gui/app.py:356 src/epubforge/gui/app.py:367
+msgid "Auto"
+msgstr ""
+
+#: src/epubforge/gui/app.py:362
+msgid "Polski"
+msgstr ""
+
+#: src/epubforge/gui/app.py:364
+msgid "English"
+msgstr ""
+
+#: src/epubforge/gui/app.py:366
+msgid "Deutsch"
+msgstr ""
+
+#: src/epubforge/gui/app.py:387
+msgid "Błąd krytyczny"
+msgstr ""
+
+#: src/epubforge/gui/app.py:388
+#, python-brace-format
+msgid ""
+"Wystąpił nieoczekiwany błąd:\n"
+"{error}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:72
+msgid "Dodaj pliki wejściowe"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:79
+msgid "Pliki wejściowe"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:98
+msgid "Opcje konwersji"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:106
+msgid "Tytuł książki w wynikowym EPUB (opcjonalny)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:107
+#: src/epubforge/gui/tabs/metadata.py:103
+msgid "Tytuł"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:110
+msgid "Autor; zalecany format: Nazwisko, Imię (opcjonalny)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:111
+msgid "Autor"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:116
+msgid "Kod języka treści, np. pl, en, de"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:121
+msgid "Obrazy"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:121
+#: src/epubforge/gui/widgets/path_entry.py:47
+msgid "Wszystkie pliki"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:123
+msgid "Opcjonalny obraz okładki (jpg/png/gif)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:124
+msgid "Okładka"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:126
+msgid "Silnik"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:132
+msgid "Folder na pliki .epub; puste = zapis obok pliku źródłowego"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:134 src/epubforge/gui/tabs/kfx.py:216
+msgid "Folder wyjściowy"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:136 src/epubforge/gui/tabs/kfx.py:229
+msgid "Konwertuj"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:139
+msgid ""
+"Konwertuje wybrane pliki do EPUB wybranym silnikiem.\n"
+"Puste pole 'Folder wyjściowy' = zapis obok pliku źródłowego."
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:165 src/epubforge/gui/tabs/fixer.py:201
+#: src/epubforge/gui/tabs/kfx.py:220
+msgid "Log"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:183
+msgid "Konwersja PDF → EPUB"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:185
+msgid ""
+"Konwersja PDF → EPUB jest eksperymentalna. Calibre wstawia sztywne "
+"marginesy i może łamać akapity. Najlepsze wyniki dla prostych PDF "
+"tekstowych. Kontynuować?"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:214
+msgid "Brak plików do konwersji"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:221
+msgid "Konwertowanie..."
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:239 src/epubforge/gui/tabs/fixer.py:320
+#: src/epubforge/gui/tabs/kfx.py:356
+#, python-brace-format
+msgid "Zakończono: {done}/{total} OK"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:245 src/epubforge/gui/tabs/fixer.py:326
+#: src/epubforge/gui/tabs/kfx.py:362
+#, python-brace-format
+msgid "BŁĄD: {message}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:246 src/epubforge/gui/tabs/kfx.py:363
+msgid "Konwersja przerwana błędem"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:273 src/epubforge/gui/tabs/fixer.py:394
+#: src/epubforge/gui/tabs/kfx.py:386 src/epubforge/gui/tabs/kfx.py:418
+#, python-brace-format
+msgid "BŁĄD: {error}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:277 src/epubforge/gui/tabs/kfx.py:391
+#: src/epubforge/gui/tabs/kfx.py:423
+#, python-brace-format
+msgid "OK [{engine}]: {name}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:285
+msgid "Wymusza Pandoc (TXT/MD/DOCX/HTML/ODT/RTF)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:287
+msgid "Wymusza Calibre ebook-convert (obsługuje też PDF/MOBI/FB2)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/converter.py:288
+msgid "Auto: PDF → Calibre, pozostałe → Pandoc (fallback Calibre)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:76 src/epubforge/gui/tabs/kfx.py:244
+msgid "Dodaj pliki EPUB"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:83 src/epubforge/gui/tabs/kfx.py:85
+#: src/epubforge/gui/tabs/metadata.py:78
+msgid "Pliki EPUB"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:104
+msgid "Dzielenie wyrazów"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:106
+msgid "Włącz"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:108
+msgid "Włącz dzielenie wyrazów dla wybranych EPUB"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:117
+msgid "Język słownika dzielenia wyrazów (pyphen), np. pl, en_US"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:132
+msgid "Metoda"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:135
+msgid "Soft-hyphen może psuć słownik i wyszukiwarkę na czytniku Kindle."
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:140
+msgid "Pomiń nagłówki"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:142
+msgid "Nie dziel wyrazów w nagłówkach (h1-h3)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:149
+msgid "CSS Fixer"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:153
+msgid "Usuń kolory"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:155
+msgid "Usuwa deklaracje color/background z CSS (czytnik narzuca własne)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:159
+msgid "Usuń fonty"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:162
+msgid ""
+"UWAGA: usuwa @font-face i pliki fontów z EPUB — nieodwracalne dla danej "
+"kopii"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:167
+msgid "Dodaj reset CSS"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:169
+msgid "Dodaje delikatny reset (marginesy/padding) dla spójnego renderowania"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:173
+msgid "Zamień justowanie na lewe"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:175
+msgid "Zamienia text-align: justify na left (mniej dużych odstępów)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:179
+msgid "Wyłącz hyphenację nagłówków"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:181
+msgid "Dodaje regułę CSS wyłączającą dzielenie wyrazów w nagłówkach"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:185
+msgid "Margines książki"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:186
+msgid "Wstrzykuje margines strony (w px) z pola obok"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:191
+msgid "Szerokość marginesu strony w pikselach (0-120)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:209
+msgid "Napraw"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:211
+msgid "Hyphenacja i naprawa CSS wybranych plików (zapis w miejscu)."
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:218
+msgid "Podgląd w Calibre Viewer"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:219
+msgid "Otwiera ostatni naprawiony EPUB w Calibre Viewer"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:246
+#, python-brace-format
+msgid "Wybrano {n} plik"
+msgid_plural "Wybrano {n} plików"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/epubforge/gui/tabs/fixer.py:290
+msgid "Brak plików EPUB do naprawy"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:298
+msgid "Naprawianie..."
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:311
+#, python-brace-format
+msgid "Naprawianie {current}/{total}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:327
+msgid "Naprawa przerwana błędem"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:346
+msgid "Nie wykryto Calibre Viewer albo brak wyniku"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:355
+#, python-brace-format
+msgid "BŁĄD: Nie udało się otworzyć podglądu: {error}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:359
+#, python-brace-format
+msgid "Uruchomiono podgląd: {name}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:387
+msgid "Hyphenation..."
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:389
+msgid "CSS Fixer..."
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:396
+#, python-brace-format
+msgid "OK: {path}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:405
+msgid ""
+"Wstrzykuje regułę CSS 'hyphens: auto' — czysty tekst, ale słabo wspierane"
+" na Kindle."
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:408
+msgid ""
+"Wstawia miękkie myślniki (\\u00ad) w tekście. Działa na KAŻDYM czytniku "
+"(też starym Kindle), ALE psuje słownik i wyszukiwarkę na czytniku."
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:103
+msgid "Format docelowy"
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:128
+msgid "Silnik KFX"
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:131
+msgid "Calibre + wtyczka KFX"
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:132
+msgid "Zalecany silnik KFX — Calibre z wtyczką KFX Output"
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:137 src/epubforge/gui/tabs/kfx.py:169
+msgid "ZALECANE"
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:142
+msgid ""
+"Eksperymentalny silnik KFX — wrażliwy na nieidealny EPUB. Preferuj "
+"Calibre + wtyczkę KFX Output."
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:150
+msgid "EKSPERYMENTALNE - wrażliwe na formatowanie"
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:160
+msgid "Silnik MOBI/AZW3"
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:164
+msgid "Zalecany silnik MOBI/AZW3 — nowoczesny i aktywnie rozwijany"
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:174
+msgid ""
+"Wycofany przez Amazon (utknął na 2.9). Działa do MOBI, ale zalecany jest "
+"Calibre ebook-convert."
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:181
+msgid "WYCOFANY - opcjonalny"
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:198
+msgid "Opcje"
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:201
+msgid "Napraw EPUB przed konwersją"
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:204
+msgid "Przed eksportem uruchamia podstawową naprawę CSS (zalecane)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:214
+msgid "Folder na pliki wynikowe; puste = zapis obok pliku źródłowego"
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:232
+msgid ""
+"Eksportuje wybrane pliki EPUB do wybranego formatu Kindle "
+"(KFX/MOBI/AZW3). Puste pole folderu = zapis obok źródła."
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:269
+#, python-brace-format
+msgid "Konwertuj do {format}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:276
+#, python-brace-format
+msgid "Wybrano {n} plik EPUB"
+msgid_plural "Wybrano {n} plików EPUB"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/epubforge/gui/tabs/kfx.py:323
+msgid "Brak plików EPUB do konwersji"
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:332
+msgid "Konwersja trwa..."
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:349
+#, python-brace-format
+msgid "Konwersja {current}/{total}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:436
+msgid "MOBI — starszy, uniwersalny format Kindle"
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:438
+msgid "AZW3 — format Kindle KF8 (Calibre)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:439
+msgid "KFX — nowoczesny format Kindle (Calibre + wtyczka KFX Output)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:445
+msgid ""
+"Kindle Previewer 3 jest eksperymentalny i bardziej wrażliwy na błędy "
+"EPUB. Przed konwersją usuń niestandardowe fonty, uprość CSS, unikaj "
+"wymuszonych marginesów i zostaw włączoną naprawę EPUB. Jeśli konwersja "
+"się nie powiedzie, wróć do silnika Calibre + wtyczka KFX Output."
+msgstr ""
+
+#: src/epubforge/gui/tabs/kfx.py:455
+msgid ""
+"kindlegen jest oficjalnie wycofany przez Amazon (utknął na wersji 2.9) i "
+"nie jest już rozwijany. Nadal tworzy poprawne pliki MOBI, ale zalecanym, "
+"nowocześniejszym silnikiem jest Calibre ebook-convert."
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:71 src/epubforge/gui/tabs/metadata.py:252
+msgid "Wybierz plik EPUB"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:81
+msgid "Folder z plikami EPUB"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:82
+msgid "Folder z plikami EPUB do edycji metadanych"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:95
+msgid "Metadane Dublin Core"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:102
+msgid "Tytuł książki (dc:title)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:104
+msgid "Cykl"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:106
+msgid "Autorzy — jeden na linię; format: Nazwisko, Imię"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:108
+msgid "Autorzy"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:109
+msgid "Kod języka, np. pl, en (dc:language)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:112
+msgid "Wydawca (dc:publisher)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:113
+msgid "Wydawca"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:114
+msgid "Data publikacji w formacie ISO: RRRR-MM-DD"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:115
+msgid "Data"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:116
+msgid "Identyfikator: ISBN lub UUID (dc:identifier)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:119
+msgid "Tematy/tagi — jeden na linię (dc:subject)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:121
+msgid "Tematy"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:123
+msgid "Opis/streszczenie książki (dc:description)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:125
+msgid "Opis"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:134
+msgid "Nazwa cyklu/serii, np. Wiedźmin"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:136
+msgid "Tom nr:"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:139
+msgid "Numer tomu w cyklu, np. 2 (można 1.5)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:147
+msgid "Zapisz"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:148
+msgid "Zapisuje metadane do wybranego EPUB"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:182
+msgid "Wybrany folder nie istnieje"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:190
+#, python-brace-format
+msgid "Wczytano {n} plik EPUB"
+msgid_plural "Wczytano {n} plików EPUB"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/epubforge/gui/tabs/metadata.py:213
+#, python-brace-format
+msgid "Nie udało się wczytać metadanych: {error}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:217
+#, python-brace-format
+msgid ""
+"Nie udało się wczytać metadanych:\n"
+"{error}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:223
+#, python-brace-format
+msgid "Wczytano metadane: {name}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:228
+msgid "Wybierz plik EPUB przed zapisem"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:235
+#, python-brace-format
+msgid "Nie udało się zapisać metadanych: {error}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:239
+#, python-brace-format
+msgid ""
+"Nie udało się zapisać metadanych:\n"
+"{error}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:243
+#, python-brace-format
+msgid "Zapisano metadane: {name}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:249
+#: src/epubforge/gui/tabs/metadata.py:279
+#, python-brace-format
+msgid "Nie wykryto {tool}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:261
+#, python-brace-format
+msgid "Nie udało się uruchomić {tool}: {error}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:266
+#, python-brace-format
+msgid ""
+"Nie udało się uruchomić programu:\n"
+"{error}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:330
+msgid "Tom nr nie jest liczbą; zapisano pozostałe metadane"
+msgstr ""
+
+#: src/epubforge/gui/tabs/metadata.py:334
+msgid ""
+"Pole „Tom nr” musi być liczbą, np. 2 albo 1.5. Ta wartość nie zostanie "
+"zmieniona."
+msgstr ""
+
+#: src/epubforge/gui/widgets/about_panel.py:59
+#, python-brace-format
+msgid "Wersja {version}"
+msgstr ""
+
+#: src/epubforge/gui/widgets/about_panel.py:63
+msgid "Narzędzie do walidacji, naprawy i konwersji plików EPUB"
+msgstr ""
+
+#: src/epubforge/gui/widgets/about_panel.py:69
+msgid "Pomoc (README)"
+msgstr ""
+
+#: src/epubforge/gui/widgets/about_panel.py:71
+msgid "Licencja: MIT"
+msgstr ""
+
+#: src/epubforge/gui/widgets/about_panel.py:92
+#, python-brace-format
+msgid "Otwórz w przeglądarce: {url}"
+msgstr ""
+
+#: src/epubforge/gui/widgets/file_list.py:65
+msgid "Pliki"
+msgstr ""
+
+#: src/epubforge/gui/widgets/file_list.py:65
+msgid "Dodaj pliki przez okno wyboru"
+msgstr ""
+
+#: src/epubforge/gui/widgets/file_list.py:69
+msgid "Folder"
+msgstr ""
+
+#: src/epubforge/gui/widgets/file_list.py:69
+msgid "Dodaj obsługiwane pliki z wybranego folderu"
+msgstr ""
+
+#: src/epubforge/gui/widgets/file_list.py:72
+msgid "Usuń"
+msgstr ""
+
+#: src/epubforge/gui/widgets/file_list.py:72
+msgid "Usuń zaznaczone pozycje z listy"
+msgstr ""
+
+#: src/epubforge/gui/widgets/file_list.py:74
+msgid "Wyczyść"
+msgstr ""
+
+#: src/epubforge/gui/widgets/file_list.py:74
+msgid "Usuń wszystkie pozycje z listy"
+msgstr ""
+
+#: src/epubforge/gui/widgets/file_list.py:81
+#: src/epubforge/gui/widgets/file_list.py:205
+#, python-brace-format
+msgid "{n} plik"
+msgid_plural "{n} plików"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/epubforge/gui/widgets/file_list.py:88
+msgid "Lista plików — przeciągnij pliki tutaj lub użyj przycisków powyżej"
+msgstr ""
+
+#: src/epubforge/gui/widgets/file_list.py:173
+msgid "Dodaj pliki"
+msgstr ""
+
+#: src/epubforge/gui/widgets/file_list.py:174
+#, python-brace-format
+msgid "Obsługiwane ({pattern})"
+msgstr ""
+
+#: src/epubforge/gui/widgets/file_list.py:181
+msgid "Dodaj folder"
+msgstr ""
+
+#: src/epubforge/gui/widgets/path_entry.py:115
+#: src/epubforge/gui/widgets/path_entry.py:124
+msgid "Wybierz plik"
+msgstr ""
+
+#: src/epubforge/gui/widgets/path_entry.py:117
+msgid "Wybierz miejsce i nazwę zapisu"
+msgstr ""
+
+#: src/epubforge/gui/widgets/path_entry.py:118
+#: src/epubforge/gui/widgets/path_entry.py:127
+msgid "Wybierz folder"
+msgstr ""
+
+#: src/epubforge/gui/widgets/path_entry.py:126
+msgid "Zapisz jako"
+msgstr ""
+

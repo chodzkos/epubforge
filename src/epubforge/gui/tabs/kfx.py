@@ -29,26 +29,9 @@ from epubforge.core.config import Config
 from epubforge.gui.output import remember_output_dir, remembered_output_dir, resolve_output_dir
 from epubforge.gui.widgets import FileList, LogView, PathEntry, Section
 from epubforge.gui.workers import EmitLine, EmitProgress, Worker
+from epubforge.i18n import _, ngettext
 
 logger = logging.getLogger(__name__)
-
-_KP3_WARNING = (
-    "Kindle Previewer 3 jest eksperymentalny i bardziej wrażliwy na błędy EPUB. "
-    "Przed konwersją usuń niestandardowe fonty, uprość CSS, unikaj wymuszonych "
-    "marginesów i zostaw włączoną naprawę EPUB. Jeśli konwersja się nie powiedzie, "
-    "wróć do silnika Calibre + wtyczka KFX Output."
-)
-_KINDLEGEN_WARNING = (
-    "kindlegen jest oficjalnie wycofany przez Amazon (utknął na wersji 2.9) i nie "
-    "jest już rozwijany. Nadal tworzy poprawne pliki MOBI, ale zalecanym, "
-    "nowocześniejszym silnikiem jest Calibre ebook-convert."
-)
-
-_FORMAT_TOOLTIPS = {
-    "kfx": "KFX — nowoczesny format Kindle (Calibre + wtyczka KFX Output)",
-    "mobi": "MOBI — starszy, uniwersalny format Kindle",
-    "azw3": "AZW3 — format Kindle KF8 (Calibre)",
-}
 
 
 class KfxTab(QWidget):
@@ -99,7 +82,7 @@ class KfxTab(QWidget):
         """Buduje listę plików EPUB."""
         layout = QVBoxLayout(parent)
         layout.setContentsMargins(0, 0, 10, 0)
-        section = Section("Pliki EPUB")
+        section = Section(_("Pliki EPUB"))
         layout.addWidget(section)
         self.file_list = FileList(extensions={".epub"}, config=self.config_data)
         self.file_list.files_changed.connect(self._on_files_changed)
@@ -117,13 +100,13 @@ class KfxTab(QWidget):
 
     def _build_format_section(self, layout: QVBoxLayout) -> None:
         """Buduje wybór formatu docelowego (KFX / MOBI / AZW3)."""
-        section = Section("Format docelowy")
+        section = Section(_("Format docelowy"))
         layout.addWidget(section)
         row = QHBoxLayout()
         self.format_group = QButtonGroup(self)
         for value, label in (("kfx", "KFX"), ("mobi", "MOBI"), ("azw3", "AZW3")):
             radio = QRadioButton(label)
-            radio.setToolTip(_FORMAT_TOOLTIPS[value])
+            radio.setToolTip(_format_tooltip(value))
             radio.setProperty("fmt", value)
             if value == "kfx":
                 radio.setChecked(True)
@@ -142,58 +125,62 @@ class KfxTab(QWidget):
 
     def _build_kfx_engine_section(self) -> Section:
         """Buduje sekcję wyboru silnika KFX."""
-        section = Section("Silnik KFX")
+        section = Section(_("Silnik KFX"))
         self.kfx_engine_group = QButtonGroup(self)
 
-        calibre = QRadioButton("Calibre + wtyczka KFX")
-        calibre.setToolTip("Zalecany silnik KFX — Calibre z wtyczką KFX Output")
+        calibre = QRadioButton(_("Calibre + wtyczka KFX"))
+        calibre.setToolTip(_("Zalecany silnik KFX — Calibre z wtyczką KFX Output"))
         calibre.setProperty("engine", "calibre")
         calibre.setChecked(True)
         calibre.toggled.connect(self._refresh_kp3_warning)
         self.kfx_engine_group.addButton(calibre)
-        section.content_layout().addLayout(self._engine_row(calibre, "ZALECANE"))
+        section.content_layout().addLayout(self._engine_row(calibre, _("ZALECANE")))
 
         kp3 = QRadioButton("Kindle Previewer 3")
         kp3.setToolTip(
-            "Eksperymentalny silnik KFX — wrażliwy na nieidealny EPUB. "
-            "Preferuj Calibre + wtyczkę KFX Output."
+            _(
+                "Eksperymentalny silnik KFX — wrażliwy na nieidealny EPUB. "
+                "Preferuj Calibre + wtyczkę KFX Output."
+            )
         )
         kp3.setProperty("engine", "kindle-previewer")
         kp3.toggled.connect(self._refresh_kp3_warning)
         self.kfx_engine_group.addButton(kp3)
         section.content_layout().addLayout(
-            self._engine_row(kp3, "EKSPERYMENTALNE - wrażliwe na formatowanie")
+            self._engine_row(kp3, _("EKSPERYMENTALNE - wrażliwe na formatowanie"))
         )
 
-        self.kp3_warning = QLabel(_KP3_WARNING)
+        self.kp3_warning = QLabel(_kp3_warning())
         self.kp3_warning.setWordWrap(True)
         section.add_widget(self.kp3_warning)
         return section
 
     def _build_mobi_engine_section(self) -> Section:
         """Buduje sekcję wyboru silnika MOBI/AZW3."""
-        section = Section("Silnik MOBI/AZW3")
+        section = Section(_("Silnik MOBI/AZW3"))
         self.mobi_engine_group = QButtonGroup(self)
 
         calibre = QRadioButton("Calibre ebook-convert")
-        calibre.setToolTip("Zalecany silnik MOBI/AZW3 — nowoczesny i aktywnie rozwijany")
+        calibre.setToolTip(_("Zalecany silnik MOBI/AZW3 — nowoczesny i aktywnie rozwijany"))
         calibre.setProperty("engine", "calibre")
         calibre.setChecked(True)
         calibre.toggled.connect(self._refresh_kindlegen_warning)
         self.mobi_engine_group.addButton(calibre)
-        section.content_layout().addLayout(self._engine_row(calibre, "ZALECANE"))
+        section.content_layout().addLayout(self._engine_row(calibre, _("ZALECANE")))
 
         kindlegen = QRadioButton("kindlegen")
         kindlegen.setToolTip(
-            "Wycofany przez Amazon (utknął na 2.9). Działa do MOBI, ale "
-            "zalecany jest Calibre ebook-convert."
+            _(
+                "Wycofany przez Amazon (utknął na 2.9). Działa do MOBI, ale "
+                "zalecany jest Calibre ebook-convert."
+            )
         )
         kindlegen.setProperty("engine", "kindlegen")
         kindlegen.toggled.connect(self._refresh_kindlegen_warning)
         self.mobi_engine_group.addButton(kindlegen)
-        section.content_layout().addLayout(self._engine_row(kindlegen, "WYCOFANY - opcjonalny"))
+        section.content_layout().addLayout(self._engine_row(kindlegen, _("WYCOFANY - opcjonalny")))
 
-        self.kindlegen_warning = QLabel(_KINDLEGEN_WARNING)
+        self.kindlegen_warning = QLabel(_kindlegen_warning())
         self.kindlegen_warning.setWordWrap(True)
         section.add_widget(self.kindlegen_warning)
         return section
@@ -208,13 +195,13 @@ class KfxTab(QWidget):
 
     def _build_options_section(self, layout: QVBoxLayout) -> None:
         """Buduje pozostałe opcje konwersji."""
-        section = Section("Opcje")
+        section = Section(_("Opcje"))
         layout.addWidget(section)
 
-        self.fix_epub_check = QCheckBox("Napraw EPUB przed konwersją")
+        self.fix_epub_check = QCheckBox(_("Napraw EPUB przed konwersją"))
         self.fix_epub_check.setChecked(True)
         self.fix_epub_check.setToolTip(
-            "Przed eksportem uruchamia podstawową naprawę CSS (zalecane)"
+            _("Przed eksportem uruchamia podstawową naprawę CSS (zalecane)")
         )
         section.add_widget(self.fix_epub_check)
 
@@ -224,13 +211,13 @@ class KfxTab(QWidget):
             mode="dir", config=self.config_data, remember_key="last_output_dir"
         )
         self.output_dir.entry.setToolTip(
-            "Folder na pliki wynikowe; puste = zapis obok pliku źródłowego"
+            _("Folder na pliki wynikowe; puste = zapis obok pliku źródłowego")
         )
-        form.addRow("Folder wyjściowy", self.output_dir)
+        form.addRow(_("Folder wyjściowy"), self.output_dir)
 
     def _build_log(self, layout: QVBoxLayout) -> None:
         """Buduje pole logu konwersji."""
-        section = Section("Log")
+        section = Section(_("Log"))
         layout.addWidget(section, stretch=1)
         self.log_view = LogView()
         section.add_widget(self.log_view)
@@ -239,10 +226,12 @@ class KfxTab(QWidget):
         """Buduje przycisk konwersji."""
         actions = QHBoxLayout()
         actions.addStretch(1)
-        self.convert_button = QPushButton("Konwertuj")
+        self.convert_button = QPushButton(_("Konwertuj"))
         self.convert_button.setToolTip(
-            "Eksportuje wybrane pliki EPUB do wybranego formatu Kindle "
-            "(KFX/MOBI/AZW3). Puste pole folderu = zapis obok źródła."
+            _(
+                "Eksportuje wybrane pliki EPUB do wybranego formatu Kindle "
+                "(KFX/MOBI/AZW3). Puste pole folderu = zapis obok źródła."
+            )
         )
         self.convert_button.setEnabled(False)
         self.convert_button.clicked.connect(self._run_conversion)
@@ -252,7 +241,7 @@ class KfxTab(QWidget):
     def _build_status(self, layout: QVBoxLayout) -> None:
         """Buduje pasek statusu i postępu batch processing."""
         row = QHBoxLayout()
-        self.status_label = QLabel("Dodaj pliki EPUB")
+        self.status_label = QLabel(_("Dodaj pliki EPUB"))
         row.addWidget(self.status_label)
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 1)
@@ -277,12 +266,15 @@ class KfxTab(QWidget):
             self._refresh_kp3_warning()
         else:
             self._refresh_kindlegen_warning()
-        self.convert_button.setText(f"Konwertuj do {fmt.upper()}")
+        self.convert_button.setText(_("Konwertuj do {format}").format(format=fmt.upper()))
 
     def _on_files_changed(self, files: list[Path]) -> None:
         """Aktualizuje przycisk i podpowiada katalog wyjściowy, gdy pole puste."""
         self.convert_button.setEnabled(bool(files) and not self._running)
-        self._set_status(f"Wybrano {len(files)} {_plural_files(len(files))} EPUB")
+        count = len(files)
+        self._set_status(
+            ngettext("Wybrano {n} plik EPUB", "Wybrano {n} plików EPUB", count).format(n=count)
+        )
         if files and not self.output_dir.get().strip():
             self.output_dir.set(str(files[0].parent))
 
@@ -328,7 +320,7 @@ class KfxTab(QWidget):
             return
         files = self.file_list.files()
         if not files:
-            self._set_status("Brak plików EPUB do konwersji")
+            self._set_status(_("Brak plików EPUB do konwersji"))
             return
         output = self.output_dir.get().strip()
 
@@ -337,7 +329,7 @@ class KfxTab(QWidget):
         self.log_view.clear()
         self.progress_bar.setRange(0, len(files))
         self.progress_bar.setValue(0)
-        self._set_status("Konwersja trwa...")
+        self._set_status(_("Konwersja trwa..."))
 
         remember_output_dir(self.config_data, output)
         output_dir = Path(output) if output else None
@@ -354,21 +346,21 @@ class KfxTab(QWidget):
     def _on_progress(self, current: int, total: int) -> None:
         """Aktualizuje pasek postępu i status."""
         self.progress_bar.setValue(current)
-        self._set_status(f"Konwersja {current}/{total}")
+        self._set_status(_("Konwersja {current}/{total}").format(current=current, total=total))
 
     def _finish_conversion(self, result: object) -> None:
         """Aktualizuje UI po zakończeniu konwersji."""
         succeeded, total = cast(tuple[int, int], result)
         self._running = False
         self.convert_button.setEnabled(bool(self.file_list.files()))
-        self._set_status(f"Zakończono: {succeeded}/{total} OK")
+        self._set_status(_("Zakończono: {done}/{total} OK").format(done=succeeded, total=total))
 
     def _on_failed(self, message: str) -> None:
         """Obsługuje nieoczekiwany błąd wątku konwersji."""
         self._running = False
         self.convert_button.setEnabled(bool(self.file_list.files()))
-        self.log_view.append_line(f"BŁĄD: {message}", "err")
-        self._set_status("Konwersja przerwana błędem")
+        self.log_view.append_line(_("BŁĄD: {message}").format(message=message), "err")
+        self._set_status(_("Konwersja przerwana błędem"))
 
     def _set_status(self, text: str) -> None:
         """Ustawia tekst paska statusu zakładki."""
@@ -391,11 +383,16 @@ def _run_kfx_worker(
             result = to_kfx(source, resolve_output_dir(target_dir, source), options)
         except Exception as exc:
             logger.exception("Błąd konwersji KFX: %s", source)
-            emit_line(f"BŁĄD: {exc}", "err")
+            emit_line(_("BŁĄD: {error}").format(error=exc), "err")
         else:
             if result.log:
                 emit_line(result.log, "info")
-            emit_line(f"OK [{result.engine}]: {result.output_path.name}", "ok")
+            emit_line(
+                _("OK [{engine}]: {name}").format(
+                    engine=result.engine, name=result.output_path.name
+                ),
+                "ok",
+            )
             succeeded += 1
         emit_progress(index, total)
     return succeeded, total
@@ -418,20 +415,44 @@ def _run_mobi_worker(
             result = to_mobi(source, target, options)
         except Exception as exc:
             logger.exception("Błąd konwersji MOBI/AZW3: %s", source)
-            emit_line(f"BŁĄD: {exc}", "err")
+            emit_line(_("BŁĄD: {error}").format(error=exc), "err")
         else:
             if result.log:
                 emit_line(result.log, "info")
-            emit_line(f"OK [{result.engine}]: {result.output_path.name}", "ok")
+            emit_line(
+                _("OK [{engine}]: {name}").format(
+                    engine=result.engine, name=result.output_path.name
+                ),
+                "ok",
+            )
             succeeded += 1
         emit_progress(index, total)
     return succeeded, total
 
 
-def _plural_files(count: int) -> str:
-    """Zwraca polską odmianę słowa plik dla licznika."""
-    if count == 1:
-        return "plik"
-    if 2 <= count <= 4:
-        return "pliki"
-    return "plików"
+def _format_tooltip(value: str) -> str:
+    """Zwraca tooltip formatu docelowego jako literal gettext dla Babel."""
+    if value == "mobi":
+        return _("MOBI — starszy, uniwersalny format Kindle")
+    if value == "azw3":
+        return _("AZW3 — format Kindle KF8 (Calibre)")
+    return _("KFX — nowoczesny format Kindle (Calibre + wtyczka KFX Output)")
+
+
+def _kp3_warning() -> str:
+    """Zwraca ostrzeżenie dla Kindle Previewer 3."""
+    return _(
+        "Kindle Previewer 3 jest eksperymentalny i bardziej wrażliwy na błędy EPUB. "
+        "Przed konwersją usuń niestandardowe fonty, uprość CSS, unikaj wymuszonych "
+        "marginesów i zostaw włączoną naprawę EPUB. Jeśli konwersja się nie powiedzie, "
+        "wróć do silnika Calibre + wtyczka KFX Output."
+    )
+
+
+def _kindlegen_warning() -> str:
+    """Zwraca ostrzeżenie dla kindlegen."""
+    return _(
+        "kindlegen jest oficjalnie wycofany przez Amazon (utknął na wersji 2.9) i nie "
+        "jest już rozwijany. Nadal tworzy poprawne pliki MOBI, ale zalecanym, "
+        "nowocześniejszym silnikiem jest Calibre ebook-convert."
+    )

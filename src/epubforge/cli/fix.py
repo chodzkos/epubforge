@@ -8,33 +8,34 @@ from pathlib import Path
 
 from epubforge.core import Epub, EpubError
 from epubforge.fixers import CssFixOptions, fix_css
+from epubforge.i18n import _
 
 
 def add_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     """Rejestruje subkomendę ``fix`` w głównym parserze argparse."""
-    parser = subparsers.add_parser("fix", help="Normalizuj CSS w EPUB")
-    parser.add_argument("file", type=Path, help="Plik EPUB do modyfikacji")
-    parser.add_argument("--remove-colors", action="store_true", help="Usuń kolory i tła z CSS")
-    parser.add_argument("--remove-fonts", action="store_true", help="Usuń fonty z CSS i EPUB")
+    parser = subparsers.add_parser("fix", help=_("Normalizuj CSS w EPUB"))
+    parser.add_argument("file", type=Path, help=_("Plik EPUB do modyfikacji"))
+    parser.add_argument("--remove-colors", action="store_true", help=_("Usuń kolory i tła z CSS"))
+    parser.add_argument("--remove-fonts", action="store_true", help=_("Usuń fonty z CSS i EPUB"))
     parser.add_argument(
         "--no-reset",
         dest="inject_reset",
         action="store_false",
         default=True,
-        help="Nie dodawaj resetu margin/padding",
+        help=_("Nie dodawaj resetu margin/padding"),
     )
     parser.add_argument(
         "--replace-justify",
         action="store_true",
-        help="Zamień text-align: justify na left",
+        help=_("Zamień text-align: justify na left"),
     )
-    parser.add_argument("--book-margin", type=int, help="Dodaj @page margin w px")
+    parser.add_argument("--book-margin", type=int, help=_("Dodaj @page margin w px"))
     parser.add_argument(
         "--keep-hyphenation-headers",
         dest="skip_hyphenation_headers",
         action="store_false",
         default=True,
-        help="Nie dodawaj reguły h1-h3 { hyphens: none }",
+        help=_("Nie dodawaj reguły h1-h3 { hyphens: none }"),
     )
     parser.set_defaults(func=run)
 
@@ -54,8 +55,8 @@ def run(args: argparse.Namespace) -> int:
             fix_css(epub, options)
             epub.save()
     except EpubError as exc:
-        print(f"Błąd: {exc}", file=sys.stderr)
+        print(_("Błąd: {error}").format(error=exc), file=sys.stderr)
         return 1
 
-    print(f"Zaktualizowano EPUB: {args.file}")
+    print(_("Zaktualizowano EPUB: {path}").format(path=args.file))
     return 0

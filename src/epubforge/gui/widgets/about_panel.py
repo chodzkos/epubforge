@@ -12,13 +12,12 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from epubforge import __version__
+from epubforge.i18n import _
 
 logger = logging.getLogger(__name__)
 
 GITHUB_URL = "https://github.com/chodzkos/epubforge"
 HELP_URL = "https://github.com/chodzkos/epubforge#readme"
-DESCRIPTION = "Narzędzie do walidacji, naprawy i konwersji plików EPUB"
-LICENSE = "Licencja: MIT"
 
 
 def _asset_path(name: str) -> Path:
@@ -57,19 +56,19 @@ class AboutPanel(QWidget):
         name.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(name)
 
-        version = QLabel(f"Wersja {__version__}")
+        version = QLabel(_("Wersja {version}").format(version=__version__))
         version.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(version)
 
-        description = QLabel(DESCRIPTION)
+        description = QLabel(_("Narzędzie do walidacji, naprawy i konwersji plików EPUB"))
         description.setWordWrap(True)
         description.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(description)
 
         layout.addWidget(self._build_link("GitHub", GITHUB_URL))
-        layout.addWidget(self._build_link("Pomoc (README)", HELP_URL))
+        layout.addWidget(self._build_link(_("Pomoc (README)"), HELP_URL))
 
-        license_label = QLabel(LICENSE)
+        license_label = QLabel(_("Licencja: MIT"))
         license_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(license_label)
 
@@ -90,7 +89,7 @@ class AboutPanel(QWidget):
         """Tworzy klikalny link otwierający URL w przeglądarce."""
         link = QLabel(f'<a href="{url}">{text}</a>')
         link.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        link.setToolTip(f"Otwórz w przeglądarce: {url}")
+        link.setToolTip(_("Otwórz w przeglądarce: {url}").format(url=url))
         link.setOpenExternalLinks(False)
         link.linkActivated.connect(self._open)
         return link
