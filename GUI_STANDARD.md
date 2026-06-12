@@ -4,6 +4,11 @@
 > Punkt odniesienia dla wszystkich aplikacji i dla Claude Code.
 > Dwa tory technologiczne, wspólne zasady wyglądu i zachowania.
 
+| Wersja | Data | Zmiany |
+|---|---|---|
+| 2.0 | 2026-06-12 | usunięcie qdarktheme (projekt porzucony) → własny theme.py; platformdirs; stany palety; pułapki PyInstaller+Qt; niuanse DWM/Qt 6.5+ |
+| 1.0 | — | wersja pierwotna |
+
 ---
 
 ## 1. Cel dokumentu
@@ -60,7 +65,7 @@ Małe narzędzia, prototypy, sytuacje gdzie liczy się mały `.exe` i zero zale�
 - Python 3.10+ (na czas dev używaj 3.12 — najszersza zgodność bibliotek)
 - `tkinter` + `ttk` (wbudowane)
 - `tkinterdnd2` — drag&drop (opcjonalne)
-- `darkdetect` — wykrywanie motywu systemu
+- `darkdetect` — wykrywanie motywu systemu (tkinter nie ma styleHints)
 - motyw: ręczny słownik kolorów + `apply_theme()` rekurencyjnie
 
 ### Mocne strony
@@ -82,6 +87,7 @@ Małe narzędzia, prototypy, sytuacje gdzie liczy się mały `.exe` i zero zale�
 - **Refresh paska na Win10:** sam atrybut DWM nie wystarcza — wyślij `WM_NCACTIVATE` (0→1) + `SetWindowPos(SWP_FRAMECHANGED)`.
 - **Timing:** stosuj ciemny pasek po pełnym zmapowaniu okna (`after(10, ...)` lub przed pierwszym `deiconify`).
 - **Pozostałości motywu:** `apply_theme` musi rekurencyjnie kolorować KAŻDY widget (Listbox, Text, Canvas), inaczej zostają plamy starego motywu.
+- **darkdetect.listener:** blokuje wątek — uruchamiaj jako wątek daemon, inaczej aplikacja nie zamknie się czysto.
 
 ---
 
@@ -93,28 +99,60 @@ Aplikacje docelowe, większe projekty, wszystko gdzie ciemny motyw i wygląd maj
 ### Stack
 - Python 3.10+
 - `PySide6` (LGPL — zgodne z MIT)
-- `pyqtdarktheme` (`qdarktheme`) — motyw jedną linią
-- DWM titlebar przez `ctypes` (jak w tkinter, ale HWND z `window.winId()` działa wprost)
-- motyw: `qdarktheme.setup_theme("auto"|"dark"|"light")`
+- motyw: własny `theme.py` z gui-kit (paleta z sekcji 5 → QPalette + generowany QSS)
+  — żadnej zewnętrznej biblioteki motywów
+- auto-detekcja motywu systemu: `QGuiApplication.styleHints().colorScheme()`
+  + sygnał `colorSchemeChanged` (Qt 6.5+; darkdetect zbędny w torze Qt)
+- DWM titlebar przez `ctypes` (HWND z `window.winId()`) — tylko gdy motyw aplikacji ≠ motyw systemu (szczegóły w pułapkach)
+
+> ⚠️ Historycznie standard wskazywał `pyqtdarktheme` — projekt porzucony
+> (archived, pin Pythona <3.12, nie instaluje się na 3.12/3.13). Do prototypów
+> dopuszczalny `pyqtdarktheme-fork` (import nadal `qdarktheme`), ale to mały
+> projekt jednej osoby — aplikacje docelowe używają własnego theme.py;
+> tylko on daje realny akcent #5DCAA5 i pełną kontrolę.
+
+### Zasady theme.py (kontrakt komponentu w gui-kit)
+1. **`app.setStyle("Fusion")` PRZED `setPalette()`** — natywne style Windows
+   (`windowsvista`/`windows11`) ignorują większość ról QPalette; bez Fusion
+   przyciski, menu i scrollbary zostaną jasne mimo ciemnej palety.
+2. **QPalette = baza kolorów, QSS = tylko akcenty** (border-radius, hover,
+   accent #5DCAA5, tooltips). Nie dublować kolorów w obu miejscach — QSS
+   nadpisuje paletę i przy zmianie motywu zostają plamy.
+3. **Auto-motyw:** `colorScheme()` → `Dark`/`Light`; wartość `Unknown`
+   (Linux bez portalu XDG) traktuj jako fallback → dark.
+4. **Reakcja na zmianę systemu:** podłącz `styleHints().colorSchemeChanged`
+   tylko w trybie auto; w trybie wymuszonym ignoruj sygnał.
+5. Tryb użytkownika (auto/jasny/ciemny) zapisywany w config (sekcja 8).
 
 ### Mocne strony
 - natywny, nowoczesny wygląd
-- ciemny motyw bezproblemowy (też dialogi przez `DontUseNativeDialog`)
+- ciemny motyw bezproblemowy
 - bogate widgety (QTableWidget, QTreeView, QDockWidget, QWebEngineView)
 - system sygnałów/slotów — czysty event handling
 - menedżery layoutów — responsywne UI
+- zero zależności motywu — theme.py to ~200 linii w pełni kontrolowanego kodu
 
 ### Ograniczenia
 - większy `.exe` (~50-120 MB)
 - stromsza krzywa nauki
-- dodatkowa zależność (~100 MB przy instalacji)
+- PySide6 jako zależność (~100 MB przy instalacji)
 
-### Pułapki techniczne (z IcoForge)
-- **Jasny motyw qdarktheme** jest „wyprany" — dla trybu jasnego przywróć natywny styl Qt zamiast `qdarktheme("light")` (zapamiętaj `app.style()`, `app.palette()`, `app.styleSheet()` przed pierwszą zmianą).
-- **Pasek tytułu Win10:** `DwmSetWindowAttribute(20)` + `WM_NCACTIVATE` + `RedrawWindow(RDW_FRAME)`. `winId()` woła w `showEvent`, nie `__init__`.
-- **Dialog odbiera focus → główny pasek jaśnieje:** nadpisz `changeEvent` na `ActivationChange` i ponownie wymuś ciemny pasek.
-- **Repaint pozostałości motywu:** `style.unpolish()/polish()` na `app.allWidgets()`.
-- **Hardcoded kolory:** używaj ról palety (`palette(base)`, `palette(text)`), nie sztywnych hexów — inaczej nie zmieniają się z motywem.
+### Pułapki techniczne (z IcoForge + theme.py)
+- **Pasek tytułu a wersja Qt:** od Qt 6.5+ na Windows pasek tytułu sam podąża
+  za motywem **systemu**. Ręczny `DwmSetWindowAttribute(20)` + `WM_NCACTIVATE`
+  + `RedrawWindow(RDW_FRAME)` potrzebny TYLKO gdy użytkownik wymusił motyw
+  inny niż systemowy. `winId()` wołaj w `showEvent`, nie w `__init__`.
+- **Dialog odbiera focus → główny pasek jaśnieje:** nadpisz `changeEvent`
+  na `ActivationChange` i ponownie wymuś ciemny pasek (dotyczy tylko
+  scenariusza wymuszonego motywu jw.).
+- **Natywne dialogi plików:** na Win11 same są ciemne, gdy system jest ciemny.
+  `DontUseNativeDialog` stosuj tylko przy rozjeździe motywów (app dark +
+  system light) — kosztem jest brak paska Szybki dostęp w dialogu.
+- **Repaint pozostałości motywu:** po zmianie palety/QSS przejdź
+  `style.unpolish()/polish()` po `app.allWidgets()`.
+- **Hardcoded kolory:** w kodzie widgetów używaj ról palety
+  (`palette(base)`, `palette(text)`), nie sztywnych hexów — inaczej
+  nie zmieniają się z motywem. Hexy żyją wyłącznie w theme.py.
 
 ---
 
@@ -156,17 +194,37 @@ amber    #b25000
 
 > Akcent `#5DCAA5 / #1D9E75` (zielony) to znak rozpoznawczy — używaj go we wszystkich aplikacjach dla spójności marki.
 
+### Stany pochodne (obowiązkowe — generuje je theme.py / apply_theme)
+
+Żeby każda aplikacja nie wymyślała ich od nowa:
+
+| Stan | Reguła | Dark | Light |
+|---|---|---|---|
+| `hover` | bg3 rozjaśnione ~8% | `#383c50` | `#dcdce2` |
+| `pressed` | bg3 przyciemnione ~8% | `#262936` | `#d4d4da` |
+| `selection_bg` | = accent2 | `#1D9E75` | `#0F7C5B` |
+| `selection_fg` | tekst na akcencie | `#ffffff` | `#ffffff` |
+| `disabled_fg` | = fg3 | `#555a70` | `#86868b` |
+| `disabled_bg` | = bg2 | `#252830` | `#f5f5f7` |
+| `placeholder` | = fg3 | `#555a70` | `#86868b` |
+| `focus_border` | = accent | `#5DCAA5` | `#1D9E75` |
+
+> **Kontrast w jasnym motywie:** `#1D9E75` jako kolor *tekstu/linku* na białym
+> tle ma ~3,2:1 — poniżej WCAG AA (4,5:1). Dla tekstu i linków w jasnym motywie
+> używaj `accent2 #0F7C5B`; `accent` zostaje dla wypełnień, ikon i ramek.
+
 ### Typografia
 - **Font UI:** systemowy domyślny (TkDefaultFont / Qt default) — natywny wygląd
 - **Font monospace** (kod, ścieżki, logi): Consolas / Menlo / DejaVu Sans Mono
-- **Rozmiary:** tytuł ~13pt bold, sekcje ~9pt bold, treść ~9pt, hinty ~7-8pt
+- **Rozmiary:** tytuł ~13pt bold, sekcje ~9pt bold, treść ~9pt, hinty 8pt (nie mniej — 7pt jest nieczytelne na 1080p)
+- rozmiary fontów zawsze w **pt** (skalują się z DPI), nie w px
 - **Nie** mieszać wielu krojów — UI font + mono font wystarczą
 
 ### Odstępy i kształty
 - padding sekcji: 10-12px
 - odstęp między elementami: 6-8px
 - zaokrąglenia: subtelne (Qt: border-radius 4-8px; tkinter: brak natywnych, flat)
-- ramki: cienkie (0.5-1px), kolor `border`
+- ramki: 1px, kolor `border` (0,5px nie renderuje się na standardowym DPI)
 - relief: `flat` wszędzie gdzie się da (unikać wytłoczeń „3D")
 
 ### Ikonografia
@@ -218,17 +276,18 @@ Biblioteka widgetów do reużycia w każdym projekcie. Docelowo: prywatny pakiet
 
 | Komponent | Rola | tkinter | Qt |
 |---|---|---|---|
-| `ThemeManager` | motyw auto/jasny/ciemny + persist | słownik + apply_theme | qdarktheme + native light |
-| `set_titlebar_dark` | ciemny pasek tytułu Windows | GetParent(winfo_id) | winId() |
+| `ThemeManager` | motyw auto/jasny/ciemny + persist | słownik + apply_theme + darkdetect | theme.py: Fusion + QPalette + QSS, auto przez styleHints |
+| `set_titlebar_dark` | ciemny pasek tytułu Windows | GetParent(winfo_id) | winId() (tylko gdy motyw ≠ system, Qt 6.5+) |
 | `PathEntry` | pole + przycisk wyboru | tk.Frame | QWidget |
 | `FileList` | lista plików z toolbar + D&D | tk.Listbox | QListWidget |
-| `Toggle` | stylizowany checkbox | tk.Checkbutton | QCheckBox |
-| `Tooltip` | podpowiedź reagująca na motyw | Toplevel | QToolTip / custom |
+| `Checkbox` | stylizowany checkbox (nie switch!) | tk.Checkbutton | QCheckBox |
+| `Tooltip` | podpowiedź reagująca na motyw | Toplevel | QToolTip stylowany przez QSS z theme.py |
 | `Section` | sekcja z tytułem | ttk.LabelFrame | QGroupBox |
 | `LogStreamer` | strumień subprocess → log | kolejka + after | QThread + signal |
 | `AboutPanel` | logo, wersja, linki | Frame | QWidget |
 
 > Zasada: komponent piszesz RAZ, potem importujesz. Nie przepisywać między projektami.
+> Pierwsza implementacja theme.py powstaje w pdf2md (etap G1) i trafia do gui-kit.
 
 ---
 
@@ -237,15 +296,19 @@ Biblioteka widgetów do reużycia w każdym projekcie. Docelowo: prywatny pakiet
 Każda aplikacja MUSI mieć:
 
 ### Konfiguracja
-- `config.json` (lub `.toml`) w `~/.config/<app>/` (dev) lub obok exe (portable)
+- `config.json` (lub `.toml`) w katalogu z `platformdirs.user_config_dir("AppName")`
+  — na Windows `%APPDATA%`, na Linux `~/.config`, na macOS `~/Library/Application Support`;
+  **nie hardcodować `~/.config`** (to konwencja tylko linuksowa)
+- wariant portable: config obok exe (wykrywany przez obecność pliku-markera)
 - zapis atomowy (tmp + replace)
 - zapamiętuje: motyw, ostatnie katalogi, presety, ustawienia okna
-- wczytywany przy starcie, zapisywany przy zamknięciu
+- **zapis przy każdej zmianie (z debounce ~1 s) lub po każdej operacji** —
+  nie tylko przy zamknięciu, bo crash = utrata ustawień
 
 ### Motyw
 - tryb auto/jasny/ciemny, wybór zapamiętany
-- auto = śledzi system (`darkdetect` lub `styleHints`)
-- ciemny pasek tytułu na Windows
+- auto = śledzi system (tkinter: `darkdetect`; Qt: `styleHints().colorScheme()`)
+- ciemny pasek tytułu na Windows (z niuansami z sekcji 4)
 - wszystkie okna (główne + dialogi) spójne
 
 ### Domyślne ścieżki
@@ -274,6 +337,10 @@ Każda aplikacja MUSI mieć:
 
 ## 9. Build i dystrybucja
 
+> **Zakres:** ta sekcja dotyczy aplikacji o czystym drzewie licencji (MIT/BSD/LGPL).
+> Projekty z zależnościami copyleft w łańcuchu (jak pdf2md) dystrybuujemy
+> przez pip/uv, nie przez binarkę PyInstaller.
+
 ### Oba tory: PyInstaller
 - **portable:** `--onefile` → jeden `.exe`, zero instalacji
 - **instalator:** `--onedir` + Inno Setup → setup.exe ze skrótami
@@ -281,6 +348,10 @@ Każda aplikacja MUSI mieć:
 - `console=False` (aplikacja GUI)
 
 ### Pułapki
+- **Qt + `--onefile` tylko świadomie:** rozpakowywanie ~150 MB do temp =
+  wolny start (kilka–kilkanaście s) i częste false-positives antywirusów;
+  dla Qt preferuj `--onedir` + Inno Setup
+- **`upx=False` dla Qt** — UPX uszkadza DLL-e Qt; wyłącz w `.spec`
 - tkinter: hook `tkdnd` dla tkinterdnd2 w `.spec`
 - Qt: PySide6 plugins (platforms, styles) zwykle wykrywane automatycznie, ale sprawdź rozmiar
 - DLL conflict (python3xx.dll) — izolacja przy wywołaniach subprocess
@@ -289,7 +360,11 @@ Każda aplikacja MUSI mieć:
 ### CI/CD
 - GitHub Actions: build na `windows-latest` przy tagu `v*`
 - Release z oboma plikami (portable + instalator)
-- testy + lint + mypy na każdym push
+- testy + lint + mypy na każdym push, ale z oszczędzaniem minut:
+  - `concurrency: group: ${{ github.ref }}, cancel-in-progress: true`
+  - `paths-ignore: ['**.md', 'docs/**']` dla jobów testowych
+  - ciężki build Windows tylko przy tagu, nie na każdym push
+  - lokalna pre-walidacja przez nox/tox przed pushem
 
 ---
 
@@ -301,17 +376,19 @@ Przy starcie nowej aplikacji:
 [ ] Wybrano tor (tkinter / Qt) wg tabeli decyzyjnej z sekcji 2
 [ ] Struktura: core/ (logika, bez GUI) + gui/ + cli/ + tests/
 [ ] pyproject.toml + ruff + mypy + pytest
-[ ] config.json mechanism (sekcja 8)
-[ ] ThemeManager z auto/jasny/ciemny (paleta z sekcji 5)
-[ ] Ciemny pasek tytułu Windows
+[ ] config przez platformdirs + zapis atomowy + debounce (sekcja 8)
+[ ] ThemeManager z auto/jasny/ciemny (paleta + stany z sekcji 5)
+[ ] Qt: theme.py wymusza Fusion przed setPalette
+[ ] Ciemny pasek tytułu Windows (tylko gdy motyw ≠ system w Qt 6.5+)
 [ ] Górny pasek wg układu z sekcji 6 (logo + motyw + about)
 [ ] Komponenty z gui-kit (sekcja 7) zamiast pisać od zera
 [ ] Tooltipy na wszystkich interaktywnych elementach
 [ ] Domyślne katalogi = katalog źródłowy
 [ ] Obsługa błędów w okienku + error.txt
 [ ] Zakładka/panel "O programie" z wersją i linkami
-[ ] Build: portable + instalator
-[ ] CI/CD: testy + build przy tagu
+[ ] Sprawdzono drzewo licencji (copyleft? → dystrybucja pip, nie PyInstaller)
+[ ] Build: portable + instalator (z pułapkami z sekcji 9)
+[ ] CI/CD: testy + build przy tagu, concurrency cancel + paths-ignore
 [ ] CLAUDE.md z zasadami projektu + pułapkami
 ```
 
@@ -341,4 +418,4 @@ Kiedy przenosić tkinter → Qt:
 
 ---
 
-*Dokument żywy — aktualizuj w miarę jak wypracowujesz kolejne wzorce.*
+*Dokument żywy — aktualizuj w miarę jak wypracowujesz kolejne wzorce. Zmiany odnotowuj w tabeli wersji na górze.*
