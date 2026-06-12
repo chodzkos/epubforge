@@ -92,6 +92,7 @@ class ConverterTab(QWidget):
         self.file_list = FileList(
             extensions=SUPPORTED_INPUT_EXTENSIONS,
             confirm=self._confirm_file,
+            config=self.config_data,
         )
         self.file_list.files_changed.connect(self._on_files_changed)
         section.add_widget(self.file_list)

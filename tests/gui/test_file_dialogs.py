@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from PySide6.QtWidgets import QFileDialog
 from pytestqt.qtbot import QtBot
 
 from epubforge.gui import file_dialogs
@@ -89,6 +90,29 @@ def test_pick_dir_native_delegates(qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
         staticmethod(lambda *a, **k: "/home/books"),
     )
     assert file_dialogs.pick_dir(None, "Dodaj folder") == "/home/books"
+
+
+def test_dark_dialog_has_sidebar_and_detail_view(qtbot: QtBot) -> None:
+    """Fallbackowy dialog Qt ma niepusty pasek boczny i widok szczegółowy."""
+    dialog = file_dialogs._dark_dialog(None, "Tytuł", "", None)
+    qtbot.addWidget(dialog)
+    assert dialog.viewMode() == QFileDialog.ViewMode.Detail
+    assert dialog.sidebarUrls()  # co najmniej dyski (QDir.drives)
+
+
+def test_dark_dialog_restores_size_and_persists_on_run(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Rozmiar okna jest odtwarzany z configu i zapisywany po zamknięciu dialogu."""
+    config: dict[str, object] = {"file_dialog_size": [820, 600]}
+    dialog = file_dialogs._dark_dialog(None, "Tytuł", "", config)
+    qtbot.addWidget(dialog)
+    assert (dialog.size().width(), dialog.size().height()) == (820, 600)
+
+    dialog.resize(910, 540)
+    monkeypatch.setattr(dialog, "exec", lambda: 0)  # anulowanie
+    file_dialogs._first_selected(dialog, config)
+    assert config["file_dialog_size"] == [910, 540]
 
 
 def _theme(name: str) -> object:

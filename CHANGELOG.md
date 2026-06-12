@@ -8,6 +8,10 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Fixed
+- **Dopieszczony fallbackowy dialog Qt** (gdy motyw aplikacji ≠ motyw systemu):
+  pasek boczny (Pulpit / Dokumenty / Pobrane / dyski / ostatni katalog), widok
+  szczegółowy (`Detail`) i zapamiętywany rozmiar okna (~900×550 domyślnie, zapis
+  w configu z debounce). Wcześniej dialog Qt startował goły i bez skrótów.
 - **Symetryczna reguła dialogów plików i paska tytułu** — natywny dialog/pasek
   tylko gdy motyw aplikacji == motyw systemu; przy KAŻDYM rozjeździe (ciemny↔jasny
   w obie strony) używany jest dialog Qt z paskiem zgodnym z aplikacją. Wcześniej

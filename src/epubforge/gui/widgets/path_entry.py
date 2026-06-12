@@ -88,11 +88,11 @@ class PathEntry(QWidget):
         title = _DIALOG_TITLES[self.mode]
         start_dir = self._start_dir()
         if self.mode == "dir":
-            path = pick_dir(self, title, start_dir)
+            path = pick_dir(self, title, start_dir, self._config)
         elif self.mode == "file":
-            path = open_file(self, title, start_dir, self._filter())
+            path = open_file(self, title, start_dir, self._filter(), self._config)
         else:
-            path = save_file(self, title, start_dir, self._filter())
+            path = save_file(self, title, start_dir, self._filter(), self._config)
         if path:
             self.set(path)
             self._remember(path)
