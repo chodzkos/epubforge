@@ -6,6 +6,7 @@
 
 | Wersja | Data | Zmiany |
 |---|---|---|
+| 2.2 | 2026-06-12 | dialog fallback: jawny binarny trade-off przy rozjeździe + standard konfiguracji nienatywnego QFileDialog (sidebar, Detail, rozmiar, instancyjne API); odrzucona opcja „zawsze natywne" z warunkiem rewizji |
 | 2.1 | 2026-06-12 | symetryczna reguła rozjazdu motywów (dialogi natywne I pasek tytułu — oba kierunki, nie tylko app dark + system light); odczyt motywu systemu przy otwarciu dialogu; update() po re-aplikacji motywu (usterka z EpubForge F-S) |
 | 2.0 | 2026-06-12 | usunięcie qdarktheme (projekt porzucony) → własny theme.py; platformdirs; stany palety; pułapki PyInstaller+Qt; niuanse DWM/Qt 6.5+ |
 | 1.0 | — | wersja pierwotna |
@@ -164,7 +165,26 @@ Aplikacje docelowe, większe projekty, wszystko gdzie ciemny motyw i wygląd maj
   **light+dark → `DontUseNativeDialog`** (natywny byłby ciemny nad jasną
   aplikacją). Tryb auto → zawsze natywny. Motyw systemu sprawdzaj
   **w momencie otwierania dialogu**, nie cache'uj ze startu (system mógł
-  się zmienić w trakcie sesji). Koszt dialogu Qt: brak paska Szybki dostęp.
+  się zmienić w trakcie sesji).
+- **Dialog przy rozjeździe — trade-off jest BINARNY, trzeciego wyjścia
+  nie ma:** natywnego okienka Windows nie da się przemalować na motyw
+  aplikacji (zawsze podąża za systemem). Wybór: natywny wygląd + złe
+  kolory ALBO dobre kolory + nienatywny wygląd. Standard wybiera drugie
+  (spójność motywu > pasek Szybki dostęp), bo dotyczy to wyłącznie
+  świadomie wymuszonego rozjazdu — w domyślnym Auto fallback nie
+  występuje nigdy. *Odrzucona alternatywa „zawsze natywne":* wróć do niej
+  tylko, jeśli na co dzień jeździsz na wymuszonym motywie przeciwnym do
+  systemowego — wtedy fallback oglądałbyś ciągle.
+- **Standard fallbacku (gałąź `DontUseNativeDialog` — wzorzec gui-kit):**
+  surowy QFileDialog jest nieakceptowalny; skonfiguruj go zawsze tak:
+  - `setSidebarUrls`: Pulpit / Dokumenty / Pobrane (`QStandardPaths`),
+    dyski (`QDir.drives()`), ostatnio użyty katalog z configu
+  - `setViewMode(Detail)`
+  - rozmiar startowy ~900×550, zapamiętywany w config
+  - teksty przez i18n aplikacji
+  - **wymaga instancyjnego API** (`QFileDialog()` + `exec()`) — metody
+    statyczne `get*FileName` nie pozwalają ustawić sidebara ani rozmiaru;
+    gałąź natywna może pozostać statyczna.
 - **Testy reguły rozjazdu:** mockuj `styleHints().colorScheme()` —
   test 4 kombinacji + auto nie może zależeć od motywu maszyny CI.
 - **Repaint pozostałości motywu:** po zmianie palety/QSS przejdź
@@ -299,6 +319,7 @@ Biblioteka widgetów do reużycia w każdym projekcie. Docelowo: prywatny pakiet
 | `ThemeManager` | motyw auto/jasny/ciemny + persist | słownik + apply_theme + darkdetect | theme.py: Fusion + QPalette + QSS, auto przez styleHints |
 | `set_titlebar_dark` | pasek tytułu zgodny z motywem app | GetParent(winfo_id) | winId(); tylko przy rozjeździe, w obu kierunkach (dark→TRUE, light→FALSE) |
 | `PathEntry` | pole + przycisk wyboru | tk.Frame | QWidget |
+| `FileDialogs` | dialogi wg reguły rozjazdu + skonfigurowany fallback | tk.filedialog (zawsze natywne-jasne, ograniczenie toru) | natywny: statyczne get*; fallback: instancja QFileDialog (sidebar, Detail, rozmiar z config) |
 | `FileList` | lista plików z toolbar + D&D | tk.Listbox | QListWidget |
 | `Checkbox` | stylizowany checkbox (nie switch!) | tk.Checkbutton | QCheckBox |
 | `Tooltip` | podpowiedź reagująca na motyw | Toplevel | QToolTip stylowany przez QSS z theme.py |
@@ -400,7 +421,7 @@ Przy starcie nowej aplikacji:
 [ ] ThemeManager z auto/jasny/ciemny (paleta + stany z sekcji 5)
 [ ] Qt: theme.py wymusza Fusion przed setPalette
 [ ] Pasek tytułu Windows: zgodność = nic; rozjazd = atrybut DWM wg motywu APP (oba kierunki)
-[ ] Dialogi natywne ⇔ brak rozjazdu motywów (reguła symetryczna, odczyt systemu przy otwarciu)
+[ ] Dialogi natywne ⇔ brak rozjazdu (reguła symetryczna); fallback skonfigurowany wg standardu (sidebar, Detail, rozmiar)
 [ ] Górny pasek wg układu z sekcji 6 (logo + motyw + about)
 [ ] Komponenty z gui-kit (sekcja 7) zamiast pisać od zera
 [ ] Tooltipy na wszystkich interaktywnych elementach
