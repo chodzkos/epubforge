@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from epubforge.gui.dialogs import choose_directory, open_files
+from epubforge.gui.file_dialogs import open_files, pick_dir
 
 DEFAULT_EXTENSIONS = {".epub", ".txt", ".md", ".markdown", ".docx", ".html", ".htm", ".pdf"}
 
@@ -166,7 +166,7 @@ class FileList(QWidget):
 
     def _add_folder(self) -> None:
         """Dodaje obsługiwane pliki z wybranego katalogu (bez rekursji)."""
-        folder = choose_directory(self, "Dodaj folder")
+        folder = pick_dir(self, "Dodaj folder")
         if not folder:
             return
         self.add_files(path for path in Path(folder).iterdir() if path.is_file())

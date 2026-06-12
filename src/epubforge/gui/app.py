@@ -8,7 +8,7 @@ import traceback
 from pathlib import Path
 from types import TracebackType
 
-from PySide6.QtCore import QByteArray, QEvent
+from PySide6.QtCore import QByteArray, QEvent, QTimer
 from PySide6.QtGui import QActionGroup, QCloseEvent, QShowEvent
 from PySide6.QtWidgets import (
     QApplication,
@@ -26,14 +26,17 @@ from PySide6.QtWidgets import (
 )
 
 from epubforge import __version__
-from epubforge.core import Tool, default_config_path, detect_with_cache, load_config, save_config
-from epubforge.core.config import Config
+from epubforge.core import ConfigStore, Tool, default_config_path, detect_with_cache, load_config
 from epubforge.gui.tabs import ConverterTab, FixerTab, KfxTab, MetadataTab
-from epubforge.gui.theme import ThemeManager, ThemeSetting
+from epubforge.gui.theme import ThemeManager, ThemeName, ThemeSetting, system_scheme
 from epubforge.gui.widgets import AboutPanel, LogView
-from epubforge.gui.window_theme import set_titlebar_dark
+from epubforge.gui.window_theme import sync_titlebar
 
 logger = logging.getLogger(__name__)
+
+# Opóźnienie debounce zapisu configu (GUI_STANDARD §8): zbieramy zmiany i piszemy
+# raz po ~1 s bezczynności, zamiast przy każdym naciśnięciu klawisza.
+_FLUSH_DEBOUNCE_MS = 1000
 
 # Etykiety trybów motywu w przycisku górnego paska.
 _THEME_LABELS: dict[ThemeSetting, str] = {"auto": "Auto", "light": "Jasny", "dark": "Ciemny"}
@@ -49,9 +52,9 @@ _GEOMETRY_KEY = "window_geometry"
 class AboutDialog(QDialog):
     """Małe okno „O programie" z panelem :class:`AboutPanel`."""
 
-    def __init__(self, parent: QWidget, dark: bool) -> None:
+    def __init__(self, parent: QWidget, mode: ThemeName) -> None:
         super().__init__(parent)
-        self._dark = dark
+        self._mode = mode
         self.setWindowTitle("O programie")
         layout = QVBoxLayout(self)
         layout.addWidget(AboutPanel())
@@ -61,15 +64,15 @@ class AboutDialog(QDialog):
         layout.addWidget(buttons)
         self.resize(440, 380)
 
-    def set_dark(self, dark: bool) -> None:
-        """Aktualizuje pożądany kolor paska tytułu i wymusza jego odświeżenie."""
-        self._dark = dark
-        set_titlebar_dark(self, dark)
+    def set_mode(self, mode: ThemeName) -> None:
+        """Aktualizuje motyw okna i synchronizuje pasek tytułu (gdy ≠ system)."""
+        self._mode = mode
+        sync_titlebar(self, mode, system_scheme())
 
     def showEvent(self, event: QShowEvent) -> None:  # noqa: N802 — Qt API
-        """Po utworzeniu natywnego okna ustawia kolor paska tytułu."""
+        """Po utworzeniu natywnego okna synchronizuje kolor paska tytułu."""
         super().showEvent(event)
-        set_titlebar_dark(self, self._dark)
+        sync_titlebar(self, self._mode, system_scheme())
 
 
 class MainWindow(QMainWindow):
@@ -82,7 +85,7 @@ class MainWindow(QMainWindow):
     def __init__(
         self,
         config_path: Path,
-        config: Config,
+        config: ConfigStore,
         tools: dict[str, Tool],
         theme_manager: ThemeManager,
     ) -> None:
@@ -92,6 +95,15 @@ class MainWindow(QMainWindow):
         self.tools = tools
         self.theme_manager = theme_manager
         self._about_dialog: AboutDialog | None = None
+
+        # Debounce zapisu configu: każde mark_dirty restartuje licznik, a po ~1 s
+        # bezczynności QTimer woła flush (GUI_STANDARD §8). Timing żyje tu, w GUI;
+        # ConfigStore (core) zna tylko callback on_dirty.
+        self._flush_timer = QTimer(self)
+        self._flush_timer.setSingleShot(True)
+        self._flush_timer.setInterval(_FLUSH_DEBOUNCE_MS)
+        self._flush_timer.timeout.connect(self._flush_config)
+        self.config_data.on_dirty = self._schedule_flush
 
         self.setWindowTitle(f"EpubForge {__version__}")
         self.setMinimumSize(760, 520)
@@ -178,13 +190,26 @@ class MainWindow(QMainWindow):
 
     def _on_theme_changed(self, _theme: object) -> None:
         """Reaguje na zmianę motywu: pasek tytułu, log, etykieta, okno About."""
-        dark = self.theme_manager.theme.name == "dark"
-        set_titlebar_dark(self, dark)
+        self._sync_titlebar()
         self._sync_theme_actions()
         for log_view in self._log_views():
             log_view.set_theme(self.theme_manager.theme)
         if self._about_dialog is not None:
-            self._about_dialog.set_dark(dark)
+            self._about_dialog.set_mode(self.theme_manager.theme.name)
+
+    def _sync_titlebar(self) -> None:
+        """Synchronizuje pasek tytułu okna z motywem (DWM tylko gdy ≠ system)."""
+        sync_titlebar(self, self.theme_manager.theme.name, system_scheme())
+
+    # ── Debounce zapisu configu ─────────────────────────────────────────────────
+
+    def _schedule_flush(self) -> None:
+        """Restartuje licznik debounce — zapis nastąpi po ~1 s bezczynności."""
+        self._flush_timer.start()
+
+    def _flush_config(self) -> None:
+        """Zapisuje config, jeśli ma niezapisane zmiany (cel timera debounce)."""
+        self.config_data.flush()
 
     def _log_views(self) -> list[LogView]:
         """Zbiera widgety logu z zakładek (do przemalowania przy zmianie motywu)."""
@@ -203,7 +228,7 @@ class MainWindow(QMainWindow):
             self._about_dialog.raise_()
             self._about_dialog.activateWindow()
             return
-        dialog = AboutDialog(self, self.theme_manager.theme.name == "dark")
+        dialog = AboutDialog(self, self.theme_manager.theme.name)
         dialog.finished.connect(self._on_about_closed)
         self._about_dialog = dialog
         dialog.show()
@@ -215,24 +240,26 @@ class MainWindow(QMainWindow):
     # ── Pasek tytułu / cykl życia okna ─────────────────────────────────────────
 
     def showEvent(self, event: QShowEvent) -> None:  # noqa: N802 — Qt API
-        """Ustawia kolor paska tytułu po utworzeniu natywnego okna (winId)."""
+        """Synchronizuje pasek tytułu po utworzeniu natywnego okna (winId)."""
         super().showEvent(event)
-        set_titlebar_dark(self, self.theme_manager.theme.name == "dark")
+        self._sync_titlebar()
 
     def changeEvent(self, event: QEvent) -> None:  # noqa: N802 — Qt API
-        """Po (de)aktywacji okna ponownie wymusza kolor paska tytułu (Win10)."""
+        """Po (de)aktywacji okna ponawia synchronizację paska tytułu (Win10).
+
+        Realny DWM odpala się tylko przy wymuszonym rozjeździe motyw≠system —
+        :func:`sync_titlebar` sama to filtruje.
+        """
         super().changeEvent(event)
         if event.type() == QEvent.Type.ActivationChange:
-            set_titlebar_dark(self, self.theme_manager.theme.name == "dark")
+            self._sync_titlebar()
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802 — Qt API
-        """Zapisuje konfigurację (motyw, geometria) przy zamknięciu."""
-        current = load_config(self.config_path)
-        current.update(self.config_data)
-        current["theme"] = self.theme_manager.setting
-        current[_GEOMETRY_KEY] = bytes(self.saveGeometry().toHex().data()).decode("ascii")
-        self.config_data = current
-        save_config(self.config_path, current)
+        """Zapisuje konfigurację (motyw, geometria) bezwarunkowo przy zamknięciu."""
+        self.config_data["theme"] = self.theme_manager.setting
+        self.config_data[_GEOMETRY_KEY] = bytes(self.saveGeometry().toHex().data()).decode("ascii")
+        self.config_data.save_now()
+        self._flush_timer.stop()
         super().closeEvent(event)
 
     def _restore_geometry(self) -> None:
@@ -288,18 +315,19 @@ def main() -> None:
     app.setApplicationName("EpubForge")
 
     config_path = default_config_path()
-    config = load_config(config_path)
-    theme_manager = ThemeManager(app, config)
-
+    # Detekcja narzędzi sama dopisuje cache do pliku — wczytujemy config DOPIERO
+    # po niej, by ConfigStore (autorytatywny przy zapisie) miał komplet danych.
     try:
         tools = detect_with_cache(config_path)
     except OSError:
         tools = {}
 
-    theme_manager.apply(theme_manager.setting)
+    config = ConfigStore(config_path, load_config(config_path))
+    theme_manager = ThemeManager(app, config)
     _install_excepthook(config_path)
 
     window = MainWindow(config_path, config, tools, theme_manager)
+    theme_manager.apply(theme_manager.setting)
     window.show()
     sys.exit(app.exec())
 
