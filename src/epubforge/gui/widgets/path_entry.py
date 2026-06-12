@@ -16,21 +16,10 @@ from PySide6.QtWidgets import (
 
 from epubforge.core.config import Config
 from epubforge.gui.file_dialogs import open_file, pick_dir, save_file
+from epubforge.i18n import _
 
 PathMode = Literal["dir", "file", "save"]
 FileTypes = Sequence[tuple[str, str]]
-
-_BROWSE_TOOLTIPS: dict[PathMode, str] = {
-    "dir": "Wybierz folder",
-    "file": "Wybierz plik",
-    "save": "Wybierz miejsce i nazwę zapisu",
-}
-
-_DIALOG_TITLES: dict[PathMode, str] = {
-    "dir": "Wybierz folder",
-    "file": "Wybierz plik",
-    "save": "Zapisz jako",
-}
 
 
 class PathEntry(QWidget):
@@ -55,7 +44,7 @@ class PathEntry(QWidget):
     ) -> None:
         super().__init__(parent)
         self.mode = mode
-        self.filetypes: FileTypes = filetypes or [("Wszystkie pliki", "*.*")]
+        self.filetypes: FileTypes = filetypes or [(_("Wszystkie pliki"), "*.*")]
         self._config = config
         self._remember_key = remember_key
 
@@ -71,7 +60,7 @@ class PathEntry(QWidget):
 
         self.button = QToolButton(self)
         self.button.setText("…")
-        self.button.setToolTip(_BROWSE_TOOLTIPS[mode])
+        self.button.setToolTip(_browse_tooltip(mode))
         self.button.clicked.connect(self._browse)
         layout.addWidget(self.button)
 
@@ -85,7 +74,7 @@ class PathEntry(QWidget):
 
     def _browse(self) -> None:
         """Otwiera dialog wyboru ścieżki (natywny w trybie jasnym, Qt w ciemnym)."""
-        title = _DIALOG_TITLES[self.mode]
+        title = _dialog_title(self.mode)
         start_dir = self._start_dir()
         if self.mode == "dir":
             path = pick_dir(self, title, start_dir, self._config)
@@ -118,3 +107,21 @@ class PathEntry(QWidget):
         chosen = Path(path)
         directory = chosen if chosen.is_dir() else chosen.parent
         self._config[self._remember_key] = str(directory)
+
+
+def _browse_tooltip(mode: PathMode) -> str:
+    """Zwraca tooltip przycisku wyboru ścieżki."""
+    if mode == "file":
+        return _("Wybierz plik")
+    if mode == "save":
+        return _("Wybierz miejsce i nazwę zapisu")
+    return _("Wybierz folder")
+
+
+def _dialog_title(mode: PathMode) -> str:
+    """Zwraca tytuł dialogu wyboru ścieżki."""
+    if mode == "file":
+        return _("Wybierz plik")
+    if mode == "save":
+        return _("Zapisz jako")
+    return _("Wybierz folder")

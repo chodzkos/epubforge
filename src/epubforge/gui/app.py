@@ -31,6 +31,7 @@ from epubforge.gui.tabs import ConverterTab, FixerTab, KfxTab, MetadataTab
 from epubforge.gui.theme import ThemeManager, ThemeName, ThemeSetting, system_scheme
 from epubforge.gui.widgets import AboutPanel, LogView
 from epubforge.gui.window_theme import sync_titlebar
+from epubforge.i18n import _, init_i18n
 
 logger = logging.getLogger(__name__)
 
@@ -38,15 +39,15 @@ logger = logging.getLogger(__name__)
 # raz po ~1 s bezczynności, zamiast przy każdym naciśnięciu klawisza.
 _FLUSH_DEBOUNCE_MS = 1000
 
-# Etykiety trybów motywu w przycisku górnego paska.
-_THEME_LABELS: dict[ThemeSetting, str] = {"auto": "Auto", "light": "Jasny", "dark": "Ciemny"}
-_THEME_MENU_ITEMS: tuple[tuple[str, ThemeSetting], ...] = (
-    ("Automatyczny", "auto"),
-    ("Jasny", "light"),
-    ("Ciemny", "dark"),
+_LANGUAGE_MENU_ITEMS: tuple[tuple[str, str], ...] = (
+    ("Auto", "auto"),
+    ("Polski", "pl"),
+    ("English", "en"),
+    ("Deutsch", "de"),
 )
 
 _GEOMETRY_KEY = "window_geometry"
+_LANGUAGE_KEY = "language"
 
 
 class AboutDialog(QDialog):
@@ -55,10 +56,13 @@ class AboutDialog(QDialog):
     def __init__(self, parent: QWidget, mode: ThemeName) -> None:
         super().__init__(parent)
         self._mode = mode
-        self.setWindowTitle("O programie")
+        self.setWindowTitle(_("O programie"))
         layout = QVBoxLayout(self)
         layout.addWidget(AboutPanel())
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_button = buttons.button(QDialogButtonBox.StandardButton.Close)
+        if close_button is not None:
+            close_button.setText(_("Zamknij"))
         buttons.rejected.connect(self.reject)
         buttons.accepted.connect(self.accept)
         layout.addWidget(buttons)
@@ -95,6 +99,8 @@ class MainWindow(QMainWindow):
         self.tools = tools
         self.theme_manager = theme_manager
         self._about_dialog: AboutDialog | None = None
+        if _LANGUAGE_KEY in self.config_data:
+            init_i18n(str(self.config_data.get(_LANGUAGE_KEY, "auto")))
 
         # Debounce zapisu configu: każde mark_dirty restartuje licznik, a po ~1 s
         # bezczynności QTimer woła flush (GUI_STANDARD §8). Timing żyje tu, w GUI;
@@ -119,6 +125,7 @@ class MainWindow(QMainWindow):
 
         self.theme_manager.theme_changed.connect(self._on_theme_changed)
         self._sync_theme_actions()
+        self._sync_language_actions()
 
     # ── Budowa UI ─────────────────────────────────────────────────────────────
 
@@ -135,12 +142,12 @@ class MainWindow(QMainWindow):
 
         self.theme_button = QToolButton()
         self.theme_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-        self.theme_button.setToolTip("Motyw: Automatyczny / Jasny / Ciemny")
+        self.theme_button.setToolTip(_("Motyw: Automatyczny / Jasny / Ciemny"))
         self.theme_menu = QMenu(self.theme_button)
         self.theme_group = QActionGroup(self)
         self.theme_group.setExclusive(True)
         self._theme_actions: dict[ThemeSetting, object] = {}
-        for label, value in _THEME_MENU_ITEMS:
+        for label, value in _theme_menu_items():
             action = self.theme_menu.addAction(label)
             action.setCheckable(True)
             action.triggered.connect(lambda _checked=False, v=value: self._select_theme(v))
@@ -149,9 +156,27 @@ class MainWindow(QMainWindow):
         self.theme_button.setMenu(self.theme_menu)
         topbar.addWidget(self.theme_button)
 
+        self.language_button = QToolButton()
+        self.language_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.language_button.setToolTip(_("Język interfejsu"))
+        self.language_menu = QMenu(self.language_button)
+        self.language_group = QActionGroup(self)
+        self.language_group.setExclusive(True)
+        self._language_actions: dict[str, object] = {}
+        for _label, language_value in _LANGUAGE_MENU_ITEMS:
+            action = self.language_menu.addAction(_language_label(language_value))
+            action.setCheckable(True)
+            action.triggered.connect(
+                lambda _checked=False, v=language_value: self._select_language(v)
+            )
+            self.language_group.addAction(action)
+            self._language_actions[language_value] = action
+        self.language_button.setMenu(self.language_menu)
+        topbar.addWidget(self.language_button)
+
         self.about_button = QToolButton()
         self.about_button.setText("ⓘ")
-        self.about_button.setToolTip("O programie")
+        self.about_button.setToolTip(_("O programie"))
         self.about_button.clicked.connect(self._open_about)
         topbar.addWidget(self.about_button)
 
@@ -164,10 +189,10 @@ class MainWindow(QMainWindow):
         self.converter_tab = ConverterTab(config=self.config_data)
         self.fixer_tab = FixerTab(tools=self.tools)
         self.kfx_tab = KfxTab(tools=self.tools, config=self.config_data)
-        self.tabs.addTab(self.metadata_tab, "Metadane")
-        self.tabs.addTab(self.converter_tab, "Konwerter")
-        self.tabs.addTab(self.fixer_tab, "Fixer")
-        self.tabs.addTab(self.kfx_tab, "Eksport Kindle")
+        self.tabs.addTab(self.metadata_tab, _("Metadane"))
+        self.tabs.addTab(self.converter_tab, _("Konwerter"))
+        self.tabs.addTab(self.fixer_tab, _("Fixer"))
+        self.tabs.addTab(self.kfx_tab, _("Eksport Kindle"))
         layout.addWidget(self.tabs, stretch=1)
 
     def _build_status_bar(self) -> None:
@@ -186,12 +211,36 @@ class MainWindow(QMainWindow):
         action = self._theme_actions.get(setting)
         if action is not None:
             action.setChecked(True)  # type: ignore[attr-defined]
-        self.theme_button.setText(f"Motyw: {_THEME_LABELS[setting]}")
+        self.theme_button.setText(_("Motyw: {theme}").format(theme=_theme_label(setting)))
+
+    def _select_language(self, language: str) -> None:
+        """Zapisuje wybrany język; zmiana zadziała po restarcie."""
+        self.config_data[_LANGUAGE_KEY] = language
+        self._sync_language_actions()
+        QMessageBox.information(
+            self,
+            _("Język"),
+            _("Zmiana języka zadziała po ponownym uruchomieniu aplikacji."),
+        )
+
+    def _sync_language_actions(self) -> None:
+        """Zaznacza bieżący język i odświeża tekst przycisku."""
+        language = str(self.config_data.get(_LANGUAGE_KEY, "auto"))
+        action = self._language_actions.get(language)
+        if action is None:
+            language = "auto"
+            action = self._language_actions.get(language)
+        if action is not None:
+            action.setChecked(True)  # type: ignore[attr-defined]
+        self.language_button.setText(
+            _("Język: {language}").format(language=_language_label(language))
+        )
 
     def _on_theme_changed(self, _theme: object) -> None:
         """Reaguje na zmianę motywu: pasek tytułu, log, etykieta, okno About."""
         self._sync_titlebar()
         self._sync_theme_actions()
+        self._sync_language_actions()
         for log_view in self._log_views():
             log_view.set_theme(self.theme_manager.theme)
         if self._about_dialog is not None:
@@ -284,9 +333,38 @@ def _format_tools_status(tools: dict[str, Tool]) -> str:
     parts: list[str] = []
     for key, label in labels.items():
         tool = tools.get(key)
-        marker = "OK" if tool is not None and tool.available else "brak"
+        marker = "OK" if tool is not None and tool.available else _("brak")
         parts.append(f"{label}: {marker}")
     return " | ".join(parts)
+
+
+def _theme_menu_items() -> tuple[tuple[str, ThemeSetting], ...]:
+    """Zwraca etykiety menu motywu po inicjalizacji gettext."""
+    return (
+        (_("Automatyczny"), "auto"),
+        (_("Jasny"), "light"),
+        (_("Ciemny"), "dark"),
+    )
+
+
+def _theme_label(setting: ThemeSetting) -> str:
+    """Zwraca krótką etykietę trybu motywu."""
+    if setting == "light":
+        return _("Jasny")
+    if setting == "dark":
+        return _("Ciemny")
+    return _("Auto")
+
+
+def _language_label(language: str) -> str:
+    """Zwraca etykietę języka w menu i przycisku."""
+    if language == "pl":
+        return _("Polski")
+    if language == "en":
+        return _("English")
+    if language == "de":
+        return _("Deutsch")
+    return _("Auto")
 
 
 def _install_excepthook(config_path: Path) -> None:
@@ -304,7 +382,11 @@ def _install_excepthook(config_path: Path) -> None:
             error_file.write_text(text, encoding="utf-8")
         except OSError:
             logger.warning("Nie udało się zapisać %s", error_file)
-        QMessageBox.critical(None, "Błąd krytyczny", f"Wystąpił nieoczekiwany błąd:\n{exc}")
+        QMessageBox.critical(
+            None,
+            _("Błąd krytyczny"),
+            _("Wystąpił nieoczekiwany błąd:\n{error}").format(error=exc),
+        )
 
     sys.excepthook = handle
 
@@ -323,6 +405,7 @@ def main() -> None:
         tools = {}
 
     config = ConfigStore(config_path, load_config(config_path))
+    init_i18n(str(config.get(_LANGUAGE_KEY, "auto")))
     theme_manager = ThemeManager(app, config)
     _install_excepthook(config_path)
 

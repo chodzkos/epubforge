@@ -138,6 +138,36 @@ się od motywu systemu (Qt 6.5+ sam prowadzi pasek przy zgodzie). Przy rozjeźdz
 app-ciemny + system-jasny używane są spójne ciemne dialogi **Otwórz/Zapisz** (Qt);
 w pozostałych przypadkach — natywne dialogi systemu.
 
+### Języki
+
+GUI i CLI używają jednego systemu tłumaczeń `gettext` (nie Qt Linguist), więc te same
+katalogi działają w aplikacji desktopowej i w komendzie `epubforge`. Dostępne języki:
+
+- **Polski** — język źródłowy (`msgid`)
+- **English**
+- **Deutsch**
+
+W GUI język wybierzesz w górnym pasku przez **Język**. Zmiana zapisuje się w configu
+i zaczyna działać po ponownym uruchomieniu aplikacji. CLI czyta tę samą wartość
+`language` z configu; `auto` próbuje wykryć język systemu.
+
+Dodanie nowego języka:
+
+```bash
+# 1. Odśwież szablon
+pybabel extract -F babel.cfg -o src/epubforge/locale/epubforge.pot .
+
+# 2. Utwórz katalog języka albo zaktualizuj istniejący
+pybabel init -i src/epubforge/locale/epubforge.pot \
+  -d src/epubforge/locale -D epubforge -l fr
+# albo:
+pybabel update -i src/epubforge/locale/epubforge.pot \
+  -d src/epubforge/locale -D epubforge
+
+# 3. Uzupełnij .po i skompiluj .mo
+python build/compile_locales.py
+```
+
 ---
 
 ## 📸 Zrzuty ekranu

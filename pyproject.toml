@@ -44,6 +44,7 @@ gui = [
     "PySide6>=6.8,<7",
 ]
 dev = [
+    "babel>=2.14",
     "pytest>=8.0",
     "pytest-cov>=4.1",
     "pytest-mock>=3.12",
@@ -55,6 +56,7 @@ dev = [
     "lxml-stubs",
 ]
 build = [
+    "babel>=2.14",
     "pyinstaller>=6.6",
     "Pillow>=10.0",
 ]
@@ -77,6 +79,9 @@ path = "src/epubforge/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/epubforge"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/epubforge/locale" = "epubforge/locale"
 
 # ── Ruff (linter + formatter) ──────────────────────────────────────────────────
 [tool.ruff]

@@ -7,6 +7,12 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 
 ## [Unreleased]
 
+### Added
+- **Internacjonalizacja GUI i CLI przez gettext** — wspólne katalogi PL/EN/DE
+  (`msgid` po polsku), kompilowane `.mo` w repo i przełącznik **Język** w górnym
+  pasku GUI (zmiana działa po restarcie). Build kompiluje locale przed PyInstallerem
+  i sprawdza obecność plików `.mo`.
+
 ### Fixed
 - **Dopieszczony fallbackowy dialog Qt** (gdy motyw aplikacji ≠ motyw systemu):
   pasek boczny (Pulpit / Dokumenty / Pobrane / dyski / ostatni katalog), widok

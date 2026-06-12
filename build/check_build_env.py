@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import importlib
 import sys
+from pathlib import Path
 
 _REQUIRED_MODULES = {
+    "babel.messages.mofile": "babel",
     "PyInstaller": "pyinstaller",
     "PySide6.QtWidgets": "PySide6",
     "lxml.etree": "lxml",
@@ -13,6 +15,8 @@ _REQUIRED_MODULES = {
     "tinycss2": "tinycss2",
     "platformdirs": "platformdirs",
 }
+
+_LOCALE_DIR = Path(__file__).resolve().parent.parent / "src" / "epubforge" / "locale"
 
 
 def main() -> int:
@@ -43,6 +47,10 @@ def main() -> int:
     # Smoke import własnego motywu + aplikacji — łapie ukryte zależności GUI.
     importlib.import_module("epubforge.gui.theme")
     importlib.import_module("epubforge.gui.app")
+    if not any(_LOCALE_DIR.glob("*/LC_MESSAGES/epubforge.mo")):
+        print("[BLAD] Brak skompilowanych plikow locale (*.mo).")
+        print("Uruchom: python build/compile_locales.py")
+        return 1
     print("[OK] Srodowisko buildu zawiera wymagane zaleznosci.")
     return 0
 

@@ -9,6 +9,8 @@ from typing import cast
 
 from epubforge import __version__
 from epubforge.cli import convert, fix, hyphenate, kfx, meta, mobi
+from epubforge.core import default_config_path, load_config
+from epubforge.i18n import _, init_i18n
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -20,9 +22,12 @@ def main(argv: list[str] | None = None) -> int:
     Returns:
         Kod wyjścia procesu (0 = OK).
     """
+    config = load_config(default_config_path())
+    init_i18n(str(config.get("language", "auto")))
+
     parser = argparse.ArgumentParser(
         prog="epubforge",
-        description="Modern toolkit for EPUB files — validate, fix, convert, hyphenate.",
+        description=_("Nowoczesny zestaw narzędzi do EPUB — walidacja, naprawa, konwersja."),
     )
     parser.add_argument(
         "--version",
@@ -30,9 +35,8 @@ def main(argv: list[str] | None = None) -> int:
         version=f"epubforge {__version__}",
     )
 
-    # Subkomendy będą dodane w etapach 1-7
-    subparsers = parser.add_subparsers(dest="command", help="Dostępne komendy")
-    subparsers.add_parser("info", help="Wyświetl informacje o wersji i wykrytych narzędziach")
+    subparsers = parser.add_subparsers(dest="command", help=_("Dostępne komendy"))
+    subparsers.add_parser("info", help=_("Wyświetl informacje o wersji i wykrytych narzędziach"))
     convert.add_parser(subparsers)
     fix.add_parser(subparsers)
     hyphenate.add_parser(subparsers)
@@ -48,7 +52,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "info":
         print(f"EpubForge {__version__}")
-        print("Wykryte narzędzia: (TODO - etap 3)")
+        print(_("Wykryte narzędzia: (TODO - etap 3)"))
         return 0
 
     parser.print_help()

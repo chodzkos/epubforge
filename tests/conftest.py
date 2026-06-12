@@ -8,7 +8,17 @@ from pathlib import Path
 
 import pytest
 
+from epubforge.i18n import init_i18n
+
 FIXTURE_EPUB = Path(__file__).parent / "fixtures" / "sample.epub"
+
+
+@pytest.fixture(autouse=True)
+def reset_i18n() -> None:
+    """Każdy test startuje z polskim katalogiem źródłowym gettext."""
+    init_i18n("pl")
+    yield
+    init_i18n("pl")
 
 
 @pytest.fixture

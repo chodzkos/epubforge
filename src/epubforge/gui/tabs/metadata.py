@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 from epubforge.core import Epub, EpubError, Metadata, Tool, Tools
 from epubforge.gui.widgets import FileList, PathEntry, Section
 from epubforge.gui.workers import CREATE_NO_WINDOW
+from epubforge.i18n import _, ngettext
 
 _TOOL_LABELS = {
     "sigil": "Sigil",
@@ -67,18 +68,18 @@ class MetadataTab(QWidget):
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 2)
 
-        self.status_label = QLabel("Wybierz plik EPUB")
+        self.status_label = QLabel(_("Wybierz plik EPUB"))
         outer.addWidget(self.status_label)
 
     def _build_file_browser(self, parent: QWidget) -> None:
         """Buduje panel wyboru folderu i listy EPUB."""
         layout = QVBoxLayout(parent)
         layout.setContentsMargins(0, 0, 10, 0)
-        browser = Section("Pliki EPUB")
+        browser = Section(_("Pliki EPUB"))
         layout.addWidget(browser)
 
-        self.folder_entry = PathEntry(mode="dir", placeholder="Folder z plikami EPUB")
-        self.folder_entry.entry.setToolTip("Folder z plikami EPUB do edycji metadanych")
+        self.folder_entry = PathEntry(mode="dir", placeholder=_("Folder z plikami EPUB"))
+        self.folder_entry.entry.setToolTip(_("Folder z plikami EPUB do edycji metadanych"))
         self.folder_entry.path_changed.connect(self._load_folder)
         browser.add_widget(self.folder_entry)
 
@@ -91,35 +92,37 @@ class MetadataTab(QWidget):
         """Buduje formularz metadanych i przyciski akcji."""
         layout = QVBoxLayout(parent)
         layout.setContentsMargins(0, 0, 0, 0)
-        form_section = Section("Metadane Dublin Core")
+        form_section = Section(_("Metadane Dublin Core"))
         layout.addWidget(form_section, stretch=1)
 
         form = QFormLayout()
         form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         form_section.content_layout().addLayout(form)
 
-        self.title_edit = self._line_edit("Tytuł książki (dc:title)")
-        form.addRow("Tytuł", self.title_edit)
-        form.addRow("Cykl", self._build_series_row())
+        self.title_edit = self._line_edit(_("Tytuł książki (dc:title)"))
+        form.addRow(_("Tytuł"), self.title_edit)
+        form.addRow(_("Cykl"), self._build_series_row())
         self.creators_edit = self._text_edit(
-            "Autorzy — jeden na linię; format: Nazwisko, Imię", height=3
+            _("Autorzy — jeden na linię; format: Nazwisko, Imię"), height=3
         )
-        form.addRow("Autorzy", self.creators_edit)
-        self.language_edit = self._line_edit("Kod języka, np. pl, en (dc:language)")
+        form.addRow(_("Autorzy"), self.creators_edit)
+        self.language_edit = self._line_edit(_("Kod języka, np. pl, en (dc:language)"))
         self.language_edit.setText("en")
-        form.addRow("Język", self.language_edit)
-        self.publisher_edit = self._line_edit("Wydawca (dc:publisher)")
-        form.addRow("Wydawca", self.publisher_edit)
-        self.date_edit = self._line_edit("Data publikacji w formacie ISO: RRRR-MM-DD")
-        form.addRow("Data", self.date_edit)
-        self.identifier_edit = self._line_edit("Identyfikator: ISBN lub UUID (dc:identifier)")
+        form.addRow(_("Język"), self.language_edit)
+        self.publisher_edit = self._line_edit(_("Wydawca (dc:publisher)"))
+        form.addRow(_("Wydawca"), self.publisher_edit)
+        self.date_edit = self._line_edit(_("Data publikacji w formacie ISO: RRRR-MM-DD"))
+        form.addRow(_("Data"), self.date_edit)
+        self.identifier_edit = self._line_edit(_("Identyfikator: ISBN lub UUID (dc:identifier)"))
         form.addRow("ISBN", self.identifier_edit)
-        self.subjects_edit = self._text_edit("Tematy/tagi — jeden na linię (dc:subject)", height=3)
-        form.addRow("Tematy", self.subjects_edit)
-        self.description_edit = self._text_edit(
-            "Opis/streszczenie książki (dc:description)", height=7
+        self.subjects_edit = self._text_edit(
+            _("Tematy/tagi — jeden na linię (dc:subject)"), height=3
         )
-        form.addRow("Opis", self.description_edit)
+        form.addRow(_("Tematy"), self.subjects_edit)
+        self.description_edit = self._text_edit(
+            _("Opis/streszczenie książki (dc:description)"), height=7
+        )
+        form.addRow(_("Opis"), self.description_edit)
 
         form_section.content_layout().addLayout(self._build_actions())
 
@@ -128,12 +131,12 @@ class MetadataTab(QWidget):
         widget = QWidget()
         row = QHBoxLayout(widget)
         row.setContentsMargins(0, 0, 0, 0)
-        self.series_edit = self._line_edit("Nazwa cyklu/serii, np. Wiedźmin")
+        self.series_edit = self._line_edit(_("Nazwa cyklu/serii, np. Wiedźmin"))
         row.addWidget(self.series_edit, stretch=1)
-        label = QLabel("Tom nr:")
+        label = QLabel(_("Tom nr:"))
         row.addWidget(label)
         self.series_index_edit = QLineEdit()
-        self.series_index_edit.setToolTip("Numer tomu w cyklu, np. 2 (można 1.5)")
+        self.series_index_edit.setToolTip(_("Numer tomu w cyklu, np. 2 (można 1.5)"))
         self.series_index_edit.setMaximumWidth(80)
         row.addWidget(self.series_index_edit)
         return widget
@@ -141,8 +144,8 @@ class MetadataTab(QWidget):
     def _build_actions(self) -> QHBoxLayout:
         """Buduje pasek akcji: Zapisz po lewej, narzędzia po prawej."""
         actions = QHBoxLayout()
-        save = QPushButton("Zapisz")
-        save.setToolTip("Zapisuje metadane do wybranego EPUB")
+        save = QPushButton(_("Zapisz"))
+        save.setToolTip(_("Zapisuje metadane do wybranego EPUB"))
         save.clicked.connect(self._save_metadata)
         actions.addWidget(save)
         actions.addStretch(1)
@@ -176,14 +179,16 @@ class MetadataTab(QWidget):
             return
         path = Path(raw_path).expanduser()
         if not path.is_dir():
-            self._set_status("Wybrany folder nie istnieje")
+            self._set_status(_("Wybrany folder nie istnieje"))
             return
         self.current_path = None
         self._clear_form()
         self.file_list.clear()
         self.file_list.add_files(sorted(path.glob("*.epub")))
         count = len(self.file_list.files())
-        self._set_status(f"Wczytano {count} {_plural_files(count)} EPUB")
+        self._set_status(
+            ngettext("Wczytano {n} plik EPUB", "Wczytano {n} plików EPUB", count).format(n=count)
+        )
 
     def _on_files_changed(self, files: list[Path]) -> None:
         """Czyści wybór lub automatycznie ładuje pierwszy plik z listy."""
@@ -205,38 +210,46 @@ class MetadataTab(QWidget):
             with Epub(path) as epub:
                 metadata = epub.metadata
         except (EpubError, OSError, KeyError) as exc:
-            self._set_status(f"Nie udało się wczytać metadanych: {exc}")
-            QMessageBox.critical(self, "Metadane", f"Nie udało się wczytać metadanych:\n{exc}")
+            self._set_status(_("Nie udało się wczytać metadanych: {error}").format(error=exc))
+            QMessageBox.critical(
+                self,
+                _("Metadane"),
+                _("Nie udało się wczytać metadanych:\n{error}").format(error=exc),
+            )
             return
         self.current_path = path
         self._loaded_metadata = metadata
         self._set_form(metadata)
-        self._set_status(f"Wczytano metadane: {path.name}")
+        self._set_status(_("Wczytano metadane: {name}").format(name=path.name))
 
     def _save_metadata(self) -> None:
         """Zapisuje metadane do aktualnego EPUB przez setter Epub.metadata."""
         if self.current_path is None:
-            self._set_status("Wybierz plik EPUB przed zapisem")
+            self._set_status(_("Wybierz plik EPUB przed zapisem"))
             return
         metadata = self._metadata_from_form()
         try:
             with Epub(self.current_path) as epub:
                 epub.metadata = metadata
         except (EpubError, OSError, KeyError) as exc:
-            self._set_status(f"Nie udało się zapisać metadanych: {exc}")
-            QMessageBox.critical(self, "Metadane", f"Nie udało się zapisać metadanych:\n{exc}")
+            self._set_status(_("Nie udało się zapisać metadanych: {error}").format(error=exc))
+            QMessageBox.critical(
+                self,
+                _("Metadane"),
+                _("Nie udało się zapisać metadanych:\n{error}").format(error=exc),
+            )
             return
         self._loaded_metadata = metadata
-        self._set_status(f"Zapisano metadane: {self.current_path.name}")
+        self._set_status(_("Zapisano metadane: {name}").format(name=self.current_path.name))
 
     def _open_external(self, key: str, label: str) -> None:
         """Uruchamia zewnętrzny edytor/podgląd dla aktualnego EPUB."""
         tool = self.tools.get(key)
         if tool is None or not tool.available or tool.path is None:
-            self._set_status(f"Nie wykryto {label}")
+            self._set_status(_("Nie wykryto {tool}").format(tool=label))
             return
         if self.current_path is None:
-            self._set_status("Wybierz plik EPUB")
+            self._set_status(_("Wybierz plik EPUB"))
             return
         try:
             subprocess.Popen(
@@ -244,8 +257,14 @@ class MetadataTab(QWidget):
                 creationflags=CREATE_NO_WINDOW,
             )
         except OSError as exc:
-            self._set_status(f"Nie udało się uruchomić {label}: {exc}")
-            QMessageBox.critical(self, label, f"Nie udało się uruchomić programu:\n{exc}")
+            self._set_status(
+                _("Nie udało się uruchomić {tool}: {error}").format(tool=label, error=exc)
+            )
+            QMessageBox.critical(
+                self,
+                label,
+                _("Nie udało się uruchomić programu:\n{error}").format(error=exc),
+            )
 
     def _refresh_tool_buttons(self) -> None:
         """Aktualizuje stan przycisków narzędzi zewnętrznych."""
@@ -257,7 +276,7 @@ class MetadataTab(QWidget):
                 button.setToolTip(str(tool.path))
             else:
                 button.setEnabled(False)
-                button.setToolTip(f"Nie wykryto {label}")
+                button.setToolTip(_("Nie wykryto {tool}").format(tool=label))
 
     def _set_form(self, metadata: Metadata) -> None:
         """Przepisuje obiekt Metadata do pól formularza."""
@@ -308,11 +327,11 @@ class MetadataTab(QWidget):
     def _warn_invalid_series_index(self) -> float | None:
         """Pokazuje ostrzeżenie i zachowuje poprzedni numer tomu."""
         previous = self._loaded_metadata.series_index if self._loaded_metadata is not None else None
-        self._set_status("Tom nr nie jest liczbą; zapisano pozostałe metadane")
+        self._set_status(_("Tom nr nie jest liczbą; zapisano pozostałe metadane"))
         QMessageBox.warning(
             self,
-            "Metadane",
-            "Pole „Tom nr” musi być liczbą, np. 2 albo 1.5. Ta wartość nie zostanie zmieniona.",
+            _("Metadane"),
+            _("Pole „Tom nr” musi być liczbą, np. 2 albo 1.5. Ta wartość nie zostanie zmieniona."),
         )
         return previous
 
@@ -349,12 +368,3 @@ def _format_series_index(value: float | None) -> str:
 def _split_lines(value: str) -> list[str]:
     """Rozbija wielowierszową wartość formularza na niepuste wpisy."""
     return [line.strip() for line in value.splitlines() if line.strip()]
-
-
-def _plural_files(count: int) -> str:
-    """Zwraca polską odmianę słowa plik dla licznika."""
-    if count == 1:
-        return "plik"
-    if 2 <= count <= 4:
-        return "pliki"
-    return "plików"
