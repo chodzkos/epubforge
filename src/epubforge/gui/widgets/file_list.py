@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from epubforge.core.config import Config
 from epubforge.gui.file_dialogs import open_files, pick_dir
 
 DEFAULT_EXTENSIONS = {".epub", ".txt", ".md", ".markdown", ".docx", ".html", ".htm", ".pdf"}
@@ -42,12 +43,15 @@ class FileList(QWidget):
         *,
         extensions: Iterable[str] | None = None,
         confirm: Callable[[Path], bool] | None = None,
+        config: Config | None = None,
     ) -> None:
         super().__init__(parent)
         self.extensions = {ext.lower() for ext in (extensions or DEFAULT_EXTENSIONS)}
         # Hook wołany przed dodaniem pliku — zwrot False pomija plik
         # (np. potwierdzenie eksperymentalnej konwersji PDF).
         self.confirm = confirm
+        # Config dla dopieszczonego dialogu Qt (pasek boczny, rozmiar okna).
+        self._config = config
         self._files: list[Path] = []
 
         layout = QVBoxLayout(self)
@@ -161,12 +165,12 @@ class FileList(QWidget):
     def _add_files(self) -> None:
         """Dodaje pliki wybrane w dialogu."""
         pattern = " ".join(f"*{ext}" for ext in sorted(self.extensions))
-        paths = open_files(self, "Dodaj pliki", f"Obsługiwane ({pattern})")
+        paths = open_files(self, "Dodaj pliki", f"Obsługiwane ({pattern})", self._config)
         self.add_files(Path(path) for path in paths)
 
     def _add_folder(self) -> None:
         """Dodaje obsługiwane pliki z wybranego katalogu (bez rekursji)."""
-        folder = pick_dir(self, "Dodaj folder")
+        folder = pick_dir(self, "Dodaj folder", "", self._config)
         if not folder:
             return
         self.add_files(path for path in Path(folder).iterdir() if path.is_file())

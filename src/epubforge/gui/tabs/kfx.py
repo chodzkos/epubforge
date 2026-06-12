@@ -101,7 +101,7 @@ class KfxTab(QWidget):
         layout.setContentsMargins(0, 0, 10, 0)
         section = Section("Pliki EPUB")
         layout.addWidget(section)
-        self.file_list = FileList(extensions={".epub"})
+        self.file_list = FileList(extensions={".epub"}, config=self.config_data)
         self.file_list.files_changed.connect(self._on_files_changed)
         section.add_widget(self.file_list)
 
