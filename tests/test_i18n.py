@@ -16,6 +16,7 @@ from babel.messages.pofile import read_po
 from PySide6.QtWidgets import QApplication
 from pytestqt.qtbot import QtBot
 
+from epubforge.cli.main import main
 from epubforge.core import Tool
 from epubforge.core.config import ConfigStore
 from epubforge.gui.app import MainWindow
@@ -85,6 +86,18 @@ def test_detect_system_language_works_without_pyside6(monkeypatch: pytest.Monkey
     monkeypatch.setattr(builtins, "__import__", fake_import)
     monkeypatch.setattr("epubforge.i18n.locale.getlocale", lambda: ("Polish_Poland", "1250"))
     assert detect_system_language() == "pl"
+
+
+def test_cli_uses_language_from_config(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """CLI inicjuje gettext z configu przed budową parsera i komunikatów."""
+    monkeypatch.setattr("epubforge.cli.main.load_config", lambda _path: {"language": "en"})
+
+    assert main(["info"]) == 0
+
+    captured = capsys.readouterr()
+    assert "Detected tools: (TODO - stage 3)" in captured.out
 
 
 @pytest.mark.gui
