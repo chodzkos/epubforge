@@ -254,11 +254,19 @@ def apply_theme(app: QApplication, theme: Theme) -> None:
 
 
 def _repolish(app: QApplication) -> None:
-    """Wymusza przemalowanie wszystkich widgetów po zmianie palety/QSS."""
+    """Wymusza przemalowanie wszystkich widgetów po zmianie palety/QSS.
+
+    Po ``unpolish``/``polish`` dodatkowo wołamy ``update()`` na każdym widgecie
+    (i raz jeszcze na oknach top-level) — bez tego częściowo widoczne okna
+    odświeżają się z opóźnieniem przy zmianie motywu systemu w tle (tryb auto).
+    """
     style = app.style()
     for widget in app.allWidgets():
         style.unpolish(widget)
         style.polish(widget)
+        widget.update()
+    for window in app.topLevelWidgets():
+        window.update()
 
 
 class ThemeManager(QObject):

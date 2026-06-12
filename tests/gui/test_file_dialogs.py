@@ -13,17 +13,30 @@ pytestmark = pytest.mark.gui
 @pytest.mark.parametrize(
     ("app_mode", "system", "expected_native"),
     [
-        ("dark", "dark", True),
-        ("light", "dark", True),
-        ("light", "light", True),
-        ("dark", "light", False),  # jedyny rozjazd → dialog Qt
+        ("dark", "dark", True),  # zgodność → natywny
+        ("light", "light", True),  # zgodność → natywny
+        ("dark", "light", False),  # rozjazd → dialog Qt
+        ("light", "dark", False),  # rozjazd (w obie strony) → dialog Qt
     ],
 )
-def test_use_native_dialog_only_dark_app_light_system(
+def test_use_native_dialog_symmetric_mismatch(
     app_mode: str, system: str, expected_native: bool
 ) -> None:
-    """Natywny dialog wszędzie poza rozjazdem app-ciemny + system-jasny (§4)."""
+    """Natywny ⇔ motyw aplikacji == motyw systemu; przy KAŻDYM rozjeździe → Qt (§4)."""
     assert file_dialogs.use_native_dialog(app_mode, system) is expected_native  # type: ignore[arg-type]
+
+
+def test_auto_mode_always_uses_native(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tryb auto: motyw aplikacji podąża za systemem → zgodność → zawsze natywny.
+
+    Mockujemy motyw systemu (styleHints().colorScheme()) i NIE zmieniamy go w teście —
+    sprawdzamy, że dla obu wartości systemu auto daje natywny dialog.
+    """
+    for system in ("dark", "light"):
+        # W trybie auto efektywny motyw aplikacji == motyw systemu.
+        monkeypatch.setattr(file_dialogs, "current_theme", lambda s=system: _theme(s))
+        monkeypatch.setattr(file_dialogs, "system_scheme", lambda s=system: s)
+        assert file_dialogs._native() is True
 
 
 def test_open_file_native_delegates(qtbot: QtBot, monkeypatch: pytest.MonkeyPatch) -> None:

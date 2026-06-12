@@ -7,6 +7,16 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 
 ## [Unreleased]
 
+### Fixed
+- **Symetryczna reguła dialogów plików i paska tytułu** — natywny dialog/pasek
+  tylko gdy motyw aplikacji == motyw systemu; przy KAŻDYM rozjeździe (ciemny↔jasny
+  w obie strony) używany jest dialog Qt z paskiem zgodnym z aplikacją. Wcześniej
+  wymuszany był tylko kierunek „ciemny", więc app-jasny + system-ciemny dawał
+  niespójny ciemny dialog. Motyw systemu czytany jest w momencie otwierania dialogu.
+- **Odświeżanie przy zmianie motywu systemu w tle** (tryb auto) — po `unpolish`/
+  `polish` wołamy `update()` na wszystkich widgetach i oknach top-level, co usuwa
+  opóźnione przemalowanie częściowo widocznych okien.
+
 ### Changed
 - **Własny silnik motywu zamiast `qdarktheme`** (GUI standard v2.0) — `theme.py`
   buduje motyw sam: styl Fusion + `QPalette` (baza kolorów) + QSS wyłącznie na
