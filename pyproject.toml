@@ -32,15 +32,16 @@ dependencies = [
     "lxml>=5.0",
     "pyphen>=0.15",
     "tinycss2>=1.3",
+    # Lokalizacja configu wg konwencji systemu (GUI_STANDARD §8) — core, bez Qt.
+    "platformdirs>=4.0",
 ]
 
 [project.optional-dependencies]
 gui = [
-    # Baza zgodna z IcoForge (6.8 / 2.3.2) jako dolny pułap; górny luźny, by
-    # projekt instalował się też na nowszym Pythonie (3.13/3.14 dostają 6.11 / 2.3.6,
-    # bo starsze koła nie istnieją). API qdarktheme.setup_theme jest stabilne w 2.x.
+    # Motyw realizuje własny theme.py (Fusion + QPalette + QSS) — zero zależności
+    # od bibliotek motywów. Dolny pułap 6.8 wymagany przez styleHints().colorScheme()
+    # (Qt 6.5+); górny luźny, by projekt instalował się też na nowszym Pythonie.
     "PySide6>=6.8,<7",
-    "pyqtdarktheme-fork>=2.3.2,<3",
 ]
 dev = [
     "pytest>=8.0",
@@ -118,7 +119,6 @@ files = ["src/epubforge"]
 [[tool.mypy.overrides]]
 module = [
     "pyphen",
-    "qdarktheme",
     "tinycss2",
 ]
 ignore_missing_imports = true

@@ -59,7 +59,8 @@ Licencja: MIT
 | Element | Wybór | Wersja |
 |---|---|---|
 | Python | 3.10+ | match statements, type hints |
-| GUI | PySide6 (Qt) | motyw ciemny przez qdarktheme |
+| GUI | PySide6 (Qt) | własny `theme.py` (Fusion + QPalette + QSS) — bez zależności od bibliotek motywów |
+| Config dir | platformdirs | `%APPDATA%`/`~/.config`/macOS — nie hardcodujemy ścieżek |
 | XML/HTML | lxml | szybki, robust |
 | CSS | tinycss2 | nowoczesny parser (NIE cssutils) |
 | Hyphenation | pyphen | 50+ języków |
@@ -86,7 +87,7 @@ Skrypt:
 1. wybiera Pythona 3.10+ (`py -3.12`, `py -3.11`, `py -3.10`, a dopiero potem
    `python`),
 2. instaluje projekt z dodatkami `build,gui`, żeby PyInstaller widział m.in.
-   `PySide6`, `qdarktheme` i Pillow,
+   `PySide6`, `platformdirs` i Pillow,
 3. sprawdza środowisko przez `build/check_build_env.py`,
 4. buduje `build\dist\epubforge.exe` (portable),
 5. buduje `build\dist\epubforge\` (onedir pod instalator),
@@ -213,9 +214,28 @@ emituje sygnały (`line`, `progress`, `done`, `failed`), GUI je odbiera w głów
 wątku. `winId()` pobieraj wyłącznie w `showEvent`; przekazuj `int(window.winId())`
 do ctypes. `QFileDialog.getOpenFileNames` zwraca krotkę `(list, filter)`.
 
-**PyInstaller:** zasoby `qdarktheme` (svg/json) dopinaj przez
-`collect_data_files("qdarktheme")`; ciężkie moduły Qt (WebEngine, Quick, Qml,
-Multimedia…) wykluczaj w `.spec`, żeby build nie spuchł.
+**PyInstaller:** ciężkie moduły Qt (WebEngine, Quick, Qml, Multimedia…) wykluczaj
+w `.spec`, żeby build nie spuchł. **`upx=False` dla Qt** — UPX uszkadza DLL-e Qt
+(crash przy starcie). Motyw jest własny (`theme.py`), więc nie ma już zasobów
+`qdarktheme` do dopinania.
+
+### 8a. Własny motyw Qt (GUI_STANDARD v2.0 §4)
+**`theme.py` zamiast biblioteki motywów.** Kontrakt:
+- **`app.setStyle("Fusion")` PRZED `setPalette`** — natywny styl Windows ignoruje
+  większość ról palety; bez Fusion kontrolki zostają jasne mimo ciemnej palety;
+- **QPalette = baza kolorów, QSS = tylko akcenty** (ramki, radius, hover, focus,
+  tooltip). NIE dubluj kolorów bazowych (bg/fg) w QSS — nadpisuje paletę i przy
+  zmianie motywu zostają plamy;
+- **grupę `Disabled` ustawiaj jawnie** — inaczej Fusion wylicza własne kolory;
+- **auto** przez `styleHints().colorScheme()` (`Unknown` → fallback dark); sygnał
+  `colorSchemeChanged` podłączaj TYLKO w trybie auto (trzymaj referencję połączenia,
+  by odłączyć przy wymuszeniu);
+- po zmianie: `unpolish`/`polish` po `app.allWidgets()`.
+
+**Pasek tytułu (DWM) tylko przy rozjeździe:** od Qt 6.5+ pasek sam podąża za
+motywem **systemu**. `DwmSetWindowAttribute(20)` wymuszaj WYŁĄCZNIE gdy motyw
+aplikacji ≠ motyw systemu (`sync_titlebar`). Tak samo `DontUseNativeDialog` dla
+dialogów plików — tylko przy rozjeździe app-ciemny + system-jasny.
 
 ### 9. Duże pliki EPUB — nie ładuj wszystkiego do RAM
 **Problem:** EPUB z grafiką/wideo może mieć 50-150 MB. Trzymanie całości w `dict[str, bytes]` zjada RAM przy batch processing.

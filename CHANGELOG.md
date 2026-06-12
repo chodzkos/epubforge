@@ -7,14 +7,34 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 
 ## [Unreleased]
 
+### Fixed
+- **Symetryczna reguła dialogów plików i paska tytułu** — natywny dialog/pasek
+  tylko gdy motyw aplikacji == motyw systemu; przy KAŻDYM rozjeździe (ciemny↔jasny
+  w obie strony) używany jest dialog Qt z paskiem zgodnym z aplikacją. Wcześniej
+  wymuszany był tylko kierunek „ciemny", więc app-jasny + system-ciemny dawał
+  niespójny ciemny dialog. Motyw systemu czytany jest w momencie otwierania dialogu.
+- **Odświeżanie przy zmianie motywu systemu w tle** (tryb auto) — po `unpolish`/
+  `polish` wołamy `update()` na wszystkich widgetach i oknach top-level, co usuwa
+  opóźnione przemalowanie częściowo widocznych okien.
+
 ### Changed
+- **Własny silnik motywu zamiast `qdarktheme`** (GUI standard v2.0) — `theme.py`
+  buduje motyw sam: styl Fusion + `QPalette` (baza kolorów) + QSS wyłącznie na
+  akcenty, z akcentem marki `#5DCAA5` i pełną tabelą stanów (hover/pressed/focus/
+  disabled/selection). Zniknęła zależność `pyqtdarktheme-fork`.
+- **Konfiguracja przez `platformdirs`** z zapisem debounce'owanym (~1 s) i atomowym
+  (`ConfigStore.mark_dirty`/`flush`); wariant portable wykrywany markerem
+  `portable.flag` obok exe (naprawia zapis configu w `Program Files` dla instalacji).
+- **Pasek tytułu i dialogi plików (Windows, Qt 6.5+)** — DWM/`DontUseNativeDialog`
+  wymuszane tylko przy rozjeździe motyw aplikacji ≠ motyw systemu; przy zgodzie
+  prowadzi je Qt.
+- **Build**: `upx=False` w obu spec-ach (UPX uszkadza DLL-e Qt); instalator (onedir)
+  rekomendowany, portable z notą o wolniejszym starcie i false-positives AV.
 - **GUI przepisane z tkinter na PySide6 (Qt)** — pełna parzystość funkcji z v1.0
   (zakładki Metadane / Konwerter / Fixer / Eksport Kindle, górny pasek z motywem
-  i oknem „O programie", tooltipy, drag&drop, zapamiętany katalog wyjścia). Motyw
-  ciemny realizuje `qdarktheme` z akcentem marki, jasny przywraca natywny styl Qt.
-  W trybie ciemnym dialogi Otwórz/Zapisz są również ciemne (Qt), w jasnym natywne.
-- **Zależności GUI**: `tkinterdnd2` i `darkdetect` zastąpione przez `PySide6`
-  + `pyqtdarktheme-fork`; drag&drop jest teraz natywny w Qt (bez binariów `tkdnd`).
+  i oknem „O programie", tooltipy, drag&drop, zapamiętany katalog wyjścia).
+- **Zależności GUI**: `tkinterdnd2` i `darkdetect` zastąpione przez `PySide6`;
+  drag&drop jest teraz natywny w Qt (bez binariów `tkdnd`).
 - **Testy GUI** przeniesione na `pytest-qt` (platforma `offscreen`); CI bez `xvfb`.
 
 ## [1.0.0] - 2026-06-11

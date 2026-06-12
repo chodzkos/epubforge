@@ -8,10 +8,10 @@ import sys
 _REQUIRED_MODULES = {
     "PyInstaller": "pyinstaller",
     "PySide6.QtWidgets": "PySide6",
-    "qdarktheme": "pyqtdarktheme-fork",
     "lxml.etree": "lxml",
     "pyphen": "pyphen",
     "tinycss2": "tinycss2",
+    "platformdirs": "platformdirs",
 }
 
 
@@ -40,7 +40,8 @@ def main() -> int:
         print('Uruchom z katalogu repo Pythonem 3.10+: python -m pip install -e ".[build,gui]"')
         return 1
 
-    # Import aplikacji łapie zależności ukryte w modułach GUI (np. qdarktheme).
+    # Smoke import własnego motywu + aplikacji — łapie ukryte zależności GUI.
+    importlib.import_module("epubforge.gui.theme")
     importlib.import_module("epubforge.gui.app")
     print("[OK] Srodowisko buildu zawiera wymagane zaleznosci.")
     return 0

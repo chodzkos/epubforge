@@ -1,4 +1,4 @@
-"""Pole ścieżki: ``QLineEdit`` + przycisk „…" otwierający ``QFileDialog``."""
+"""Pole ścieżki: ``QLineEdit`` + przycisk „…" otwierający dialog wyboru."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 from epubforge.core.config import Config
-from epubforge.gui.dialogs import choose_directory, open_file, save_file
+from epubforge.gui.file_dialogs import open_file, pick_dir, save_file
 
 PathMode = Literal["dir", "file", "save"]
 FileTypes = Sequence[tuple[str, str]]
@@ -88,7 +88,7 @@ class PathEntry(QWidget):
         title = _DIALOG_TITLES[self.mode]
         start_dir = self._start_dir()
         if self.mode == "dir":
-            path = choose_directory(self, title, start_dir)
+            path = pick_dir(self, title, start_dir)
         elif self.mode == "file":
             path = open_file(self, title, start_dir, self._filter())
         else:

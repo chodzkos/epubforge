@@ -61,9 +61,13 @@ pip install -e ".[dev]"
 ### Windows (bez instalacji Pythona)
 Pobierz z [Releases](https://github.com/chodzkos/epubforge/releases) jeden z dwóch wariantów:
 
-- **`epubforge.exe`** — wersja **portable**: jeden plik, uruchamiasz bez instalacji.
-- **`epubforge-setup.exe`** — **instalator** (Inno Setup): skrót w menu Start, opcjonalnie
-  na pulpicie, odinstalowanie przez „Dodaj/usuń programy".
+- **`epubforge-setup.exe`** — **instalator** (Inno Setup), **rekomendowany**: rozpakowany
+  folder (onedir) startuje szybko, dodaje skrót w menu Start, opcjonalnie na pulpicie,
+  i odinstalowanie przez „Dodaj/usuń programy".
+- **`epubforge.exe`** — wersja **portable**: jeden plik, bez instalacji. Uwaga: przy każdym
+  uruchomieniu rozpakowuje się do katalogu tymczasowego, więc **startuje wolniej** (kilka
+  sekund) i bywa **fałszywie zgłaszany przez antywirusy**. Config trzyma obok siebie, gdy
+  obok `.exe` leży plik `portable.flag` (dołączany do wariantu portable).
 
 Build lokalny (Windows): `build\build.bat` — wybiera Pythona 3.10+ przez launcher
 `py`, przygotowuje zależności, sprawdza środowisko i tworzy pliki w `build\dist\`.
@@ -127,9 +131,12 @@ epubforge-gui
 ```
 
 Motyw: przycisk **Motyw** w górnym pasku (Automatyczny / Jasny / Ciemny).
-„Automatyczny" podąża za ustawieniem systemu. Na Windows pasek tytułu również
-zmienia kolor. W trybie ciemnym używane są spójne ciemne okna **Otwórz/Zapisz**
-(dialogi Qt); w trybie jasnym — natywne dialogi systemu.
+„Automatyczny" podąża za ustawieniem systemu. Motyw realizuje **własny `theme.py`**
+(styl Fusion + paleta + akcenty QSS) — bez zewnętrznych bibliotek motywów, z akcentem
+marki `#5DCAA5`. Na Windows pasek tytułu zmienia kolor tylko gdy wybrany motyw różni
+się od motywu systemu (Qt 6.5+ sam prowadzi pasek przy zgodzie). Przy rozjeździe
+app-ciemny + system-jasny używane są spójne ciemne dialogi **Otwórz/Zapisz** (Qt);
+w pozostałych przypadkach — natywne dialogi systemu.
 
 ---
 

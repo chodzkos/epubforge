@@ -4,14 +4,12 @@
 import importlib
 import os
 
-from PyInstaller.utils.hooks import collect_data_files
-
 for required_module in (
     "PySide6.QtWidgets",
-    "qdarktheme",
     "lxml.etree",
     "pyphen",
     "tinycss2",
+    "platformdirs",
 ):
     importlib.import_module(required_module)
 
@@ -20,9 +18,6 @@ assets_dir = os.path.abspath(os.path.join(spec_dir, "..", "src", "epubforge", "g
 
 _assets_icon = os.path.join(assets_dir, "icon.ico")
 icon_path = _assets_icon if os.path.exists(_assets_icon) else os.path.join(spec_dir, "icon.ico")
-
-# qdarktheme dostarcza zasoby (svg/json) ładowane w runtime — trzeba je dopiąć.
-qdarktheme_data = collect_data_files("qdarktheme")
 
 # Ciężkie moduły Qt, których aplikacja nie używa — wykluczamy, by build nie spuchł.
 _QT_EXCLUDES = [
@@ -57,17 +52,16 @@ a = Analysis(
     binaries=[],
     datas=[
         (assets_dir, "epubforge/gui/assets"),
-        *qdarktheme_data,
     ],
     hiddenimports=[
         "PySide6.QtCore",
         "PySide6.QtGui",
         "PySide6.QtWidgets",
-        "qdarktheme",
         "lxml",
         "lxml.etree",
         "pyphen",
         "tinycss2",
+        "platformdirs",
     ],
     hookspath=[],
     runtime_hooks=[],
@@ -98,7 +92,7 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,  # UPX uszkadza DLL-e Qt (GUI_STANDARD §9) — wyłączone
     console=False,
     icon=icon_path,
 )
@@ -109,7 +103,7 @@ coll = COLLECT(
     a.zipfiles,
     a.datas,
     strip=False,
-    upx=True,
+    upx=False,  # UPX uszkadza DLL-e Qt (GUI_STANDARD §9) — wyłączone
     upx_exclude=[],
     name="epubforge",
 )

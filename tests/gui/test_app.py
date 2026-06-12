@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QApplication
 from pytestqt.qtbot import QtBot
 
 from epubforge.core import Tool
+from epubforge.core.config import ConfigStore
 from epubforge.gui.app import MainWindow
 from epubforge.gui.theme import ThemeManager
 
@@ -18,14 +19,15 @@ pytestmark = pytest.mark.gui
 
 def _make_window(qtbot: QtBot, qapp: QApplication, tmp_path: Path, config: dict) -> MainWindow:
     config_path = tmp_path / "config.json"
+    store = ConfigStore(config_path, config)
     tools = {
         "pandoc": Tool("pandoc", None, available=False),
         "calibre_ebook_convert": Tool(
             "calibre_ebook_convert", Path("/bin/ebook-convert"), available=True
         ),
     }
-    manager = ThemeManager(qapp, config)
-    window = MainWindow(config_path, config, tools, manager)
+    manager = ThemeManager(qapp, store)
+    window = MainWindow(config_path, store, tools, manager)
     qtbot.addWidget(window)
     return window
 
@@ -89,3 +91,24 @@ def test_geometry_restored_from_config(qtbot: QtBot, qapp: QApplication, tmp_pat
 
     window2 = _make_window(qtbot, qapp, tmp_path, saved)
     assert isinstance(window2._about_dialog, type(None))
+
+
+def test_window_starts_in_both_themes(qtbot: QtBot, qapp: QApplication, tmp_path: Path) -> None:
+    """Okno startuje i przełącza ciemny↔jasny bez wyjątku (smoke)."""
+    window = _make_window(qtbot, qapp, tmp_path, {})
+    for setting in ("dark", "light", "dark"):
+        window.theme_manager.apply(setting)
+        assert window.theme_manager.theme.name == setting
+
+
+def test_config_flush_debounced_then_written(
+    qtbot: QtBot, qapp: QApplication, tmp_path: Path
+) -> None:
+    """mark_dirty nie pisze od razu; ręczny flush zapisuje na dysk."""
+    window = _make_window(qtbot, qapp, tmp_path, {})
+    window.config_data["last_output_dir"] = "/x"
+    # Debounce: zapis odroczony, plik jeszcze nie istnieje.
+    assert not (tmp_path / "config.json").exists()
+    window._flush_config()
+    saved = json.loads((tmp_path / "config.json").read_text(encoding="utf-8"))
+    assert saved["last_output_dir"] == "/x"

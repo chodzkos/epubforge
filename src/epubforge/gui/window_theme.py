@@ -3,9 +3,12 @@
 Na Windows pasek tytułu rysuje system (DWM), nie Qt — kolorujemy go przez
 ``DwmSetWindowAttribute``. Poza Windows funkcje są bezpiecznymi no-opami.
 
-⚠️ Pułapka (GUI_STANDARD §4): ``winId()`` jest wiarygodny dopiero po utworzeniu
-natywnego okna — wołaj :func:`set_titlebar_dark` z ``showEvent`` okna, nie z
-``__init__``. Uchwyt przekazujemy do ctypes jako ``int(window.winId())``.
+⚠️ Pułapka (GUI_STANDARD v2.0 §4): od Qt 6.5+ pasek tytułu SAM podąża za motywem
+SYSTEMU. Ręczny DWM jest potrzebny TYLKO gdy motyw aplikacji ≠ motyw systemu
+(użytkownik wymusił inny niż systemowy) — do tego służy :func:`sync_titlebar`.
+Przy zgodzie motywów nie ruszamy paska. ``winId()`` jest wiarygodny dopiero po
+utworzeniu natywnego okna — wołaj z ``showEvent``, nie z ``__init__``; uchwyt
+przekazujemy do ctypes jako ``int(window.winId())``.
 """
 
 from __future__ import annotations
@@ -13,9 +16,12 @@ from __future__ import annotations
 import ctypes
 import logging
 import sys
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from PySide6.QtWidgets import QWidget
+
+if TYPE_CHECKING:
+    from epubforge.gui.theme import ThemeName
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +35,28 @@ _WM_NCACTIVATE = 0x0086
 _SWP_FRAME_REDRAW = 0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020
 
 
+def sync_titlebar(window: QWidget, effective_mode: ThemeName, system: ThemeName) -> None:
+    """Synchronizuje pasek tytułu z efektywnym motywem aplikacji (§4).
+
+    Qt 6.5+ na Windows samo prowadzi pasek za motywem **systemu**. Ręczny DWM
+    wymuszamy WYŁĄCZNIE przy rozjeździe (``effective_mode != system``) — np. gdy
+    użytkownik wybrał ciemny, a system jest jasny. Przy zgodzie nie robimy nic.
+
+    Args:
+        window: okno najwyższego poziomu (``QMainWindow``, ``QDialog``...).
+        effective_mode: faktycznie zastosowany motyw aplikacji (``dark``/``light``).
+        system: motyw systemu (``dark``/``light``).
+    """
+    if effective_mode == system:
+        return
+    set_titlebar_dark(window, effective_mode == "dark")
+
+
 def set_titlebar_dark(window: QWidget, dark: bool) -> bool:
     """Ustawia ciemny (``dark=True``) lub jasny pasek tytułu okna.
+
+    Niskopoziomowy helper DWM — w aplikacji wołaj raczej :func:`sync_titlebar`,
+    która wymusza DWM tylko przy rozjeździe motywów.
 
     Args:
         window: okno najwyższego poziomu (``QMainWindow``, ``QDialog``...).

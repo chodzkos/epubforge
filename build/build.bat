@@ -66,7 +66,10 @@ if not exist "dist\epubforge.exe" (
     echo [BLAD] Portable build nie powiodl sie.
     exit /b 1
 )
-echo [OK] dist\epubforge.exe
+REM Marker wariantu portable — obecnosc obok exe przelacza config na katalog
+REM obok exe (GUI_STANDARD v2.0 sekcja 8). Dystrybuuj exe RAZEM z tym plikiem.
+echo portable > "dist\portable.flag"
+echo [OK] dist\epubforge.exe (+ portable.flag)
 
 echo === [2/3] Build ONEDIR (do instalatora) ===
 !PYTHON_CMD! -m PyInstaller epubforge-dir.spec --clean --noconfirm --distpath dist --workpath build-tmp

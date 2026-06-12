@@ -3,9 +3,17 @@ name: Tests
 on:
   push:
     branches: [ main ]
+    paths-ignore: ['**.md', 'docs/**']
   pull_request:
     branches: [ main ]
+    paths-ignore: ['**.md', 'docs/**']
   workflow_dispatch:
+
+# Nowy push na tę samą gałąź anuluje wcześniejszy bieg (GUI_STANDARD §9) —
+# oszczędza minuty CI.
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
