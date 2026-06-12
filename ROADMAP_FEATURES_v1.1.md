@@ -1,164 +1,168 @@
 # 🗺️ EpubForge — Roadmap v1.1+ (migracja Qt + Features F1, F2, F3+, F7, F8, F10, F11)
 
-Plan rozwoju po wydaniu v1.0. Obejmuje:
-**F-M** — migrację GUI tkinter → **PySide6** zgodnie z `GUI_STANDARD.md` (EpubForge oznaczony tam jako „rozważyć migrację po v1.0" — robimy to teraz, **przed** nowymi funkcjami, zgodnie z zasadą „osobny refactor, nie miesza się z funkcjami"),
-oraz funkcje z `FEATURES.md`: **F1** (i18n), **F2** (EpubCheck), **F3** (edytor — **rozszerzony o inspektor reguł CSS z podglądem na żywo**), **F7** (MOBI→EPUB), **F8** (statystyki), **F10** (TOC), **F11** (presety CSS).
+| Wersja | Data | Zmiany |
+|---|---|---|
+| 2.0 | 2026-06-12 | dostosowanie do GUI_STANDARD v2.0: nowy etap **F-S** (własny theme.py zamiast qdarktheme, platformdirs, debounce configu, niuanse DWM/dialogów, build/CI); statusy ✅ dla F-0 i F-M; aktualizacja stacku, ryzyk i promptów |
+| 1.0 | 2026-06-12 | wersja pierwotna (migracja PySide6 + plan F1/F2/F3+/F7/F8/F10/F11) |
 
-Dokument uzupełnia `ROADMAP.md`, `CLAUDE.md` i `GUI_STANDARD.md` (zasady bez zmian: pliki < 500 linii, mypy --strict, coverage ≥ 70%, conventional commits, squash merge, core nie importuje gui, paleta i wzorce układu ze standardu §5–6). Prompty: `PROMPTS_FEATURES_v1.1.md`.
+**Status realizacji:** F-0 ✅ · F-M ✅ (wg standardu v1.0 — stąd F-S) · F-S → F-A → F-B → F-C → F-D → F-E → F-F → F-G → F-H
+
+Plan rozwoju po wydaniu v1.0. Obejmuje wykonaną migrację GUI na **PySide6** oraz funkcje z `FEATURES.md`: **F1** (i18n), **F2** (EpubCheck), **F3** (edytor — **rozszerzony o inspektor reguł CSS z podglądem na żywo**), **F7** (MOBI→EPUB), **F8** (statystyki), **F10** (TOC), **F11** (presety CSS).
+
+Dokument uzupełnia `ROADMAP.md`, `CLAUDE.md` i `GUI_STANDARD.md` **v2.0** (zasady bez zmian: pliki < 500 linii, mypy --strict, coverage ≥ 70%, conventional commits, squash merge, core nie importuje gui; paleta + **stany pochodne** + wzorce układu ze standardu §5–6). Prompty: `PROMPTS_FEATURES_v1.1.md`.
 
 ---
 
 ## 0. Kolejność realizacji i zależności
 
 ```
-F-M (migracja GUI → PySide6) ───► WSZYSTKO poniżej pisane już natywnie w Qt
+F-M ✅ (migracja GUI → PySide6, wykonana wg standardu v1.0)
+F-S (zgodność ze standardem v2.0: theme.py, platformdirs, DWM, build) ─► fundament wyglądu
 F-A (F1 i18n) ──────────────────► wszystkie nowe stringi od razu przez _()
 F-B (F11 presety CSS) ──┐
 F-C (F3 edytor core) ───┼──► F-D (F3+ inspektor CSS live preview, QTextDocument)
                         │         │
 F-C ────────────────────┴──► F-E (F2 EpubCheck — klikalne błędy skaczą do edytora)
 F-C ─────────────────────────► F-F (F10 TOC — QTreeWidget z natywnym drag&drop)
-F-G (F7 MOBI→EPUB)  — niezależny (bez GUI-ciężkich zmian)
+F-G (F7 MOBI→EPUB)  — niezależny
 F-H (F8 statystyki) — niezależny
 ```
 
-| Etap | Zakres | Gałąź | Estymacja | Zależy od |
+| Etap | Zakres | Gałąź | Estymacja | Status / zależy od |
 |---|---|---|---|---|
-| **F-M** | **migracja gui/ na PySide6 (parytet 1:1 z v1.0)** | `refactor/gui-pyside6` | **10–14 h** | — |
-| F-A | F1 — i18n (gettext) | `feature/f1-i18n` | 5–7 h | F-M |
+| F-0 | dokumenty planu w repo | `docs/features-v1.1-plan` | 0,5 h | ✅ |
+| F-M | migracja gui/ na PySide6 (parytet 1:1) | `refactor/gui-pyside6` | 10–14 h | ✅ |
+| **F-S** | **zgodność z GUI_STANDARD v2.0** (theme.py, platformdirs, config-debounce, DWM/dialogi, build/CI) | `refactor/gui-standard-v2` | **4–6 h** | po F-M |
+| F-A | F1 — i18n (gettext) | `feature/f1-i18n` | 5–7 h | F-S |
 | F-B | F11 — presety CSS | `feature/f11-css-presets` | 4–5 h | F-A |
 | F-C | F3 — edytor (core) | `feature/f3-editor-core` | 7–9 h | F-A |
 | F-D | F3+ — inspektor CSS live | `feature/f3-css-inspector` | 7–9 h | F-C |
 | F-E | F2 — EpubCheck | `feature/f2-epubcheck` | 6–8 h | F-C |
 | F-F | F10 — TOC | `feature/f10-toc` | 8–10 h | F-C |
-| F-G | F7 — MOBI→EPUB | `feature/f7-mobi-to-epub` | 3–4 h | F-M |
+| F-G | F7 — MOBI→EPUB | `feature/f7-mobi-to-epub` | 3–4 h | F-S |
 | F-H | F8 — statystyki | `feature/f8-stats` | 6–8 h | F-A |
 
-Uzasadnienie: **migracja jako etap zerowy** — każda kolejna zakładka (Edytor, Walidacja, TOC, Statystyki) powstaje raz, w Qt, zamiast być pisana w tkinter i portowana. F1 zaraz po niej, bo dotyka każdego stringa. F3 przed F2/F10 (kontrakt `open_in_editor` + wzorce). Estymacje F-C/F-D/F-F **spadły** względem wariantu tkinter: Qt daje QSyntaxHighlighter, QTextDocument z CSS i wbudowany drag&drop w drzewach.
+Uzasadnienie wstawienia F-S **przed** funkcjami: (1) standard v2.0 usuwa qdarktheme — im dłużej kod na nim wisi, tym więcej miejsc do poprawy później; (2) nowe zakładki (F-C…F-H) mają od razu korzystać z ról i **stanów** własnego `theme.py` (highlightery, kolory severity, fokus); (3) zmiana ścieżki configu (platformdirs) dotyka miejsc, na których budują F-B (presety użytkownika) i F-E (ścieżka jara) — lepiej ustalić ją raz, przed nimi.
 
 ---
 
 ## 1. Decyzje architektoniczne (globalne)
 
-### 1.1. Stack GUI po migracji (zgodnie z GUI_STANDARD §4)
+### 1.1. Stack GUI po F-S (zgodnie z GUI_STANDARD v2.0 §4)
 
 | Element | Wybór |
 |---|---|
-| Framework | PySide6 ≥ 6.6 (LGPL — zgodne z MIT; bundling PyInstallerem OK, linkowanie dynamiczne) |
-| Motyw | `pyqtdarktheme` (qdarktheme) — ciemny; **jasny = przywrócony natywny styl Qt** (pułapka „wypranego" light z IcoForge) |
-| Akcent | `#5DCAA5` / `#1D9E75` przez `custom_colors` (znak rozpoznawczy ze standardu §5) |
-| Pasek tytułu | DWM przez `ctypes`, HWND z `winId()` w `showEvent`; re-wymuszenie w `changeEvent(ActivationChange)` |
-| D&D | natywny Qt (`dragEnterEvent`/`dropEvent`) — **tkinterdnd2 wylatuje** |
-| Wątki | QThread + sygnały (LogStreamer wg tabeli komponentów standardu §7) |
-| Testy GUI | `pytest-qt` + `QT_QPA_PLATFORM=offscreen` — **xvfb wylatuje z CI** |
+| Framework | PySide6 ≥ 6.8, < 6.9 (LGPL — zgodne z MIT) |
+| Motyw | **własny `gui/theme.py`** wg kontraktu standardu §4: `app.setStyle("Fusion")` **przed** `setPalette()`; QPalette = baza kolorów (paleta §5 + stany pochodne §5), QSS = wyłącznie akcenty (radius 4–8 px, hover/pressed, focus `accent`, QToolTip); **żadnej zewnętrznej biblioteki motywów** — `pyqtdarktheme-fork` wylatuje |
+| Auto-motyw | `QGuiApplication.styleHints().colorScheme()`; `Unknown` → dark; sygnał `colorSchemeChanged` podłączony **tylko w trybie auto** |
+| Kontrast (WCAG) | w jasnym motywie tekst/linki akcentowe = `accent2 #0F7C5B` (accent `#5DCAA5`/`#1D9E75` tylko wypełnienia/ikony/ramki) |
+| Pasek tytułu | DWM przez `ctypes` **tylko gdy motyw aplikacji ≠ motyw systemu** (Qt 6.5+ sam podąża za systemem); `winId()` w `showEvent`; re-wymuszenie w `changeEvent(ActivationChange)` tylko w trybie wymuszonym |
+| Dialogi plików | natywne; `DontUseNativeDialog` **tylko przy rozjeździe** (app dark + system light) — koszt: brak Szybkiego dostępu |
+| Config | `platformdirs.user_config_dir("epubforge", appauthor=False, roaming=True)` — daje **dokładnie dotychczasowe ścieżki** (`%APPDATA%\epubforge`, `~/.config/epubforge`), więc dev/CLI bez migracji; zmiana zachowania tylko dla **frozen exe**: portable przez marker `portable.flag` obok exe, bez markera → platformdirs (+ jednorazowa kopia starego configu spod exe); zapis atomowy; **zapis przy zmianie z debounce ~1 s**, nie tylko przy zamknięciu |
+| D&D | natywny Qt |
+| Wątki | QThread + sygnały (Worker/log_view z F-M) |
+| Testy GUI | pytest-qt + `QT_QPA_PLATFORM=offscreen` |
+| Typografia/kształty | rozmiary fontów w **pt** (nie px), hinty min. 8 pt, ramki **1 px** kolorem `border` |
 
-Zależności po migracji: `[gui] = PySide6, pyqtdarktheme` (Pillow zostaje tylko jeśli faktycznie potrzebny — Qt ma QPixmap; do weryfikacji w F-M). Usuwane: `tkinterdnd2`, `darkdetect` (qdarktheme ma własną detekcję; jeśli wersja qdarktheme jej wymaga — zostaje jako transitive). Dev: `pytest-qt`.
+Zależności: `[gui] = PySide6>=6.8,<6.9` (bez pyqtdarktheme-fork po F-S); core += `platformdirs` (mały, czysty, bez Qt). Dev: `pytest-qt`, `babel` (od F-A).
 
-⚠️ **Znane ryzyko:** `pyqtdarktheme` 2.1.0 nie jest aktywnie utrzymywany i miał problem importu na Python 3.12. Mitygacja: użyć **dokładnie tego samego pakietu/wersji/obejścia co w IcoForge** (tam już działa); jeśli problem wystąpi — fork `pyqtdarktheme-fork` z PyPI albo pin Pythona w buildzie. Decyzja zapisana w F-M.
+> **theme.py a gui-kit:** standard notuje „pierwsza implementacja theme.py powstaje w pdf2md (G1) i trafia do gui-kit". Reguła praktyczna dla F-S: **jeśli theme.py z pdf2md już istnieje — wklejasz go jako punkt startowy i tylko adaptujesz; jeśli nie — EpubForge tworzy pierwszą implementację wg kontraktu §4 i to ona zasila gui-kit** (potem pdf2md ją przejmuje). Decyzję, który wariant zachodzi, podejmujesz przed wklejeniem promptu F-S.
 
 ### 1.2. Nowe moduły — mapa docelowa
 
 ```
 src/epubforge/
-├── i18n.py                      ← F1: gettext wrapper, _(), set_language()
+├── i18n.py                      ← F1: gettext wrapper, _(), ngettext
 ├── locale/{pl,en,de}/LC_MESSAGES/epubforge.{po,mo}
 ├── validators/epubcheck.py      ← F2
 ├── toc/{model,reader,generator,writer,repair}.py   ← F10
 ├── stats.py + stats_stopwords/  ← F8
 ├── fixers/css_presets.py + presets/                 ← F11
-├── fixers/css_rules.py          ← F3+: parse_rules/replace_rule/spany (czysta logika, bez GUI)
+├── fixers/css_rules.py          ← F3+: parse_rules/replace_rule/spany (czysta logika)
 ├── converters/{to_epub.py, kindle_drm.py}           ← F7
 ├── cli/{check,toc,stats,presets}.py
-└── gui/                         ← PO MIGRACJI: wyłącznie PySide6
-    ├── app.py                   ← QApplication + MainWindow(QMainWindow)
-    ├── theme.py                 ← ThemeManager (qdarktheme + native light + paleta standardu)
-    ├── window_theme.py          ← DWM titlebar (winId)
-    ├── workers.py               ← QThread worker + LogStreamer (sygnały)
-    ├── widgets/                 ← gui-kit wg GUI_STANDARD §7
-    │   ├── path_entry.py  file_list.py  section.py  tooltip helpers  about_panel.py
-    │   ├── code_editor.py       ← F3: QPlainTextEdit + numery linii + find bar
-    │   ├── syntax_highlight.py  ← F3: QSyntaxHighlighter (xml/css)
-    │   └── css_inspector.py     ← F3+: panel reguł + podgląd QTextDocument
-    └── tabs/{metadata,converter,fixer,kfx}.py        ← port 1:1
-        + editor.py (F3)  validator.py (F2)  toc.py (F10)  stats.py (F8)
+└── gui/                         ← PySide6 (po F-M), motyw własny (po F-S)
+    ├── app.py                   ← MainWindow + open_in_editor (kontrakt F-C)
+    ├── theme.py                 ← F-S: Fusion + QPalette + QSS, role i STANY z §5
+    ├── window_theme.py          ← F-S: DWM tylko przy motywie ≠ system
+    ├── workers.py  widgets/  tabs/   (jak po F-M)
+    │   widgets += code_editor, syntax_highlight (F-C), css_inspector (F-D)
+    │   tabs    += editor (F-C), validator (F-E), toc (F-F), stats (F-H)
 ```
 
-Zasada bez zmian: wszystko poza `gui/` — **zero importów z gui i z PySide6**. To dzięki temu migracja w ogóle jest tania (GUI_STANDARD §11 wprost: „przepisujesz tylko gui/").
+Zasada bez zmian: wszystko poza `gui/` — zero importów z gui i PySide6.
 
 ### 1.3. i18n — gettext, nie Qt Linguist
 
-Świadoma decyzja: **zostajemy przy gettext** (a nie `tr()`/QTranslator), bo: (1) jeden system obejmuje też CLI, (2) workflow babel/.po jest niezależny od frameworka, (3) `.po` edytuje się zwykłym tekstem (tłumaczy AI). msgid = polski (obecne stringi), tłumaczenia en/de, `.mo` commitowane, `build/compile_locales.py` regeneruje. Zmiana języka: wymaga restartu (komunikat w UI) — dynamiczne `retranslateUi` to ewentualna przyszłość.
+Bez zmian względem v1.0 planu: jeden system dla GUI **i** CLI, msgid = polski, tłumaczenia en/de wypełnia Claude Code, `.mo` w repo, `build/compile_locales.py`. Zmiana języka wymaga restartu (komunikat).
 
-### 1.4. PyInstaller / build — skutki
+### 1.4. PyInstaller / build — skutki (standard v2.0 §9)
 
-- Rozmiar exe rośnie do ~60–110 MB (akceptowane w standardzie §4). W `.spec`: wyklucz nieużywane moduły Qt (`QtWebEngine*`, `Qt3D*`, `QtQuick*`, `QtMultimedia` itd.) — to główna dźwignia rozmiaru.
-- `datas`: `epubforge/locale/**/*.mo` (F1), `fixers/presets/*` (F11), `stats_stopwords/*` (F8), `gui/assets/*`.
-- `build/check_build_env.py`: sprawdzenie importu PySide6 + qdarktheme + obecności zasobów; usunięcie checków tkdnd.
-- Pułapka DLL/subprocess z CLAUDE.md (python3xx.dll) obowiązuje nadal.
+- **`upx=False` w .spec** — UPX uszkadza DLL-e Qt.
+- **Preferowana dystrybucja Qt: `--onedir` + Inno Setup**; portable `--onefile` zostaje **świadomie** (wolny start przez rozpakowanie ~150 MB do temp + ryzyko false-positives AV) — adnotacja w README przy linku portable.
+- Excludes zbędnych modułów Qt (z F-M) zostają; datas: locale (F-A), presets (F-B), stopwords (F-H), assets.
+- Drzewo licencji czyste (MIT/LGPL/BSD) → binarki PyInstaller OK (checklista §10 standardu).
+- `build/check_build_env.py`: **usunąć import qdarktheme** (F-S), sprawdzać zasoby per etap.
 
-### 1.5. CI (oszczędzanie minut)
+### 1.5. CI (standard v2.0 §9)
 
-Zmiana **na plus**: zamiast `apt-get install xvfb` + `xvfb-run` — `QT_QPA_PLATFORM=offscreen` w env joba (na Ubuntu potrzebne jeszcze `libegl1`/`libgl1` — jedna linia apt, szybsza niż xvfb). `pytest-qt` w dev. Zero nowych workflow; testy F2/F7 mockują subprocess jak dotąd.
+W `test.yml` zweryfikować/uzupełnić: `concurrency: group: ${{ github.ref }}, cancel-in-progress: true` oraz `paths-ignore: ['**.md', 'docs/**']` dla jobów testowych (część z tego była już wdrożona przy wcześniejszej optymalizacji minut — prompt F-S każe sprawdzić i dopiąć braki). Ciężki build Windows tylko przy tagu. GUI testowane offscreen (po F-M). Zero nowych workflow.
 
 ---
 
-## 2. Etap F-M — migracja GUI tkinter → PySide6
+## 2. Etap F-S — zgodność z GUI_STANDARD v2.0 *(naprawczy po F-M)*
 
-**Cel:** parytet funkcjonalny 1:1 z v1.0 (Metadane, Konwerter, Fixer, Eksport Kindle, About, motywy, D&D, ciemny pasek tytułu), zero zmian w `core/`, `converters/`, `fixers/`, `cli/`. Wygląd wg GUI_STANDARD §5–6.
+**Cel:** doprowadzenie wykonanej migracji do litery standardu v2.0. Sześć obszarów:
 
-**Projekt:**
+1. **Własny `theme.py` (zamiast qdarktheme).** Kontrakt §4 standardu:
+   - `apply(app, mode)` wymusza `app.setStyle("Fusion")` **przed** `setPalette()`;
+   - dwie palety z §5 (dark/light) + **stany pochodne** z tabeli §5: `Highlight=selection_bg (accent2)`, `HighlightedText=#ffffff`, grupa `Disabled` (fg→disabled_fg, bg→disabled_bg), `PlaceholderText=fg3`, hover/pressed/focus_border w QSS;
+   - QSS generowany z palety: wyłącznie akcenty — border-radius 4–8 px, ramki 1 px `border`, hover/pressed na przyciskach/listach, focus ramka `accent`, stylizacja QToolTip; **zero dublowania kolorów bazowych** między QPalette a QSS;
+   - WCAG: w jasnym motywie kolory tekstowe akcentu = `accent2 #0F7C5B`;
+   - auto: `styleHints().colorScheme()` (`Unknown`→dark), `colorSchemeChanged` podłączany tylko w auto, odłączany przy wymuszeniu;
+   - po zmianie: `unpolish/polish` po `app.allWidgets()`;
+   - publiczna dataclass `Theme` (role + stany) dla customowych widgetów (highlightery F-C, severity F-E, drzewo F-F) — **hexy żyją wyłącznie w theme.py**;
+   - usunięcie `pyqtdarktheme-fork` z pyproject i całego kodu z `import qdarktheme`.
+2. **`window_theme.py` — niuans Qt 6.5+:** wymuszanie DWM **tylko** gdy efektywny motyw aplikacji ≠ motyw systemu; w zgodzie motywów nic nie ruszamy (Qt sam). `changeEvent(ActivationChange)` ponawia tylko w trybie wymuszonym.
+3. **Dialogi plików:** helper w gui (np. `file_dialogs.py` lub metoda ThemeManagera) decydujący o `DontUseNativeDialog` wyłącznie przy rozjeździe app-dark/system-light; wszystkie wywołania QFileDialog przez ten helper.
+4. **Config wg §8:** `core/config.py` → `platformdirs.user_config_dir("epubforge", appauthor=False, roaming=True)`. Dobór parametrów jest istotny: ta sygnatura odwzorowuje **dokładnie obecne ścieżki** (`%APPDATA%\epubforge` na Windows, `~/.config/epubforge` na Linux), więc wersja deweloperska/CLI nie wymaga żadnej migracji; gołe `user_config_dir("EpubForge")` dałoby `%LOCALAPPDATA%\EpubForge\EpubForge` i wymusiło przeprowadzkę configów. Zmiana zachowania dotyczy wyłącznie **frozen exe** (dotąd: zawsze obok exe — utajony bug przy instalacji do Program Files): od teraz obok exe **tylko z markerem** `portable.flag` (build portable tworzy go w pakiecie); bez markera frozen używa platformdirs, z jednorazową **kopią** starego `config.json` spod exe (oryginał zostaje). Zapis atomowy zostaje; **`mark_dirty()`/`flush()`** w core + debounce ~1 s po stronie GUI (QTimer) i natychmiastowy flush w CLI/przy zamknięciu. Jedna funkcja `config_dir()` — od niej liczą się katalogi pochodne (presety F-B, jar F-E).
+5. **Audyt typografii/kształtów:** rozmiary fontów w pt, hinty ≥ 8 pt, ramki 1 px, „Checkbox, nie switch" (nazewnictwo komponentu w gui-kit).
+6. **Build/CI:** `upx=False`; README: rekomendacja instalatora (onedir) z adnotacją o wolnym starcie portable; `check_build_env.py` bez qdarktheme; weryfikacja `concurrency`/`paths-ignore` w test.yml; aktualizacja `GUI_STANDARD.md` w repo do v2.0 oraz pułapek w `CLAUDE.md`.
 
-1. **Szkielet** (`app.py`): `QApplication` → `MainWindow(QMainWindow)`; centralny widget = pionowy layout: **górny pasek** (logo+„EpubForge" po lewej; po prawej QToolButton „Motyw" z menu auto/jasny/ciemny + QToolButton „ⓘ" About — meta-rzeczy NIE jako zakładki, standard §6) → `QTabWidget` (tylko funkcje robocze) → **pasek statusu** (`statusBar()` z wykrytymi narzędziami). Geometria i motyw z/do `config.json` (mechanizm `core/config.py` bez zmian).
-2. **ThemeManager** (`theme.py`): przed pierwszą zmianą zapamiętaj `app.style().objectName()`, `app.palette()`, `app.styleSheet()`; `dark`/`auto-dark` ⇒ `qdarktheme.setup_theme("dark", custom_colors={"primary": "#5DCAA5"})`; `light` ⇒ **przywrócenie natywnych** zapamiętanych wartości (+ ewentualny minimalny stylesheet z akcentem) — pułapka „wyprany light" z IcoForge; po zmianie `unpolish/polish` na `app.allWidgets()`. Eksponuje dataclass `Theme` z rolami palety standardu (bg/bg2/bg3/fg/fg2/accent/red/amber/border) dla customowych widżetów — **żadnych hardcoded hexów w tabach**, tylko role.
-3. **Pasek tytułu** (`window_theme.py`): `DwmSetWindowAttribute(20)` na `int(self.winId())` wołane z `showEvent`; `changeEvent` na `ActivationChange` ponawia (pułapka „dialog odbiera focus → pasek jaśnieje"); Win10: `WM_NCACTIVATE` + `RedrawWindow(RDW_FRAME)`.
-4. **gui-kit** (`widgets/`, wg tabeli standardu §7): `PathEntry` (QLineEdit+„…"), `FileList` (QListWidget + toolbar Dodaj/Folder/Usuń/Wyczyść + licznik + natywne D&D z `setAcceptDrops`), `Section` (QGroupBox), Toggle→QCheckBox, tooltipy przez `setToolTip` (Qt motywuje je poprawnie — cały customowy Tooltip znika), `AboutPanel` (logo warunkowo, wersja z `__version__`, linki `webbrowser`).
-5. **Wątki** (`workers.py`): `Worker(QThread)` z sygnałami `line(str, level)`, `finished(result)`, `failed(str)`; log w GUI = `QPlainTextEdit` read-only z `QTextCharFormat` per poziom (ok/warn/err wg ról Theme). Zastępuje `streaming.py` (kolejka+after). **Żadnych wywołań GUI z wątku roboczego — tylko sygnały.**
-6. **Port zakładek 1:1**: metadata, converter, fixer, kfx — logika wywołań core bez zmian (czytać aktualne sygnatury core przed portem!), layouty QGridLayout/QFormLayout, dialogi `QFileDialog` (opcja `DontUseNativeDialog` powiązana z motywem ciemnym — natywne jasne dialogi były głównym powodem migracji), `QMessageBox` zamiast messagebox.
-7. **Czyszczenie**: usunięcie `tkinterdnd2`/`darkdetect` z deps i `_init_tkdnd`; README sekcja GUI (znika ostrzeżenie o jasnych dialogach!); testy `tests/gui/` przepisane na pytest-qt; CI: offscreen zamiast xvfb; `.spec` przebudowany (collect PySide6, exclude zbędnych Qt modułów, bez tkdnd); `GUI_STANDARD.md` — aktualizacja mapy projektów (EpubForge → Qt).
-8. **Definicja parytetu (kryteria akceptacji):** wszystkie operacje v1.0 wykonywalne; motyw ciemny obejmuje dialogi plików i menu; D&D plików działa we wszystkich listach; exe portable + instalator budują się i odpalają; `pytest -m gui` zielone offscreen.
-
-**Testy:** pytest-qt: smoke startu MainWindow, przełączenie motywu nie wywala i zmienia paletę, FileList przyjmuje pliki (symulacja QDropEvent lub API), PathEntry ustawia ścieżkę, każdy tab się buduje, worker emituje sygnały (z mockiem subprocess), AboutPanel pokazuje `__version__`.
+**Testy:** apply("dark")/apply("light") ustawiają oczekiwane role QPalette (Window=bg, Base=bg3, Highlight=accent2, Disabled.WindowText=disabled_fg, PlaceholderText=fg3) i styl Fusion; auto z mockiem colorScheme (Dark/Light/Unknown→dark); zmiana motywu nie zostawia QSS-owych kolorów bazowych (sprawdzenie, że styleSheet nie zawiera hexów bg/fg); config: ścieżka z platformdirs (monkeypatch), migracja stary→nowy, marker portable, debounce (mark_dirty nie pisze od razu, flush pisze, dwa mark_dirty = jeden zapis po flushu); helper dialogów zwraca właściwe opcje dla 4 kombinacji motywów.
 
 **Twoje zadania (człowiek):**
-1. Decyzja przed startem: minimalna wersja PySide6 i wersja pyqtdarktheme — **sprawdź w pyproject IcoForge i podaj te same** (unikamy drugi raz tej samej walki; ewentualny fork pyqtdarktheme-fork).
-2. Po porcie: pełny przeklik wszystkich 4 zakładek na Windows w obu motywach, w tym dialogi plików w ciemnym; porównaj z v1.0 (odpal starą wersję obok).
-3. `build\build.bat` → sprawdź rozmiar exe; jeśli > ~120 MB, zgłoś do doszlifowania excludes.
-4. Zaktualizuj zrzuty ekranu w README (to dobry moment — nowy wygląd).
-5. Rozważ tag `v1.0.x-tkinter` przed merge (ostatni punkt powrotu starego GUI).
+1. Przed promptem: sprawdź, czy pdf2md ma już `theme.py` (etap G1) — jeśli tak, przygotuj plik do wklejenia; wpisz w prompt wariant A (adaptacja) lub B (pierwsza implementacja).
+2. Po merge: przeklik obu motywów + **auto** (przełącz motyw Windows w trakcie działania aplikacji — pasek tytułu i paleta mają nadążyć); sprawdź dialogi plików w kombinacji app-dark/system-light.
+3. Weryfikacja configu: w trybie dev sprawdź, że ścieżka się **nie** zmieniła (`%APPDATA%\epubforge\config.json` — motyw/ostatnie katalogi bez przerwy); w exe instalowanym sprawdź, że config wylądował w %APPDATA% i przejął ustawienia spod starego exe; w portable — że marker trzyma config obok exe.
+4. `build\build.bat` → smoke obu wariantów; potwierdź `upx=False` nie zepsuł niczego i porównaj czas startu portable vs instalator (do adnotacji w README).
+5. Jeśli to EpubForge tworzy pierwszą implementację theme.py — po merge skopiuj ją do notatek gui-kit / pdf2md.
 
 ---
 
 ## 3. Projekty szczegółowe funkcji
 
-*(Wszystkie GUI poniżej — już w PySide6, wg wzorców z F-M; stringi przez `_()` od F-A.)*
+*(GUI — PySide6 z motywem z F-S; kolory wyłącznie przez role/stany `Theme`; stringi przez `_()` od F-A.)*
 
 ### F-A · F1 — Wielojęzyczność (i18n)
 
-**Projekt:** jak w §1.3 — `src/epubforge/i18n.py` (`init_i18n`, `_`, `ngettext` — PL ma 3 formy mnogie, `detect_system_language` przez `QLocale.system().name()` z fallbackiem `locale`, `available_languages`, localedir odporny na `sys._MEIPASS`). Refactor: wszystkie stringi użytkownika w `gui/` i `cli/` przez `_()`; docstringi/logi/wyjątki wewnętrzne — nie. Babel: `babel.cfg`, extract → `epubforge.pot`, init en/de, **tłumaczenia wypełnia Claude Code**, kompilacja `build/compile_locales.py`, `.mo` w repo. GUI: w pasku górnym obok „Motyw" QToolButton „Język" (Auto/Polski/English/Deutsch), zapis `config["language"]`, QMessageBox o restarcie. Uwaga Qt: stringi muszą być tłumaczone **w momencie budowy widżetu** (po `init_i18n`), nie na poziomie stałych modułowych importowanych przed initem.
+**Projekt:** `src/epubforge/i18n.py` (`init_i18n`, `_`, `ngettext` — PL: 3 formy mnogie, `detect_system_language` przez `QLocale.system().name()` z fallbackiem `locale` — moduł musi działać bez PySide6, `available_languages`, localedir odporny na `sys._MEIPASS`). Refactor: wszystkie stringi użytkownika w `gui/` i `cli/` przez `_()` (tłumaczone w momencie budowy widżetu, nie w stałych modułowych); docstringi/logi/wyjątki wewnętrzne — nie. Babel: extract → pot, init en/de, **tłumaczenia wypełnia Claude Code**, `build/compile_locales.py`, `.mo` w repo, wywołanie w build.bat. GUI: w pasku górnym obok „Motyw" QToolButton „Język" (Auto/Polski/English/Deutsch), zapis `config["language"]` (przez mark_dirty z F-S), QMessageBox o restarcie.
 
-**Testy:** `_()` pod wymuszonym en, fallback, `ngettext` 1/2/5 PL, spójność .pot↔.po (brak pustych/fuzzy), aktualność .mo względem .po, smoke pytest-qt z `language=en`.
+**Testy:** `_()` pod wymuszonym en, fallback, ngettext 1/2/5 PL, spójność .pot↔.po (bez pustych/fuzzy), aktualność .mo, działa bez PySide6, smoke pytest-qt z `language=en`.
 
-**Twoje zadania:** przegląd EN/DE (kalki, długość etykiet DE!), test exe z locale, decyzja o domyślnym „auto" (rekomendacja: tak).
+**Twoje zadania:** przegląd EN/DE (kalki, długość etykiet DE), test exe z locale, akceptacja domyślnego „auto".
 
 ---
 
 ### F-B · F11 — Biblioteka presetów CSS
 
-**Projekt (warstwa logiki — identyczna niezależnie od GUI):**
-```python
-@dataclass(frozen=True)
-class CssPreset: id; name; description; css; builtin; path
-def list_presets(user_dir=None) -> list[CssPreset]
-def apply_preset(epub, preset, mode: Literal["append","replace"]="append") -> None
-def import_user_preset(source_css, name, user_dir) -> CssPreset
-```
-`append` (domyślny): zapis `{opf_dir}/styles/epubforge-preset.css`, rejestracja `<item>` w manifeście OPF, `<link>` jako **ostatnie** dziecko `<head>` każdego pliku spine (lxml, ścieżki względne przez posixpath.relpath; bazy manifestu i linków są RÓŻNE). `replace`: usunięcie istniejących arkuszy (manifest+linki+pliki) → append. Idempotencja: ponowna aplikacja = podmiana zawartości arkusza. Wbudowane (`fixers/presets/` + `presets.json` z nazwami/opisami pl/en/de): `reader-friendly`, `print-like`, `dark-oled` (komentarz: e-ink nadpisuje kolory), `manga-rtl` (komentarz: ograniczone wsparcie czytników). Presety użytkownika: `<config>/presets/*.css`, import walidowany tinycss2.
+**Projekt (logika niezależna od GUI):** `CssPreset` (frozen), `list_presets(user_dir=None)`, `get_preset`, `apply_preset(epub, preset, mode="append"|"replace")`, `import_user_preset`. `append` (domyślny): zapis `{opf_dir}/styles/epubforge-preset.css`, `<item>` w manifeście OPF, `<link>` jako **ostatnie** dziecko `<head>` każdego pliku spine (XHTML ma namespace; bazy ścieżek manifestu i linków są RÓŻNE — posixpath.relpath); idempotencja = podmiana zawartości arkusza. `replace`: usunięcie istniejących arkuszy (manifest+linki+pliki) → append. Wbudowane (`fixers/presets/` + `presets.json` z nazwami/opisami pl/en/de): `reader-friendly`, `print-like`, `dark-oled` (komentarz: e-ink nadpisuje kolory), `manga-rtl` (komentarz: ograniczone wsparcie czytników). Presety użytkownika: `<config(platformdirs)>/presets/*.css`, import walidowany tinycss2.
 
-CLI: `epubforge presets list`, `epubforge fix --preset ID [--preset-mode replace]`. GUI: w `FixerTab` `Section` „Preset CSS": QComboBox (nazwa — opis), QRadioButton append/replace, „Importuj własny…" (QFileDialog), checkbox włączający krok w pipeline. Po F-D dojdzie przycisk „Podgląd".
+CLI: `epubforge presets list`, `epubforge fix --preset ID [--preset-mode replace]`. GUI (FixerTab): Section „Preset CSS" — QComboBox (nazwa — opis), QRadioButton append/replace, „Importuj własny…", QCheckBox włączający krok w pipeline. Po F-D dojdzie „Podgląd".
 
-**Testy:** apply/idempotencja/replace na fixture, link ostatni w head każdego spine, EPUB po save otwiera się (mimetype pierwszy, ZIP_STORED), import waliduje i odrzuca śmieci, CLI list/fix.
+**Testy:** apply/idempotencja/replace na fixture, link ostatni w head każdego spine, EPUB po save zdrowy (mimetype pierwszy, ZIP_STORED), import waliduje/odrzuca, CLI.
 
-**Twoje zadania:** wizualna ocena presetów na czytniku (dark-oled na Kindle!), finalne wartości typografii, ewentualny własny preset „Mój standard PL".
+**Twoje zadania:** ocena presetów na czytniku (dark-oled na Kindle!), finalna typografia, ewentualny własny preset.
 
 ---
 
@@ -167,142 +171,108 @@ CLI: `epubforge presets list`, `epubforge fix --preset ID [--preset-mode replace
 **Cel:** przegląd + szybka edycja HTML/CSS w EPUB; quick fix, nie Sigil.
 
 **Projekt:**
-- `widgets/syntax_highlight.py`: dwie klasy `QSyntaxHighlighter` — `XmlHighlighter` (komentarz, tag, atrybut, wartość, encja) i `CssHighlighter` (komentarz, selektor, @-reguła, właściwość, wartość, !important); reguły jako lista (QRegularExpression, format); kolory z ról `Theme` (jasny/ciemny); obsługa stanów wieloliniowych (komentarze) przez `setCurrentBlockState` — Qt sam dba o inkrementalność (highlight per blok), znika cały ręczny debounce z wariantu tk.
-- `widgets/code_editor.py`: `QPlainTextEdit` + **line number area** (kanoniczny wzorzec Qt: `lineNumberAreaPaintEvent` + `blockCountChanged`/`updateRequest`) + pasek wyszukiwania (Ctrl+F: QLineEdit, Następny/Poprzedni F3/Shift+F3, podświetlenie trafień przez `setExtraSelections`, licznik „3/17") + status wiersz:kolumna (`cursorPositionChanged`). API: `load(text, profile)`, `get_text()`, `goto_line(n)` (QTextCursor + `centerCursor`), `read_only` (`setReadOnly`), sygnał `modified_changed` (z `document().modificationChanged`). Undo/redo ma QPlainTextEdit za darmo.
-- `tabs/editor.py` — zakładka „Edytor":
-  - toolbar: „Otwórz EPUB…", ścieżka, „Zapisz EPUB" (enabled przy zmianach), toggle „Tryb edycji" (**domyślnie wyłączony** — start read-only);
-  - `QSplitter`: lewo `QTreeWidget` (grupy Tekst/Style/Obrazy/Fonty/Inne wg media-type z manifestu, fallback po rozszerzeniu dla `list_files()` spoza manifestu; `*` przy zmodyfikowanych), prawo `QStackedWidget`: CodeEditor / podgląd obrazu (`QLabel` + `QPixmap.fromImage`, skalowanie `KeepAspectRatio` w `resizeEvent`) / panel info dla binariów;
-  - stan: jeden `Epub` na życie zakładki; `_dirty: dict[str, str]` (treści niezapisane do bufora Epub); flow zmiany pliku z pytaniem Zapisz/Porzuć/Anuluj (QMessageBox);
-  - Ctrl+S: dla XHTML/OPF próba `lxml.etree.fromstring` → błąd ⇒ „Plik nie jest poprawnym XML… Zapisać mimo to?"; zapis = `epub.write_file(path, text.encode("utf-8"))`; „Zapisz EPUB" = `epub.save()` (backup .bak jak dotąd); osobny wskaźnik „EPUB ma niezapisane zmiany";
-  - dekodowanie `utf-8, errors="replace"`; znaki zastępcze ⇒ infobar + wymuszony read-only pliku;
-  - `closeEvent` MainWindow pyta `editor_tab.has_unsaved_changes()`.
-- **Kontrakt między-zakładkowy** w `MainWindow`:
-  ```python
-  def open_in_editor(self, epub_path: Path, internal_path: str | None = None, line: int | None = None) -> None
-  ```
-  (przełącz QTabWidget, otwórz/reużyj EPUB, zaznacz w drzewie, `goto_line`). Konsumenci: F-E, F-D.
+- `widgets/syntax_highlight.py`: `XmlHighlighter`/`CssHighlighter` (QSyntaxHighlighter; reguły QRegularExpression + QTextCharFormat; komentarze wieloliniowe przez block state; kolory z ról/stanów `Theme`, rehighlight na sygnał zmiany motywu; logika dopasowań w funkcjach czystych, testowalna bez Qt).
+- `widgets/code_editor.py`: QPlainTextEdit + line number area (kanoniczny wzorzec Qt) + pasek wyszukiwania (Ctrl+F, F3/Shift+F3, `setExtraSelections`, licznik „3/17") + status wiersz:kolumna. API: `load(text, profile)`, `get_text()`, `goto_line(n)`, `read_only`, sygnał `modified_changed`. Undo/redo natywne.
+- `tabs/editor.py` — zakładka „Edytor": toolbar (Otwórz EPUB / ścieżka / **Zapisz EPUB** / toggle „Tryb edycji" — **domyślnie wyłączony**); QSplitter: lewo QTreeWidget (grupy Tekst/Style/Obrazy/Fonty/Inne wg media-type z manifestu, fallback po rozszerzeniu dla `list_files()`; `*` przy zmodyfikowanych), prawo QStackedWidget: CodeEditor / podgląd obrazu (QLabel+QPixmap, KeepAspectRatio) / panel info dla binariów. Stan: jeden `Epub` na życie zakładki + `_dirty: dict[str, str]`; zmiana pliku przy zmianach → Zapisz/Porzuć/Anuluj; Ctrl+S: dla XHTML/OPF próba lxml → błąd ⇒ „Zapisać mimo to?"; zapis = `write_file`; „Zapisz EPUB" = `save()` (backup .bak); dekodowanie utf-8/replace, znaki zastępcze ⇒ read-only pliku; `closeEvent` pyta o niezapisane.
+- **Kontrakt:** `MainWindow.open_in_editor(epub_path, internal_path=None, line=None)` — konsumenci F-E, F-D.
 
-**Testy:** czyste: klasyfikacja plików, przeliczenia offset↔(linia,kolumna); pytest-qt: load/get_text z polskimi znakami, goto_line, read_only blokuje `qtbot.keyClicks`, search liczy trafienia, pełny flow edycja→write_file→save→reopen przez Epub, plik nie-UTF8 → read-only, `open_in_editor` zaznacza i ustawia linię, highlighter koloruje (sprawdzenie formatów bloku).
+**Testy:** czyste (klasyfikacja, offset↔linia/kolumna); pytest-qt: roundtrip z polskimi znakami, goto_line, read_only, search, pełny flow edycji→save→reopen, plik nie-UTF8, open_in_editor, highlighter nadaje formaty.
 
-**Twoje zadania:** UX-test na dużej książce (50+ MB), akceptacja decyzji „read-only domyślnie", lista oczekiwanych skrótów.
+**Twoje zadania:** UX na dużej książce (50+ MB), akceptacja „read-only domyślnie", skróty.
 
 ---
 
 ### F-D · F3+ — Inspektor reguł CSS z podglądem na żywo *(rozszerzenie spoza FEATURES.md)*
 
-**Cel:** przy otwartym `.css` — panel z listą reguł; każda reguła pokazuje **przykładowy tekst sformatowany tak, jak zadziała**; edycja reguły aktualizuje podgląd **na żywo**; „Zastosuj" wpisuje zmianę do arkusza.
+**Cel:** przy otwartym `.css` — lista reguł; każda z **podglądem przykładowego tekstu sformatowanego zgodnie z regułą**; edycja reguły aktualizuje podgląd **na żywo**; „Zastosuj" wpisuje zmianę do arkusza.
 
-**Projekt — dwie warstwy:**
+**Warstwa logiki — `fixers/css_rules.py`** (czyste funkcje, zero Qt):
+- `parse_rules(source) -> list[CssRuleInfo(selector, declarations, span, media, previewable, parse_errors)]` — **span = offsety znakowe `[start, end)`** z `source_line/source_column` tokenów tinycss2 (1-indeksowane!) + tabeli offsetów linii; koniec = `}` wyznaczana od pozycji końca ostatniego tokenu content (odporność na `}` w stringach/komentarzach); `@media` rekurencyjnie; `@font-face/@page/@import` → previewable=False.
+- `replace_rule(source, span, new_text)` — **jedyna** modyfikacja źródła (zero re-serializacji — formatowanie użytkownika nietykalne).
+- `parse_single_rule(text)`; `declarations_to_preview(decls) -> (inline_style, unsupported)` — whitelist podzbioru CSS silnika rich text Qt („Supported HTML Subset"): font-family/-size/-weight/-style, color, background-color, text-align (**justify działa**), text-indent, line-height, margin-*, padding-*, text-decoration, text-transform; jednostki px/pt/em/% normalizowane; reszta → lista nieobsługiwanych. Celowo **inline style** zamiast selektorów w setDefaultStyleSheet — omijamy ograniczenia dopasowania selektorów Qt.
+- `sample_for_selector(selector)` — h1..h6 → „Rozdział pierwszy"; p/body/klasy → akapit **z polskimi diakrytykami** („Zażółć gęślą jaźń…"); blockquote → cytat; code/pre → kod; inne → akapit. `build_preview_html(rule)` składa dokument (escapowanie!).
 
-1. **Logika bez GUI — `src/epubforge/fixers/css_rules.py`** (czyste funkcje, pełne testy jednostkowe):
-   - `parse_rules(source) -> list[CssRuleInfo]` — `CssRuleInfo(selector, declarations, span, media, previewable, parse_errors)`; **span = offsety znakowe `[start, end)` reguły w źródle**, liczone z `source_line/source_column` tokenów tinycss2 + tabeli offsetów początków linii; koniec = pozycja domykającej `}` wyznaczona od pozycji końca ostatniego tokenu content (odporność na `}` w stringach/komentarzach); reguły w `@media` rekurencyjnie z kontekstem; `@font-face/@page/@import` — previewable=False.
-   - `replace_rule(source, span, new_text) -> str` — **jedyna** legalna modyfikacja źródła (zero re-serializacji tinycss2 — zachowujemy formatowanie użytkownika).
-   - `parse_single_rule(text)` — walidacja edytowanej reguły.
-   - `declarations_to_preview(decls) -> tuple[str, list[str]]` — buduje **inline `style="…"`** z deklaracji przefiltrowanych do podzbioru CSS wspieranego przez silnik rich text Qt („Supported HTML Subset"): font-family/-size/-weight/-style, color, background-color, text-align (**w tym justify — działa!**), text-indent, line-height, margin-*, padding-*, text-decoration, text-transform; jednostki px/pt/em/% normalizowane; reszta → lista „nieobsługiwane w podglądzie". Celowo **inline style zamiast selektorów** w `setDefaultStyleSheet` — omijamy ograniczenia dopasowania selektorów w Qt i zachowujemy pełną kontrolę nad listą nieobsługiwanych.
-   - `sample_for_selector(selector) -> (html_tag, text)` — heurystyka: h1..h6 → nagłówek „Rozdział pierwszy"; p/body/klasy → akapit **z polskimi diakrytykami** („Zażółć gęślą jaźń…" + 2 zdania); blockquote → cytat; code/pre → fragment kodu; inne → akapit domyślny.
+**Widget — `gui/widgets/css_inspector.py`** (`CssInspector(QWidget)`): konstruktor `get_source`, `apply_replacement | None` (None = read-only, Zastosuj ukryty), `theme`. QSplitter pionowy: (1) QTreeWidget reguł (Selektor | skrót deklaracji | @media; nie-previewable wyszarzone stanem disabled_fg); (2) edytor reguły = CodeEditor css ~8 linii z `source[span]`; (3) podgląd QTextEdit read-only na „papierowej" białej karcie (1 px ramka `border`) — tło **niezależne od motywu aplikacji**, pod spodem „Nieobsługiwane w podglądzie: …" + stała adnotacja „Podgląd przybliżony — czytnik może różnić się w szczegółach"; (4) „Zastosuj do arkusza" / „Przywróć". **Live:** textChanged → QTimer-debounce 300 ms → parse_single_rule → OK: `setHtml(build_preview_html)`; błąd: ramka `red` + komunikat, podgląd na ostatnim poprawnym. **Zastosuj:** `apply_replacement(start, end, text)` → refresh (spany przeliczone, zaznaczenie po selektorze). Refresh także po edycji w głównym edytorze (debounce 400 ms). Integracja w EditorTab: panel dla text/css **domyślnie otwarty** (toggle); apply_replacement przez **jedną operację QTextCursor** głównego edytora ⇒ undo cofa całość, plik dostaje `*`. Synergia F11: „Podgląd…" presetu = QDialog z CssInspector(read-only).
 
-2. **Widget — `gui/widgets/css_inspector.py`** (`CssInspector(QWidget)`):
-   - konstruktor: `get_source: Callable[[], str]`, `apply_replacement: Callable[[int, int, str], None]`, `theme`;
-   - layout (QSplitter pionowy): (1) `QTreeWidget` reguł: Selektor | Deklaracje (skrót) | @media (at-reguły wyszarzone); (2) **edytor reguły** — mały CodeEditor (profil css, ~8 linii) z blokiem `source[span]`; (3) **podgląd** — `QTextEdit` read-only, dokument z próbką HTML + inline style; tło podglądu zawsze „papierowe" (biała karta z ramką), **niezależnie od motywu aplikacji** — żeby dark mode nie fałszował typografii; pod spodem: „Nieobsługiwane w podglądzie: …" + stała adnotacja „Podgląd przybliżony — czytnik może różnić się w szczegółach"; (4) „Zastosuj do arkusza" / „Przywróć";
-   - **live**: `textChanged` edytora reguły → `QTimer.singleShot`-debounce 300 ms → `parse_single_rule` → OK: przebudowa HTML podglądu (`setHtml`); błąd: czerwona ramka + komunikat parsera, podgląd na ostatnim poprawnym;
-   - **Zastosuj**: walidacja → `apply_replacement(start, end, new_text)` → `refresh()` (re-parse listy, spany przeliczone, zaznaczenie zachowane po selektorze);
-   - `refresh()` wołany też po edycji w głównym edytorze (debounce 400 ms na jego `textChanged`).
-   - Integracja w `tabs/editor.py`: dla plików css panel w prawym QSplitterze, **domyślnie otwarty** (toggle w toolbarze); `apply_replacement` przez QTextCursor głównego edytora (przeliczenie offsetów na pozycje) — **undo działa**, plik dostaje `*`, dalej standardowy flow Ctrl+S/„Zapisz EPUB".
-   - Synergia F11: w sekcji presetów przycisk „Podgląd…" → QDialog z CssInspector w trybie read-only (Zastosuj ukryty).
+**Testy:** spany (prosta/wieloselektorowa/komentarze/`content:"}"`/`url("a}b.png")`/@media/@font-face), replace_rule bajt-w-bajt poza spanem, declarations_to_preview per właściwość + jednostki + kolory + justify przechodzi + letter-spacing→unsupported + !important, sample_for_selector, build_preview_html escapuje; pytest-qt: panel widoczny, edycja red→blue po debounce zmienia podgląd, Zastosuj trafia do edytora i undo cofa.
 
-**Testy:** `css_rules.py` — spany (prosta, wieloselektorowa, komentarze przed/wewnątrz, `content: "}"` i `url("a}b.png")`, @media zagnieżdżone, @font-face previewable=False), replace_rule nie rusza ani bajta poza spanem, `declarations_to_preview` per właściwość + jednostki + kolory hex/rgb()/nazwy + `!important` (adnotacja) + nieznana właściwość → unsupported, sample_for_selector dla h1/p/.quote/blockquote/code/fallback; pytest-qt — panel widoczny dla css, wybór reguły ładuje edytor, edycja „red→blue" + przeskoczenie debounce → HTML podglądu zawiera nowy kolor, „Zastosuj" → `get_text()` głównego edytora zawiera zmianę i undo ją cofa.
-
-**Twoje zadania:** przeklik na arkuszach z prawdziwych książek (zwłaszcza Calibre — ogromne arkusze: oceń wydajność listy reguł), ocena wierności podglądu (line-height, justify), akceptacja auto-otwierania panelu.
+**Twoje zadania:** przeklik na arkuszach z prawdziwych książek (Calibre — tysiące reguł: wydajność listy), ocena wierności podglądu, akceptacja auto-otwierania panelu.
 
 ---
 
 ### F-E · F2 — Walidacja przez EpubCheck
 
-**Projekt:**
-- **Detekcja** (`core/detection.py`, wzorzec istniejących Tooli): `Tools.java()` — PATH, `JAVA_HOME/bin`, katalogi Temurin; wersja z `java -version` (**stderr!**), wymagane ≥ 11; `Tools.epubcheck()` — jar wg kolejności: config override `tools.epubcheck_jar` → glob `%ProgramFiles%/epubcheck*/` i `~/epubcheck*/` → `<config>/epubcheck/epubcheck.jar` → obok exe; wersja z `META-INF/MANIFEST.MF` jara (zipfile, bez uruchamiania javy). Oba w `detect_with_cache`.
-- `validators/epubcheck.py`: `ValidationMessage(severity, code, message, internal_path, line, column)`, `ValidationReport(valid, epubcheck_version, messages, duration_s, counts())`, `run_epubcheck(epub, java, jar, timeout=300)` — `java -jar epubcheck.jar plik --json tmp.json` (tempfile, CREATE_NO_WINDOW, utf-8/replace, timeout); exit≠0 przy poprawnym JSON = raport `valid=False` (nie wyjątek); brak JSON/timeout = `EpubforgeError` ze stderr; parser defensywny (`get` z defaultami), normalizacja path do ścieżki wewnętrznej (utnij do `*.epub/`).
-- CLI `epubforge check book.epub [--json out] [--min-severity warning]`; exit 0 valid / 1 błędy / 2 brak narzędzi (z instrukcją).
-- GUI `tabs/validator.py`: FileList + „Sprawdź" (Worker/QThread), pasek podsumowania „✗ N błędów · ⚠ N ostrzeżeń · ℹ N" (**ngettext**), filtry severity (QCheckBox), `QTreeWidget` wyników (ikona koloru wg Theme, kod, plik:linia, komunikat; pełny w tooltipie), **dwuklik → `main_window.open_in_editor(epub, internal_path, line)`**, „Eksport JSON/HTML". Brak java/jar ⇒ panel pomocy: instrukcja (Temurin 17+, epubcheck z W3C GitHub releases) + „Wskaż epubcheck.jar…" (QFileDialog → config → re-detekcja). Auto-pobierania jara **nie** robimy w v1.
-- (Opcjonalna synergia, decyzja twoja: przycisk „Waliduj" w toolbarze Edytora po „Zapisz EPUB".)
+**Projekt:** detekcja w `core/detection.py` wg wzorca Tooli: `Tools.java()` (PATH/JAVA_HOME/Temurin; wersja z `java -version` — **stderr**; wymagane ≥ 11) i `Tools.epubcheck()` (jar: config override `tools.epubcheck_jar` → glob ProgramFiles/`~` → `<config(platformdirs)>/epubcheck/epubcheck.jar` → obok exe; wersja z `META-INF/MANIFEST.MF` bez uruchamiania javy). `validators/epubcheck.py`: `ValidationMessage/ValidationReport(counts())`, `run_epubcheck` — `java -jar … --json tmp.json` (tempfile, CREATE_NO_WINDOW, utf-8/replace, timeout); exit≠0 z poprawnym JSON = raport `valid=False`; brak JSON/timeout = `EpubforgeError`; parser defensywny, normalizacja ścieżek do wewnętrznych. CLI `epubforge check` (exit 0/1/2). GUI `tabs/validator.py`: FileList + Worker, podsumowanie z **ngettext**, filtry severity, QTreeWidget (kolory `red`/`amber`/`fg2` z Theme; dane w `Qt.UserRole`), **dwuklik → `open_in_editor(epub, internal_path, line)`**, eksport JSON/HTML; brak narzędzi ⇒ panel pomocy (Temurin 17+, epubcheck z W3C GitHub) + „Wskaż epubcheck.jar…" (config → re-detekcja). Bez auto-pobierania jara w v1.
 
-**Testy:** zero realnej javy — fixture'y JSON (ok/errors/broken), parser+normalizacja+counts, mock subprocess (ok/exit≠0/timeout/brak pliku), parser wersji javy ze stderr („17.0.9" ok, „1.8.0_391" → unavailable), wersja z MANIFEST.MF (mini-jar budowany zipfile w tmp), CLI exit codes, pytest-qt: tabela z podstawionego raportu + dwuklik woła open_in_editor (mock).
+**Testy:** zero realnej javy — fixture'y JSON (ok/errors/broken), parser+normalizacja+counts, mock subprocess (ok/exit≠0/timeout/brak pliku), parser wersji javy ze stderr („17.0.9" ok, „1.8.0_391" → unavailable), MANIFEST.MF z mini-jara, CLI exit codes, pytest-qt: tabela + dwuklik woła open_in_editor (mock).
 
-**Twoje zadania:** instalacja Temurin JRE 17+ (Windows i WSL), pobranie epubcheck-5.x z W3C GitHub, wskazanie jara; testy na prawdziwych i celowo zepsutych EPUB-ach (zepsuj coś w Edytorze → walidator łapie → dwuklik trafia w linię); decyzja o auto-walidacji po zapisie (rekomendacja: tylko przycisk).
+**Twoje zadania:** Temurin JRE 17+ (Windows i WSL), epubcheck-5.x z W3C GitHub, wskazanie jara; testy na prawdziwych i celowo zepsutych EPUB-ach (dwuklik trafia w linię); decyzja o auto-walidacji po zapisie (rekomendacja: tylko przycisk).
 
 ---
 
 ### F-F · F10 — Generator i edytor spisu treści
 
-**Projekt:**
-- `toc/model.py`: `TocEntry(title, href, children)` + **czysta** `move_entry(entries, src, dst, mode)` (rodzeństwo przed/po, zagnieżdżenie, zakaz przeniesienia do własnego potomka) — z pełnymi testami; to model pod D&D.
-- `toc/reader.py`: nav.xhtml (item z `properties~=nav`, `<nav epub:type="toc">`, zagnieżdżone ol/li/a) → fallback toc.ncx (navMap); zwraca też źródło.
-- `toc/generator.py`: spine w kolejności, lxml z recover; h1..h{max_level}; drzewo wg poziomów (osierocony h3 → poziom wyżej); tytuł = znormalizowany `itertext()`; nagłówek bez `id` ⇒ wstrzyknięcie `id="efh-NNNN"` (unikalność per plik, **idempotencja** drugiego przebiegu) i zapis XHTML z zachowaniem deklaracji XML i **doctype**; pierwszy nagłówek pliku → href bez fragmentu; plik bez nagłówków pomijany.
-- `toc/writer.py`: nav.xhtml — jeśli istnieje, podmiana **tylko** elementu nav-toc; jeśli nie — pełny dokument pod `{opf_dir}/nav.xhtml` + manifest `properties="nav"` (spine nietknięty); toc.ncx — pełna regeneracja (uid z metadanych, playOrder DFS) + manifest + `spine@toc`.
-- `toc/repair.py`: `validate_toc` (href istnieje? fragment istnieje? — cache id per plik) → lista problemów; `repair_toc` usuwa martwe (dzieci podciąga), zwraca (entries, removed).
-- CLI: `epubforge toc book.epub --show | --generate [--max-level 3] | --repair [--dry-run]`.
-- GUI `tabs/toc.py`: wybór EPUB → `QTreeWidget` (Tytuł | Cel); problemy czerwonym kolorem + tooltip; toolbar: Generuj (QSpinBox 1–6), Napraw (dialog z listą → potwierdź), Dodaj/Usuń, ⬆⬇⬅➡, „Zapisz do EPUB"; edycja tytułu: `Qt.ItemIsEditable` na kolumnie tytułu (wbudowane, bez Entry-overlay!); **drag&drop: `setDragDropMode(InternalMove)`** + w `dropEvent` synchronizacja modelu przez `move_entry` (kierunek: zmiana w widoku → przebuduj model → re-render; mapowanie item↔entry słownikiem); wskaźnik niezapisanych zmian + pytania przy zmianie pliku/zamknięciu.
+**Projekt:** pakiet `toc/`: `model.py` (`TocEntry` + **czysta** `move_entry(entries, src, dst, mode before/after/into)` z zakazem przeniesienia do potomka — model pod D&D), `reader.py` (nav.xhtml z fallbackiem ncx, zwraca źródło), `generator.py` (spine w kolejności, lxml recover, h1..h{max_level}, drzewo wg poziomów z podciąganiem osieroconych, tytuł = znormalizowany itertext, wstrzykiwanie brakujących `id="efh-NNNN"` z idempotencją i zachowaniem deklaracji XML + **doctype**, pierwszy nagłówek pliku bez fragmentu, pliki bez nagłówków pomijane), `writer.py` (nav: podmiana **tylko** `<nav epub:type="toc">` lub nowy dokument + manifest `properties="nav"`, spine nietknięty; ncx: pełna regeneracja + manifest + `spine@toc`; href względne — RÓŻNE bazy, posixpath.relpath), `repair.py` (`validate_toc` — martwy href / brak fragmentu, cache id per plik; `repair_toc` usuwa i podciąga dzieci). CLI `epubforge toc --show | --generate [--max-level 3] | --repair [--dry-run]`. GUI `tabs/toc.py`: QTreeWidget (Tytuł | Cel; problemy kolorem `red` + tooltip), toolbar (Generuj/Napraw/Dodaj/Usuń/⬆⬇⬅➡/Zapisz), edycja tytułu przez `Qt.ItemIsEditable` na kolumnie tytułu, **D&D: `InternalMove`** + synchronizacja modelu w dropEvent (dropIndicatorPosition → before/after/into → `move_entry` → przebudowa widoku; `blockSignals` podczas przebudowy), wskaźnik niezapisanych zmian.
 
-**Testy:** generator na rozbudowanej fixture (poziomy, osierocony h3, `<em>` w nagłówku, polskie znaki, plik bez nagłówków, idempotencja id), writer→reader roundtrip (nav i ncx), manifest/spine poprawne, EPUB po save zdrowy, repair wykrywa martwy href i zły fragment, `move_entry` wszystkie tryby + zakaz cyklu, CLI show/generate/repair --dry-run, pytest-qt: wczytanie/generacja/edycja tytułu/zapis + symulacja przeniesienia przez model.
+**Testy:** generator na rozbudowanej fixture (poziomy, osierocony h3, `<em>` w nagłówku, polskie znaki, idempotencja id, plik bez nagłówków), writer→reader roundtrip (nav i ncx), manifest/spine, EPUB zdrowy po save, repair, move_entry wszystkie tryby + zakaz cyklu, CLI, pytest-qt (wczytanie/generacja/edycja tytułu/zapis; przeniesienie przez wydzielony handler (src,dst,tryb)).
 
-**Twoje zadania:** testy na książce z usuniętym nav (repair), płaskiej z Calibre i głębokiej; **weryfikacja TOC na Kindle po konwersji KFX**; domyślny max_level (rekomendacja: 3).
+**Twoje zadania:** test na książce z usuniętym nav, płaskiej z Calibre i głębokiej; **weryfikacja TOC na Kindle po konwersji KFX**; domyślny max_level (rekomendacja: 3).
 
 ---
 
 ### F-G · F7 — Konwersja MOBI → EPUB
 
-**Projekt:** wyłącznie **Calibre** (`ebook-convert`); KindleUnpack świadomie pominięty (**GPL/copyleft**). Routing w `converters/to_epub.py`: suffix ∈ {`.mobi`,`.azw3`,`.azw`,`.prc`} ⇒ wymuś Calibre (engine="pandoc" jawnie → czytelny ConversionError). **DRM:** `converters/kindle_drm.py` (~60–80 linii, czysty `struct`): nagłówek PalmDB → rekord 0 → magic „MOBI" → pole encryption type (0 = brak, 1/2 = DRM); DRM ⇒ przyjazny `ConversionError("Plik jest zabezpieczony DRM — konwersja niemożliwa. EpubForge nie usuwa zabezpieczeń.")` **przed** wywołaniem Calibre; dodatkowo mapowanie „DRM" ze stderr Calibre. CLI: `convert` już działa — aktualizacja help/README. GUI ConverterTab: filtry plików + wymuszenie/wyszarzenie silnika na Calibre + `QMessageBox.warning` dla DRM.
+**Projekt:** wyłącznie **Calibre**; KindleUnpack pominięty (**GPL/copyleft**). Routing w `converters/to_epub.py`: suffix ∈ {`.mobi`,`.azw3`,`.azw`,`.prc`} ⇒ wymuś Calibre (engine="pandoc" jawnie → czytelny błąd). **DRM:** `converters/kindle_drm.py` (~60–80 linii czystego `struct`): PalmDB → rekord 0 → magic „MOBI" → encryption type (0 brak / 1–2 DRM); DRM ⇒ przyjazny `ConversionError` **przed** Calibre; dodatkowo mapowanie „DRM" ze stderr Calibre. CLI: `convert` działa od razu — aktualizacja help/README. GUI ConverterTab: filtry plików, wymuszenie silnika Calibre dla Kindle, DRM jako `QMessageBox.warning`.
 
-**Testy:** syntetyczne nagłówki PalmDB (struct.pack: enc 0/1/2, plik 10-bajtowy, brak magic) — **żadnych prawdziwych mobi w repo**; routing z mockiem subprocess; engine=pandoc → błąd; DRM=True ⇒ subprocess niewywołany; stderr „DRMError" → zmapowany komunikat.
+**Testy:** syntetyczne nagłówki PalmDB (struct.pack; enc 0/1/2, plik 10-bajtowy, brak magic) — **żadnych prawdziwych mobi w repo**; routing z mockiem subprocess; pandoc → błąd; DRM=True ⇒ subprocess niewywołany; stderr „DRMError" → zmapowany.
 
-**Twoje zadania:** lokalny legalny plik testowy (roundtrip własnego EPUB przez Calibre), ocena jakości wyniku (TOC, obrazy), **nie commituj plików książek**.
+**Twoje zadania:** lokalny legalny plik testowy (roundtrip własnego EPUB przez Calibre), ocena jakości (TOC, obrazy), nic do repo.
 
 ---
 
 ### F-H · F8 — Statystyki książki
 
-**Projekt:** `src/epubforge/stats.py`: `ChapterStats`, `BookStats(words, chars, chapters, estimated_pages, reading_time_min, language, language_source, top_words)`, `StatsOptions(words_per_page=250, wpm=200, top_n=50)`, `compute_stats(epub, options)`, `render_report_html(stats, metadata)`. Ekstrakcja: spine w kolejności, lxml recover, `itertext()` z pominięciem script/style; tytuł rozdziału = h1/h2/`<title>`. Tokenizacja `re.findall(r"\w+", …)`, liczby odfiltrowane. Język: `langdetect` (extra `[stats]`, `DetectorFactory.seed=0`, próbka 10 k znaków) → fallback `metadata.language` → None (źródło zapisane). Stop-listy `stats_stopwords/{pl,en,de}.txt` (200–300 słów, generuje AI, **PL przeglądasz ty**). Raport HTML samowystarczalny (inline CSS, paleta jasna ze standardu §5, `html.escape` na wszystkim z książki): metadane, karty liczb, chmurka tagów (font-size log-skala 12–40 px), tabela rozdziałów, wykres słupkowy **inline SVG** generowany własną funkcją (≤60 słupków), stopka „Ctrl+P → PDF". CLI: `epubforge stats book.epub [--report out.html] [--top 50] [--words-per-page] [--wpm]`. GUI `tabs/stats.py`: wybór pliku → Worker → karty (QGroupBox: słowa, strony, czas h:min, język+źródło), lista top-słów, QTreeWidget rozdziałów, „Eksport HTML…"/„Otwórz raport" (webbrowser); adnotacja przy braku langdetect.
+**Projekt:** `stats.py`: `ChapterStats`, `BookStats(words, chars, chapters, estimated_pages, reading_time_min, language, language_source, top_words)`, `StatsOptions(250/200/50)`, `compute_stats`, `render_report_html`. Ekstrakcja: spine w kolejności, lxml recover, itertext bez script/style; tytuł = h1/h2/`<title>`. Tokenizacja `\w+` unicode, liczby odfiltrowane. Język: `langdetect` (extra `[stats]`, `DetectorFactory.seed=0`, próbka 10 k znaków) → fallback `metadata.language` → None (źródło zapisane). Stop-listy `stats_stopwords/{pl,en,de}.txt` (200–300 słów; PL przeglądasz ty). Raport HTML samowystarczalny (inline CSS w **jasnej palecie §5 z accent2 dla tekstu — nota WCAG**, `html.escape` na wszystkim z książki): metadane, karty, chmurka tagów (font-size log 12–40 px), tabela rozdziałów, wykres słupkowy **inline SVG** własną funkcją (≤60 słupków), stopka „Ctrl+P → PDF". CLI `epubforge stats`. GUI `tabs/stats.py`: PathEntry → Worker → karty + top-słowa + rozdziały + „Eksport HTML…"/„Otwórz raport"; adnotacja przy braku langdetect.
 
-**Testy:** deterministyczne liczby na fixture, „Zażółć gęślą jaźń" = 3 słowa, liczby odfiltrowane, stop-lista pl filtruje, fallback języka (monkeypatch ImportError), top_words sort+remis alfabetyczny, raport: tytuł obecny, `<b>złośliwy</b>` w tytule rozdziału zescapowany, liczba `<rect>` = liczba rozdziałów, brak „http" w treści; CLI exit 0 + plik powstaje; pytest-qt smoke.
+**Testy:** deterministyczne liczby na fixture, „Zażółć gęślą jaźń"=3 słowa, stop-lista, fallback języka (monkeypatch ImportError), top_words sort/remis, raport (tytuł, escapowanie `<b>złośliwy</b>`, liczba `<rect>` = rozdziały, brak „http"), CLI, smoke pytest-qt.
 
-**Twoje zadania:** przegląd polskiej stop-listy, stałe domyślne (250/200 — możesz wolieć 220/180 dla PL), ocena raportu na ekranie i w druku do PDF, `pip install -e ".[dev,stats]"`.
+**Twoje zadania:** przegląd polskiej stop-listy, stałe (250/200 vs 220/180 dla PL), ocena raportu na ekranie i w druku, `pip install -e ".[dev,stats]"`.
 
 ---
 
 ## 4. Aktualizacje przekrojowe (każdy etap pamięta)
 
-- **pyproject.toml:** F-M → `[gui] = PySide6>=6.6, pyqtdarktheme` (wersje z IcoForge), usunięcie tkinterdnd2/darkdetect, dev += `pytest-qt`; F-A → `babel` (dev); F-H → extra `stats = ["langdetect>=1.0.9"]`; dane pakietu (locale, presets, stopwords, assets) w wheel.
-- **CI `test.yml`:** F-M — `QT_QPA_PLATFORM: offscreen` + `apt-get install -y libegl1` zamiast xvfb; bez nowych workflow.
-- **build/** (`build.bat`, `.spec`, `check_build_env.py`): F-M (PySide6 + excludes Qt), F-A (locale + compile_locales), F-B (presets), F-H (stopwords).
-- **README / docs/user-guide / docs/api-reference / CHANGELOG:** per etap; F-M usuwa ostrzeżenie o jasnych dialogach i aktualizuje sekcję GUI.
-- **GUI_STANDARD.md:** po F-M zaktualizuj mapę projektów (EpubForge → Qt) — dokument żywy.
-- **Wersjonowanie (propozycja):** F-M → **v2.0.0** (zmiana frameworka GUI to dobry powód na major; CLI/API bez zmian — możesz też wybrać v1.1.0, twoja decyzja); dalej: F-A..F-B → +0.1, F-C..F-D → +0.1, F-E → +0.1, F-F → +0.1, F-G..F-H → +0.1.
+- **pyproject.toml:** F-S → `platformdirs` (core), **usunięcie pyqtdarktheme-fork**; F-A → `babel` (dev); F-H → extra `stats=["langdetect>=1.0.9"]`; dane pakietu (locale, presets, stopwords, assets) w wheel.
+- **build/**: F-S (`upx=False`, bez qdarktheme w check_build_env), F-A (locale+compile_locales), F-B (presets), F-H (stopwords).
+- **CI test.yml:** F-S weryfikuje `concurrency` + `paths-ignore`; offscreen z F-M zostaje.
+- **README / docs / CHANGELOG:** per etap; F-S dodaje adnotację o portable vs instalator.
+- **GUI_STANDARD.md w repo:** F-S podmienia na v2.0; **CLAUDE.md:** pułapki Qt zaktualizowane (Fusion przed setPalette; DWM tylko przy motywie ≠ system; QPalette vs QSS bez dublowania; upx=False).
+- **Wersjonowanie (przypomnienie):** F-M+F-S → v2.0.0; dalej F-A..F-B → 2.1, F-C..F-D → 2.2, F-E → 2.3, F-F → 2.4, F-G..F-H → 2.5 (lub wedle twojej decyzji per merge).
 
 ## 5. Twoja lista zadań — zbiorczo
 
-**Przed startem:**
-1. `git pull` na main, CI zielone; rozważ tag `v1.0.x-tkinter`.
-2. Wyciągnij z IcoForge wersje PySide6/pyqtdarktheme + ewentualne obejścia (wkleisz do promptu F-M).
-3. Decyzja wersjonowania (v2.0.0 po migracji?).
-
-**Rytuał per etap:** prompt z `PROMPTS_FEATURES_v1.1.md` → przegląd diff → lokalnie `pytest`, `ruff check .`, `mypy src/` → **przeklik GUI na Windows w obu motywach** (CI testuje offscreen — realny Windows to twoja działka) → push/PR/CI → `gh pr merge --squash --delete-branch` → co 2–3 etapy `build\build.bat` + smoke exe.
-
-**Specyficzne:** F-M: pełny przeklik parytetu + rozmiar exe + zrzuty README; F-A: przegląd EN/DE; F-E: Java+epubcheck.jar; F-C/F-D: UX na dużych książkach; F-F: TOC na Kindle po KFX; F-G: własny plik testowy poza repo; F-H: polska stop-lista; F-B: presety na czytniku.
+**Przed F-S:** status theme.py w pdf2md (wariant A/B do promptu); `git pull`, CI zielone.
+**Rytuał per etap:** prompt → przegląd diff → lokalnie pytest/ruff/mypy → **przeklik GUI na Windows w obu motywach + auto** → push/PR/CI → squash merge → co 2–3 etapy build + smoke exe.
+**Specyficzne:** F-S: test auto-motywu w locie, migracja configu, czas startu portable vs instalator; F-A: przegląd EN/DE; F-E: Java+epubcheck.jar; F-C/F-D: UX na dużych książkach; F-F: TOC na Kindle po KFX; F-G: plik testowy poza repo; F-H: polska stop-lista; F-B: presety na czytniku.
+**Po wszystkim:** zrzuty README, release notes + tag.
 
 ## 6. Ryzyka i miny
 
 | Ryzyko | Mitygacja |
 |---|---|
-| pyqtdarktheme nieutrzymywany / problem na Py 3.12 | te same wersje/obejścia co IcoForge; fallback: pyqtdarktheme-fork; decyzja w F-M |
-| „Wyprany" jasny motyw qdarktheme | light = przywrócony natywny styl Qt (zapamiętany przed pierwszą zmianą) — GUI_STANDARD §4 |
-| Pasek tytułu jaśnieje po dialogu | `changeEvent(ActivationChange)` re-wymusza DWM — GUI_STANDARD §4 |
-| Rozmiar exe po Qt | excludes modułów Qt w .spec; akceptowany budżet 60–110 MB |
-| Regresje funkcjonalne przy porcie | parytet jako jawna checklista akceptacji F-M; tag powrotu `v1.0.x-tkinter` |
-| Podgląd CSS ≠ czytnik (F3+) | QTextDocument renderuje realny podzbiór CSS (lepszy niż tk), ale nadal: jawna adnotacja „podgląd przybliżony" + lista nieobsługiwanych |
-| Podmiana reguły psuje arkusz (F3+) | spany z tokenów tinycss2, testy edge-case (`}` w stringach), zapis przez QTextCursor ⇒ undo |
-| EpubCheck JSON zmienia format | parser defensywny + fixture'y + wersja w raporcie |
-| `java -version` na stderr | czytamy stderr |
-| Wstrzykiwanie id psuje XHTML (F10) | lxml z zachowaniem doctype, idempotencja, roundtrip-testy, backup .bak |
-| PL pluralizacja (F1) | wyłącznie ngettext, Plural-Forms nplurals=3, testy 1/2/5 |
-| GPL/copyleft (F7) | bez kindleunpack; Calibre tylko jako zewnętrzny subprocess; PySide6 = LGPL (linkowanie dynamiczne, OK z MIT) |
-| Minuty GitHub Actions | offscreen zamiast xvfb (taniej), zero nowych workflow, mocki subprocess |
-| Wątki Qt | GUI tylko z głównego wątku; workery komunikują się wyłącznie sygnałami |
+| theme.py pisany równolegle w EpubForge i pdf2md → rozjazd | reguła z §1.1: istniejący wygrywa, drugi adaptuje; docelowo gui-kit |
+| Fusion zmienia metryki widgetów względem stylu natywnego | przeklik po F-S; ewentualne korekty paddingów w QSS, nie w tabach |
+| Dublowanie kolorów QPalette/QSS → plamy przy zmianie motywu | kontrakt §4 standardu (QSS = tylko akcenty) + test na hexy bazowe w QSS |
+| DWM wymuszany niepotrzebnie (Qt 6.5+) | wymuszenie tylko przy motywie ≠ system; test 4 kombinacji |
+| Zmiana ścieżki configu gubi ustawienia | parametry platformdirs odwzorowują obecne ścieżki (zero migracji dev/CLI); frozen: kopia spod exe + test regresji ścieżek + twoja weryfikacja ręczna |
+| Crash = utrata configu | zapis z debounce ~1 s (mark_dirty/flush), nie tylko przy zamknięciu |
+| Kontrast akcentu w jasnym motywie | nota WCAG: tekst/linki = accent2 #0F7C5B (theme.py + raport F-H) |
+| UPX psuje DLL-e Qt; wolny start onefile | upx=False; rekomendacja instalatora w README |
+| Podgląd CSS ≠ czytnik (F3+) | QTextDocument + jawna adnotacja + lista nieobsługiwanych |
+| Podmiana reguły psuje arkusz (F3+) | spany z tokenów tinycss2, testy edge-case, jedna operacja QTextCursor ⇒ undo |
+| EpubCheck JSON zmienia format / `java -version` na stderr | parser defensywny + fixture'y; czytamy stderr |
+| Wstrzykiwanie id psuje XHTML (F10) | lxml z doctype, idempotencja, roundtrip, backup .bak |
+| PL pluralizacja (F1) | ngettext, nplurals=3, testy 1/2/5 |
+| GPL/copyleft (F7) | bez kindleunpack; Calibre tylko subprocess; PySide6 = LGPL |
+| Minuty GitHub Actions | offscreen, concurrency+paths-ignore (F-S weryfikuje), mocki subprocess |
+| Wątki Qt | GUI tylko z głównego wątku; workery przez sygnały |
