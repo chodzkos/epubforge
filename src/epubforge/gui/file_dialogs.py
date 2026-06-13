@@ -13,6 +13,7 @@ natywny uchwyt (``WA_NativeWindow``) przed ``exec()``.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from PySide6.QtCore import QDir, QStandardPaths, Qt, QUrl
@@ -22,6 +23,8 @@ from epubforge.core.config import Config
 from epubforge.gui.theme import ThemeName, current_theme, system_scheme
 from epubforge.gui.window_theme import sync_titlebar
 from epubforge.i18n import _
+
+logger = logging.getLogger(__name__)
 
 # Wewnętrzne przyciski toolbara QFileDialog (objectName → ikona standardowa).
 # Przy Fusion + custom QSS bywają puste (zostaje sam tooltip) — wymuszamy ikonę i tekst.
@@ -84,6 +87,7 @@ def open_files(
     dialog = _dark_dialog(parent, title, "", config)
     dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
     _set_filters(dialog, name_filter)
+    _force_toolbar_buttons(dialog)
     accepted = dialog.exec()
     _persist_size(dialog, config)
     return dialog.selectedFiles() if accepted else []
@@ -131,8 +135,9 @@ def _dark_dialog(parent: QWidget, title: str, start_dir: str, config: Config | N
     dialog.setViewMode(QFileDialog.ViewMode.Detail)
     dialog.setSidebarUrls(_sidebar_urls(start_dir, config))
     _restore_size(dialog, config)
-    _force_toolbar_buttons(dialog)
-    sync_titlebar(dialog, current_theme().name, system_scheme())
+    # Etykiety przycisków toolbara ustawiamy DOPIERO przed exec() (_run_dialog) —
+    # tuż po konstrukcji wewnętrzne QToolButton-y bywają jeszcze nieobsadzone.
+    sync_titlebar(dialog, current_theme().name)
     return dialog
 
 
@@ -141,8 +146,14 @@ def _force_toolbar_buttons(dialog: QFileDialog) -> None:
 
     Przy Fusion + własnym QSS wewnętrzne ``QToolButton``-y dialogu potrafią być
     puste — zostaje tylko tooltip. Uzupełniamy ikonę standardową (gdy brak) oraz
-    tekst; gdy ikona dalej pusta, pokazujemy sam tekst.
+    tekst; gdy ikona dalej pusta, pokazujemy sam tekst. Wołane tuż przed
+    ``exec()``, gdy drzewo widgetów dialogu jest już w pełni zbudowane.
     """
+    # Diagnostyka regresji „puste przyciski" — realne objectName w danej wersji Qt.
+    logger.debug(
+        "QFileDialog toolbar buttons: %s",
+        [button.objectName() for button in dialog.findChildren(QToolButton)],
+    )
     style = dialog.style()
     for name, pixmap in _TOOLBAR_BUTTONS:
         button = dialog.findChild(QToolButton, name)
@@ -226,6 +237,7 @@ def _set_filters(dialog: QFileDialog, name_filter: str) -> None:
 
 def _first_selected(dialog: QFileDialog, config: Config | None) -> str:
     """Wykonuje dialog, zapamiętuje rozmiar i zwraca pierwszą ścieżkę lub ``""``."""
+    _force_toolbar_buttons(dialog)
     accepted = dialog.exec()
     _persist_size(dialog, config)
     if accepted:

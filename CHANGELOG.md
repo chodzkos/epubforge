@@ -22,6 +22,15 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
   i sprawdza obecność plików `.mo`.
 
 ### Fixed
+- **Pasek tytułu zamrożony po sekwencji jasny→ciemny→jasny** — atrybut DWM jest
+  stanowy, więc `sync_titlebar` ustawia go teraz BEZWARUNKOWO na motyw aplikacji
+  (bez pomijania „przy zgodzie z systemem"), na KAŻDYM oknie top-level przy każdym
+  `apply()` oraz w `changeEvent`/aktywacji. Wcześniej końcowy jasny zostawiał
+  czarną belkę.
+- **Etykiety przycisków toolbara nienatywnego `QFileDialog`** — obsadzenie ikon
+  i tekstu (back/forward/toParent/newFolder) przeniesione tuż przed `exec()`
+  (drzewo widgetów dialogu bywa nieobsadzone zaraz po konstrukcji); dodano log
+  DEBUG z realnymi `objectName` do diagnostyki.
 - **Tooltipy po zmianie motywu w locie** — `QToolTip` dostaje jawnie świeżą
   paletę po każdym `apply()`, a QSS jest ponownie generowany i ustawiany dla
   bieżących kolorów.

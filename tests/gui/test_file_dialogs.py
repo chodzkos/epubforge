@@ -52,23 +52,18 @@ def test_open_file_native_delegates(qtbot: QtBot, monkeypatch: pytest.MonkeyPatc
 
 
 def test_open_file_qt_dialog_syncs_titlebar(qtbot: QtBot, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Gdy decyzja = Qt, helper buduje dialog i synchronizuje pasek tytułu."""
-    synced: list[tuple[str, str]] = []
+    """Gdy decyzja = Qt, helper buduje dialog i ustawia pasek tytułu na motyw app."""
+    synced: list[str] = []
     monkeypatch.setattr(file_dialogs, "_native", lambda: False)
     monkeypatch.setattr(file_dialogs, "current_theme", lambda: _theme("dark"))
-    monkeypatch.setattr(file_dialogs, "system_scheme", lambda: "light")
-    monkeypatch.setattr(
-        file_dialogs,
-        "sync_titlebar",
-        lambda _w, mode, system: synced.append((mode, system)),
-    )
+    monkeypatch.setattr(file_dialogs, "sync_titlebar", lambda _w, mode: synced.append(mode))
     monkeypatch.setattr(file_dialogs.QFileDialog, "exec", lambda self: 1)
     monkeypatch.setattr(file_dialogs.QFileDialog, "selectedFiles", lambda self: ["/a/book.epub"])
 
     result = file_dialogs.open_file(None, "Tytuł", "", "EPUB (*.epub)")
 
     assert result == "/a/book.epub"
-    assert synced == [("dark", "light")]
+    assert synced == ["dark"]
 
 
 def test_open_files_qt_cancelled_returns_empty(
@@ -116,9 +111,10 @@ def test_dark_dialog_restores_size_and_persists_on_run(
 
 
 def test_dark_dialog_toolbar_buttons_have_icon_and_text(qtbot: QtBot) -> None:
-    """Przyciski toolbara fallbacku mają ikonę i etykietę (GUI_STANDARD v2.4)."""
+    """Po obsadzeniu (tuż przed exec) przyciski toolbara mają ikonę i etykietę (v2.4)."""
     dialog = file_dialogs._dark_dialog(None, "Tytuł", "", None)
     qtbot.addWidget(dialog)
+    file_dialogs._force_toolbar_buttons(dialog)  # w produkcji wołane tuż przed exec()
     for name, _pixmap in file_dialogs._TOOLBAR_BUTTONS:
         button = dialog.findChild(QToolButton, name)
         assert button is not None
