@@ -28,7 +28,7 @@ from PySide6.QtWidgets import (
 from epubforge import __version__
 from epubforge.core import ConfigStore, Tool, default_config_path, detect_with_cache, load_config
 from epubforge.gui.tabs import ConverterTab, FixerTab, KfxTab, MetadataTab
-from epubforge.gui.theme import ThemeManager, ThemeName, ThemeSetting, system_scheme
+from epubforge.gui.theme import ThemeManager, ThemeName, ThemeSetting
 from epubforge.gui.widgets import AboutPanel, LogView
 from epubforge.gui.window_theme import sync_titlebar
 from epubforge.i18n import _, init_i18n
@@ -69,14 +69,14 @@ class AboutDialog(QDialog):
         self.resize(440, 380)
 
     def set_mode(self, mode: ThemeName) -> None:
-        """Aktualizuje motyw okna i synchronizuje pasek tytułu (gdy ≠ system)."""
+        """Aktualizuje motyw okna i ustawia pasek tytułu na ten motyw."""
         self._mode = mode
-        sync_titlebar(self, mode, system_scheme())
+        sync_titlebar(self, mode)
 
     def showEvent(self, event: QShowEvent) -> None:  # noqa: N802 — Qt API
-        """Po utworzeniu natywnego okna synchronizuje kolor paska tytułu."""
+        """Po utworzeniu natywnego okna ustawia kolor paska tytułu."""
         super().showEvent(event)
-        sync_titlebar(self, self._mode, system_scheme())
+        sync_titlebar(self, self._mode)
 
 
 class MainWindow(QMainWindow):
@@ -247,8 +247,16 @@ class MainWindow(QMainWindow):
             self._about_dialog.set_mode(self.theme_manager.theme.name)
 
     def _sync_titlebar(self) -> None:
-        """Synchronizuje pasek tytułu okna z motywem (DWM tylko gdy ≠ system)."""
-        sync_titlebar(self, self.theme_manager.theme.name, system_scheme())
+        """Ustawia pasek tytułu na motyw aplikacji dla WSZYSTKICH okien top-level.
+
+        Atrybut DWM jest stanowy — ustawiamy go bezwarunkowo na każdym oknie
+        (nie tylko głównym), inaczej dialogi/okno About zostają z poprzednim
+        kolorem belki po zmianie motywu.
+        """
+        mode = self.theme_manager.theme.name
+        for window in QApplication.topLevelWidgets():
+            if window.isWindow():
+                sync_titlebar(window, mode)
 
     # ── Debounce zapisu configu ─────────────────────────────────────────────────
 
@@ -294,10 +302,10 @@ class MainWindow(QMainWindow):
         self._sync_titlebar()
 
     def changeEvent(self, event: QEvent) -> None:  # noqa: N802 — Qt API
-        """Po (de)aktywacji okna ponawia synchronizację paska tytułu (Win10).
+        """Po (de)aktywacji okna ponownie ustawia pasek tytułu (atrybut stanowy).
 
-        Realny DWM odpala się tylko przy wymuszonym rozjeździe motyw≠system —
-        :func:`sync_titlebar` sama to filtruje.
+        Aktywacja potrafi zresetować kolor belki na Win10 — ustawiamy go ponownie
+        bezwarunkowo na motyw aplikacji.
         """
         super().changeEvent(event)
         if event.type() == QEvent.Type.ActivationChange:
