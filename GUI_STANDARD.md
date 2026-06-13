@@ -6,6 +6,7 @@
 
 | Wersja | Data | Zmiany |
 |---|---|---|
+| 2.6 | 2026-06-12 | KOREKTA fallbacku toolbara: prawdziwa przyczyna pustych przycisków to przeciekający app-QSS `QToolButton{padding/border}` przycinający przypięty ~22px przycisk — NIE brak ikon. Fix: per-widget QSS zdejmujący padding/border (wyższa specyficzność) + standardIcon gdy pusta; PORZUCONO wymuszanie etykiet (nie mieszczą się w 22px). Test geometryczny size vs sizeHint (działa offscreen) |
 | 2.5 | 2026-06-12 | KOREKTA reguły belki: DWM ustawiany BEZWARUNKOWO = motyw app przy każdym apply() (atrybut DWM jest stanowy — „nic nie rób przy zgodności" zostawiało starą wartość → belka zamrożona; usterka po F-C); nota o timingu labelingu toolbara (po setOption, przed exec) |
 | 2.4 | 2026-06-12 | fallback QFileDialog: wymuszenie ikon+etykiet na przyciskach toolbara (back/forward/toParent/newFolder przez objectName) — przy custom QSS bywają puste, zostaje sam tooltip |
 | 2.3 | 2026-06-12 | zmiana motywu w locie: QSS regenerowany przy każdym apply() (zakaz cache'owania stringa z hexami), jawne QToolTip.setPalette() — elementy statyczne Qt nie podążają za app.setPalette() (usterka z EpubForge F-A) |
@@ -200,21 +201,32 @@ Aplikacje docelowe, większe projekty, wszystko gdzie ciemny motyw i wygląd maj
   - `setViewMode(Detail)`
   - rozmiar startowy ~900×550, zapamiętywany w config
   - teksty przez i18n aplikacji
-  - **przyciski toolbara z ikoną I etykietą:** wewnętrzne `QToolButton`-y
+  - **przyciski toolbara — ikony znikają przez przeciekający app-QSS
+    (v2.6):** PRAWDZIWA przyczyna pustych przycisków nawigacji
     (`backButton`, `forwardButton`, `toParentButton`, `newFolderButton`)
-    przy Fusion + custom QSS bywają PUSTE (zostaje sam tooltip — trzeba
-    najechać). Po konstrukcji dialogu znajdź je przez `findChild(QToolButton,
-    objectName)`, wymuś `standardIcon` (SP_ArrowBack/Forward/
-    FileDialogToParent/FileDialogNewFolder) gdy `icon().isNull()`, ustaw
-    `setText(...)` i `ToolButtonTextBesideIcon` (lub `TextOnly`, jeśli ikony
-    nadal puste). `if btn is None: continue` jako bezpiecznik na zmianę nazw.
-    **TIMING (krytyczny):** drzewo widgetów istnieje DOPIERO po
-    `setOption(DontUseNativeDialog, True)` — labeling wołaj PO tym i przed
-    `exec()`, nigdy w `__init__` przed ustawieniem opcji. Jeśli przyciski
-    mimo poprawki nie mają etykiet, najpierw zdiagnozuj: wypisz
-    `[b.objectName() for b in dialog.findChildren(QToolButton)]` w momencie
-    wywołania — pusta lista = timing, inne nazwy = użyj realnych,
-    nazwy zgodne ale brak tekstu = QSS przycina (sprawdź regułę QToolButton).
+    i przełączników widoku (`listModeButton`, `detailModeButton`) to NIE
+    brak ikon — to app-owa reguła `QToolButton { padding/border }`, która
+    przecieka do wnętrza dialogu i przycina przypięty ~22px przycisk do
+    zera (dowód: `button.size()` ~22px vs `sizeHint()` ~100px). Fix:
+    - **per-widget QSS** na QToolButton-y dialogu zdejmujący `padding`
+      i `border` (wyższa specyficzność niż reguła app-owa) → ikona 16px
+      się mieści;
+    - `setIcon(standardIcon(...))` gdy `icon().isNull()` (SP_ArrowBack/
+      Forward/FileDialogToParent/FileDialogNewFolder);
+    - **NIE wymuszaj tekstu** — etykieta nie zmieści się w przypiętym 22px
+      przycisku (to był błąd v2.4); tooltip zostaje jako jedyny opis.
+    - log DEBUG `[b.objectName() for b in findChildren(QToolButton)]`
+      zostaje do diagnostyki.
+    **TIMING:** drzewo widgetów istnieje dopiero po
+    `setOption(DontUseNativeDialog, True)` — QSS i ikony aplikuj po tym,
+    przed `exec()`.
+    **Reguła ogólna:** app-owy QSS celujący w generyczne typy
+    (`QToolButton`, `QLineEdit`, `QComboBox`) przecieka do nienatywnych
+    dialogów i psuje widgety o przypiętym rozmiarze — neutralizuj
+    per-widget w fallbacku albo zawężaj selektory app-QSS.
+    Test (działa offscreen): po fixie `icon().isNull()` jest False ORAZ
+    efektywny padding zneutralizowany (porównaj `size()`/`sizeHint()`),
+    bez polegania na malowaniu pikseli.
   - **wymaga instancyjnego API** (`QFileDialog()` + `exec()`) — metody
     statyczne `get*FileName` nie pozwalają ustawić sidebara, rozmiaru ani
     sięgnąć do przycisków toolbara; gałąź natywna może pozostać statyczna.
