@@ -118,7 +118,7 @@ def test_main_window_uses_english_language_from_config(
     qtbot.addWidget(window)
 
     titles = [window.tabs.tabText(index) for index in range(window.tabs.count())]
-    assert titles == ["Metadata", "Converter", "Fixer", "Kindle Export"]
+    assert titles == ["Metadata", "Converter", "Fixer", "Kindle Export", "Editor"]
 
 
 def _messages(path: Path) -> dict[str | tuple[str, str], Any]:

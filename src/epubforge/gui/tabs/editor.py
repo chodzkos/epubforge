@@ -1,0 +1,451 @@
+"""Zakładka „Edytor" — przegląd i szybka edycja plików wewnątrz EPUB (F3 core).
+
+Quick fix, nie Sigil: jeden otwarty :class:`Epub` na życie zakładki, drzewo plików
+po grupach, edytor z podświetlaniem dla XML/CSS, podgląd obrazów, panel info dla
+binariów. Start w trybie tylko-do-odczytu; edycja po włączeniu „Trybu edycji".
+
+Klasyfikacja/dekodowanie/pozycje są w :mod:`epubforge.gui.editor_files` (czyste,
+testowalne bez Qt). Tu jest tylko UI i przepływ zapisu.
+"""
+
+from __future__ import annotations
+
+import logging
+import posixpath
+from collections.abc import Iterator
+from pathlib import Path
+from urllib.parse import unquote, urldefrag
+
+from lxml import etree
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QSplitter,
+    QStackedWidget,
+    QToolButton,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
+
+from epubforge.core import Epub
+from epubforge.gui import editor_files as ef
+from epubforge.gui.file_dialogs import open_file
+from epubforge.gui.theme import Theme, current_theme
+from epubforge.gui.widgets.code_editor import CodeEditor
+from epubforge.gui.widgets.image_preview import ImagePreview
+from epubforge.i18n import _
+
+logger = logging.getLogger(__name__)
+
+_PATH_ROLE = Qt.ItemDataRole.UserRole
+# Strony QStackedWidget.
+_PAGE_EDITOR = 0
+_PAGE_IMAGE = 1
+_PAGE_INFO = 2
+
+
+def _group_label(key: str) -> str:
+    """Lokalizowana etykieta grupy drzewa dla klucza z :mod:`editor_files`."""
+    return {
+        ef.GROUP_TEXT: _("Tekst"),
+        ef.GROUP_STYLE: _("Style"),
+        ef.GROUP_IMAGE: _("Obrazy"),
+        ef.GROUP_FONT: _("Fonty"),
+        ef.GROUP_OTHER: _("Inne"),
+    }.get(key, key)
+
+
+class EditorTab(QWidget):
+    """Przegląd i edycja zawartości EPUB z podświetlaniem składni."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._theme: Theme = current_theme()
+        self._epub: Epub | None = None
+        self._epub_path: Path | None = None
+        self._dirty: dict[str, str] = {}  # ścieżka → tekst zapisany do bufora EPUB
+        self._current: str | None = None
+        self._readonly_files: set[str] = set()  # pliki z bajtami zastępczymi
+        self._media_types: dict[str, str] = {}
+        self._switching = False  # blokada rekurencji przy cofaniu zaznaczenia
+
+        self._build_ui()
+        self._wire_shortcuts()
+        self._refresh_actions()
+
+    # ── Budowa UI ─────────────────────────────────────────────────────────────
+
+    def _build_ui(self) -> None:
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(12, 12, 12, 12)
+        outer.addLayout(self._build_toolbar())
+
+        self.info_bar = QLabel()
+        self.info_bar.setWordWrap(True)
+        self.info_bar.setVisible(False)
+        outer.addWidget(self.info_bar)
+
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        outer.addWidget(splitter, stretch=1)
+
+        self.tree = QTreeWidget()
+        self.tree.setHeaderHidden(True)
+        self.tree.currentItemChanged.connect(self._on_item_changed)
+        splitter.addWidget(self.tree)
+
+        self.stack = QStackedWidget()
+        self.code_editor = CodeEditor()
+        self.code_editor.modified_changed.connect(self._on_modified)
+        self.image_preview = ImagePreview()
+        self.info_panel = QLabel()
+        self.info_panel.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.info_panel.setWordWrap(True)
+        self.stack.addWidget(self.code_editor)
+        self.stack.addWidget(self.image_preview)
+        self.stack.addWidget(self.info_panel)
+        splitter.addWidget(self.stack)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 3)
+
+    def _build_toolbar(self) -> QHBoxLayout:
+        toolbar = QHBoxLayout()
+        self.open_button = QPushButton(_("Otwórz EPUB…"))
+        self.open_button.setToolTip(_("Otwórz plik EPUB do podglądu i edycji"))
+        self.open_button.clicked.connect(self._choose_epub)
+        toolbar.addWidget(self.open_button)
+
+        self.path_label = QLabel(_("Nie otwarto pliku"))
+        toolbar.addWidget(self.path_label, stretch=1)
+
+        self.edit_toggle = QToolButton()
+        self.edit_toggle.setText(_("Tryb edycji"))
+        self.edit_toggle.setToolTip(_("Włącz edycję (domyślnie tylko do odczytu)"))
+        self.edit_toggle.setCheckable(True)
+        self.edit_toggle.toggled.connect(self._on_edit_toggled)
+        toolbar.addWidget(self.edit_toggle)
+
+        self.save_epub_button = QPushButton(_("Zapisz EPUB"))
+        self.save_epub_button.setToolTip(_("Zapisuje zmiany do pliku EPUB (kopia .bak)"))
+        self.save_epub_button.clicked.connect(self._save_epub)
+        toolbar.addWidget(self.save_epub_button)
+        return toolbar
+
+    def _wire_shortcuts(self) -> None:
+        save = QShortcut(QKeySequence.StandardKey.Save, self)
+        save.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        save.activated.connect(self._save_current)
+
+    # ── Otwieranie EPUB ─────────────────────────────────────────────────────--
+
+    def _choose_epub(self) -> None:
+        """Wybór pliku EPUB przez dialog i otwarcie go."""
+        path = open_file(self, _("Otwórz EPUB"), "", _("Pliki EPUB (*.epub)"))
+        if path:
+            self.open_epub(Path(path))
+
+    def open_epub(self, path: Path) -> bool:
+        """Otwiera EPUB (pyta o niezapisane zmiany bieżącego). Zwraca sukces."""
+        if not self._confirm_discard_epub():
+            return False
+        try:
+            epub = Epub(path)
+            epub.open()
+        except Exception as exc:
+            QMessageBox.critical(
+                self, _("Błąd"), _("Nie udało się otworzyć EPUB:\n{e}").format(e=exc)
+            )
+            return False
+        self._close_epub()
+        self._epub = epub
+        self._epub_path = path
+        self.path_label.setText(str(path))
+        self._populate_tree()
+        self._refresh_actions()
+        return True
+
+    def open_external(
+        self, epub_path: Path, internal_path: str | None = None, line: int | None = None
+    ) -> None:
+        """Kontrakt dla F-E/F-D: otwórz EPUB (jeśli inny), zaznacz plik, idź do linii."""
+        needs_open = self._epub_path != epub_path or self._epub is None
+        if needs_open and not self.open_epub(epub_path):
+            return
+        if internal_path is not None:
+            self._select_path(internal_path)
+        if line is not None and self.stack.currentIndex() == _PAGE_EDITOR:
+            self.code_editor.goto_line(line)
+
+    # ── Drzewo plików ─────────────────────────────────────────────────────────
+
+    def _populate_tree(self) -> None:
+        """Buduje drzewo plików pogrupowane wg media-type/rozszerzenia."""
+        self.tree.clear()
+        self._media_types = {}
+        if self._epub is None:
+            return
+        for item in self._epub.manifest:
+            internal = self._manifest_path(item.href)
+            self._media_types[internal] = item.media_type
+
+        grouped: dict[str, list[str]] = {key: [] for key in ef.GROUP_ORDER}
+        for internal in self._all_files():
+            grouped[ef.classify(internal, self._media_types.get(internal))].append(internal)
+
+        for key in ef.GROUP_ORDER:
+            paths = sorted(grouped[key])
+            if not paths:
+                continue
+            group_item = QTreeWidgetItem([_group_label(key)])
+            group_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+            self.tree.addTopLevelItem(group_item)
+            for internal in paths:
+                child = QTreeWidgetItem([self._display_name(internal)])
+                child.setData(0, _PATH_ROLE, internal)
+                group_item.addChild(child)
+            group_item.setExpanded(True)
+        self._update_tree_markers()
+
+    def _all_files(self) -> list[str]:
+        """Wszystkie pliki EPUB poza ``mimetype`` i metadanymi kontenera."""
+        if self._epub is None:
+            return []
+        skip = {"mimetype", "META-INF/container.xml"}
+        return [name for name in self._epub.list_files() if name not in skip]
+
+    def _file_items(self) -> Iterator[QTreeWidgetItem]:
+        """Iteruje po pozycjach plików w drzewie (pomija puste grupy)."""
+        for index in range(self.tree.topLevelItemCount()):
+            group = self.tree.topLevelItem(index)
+            if group is None:
+                continue
+            for child_index in range(group.childCount()):
+                child = group.child(child_index)
+                if child is not None:
+                    yield child
+
+    def _select_path(self, internal: str) -> None:
+        """Zaznacza w drzewie pozycję o danej ścieżce wewnętrznej."""
+        for child in self._file_items():
+            if child.data(0, _PATH_ROLE) == internal:
+                self.tree.setCurrentItem(child)
+                return
+
+    def _on_item_changed(
+        self, current: QTreeWidgetItem | None, previous: QTreeWidgetItem | None
+    ) -> None:
+        """Zmiana zaznaczenia: pyta o niezapisane zmiany, ładuje plik (lub cofa)."""
+        if self._switching or current is None:
+            return
+        internal = current.data(0, _PATH_ROLE)
+        if internal is None or internal == self._current:
+            return
+        if not self._confirm_discard_current():
+            self._revert_selection(previous)
+            return
+        self._show_file(internal)
+
+    def _revert_selection(self, previous: QTreeWidgetItem | None) -> None:
+        """Cofa zaznaczenie do poprzedniej pozycji bez ponownego pytania."""
+        self._switching = True
+        if previous is not None:
+            self.tree.setCurrentItem(previous)
+        else:
+            self.tree.clearSelection()
+        self._switching = False
+
+    # ── Wyświetlanie pliku ─────────────────────────────────────────────────--
+
+    def _show_file(self, internal: str) -> None:
+        """Pokazuje plik we właściwym panelu (edytor/obraz/info)."""
+        if self._epub is None:
+            return
+        self._current = internal
+        media_type = self._media_types.get(internal)
+        data = self._epub.read_file(internal)
+
+        if ef.is_image(internal, media_type):
+            self.image_preview.show_data(data)
+            self.stack.setCurrentIndex(_PAGE_IMAGE)
+            self._set_info_bar("")
+        elif ef.is_editable(internal, media_type):
+            self._show_in_editor(internal, media_type, data)
+        else:
+            self.info_panel.setText(self._binary_info(internal, media_type, len(data)))
+            self.stack.setCurrentIndex(_PAGE_INFO)
+            self._set_info_bar("")
+
+    def _show_in_editor(self, internal: str, media_type: str | None, data: bytes) -> None:
+        """Ładuje tekst do edytora; bajty zastępcze ⇒ wymuszony read-only."""
+        text, replaced = ef.decode_text(data)
+        if replaced:
+            self._readonly_files.add(internal)
+            self._set_info_bar(_("Plik zawiera znaki nie-UTF-8 — edycja zablokowana."))
+        else:
+            self._readonly_files.discard(internal)
+            self._set_info_bar("")
+        self.code_editor.load(text, ef.profile_for(internal, media_type))
+        self.stack.setCurrentIndex(_PAGE_EDITOR)
+        self._apply_read_only()
+
+    # ── Edycja / zapis ─────────────────────────────────────────────────────--
+
+    def _on_edit_toggled(self, _checked: bool) -> None:
+        """Przełącza tryb edycji i aktualizuje read-only edytora."""
+        self._apply_read_only()
+
+    def _apply_read_only(self) -> None:
+        """Edytor jest edytowalny tylko w trybie edycji i dla plików bez zastępczych."""
+        forced = self._current in self._readonly_files if self._current else False
+        self.code_editor.read_only = not self.edit_toggle.isChecked() or forced
+
+    def _on_modified(self, _modified: bool) -> None:
+        """Reaguje na zmianę stanu modyfikacji edytora (znacznik „*", akcje)."""
+        self._update_tree_markers()
+        self._refresh_actions()
+
+    def _save_current(self) -> bool:
+        """Ctrl+S: waliduje (XML), zapisuje bieżący plik do bufora EPUB."""
+        if self._epub is None or self._current is None or self.code_editor.read_only:
+            return False
+        if not self.code_editor.is_modified() and self._current not in self._readonly_files:
+            return True
+        text = self.code_editor.get_text()
+        if not self._validate_xml(self._current, text):
+            return False
+        self._epub.write_file(self._current, text.encode("utf-8"))
+        self._dirty[self._current] = text
+        self.code_editor.editor.document().setModified(False)
+        self._update_tree_markers()
+        self._refresh_actions()
+        return True
+
+    def _validate_xml(self, internal: str, text: str) -> bool:
+        """Dla profilu XML sprawdza poprawność; przy błędzie pyta „Zapisać mimo to?"."""
+        if ef.profile_for(internal, self._media_types.get(internal)) != ef.PROFILE_XML:
+            return True
+        try:
+            etree.fromstring(text.encode("utf-8"))
+        except etree.XMLSyntaxError as exc:
+            answer = QMessageBox.question(
+                self,
+                _("Niepoprawny XML"),
+                _("Plik nie jest poprawnym XML:\n{e}\n\nZapisać mimo to?").format(e=exc),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            return answer == QMessageBox.StandardButton.Yes
+        return True
+
+    def _save_epub(self) -> None:
+        """„Zapisz EPUB": utrwala bufor na dysk (z backupem .bak), resetuje wskaźniki."""
+        if self._epub is None or not self._dirty:
+            return
+        try:
+            self._epub.save()
+        except Exception as exc:
+            QMessageBox.critical(
+                self, _("Błąd"), _("Nie udało się zapisać EPUB:\n{e}").format(e=exc)
+            )
+            return
+        self._dirty.clear()
+        self._update_tree_markers()
+        self._refresh_actions()
+
+    def _confirm_discard_current(self) -> bool:
+        """Przy niezapisanych zmianach bieżącego pliku pyta Zapisz/Porzuć/Anuluj."""
+        if self._current is None or not self.code_editor.is_modified():
+            return True
+        answer = QMessageBox.question(
+            self,
+            _("Niezapisane zmiany"),
+            _("Plik „{name}” ma niezapisane zmiany.").format(name=self._current),
+            QMessageBox.StandardButton.Save
+            | QMessageBox.StandardButton.Discard
+            | QMessageBox.StandardButton.Cancel,
+        )
+        if answer == QMessageBox.StandardButton.Save:
+            return self._save_current()
+        return answer == QMessageBox.StandardButton.Discard
+
+    def _confirm_discard_epub(self) -> bool:
+        """Przy niezapisanych zmianach EPUB pyta o zapis przed otwarciem innego."""
+        if not self.has_unsaved_changes():
+            return True
+        answer = QMessageBox.question(
+            self,
+            _("Niezapisane zmiany"),
+            _("EPUB ma niezapisane zmiany. Zapisać przed zamknięciem?"),
+            QMessageBox.StandardButton.Save
+            | QMessageBox.StandardButton.Discard
+            | QMessageBox.StandardButton.Cancel,
+        )
+        if answer == QMessageBox.StandardButton.Save:
+            self._save_current()
+            self._save_epub()
+            return True
+        return answer == QMessageBox.StandardButton.Discard
+
+    # ── Stan / pomocnicze ─────────────────────────────────────────────────────
+
+    def has_unsaved_changes(self) -> bool:
+        """Czy są zmiany niezapisane na dysk (bufor EPUB lub bieżący edytor)."""
+        return bool(self._dirty) or self.code_editor.is_modified()
+
+    def set_theme(self, theme: Theme) -> None:
+        """Przekazuje motyw do edytora (numery linii, podświetlanie, trafienia)."""
+        self._theme = theme
+        self.code_editor.set_theme(theme)
+
+    def _close_epub(self) -> None:
+        """Zamyka bieżący EPUB i czyści stan edycji."""
+        if self._epub is not None:
+            self._epub.close()
+        self._epub = None
+        self._dirty.clear()
+        self._readonly_files.clear()
+        self._current = None
+
+    def _update_tree_markers(self) -> None:
+        """Dokleja „*" do nazw zmodyfikowanych plików w drzewie."""
+        for child in self._file_items():
+            internal = child.data(0, _PATH_ROLE)
+            child.setText(0, self._display_name(internal))
+
+    def _display_name(self, internal: str) -> str:
+        """Nazwa pliku w drzewie z „*", gdy zmodyfikowany (bufor lub bieżący edytor)."""
+        name = internal.rsplit("/", 1)[-1]
+        modified = internal in self._dirty or (
+            internal == self._current and self.code_editor.is_modified()
+        )
+        return f"{name} *" if modified else name
+
+    def _refresh_actions(self) -> None:
+        """Aktualizuje stan przycisku „Zapisz EPUB" i wskaźnika niezapisanych zmian."""
+        self.save_epub_button.setEnabled(bool(self._dirty))
+        self.open_button.setEnabled(True)
+
+    def _set_info_bar(self, text: str) -> None:
+        """Pokazuje/ukrywa pasek informacyjny pliku."""
+        self.info_bar.setText(text)
+        self.info_bar.setVisible(bool(text))
+
+    def _binary_info(self, internal: str, media_type: str | None, size: int) -> str:
+        """Tekst panelu info dla plików nieedytowalnych."""
+        return _("{name}\n\nTyp: {mtype}\nRozmiar: {size} B").format(
+            name=internal, mtype=media_type or _("nieznany"), size=size
+        )
+
+    def _manifest_path(self, href: str) -> str:
+        """Rozwiązuje ``href`` manifestu względem katalogu OPF do ścieżki w archiwum."""
+        if self._epub is None:
+            return href
+        base = self._epub.opf_dir()
+        path = unquote(urldefrag(href)[0])
+        if path.startswith("/"):
+            return posixpath.normpath(path.lstrip("/"))
+        return posixpath.normpath(posixpath.join(base, path)) if base else posixpath.normpath(path)

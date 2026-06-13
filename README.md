@@ -23,6 +23,7 @@
 | Hyphenacja | ✅ |
 | CSS Fixer | ✅ |
 | Presety CSS (wbudowane + własne) | ✅ |
+| Edytor wewnętrzny EPUB (podgląd + edycja) | ✅ |
 | KFX / MOBI / AZW3 | ✅ |
 | GUI (motyw jasny/ciemny) | ✅ |
 | Build: portable `.exe` + instalator | ✅ |
@@ -41,6 +42,7 @@
 - **✂️ Hyphenation** — dzielenie wyrazów dla 50+ języków
 - **🎨 CSS Fixer** — czyszczenie kolorów, fontów, justify, marginesy
 - **🎨 Presety CSS** — wbudowane szablony stylów + import własnych (dołącz / zastąp)
+- **📝 Edytor wewnętrzny** — przegląd i szybka edycja plików w EPUB z podświetlaniem XML/CSS
 - **🏷️ Metadata** — pełna edycja Dublin Core + seria/tom (Calibre i EPUB 3)
 - **🔍 Auto-detekcja** — Pandoc, Calibre, Sigil, Kindle Previewer, kindlegen
 
