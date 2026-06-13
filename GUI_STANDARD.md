@@ -6,6 +6,7 @@
 
 | Wersja | Data | Zmiany |
 |---|---|---|
+| 2.5 | 2026-06-12 | KOREKTA reguły belki: DWM ustawiany BEZWARUNKOWO = motyw app przy każdym apply() (atrybut DWM jest stanowy — „nic nie rób przy zgodności" zostawiało starą wartość → belka zamrożona; usterka po F-C); nota o timingu labelingu toolbara (po setOption, przed exec) |
 | 2.4 | 2026-06-12 | fallback QFileDialog: wymuszenie ikon+etykiet na przyciskach toolbara (back/forward/toParent/newFolder przez objectName) — przy custom QSS bywają puste, zostaje sam tooltip |
 | 2.3 | 2026-06-12 | zmiana motywu w locie: QSS regenerowany przy każdym apply() (zakaz cache'owania stringa z hexami), jawne QToolTip.setPalette() — elementy statyczne Qt nie podążają za app.setPalette() (usterka z EpubForge F-A) |
 | 2.2 | 2026-06-12 | dialog fallback: jawny binarny trade-off przy rozjeździe + standard konfiguracji nienatywnego QFileDialog (sidebar, Detail, rozmiar, instancyjne API); odrzucona opcja „zawsze natywne" z warunkiem rewizji |
@@ -137,11 +138,13 @@ Aplikacje docelowe, większe projekty, wszystko gdzie ciemny motyw i wygląd maj
    elementy statyczne/singletonowe Qt (QToolTip, QWhatsThis) NIE podążają
    za `app.setPalette()` przy zmianie w locie. Bez `update()` okna
    częściowo zasłonięte / w tle nie przerysują się aż do ekspozycji.
-5. **Pojęcie ROZJAZDU motywów** (używane niżej w pułapkach):
-   rozjazd ⇔ efektywny motyw aplikacji ≠ motyw systemu
+5. **Pojęcie ROZJAZDU motywów** (dotyczy WYŁĄCZNIE wyboru dialogu
+   natywny/nienatywny): rozjazd ⇔ efektywny motyw aplikacji ≠ motyw systemu
    (`colorScheme()`, Unknown → traktuj jako dark). Tryb auto z definicji
    nie ma rozjazdu. Reguła jest SYMETRYCZNA — „app light + system dark"
    to taki sam rozjazd jak „app dark + system light".
+   **UWAGA:** belki tytułu to NIE dotyczy — DWM ustawiamy bezwarunkowo
+   wg motywu app (patrz pułapki; atrybut DWM jest stanowy, v2.5).
 6. Tryb użytkownika (auto/jasny/ciemny) zapisywany w config (sekcja 8).
 
 ### Mocne strony
@@ -158,16 +161,22 @@ Aplikacje docelowe, większe projekty, wszystko gdzie ciemny motyw i wygląd maj
 - PySide6 jako zależność (~100 MB przy instalacji)
 
 ### Pułapki techniczne (z IcoForge + EpubForge + theme.py)
-- **Pasek tytułu a rozjazd motywów (SYMETRYCZNIE):** od Qt 6.5+ na Windows
-  pasek sam podąża za motywem **systemu** — przy zgodności nic nie rób.
-  Przy rozjeździe (w OBU kierunkach!) ustaw `DwmSetWindowAttribute(20)`
-  zgodnie z motywem **aplikacji**: app dark → TRUE, app light → **FALSE**
-  (jawnie! inaczej app wymuszona jasna na ciemnym systemie dostaje ciemny
-  pasek). Dalej: `WM_NCACTIVATE` + `RedrawWindow(RDW_FRAME)`; `winId()`
-  wołaj w `showEvent`, nie w `__init__`.
-- **Dialog odbiera focus → pasek głównego okna wraca do systemowego:**
-  nadpisz `changeEvent` na `ActivationChange` i ponownie wymuś atrybut DWM
-  (dotyczy tylko scenariusza rozjazdu jw.).
+- **Pasek tytułu — ustawiaj DWM BEZWARUNKOWO (korekta v2.5):**
+  `DwmSetWindowAttribute(20, dark)` gdzie `dark = efektywny motyw app jest
+  ciemny`, przy KAŻDYM `apply()`, na KAŻDYM oknie top-level. **NIE pomijaj
+  przy zgodności motywów** — atrybut DWM jest STANOWY: gdy raz ustawisz go
+  ręcznie (TRUE przy rozjeździe), powrót do zgodności i „nic-nie-robienie"
+  zostawia stary TRUE, a Qt go nie odbierze → belka zostaje zamrożona
+  (objaw: jasny→ciemny→jasny, belka pozostaje czarna). Bezwarunkowe
+  ustawienie na zgodności daje ten sam wynik co podążanie za systemem
+  (bo motyw app == systemowy), więc zero kosztu, znika pułapka stanowości.
+  Dalej: `WM_NCACTIVATE` + `RedrawWindow(RDW_FRAME)`; `winId()` w `showEvent`,
+  nie w `__init__`. *(Uwaga: rozróżnienie zgodność/rozjazd zostaje TYLKO dla
+  dialogów — tam natywny vs nienatywny to realne albo-albo. Dla belki było
+  błędną optymalizacją.)*
+- **Dialog odbiera focus → belka wraca do systemowej:** nadpisz `changeEvent`
+  na `ActivationChange` i ponownie ustaw atrybut DWM wg motywu app
+  (bezwarunkowo, jw.).
 - **Natywne dialogi plików (SYMETRYCZNIE):** natywny ⇔ brak rozjazdu.
   Cztery kombinacje: dark+dark → natywny (Win11 sam da ciemny);
   light+light → natywny; dark+light → `DontUseNativeDialog`;
@@ -199,6 +208,13 @@ Aplikacje docelowe, większe projekty, wszystko gdzie ciemny motyw i wygląd maj
     FileDialogToParent/FileDialogNewFolder) gdy `icon().isNull()`, ustaw
     `setText(...)` i `ToolButtonTextBesideIcon` (lub `TextOnly`, jeśli ikony
     nadal puste). `if btn is None: continue` jako bezpiecznik na zmianę nazw.
+    **TIMING (krytyczny):** drzewo widgetów istnieje DOPIERO po
+    `setOption(DontUseNativeDialog, True)` — labeling wołaj PO tym i przed
+    `exec()`, nigdy w `__init__` przed ustawieniem opcji. Jeśli przyciski
+    mimo poprawki nie mają etykiet, najpierw zdiagnozuj: wypisz
+    `[b.objectName() for b in dialog.findChildren(QToolButton)]` w momencie
+    wywołania — pusta lista = timing, inne nazwy = użyj realnych,
+    nazwy zgodne ale brak tekstu = QSS przycina (sprawdź regułę QToolButton).
   - **wymaga instancyjnego API** (`QFileDialog()` + `exec()`) — metody
     statyczne `get*FileName` nie pozwalają ustawić sidebara, rozmiaru ani
     sięgnąć do przycisków toolbara; gałąź natywna może pozostać statyczna.
@@ -345,7 +361,7 @@ Biblioteka widgetów do reużycia w każdym projekcie. Docelowo: prywatny pakiet
 | Komponent | Rola | tkinter | Qt |
 |---|---|---|---|
 | `ThemeManager` | motyw auto/jasny/ciemny + persist | słownik + apply_theme + darkdetect | theme.py: Fusion + QPalette + QSS, auto przez styleHints |
-| `set_titlebar_dark` | pasek tytułu zgodny z motywem app | GetParent(winfo_id) | winId(); tylko przy rozjeździe, w obu kierunkach (dark→TRUE, light→FALSE) |
+| `set_titlebar_dark` | pasek tytułu = motyw app (BEZWARUNKOWO, atrybut stanowy) | GetParent(winfo_id) | winId(); DWM = app_is_dark przy każdym apply, każde okno |
 | `PathEntry` | pole + przycisk wyboru | tk.Frame | QWidget |
 | `FileDialogs` | dialogi wg reguły rozjazdu + skonfigurowany fallback | tk.filedialog (zawsze natywne-jasne, ograniczenie toru) | natywny: statyczne get*; fallback: instancja QFileDialog (sidebar, Detail, rozmiar z config) |
 | `FileList` | lista plików z toolbar + D&D | tk.Listbox | QListWidget |
@@ -448,7 +464,7 @@ Przy starcie nowej aplikacji:
 [ ] config przez platformdirs + zapis atomowy + debounce (sekcja 8)
 [ ] ThemeManager z auto/jasny/ciemny (paleta + stany z sekcji 5)
 [ ] Qt: theme.py wymusza Fusion przed setPalette
-[ ] Pasek tytułu Windows: zgodność = nic; rozjazd = atrybut DWM wg motywu APP (oba kierunki)
+[ ] Pasek tytułu Windows: DWM = motyw app BEZWARUNKOWO przy każdym apply (atrybut stanowy!)
 [ ] Dialogi natywne ⇔ brak rozjazdu (reguła symetryczna); fallback skonfigurowany wg standardu (sidebar, Detail, rozmiar)
 [ ] Górny pasek wg układu z sekcji 6 (logo + motyw + about)
 [ ] Komponenty z gui-kit (sekcja 7) zamiast pisać od zera
