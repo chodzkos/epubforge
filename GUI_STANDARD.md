@@ -6,6 +6,7 @@
 
 | Wersja | Data | Zmiany |
 |---|---|---|
+| 2.4 | 2026-06-12 | fallback QFileDialog: wymuszenie ikon+etykiet na przyciskach toolbara (back/forward/toParent/newFolder przez objectName) — przy custom QSS bywają puste, zostaje sam tooltip |
 | 2.3 | 2026-06-12 | zmiana motywu w locie: QSS regenerowany przy każdym apply() (zakaz cache'owania stringa z hexami), jawne QToolTip.setPalette() — elementy statyczne Qt nie podążają za app.setPalette() (usterka z EpubForge F-A) |
 | 2.2 | 2026-06-12 | dialog fallback: jawny binarny trade-off przy rozjeździe + standard konfiguracji nienatywnego QFileDialog (sidebar, Detail, rozmiar, instancyjne API); odrzucona opcja „zawsze natywne" z warunkiem rewizji |
 | 2.1 | 2026-06-12 | symetryczna reguła rozjazdu motywów (dialogi natywne I pasek tytułu — oba kierunki, nie tylko app dark + system light); odczyt motywu systemu przy otwarciu dialogu; update() po re-aplikacji motywu (usterka z EpubForge F-S) |
@@ -190,9 +191,17 @@ Aplikacje docelowe, większe projekty, wszystko gdzie ciemny motyw i wygląd maj
   - `setViewMode(Detail)`
   - rozmiar startowy ~900×550, zapamiętywany w config
   - teksty przez i18n aplikacji
+  - **przyciski toolbara z ikoną I etykietą:** wewnętrzne `QToolButton`-y
+    (`backButton`, `forwardButton`, `toParentButton`, `newFolderButton`)
+    przy Fusion + custom QSS bywają PUSTE (zostaje sam tooltip — trzeba
+    najechać). Po konstrukcji dialogu znajdź je przez `findChild(QToolButton,
+    objectName)`, wymuś `standardIcon` (SP_ArrowBack/Forward/
+    FileDialogToParent/FileDialogNewFolder) gdy `icon().isNull()`, ustaw
+    `setText(...)` i `ToolButtonTextBesideIcon` (lub `TextOnly`, jeśli ikony
+    nadal puste). `if btn is None: continue` jako bezpiecznik na zmianę nazw.
   - **wymaga instancyjnego API** (`QFileDialog()` + `exec()`) — metody
-    statyczne `get*FileName` nie pozwalają ustawić sidebara ani rozmiaru;
-    gałąź natywna może pozostać statyczna.
+    statyczne `get*FileName` nie pozwalają ustawić sidebara, rozmiaru ani
+    sięgnąć do przycisków toolbara; gałąź natywna może pozostać statyczna.
 - **Testy reguły rozjazdu:** mockuj `styleHints().colorScheme()` —
   test 4 kombinacji + auto nie może zależeć od motywu maszyny CI.
 - **Zmiana motywu w locie — zamrożone elementy:** `QToolTip` (i pokrewne
