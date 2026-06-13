@@ -1,0 +1,27 @@
+/*
+ * EpubForge — preset „Ciemny OLED" (dark-oled).
+ *
+ * Przeznaczenie: czysta czerń tła pod ekrany OLED/AMOLED (oszczędność energii,
+ * mniejsze zmęczenie wzroku w nocy).
+ * Ograniczenia czytników: czytniki e-ink (Kindle Paperwhite, Kobo) i tryb
+ * ciemny aplikacji NADPISUJĄ kolory tekstu/tła własnym motywem — tam preset
+ * nie zadziała albo zostanie zignorowany. Sensowny głównie na czytnikach
+ * LCD/OLED (telefon, tablet) bez wymuszonego motywu.
+ */
+
+html, body {
+  background-color: #000000;
+  color: #cfcfcf;
+}
+
+p, li, blockquote {
+  color: #cfcfcf;
+}
+
+a {
+  color: #5dcaa5;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #ffffff;
+}

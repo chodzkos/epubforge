@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-06-12 13:24+0200\n"
+"POT-Creation-Date: 2026-06-13 22:20+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -34,10 +34,10 @@ msgid "Silnik konwersji (domyślnie: auto)"
 msgstr ""
 
 #: src/epubforge/cli/convert.py:32 src/epubforge/cli/convert.py:35
-#: src/epubforge/cli/fix.py:58 src/epubforge/cli/hyphenate.py:57
-#: src/epubforge/cli/kfx.py:43 src/epubforge/cli/kfx.py:46
-#: src/epubforge/cli/meta.py:40 src/epubforge/cli/mobi.py:54
-#: src/epubforge/cli/mobi.py:57
+#: src/epubforge/cli/fix.py:63 src/epubforge/cli/fix.py:73
+#: src/epubforge/cli/hyphenate.py:57 src/epubforge/cli/kfx.py:43
+#: src/epubforge/cli/kfx.py:46 src/epubforge/cli/meta.py:40
+#: src/epubforge/cli/mobi.py:54 src/epubforge/cli/mobi.py:57
 #, python-brace-format
 msgid "Błąd: {error}"
 msgstr ""
@@ -80,7 +80,15 @@ msgstr ""
 msgid "Nie dodawaj reguły h1-h3 { hyphens: none }"
 msgstr ""
 
-#: src/epubforge/cli/fix.py:61 src/epubforge/cli/hyphenate.py:60
+#: src/epubforge/cli/fix.py:40
+msgid "Dołącz preset CSS o podanym ID (zob. presets list)"
+msgstr ""
+
+#: src/epubforge/cli/fix.py:45
+msgid "Tryb presetu: dołącz obok istniejących arkuszy albo zastąp je"
+msgstr ""
+
+#: src/epubforge/cli/fix.py:76 src/epubforge/cli/hyphenate.py:60
 #, python-brace-format
 msgid "Zaktualizowano EPUB: {path}"
 msgstr ""
@@ -138,7 +146,7 @@ msgstr ""
 msgid "Wyświetl informacje o wersji i wykrytych narzędziach"
 msgstr ""
 
-#: src/epubforge/cli/main.py:55
+#: src/epubforge/cli/main.py:56
 msgid "Wykryte narzędzia: (TODO - etap 3)"
 msgstr ""
 
@@ -248,6 +256,26 @@ msgstr ""
 msgid "Utworzono {format}: {path}"
 msgstr ""
 
+#: src/epubforge/cli/presets.py:13
+msgid "Biblioteka presetów CSS"
+msgstr ""
+
+#: src/epubforge/cli/presets.py:15
+msgid "Wypisz dostępne presety CSS"
+msgstr ""
+
+#: src/epubforge/cli/presets.py:24
+msgid "ID"
+msgstr ""
+
+#: src/epubforge/cli/presets.py:24
+msgid "Nazwa"
+msgstr ""
+
+#: src/epubforge/cli/presets.py:24 src/epubforge/gui/tabs/metadata.py:125
+msgid "Opis"
+msgstr ""
+
 #: src/epubforge/gui/app.py:59 src/epubforge/gui/app.py:179
 msgid "O programie"
 msgstr ""
@@ -288,7 +316,7 @@ msgid "Motyw: {theme}"
 msgstr ""
 
 #: src/epubforge/gui/app.py:222 src/epubforge/gui/tabs/converter.py:117
-#: src/epubforge/gui/tabs/fixer.py:119 src/epubforge/gui/tabs/metadata.py:111
+#: src/epubforge/gui/tabs/fixer.py:131 src/epubforge/gui/tabs/metadata.py:111
 msgid "Język"
 msgstr ""
 
@@ -342,6 +370,22 @@ msgstr ""
 msgid ""
 "Wystąpił nieoczekiwany błąd:\n"
 "{error}"
+msgstr ""
+
+#: src/epubforge/gui/file_dialogs.py:39
+msgid "Wstecz"
+msgstr ""
+
+#: src/epubforge/gui/file_dialogs.py:40
+msgid "Do przodu"
+msgstr ""
+
+#: src/epubforge/gui/file_dialogs.py:41
+msgid "Do góry"
+msgstr ""
+
+#: src/epubforge/gui/file_dialogs.py:42
+msgid "Nowy folder"
 msgstr ""
 
 #: src/epubforge/gui/tabs/converter.py:72
@@ -416,7 +460,7 @@ msgid ""
 "Puste pole 'Folder wyjściowy' = zapis obok pliku źródłowego."
 msgstr ""
 
-#: src/epubforge/gui/tabs/converter.py:165 src/epubforge/gui/tabs/fixer.py:201
+#: src/epubforge/gui/tabs/converter.py:165 src/epubforge/gui/tabs/fixer.py:283
 #: src/epubforge/gui/tabs/kfx.py:220
 msgid "Log"
 msgstr ""
@@ -440,13 +484,13 @@ msgstr ""
 msgid "Konwertowanie..."
 msgstr ""
 
-#: src/epubforge/gui/tabs/converter.py:239 src/epubforge/gui/tabs/fixer.py:320
+#: src/epubforge/gui/tabs/converter.py:239 src/epubforge/gui/tabs/fixer.py:406
 #: src/epubforge/gui/tabs/kfx.py:356
 #, python-brace-format
 msgid "Zakończono: {done}/{total} OK"
 msgstr ""
 
-#: src/epubforge/gui/tabs/converter.py:245 src/epubforge/gui/tabs/fixer.py:326
+#: src/epubforge/gui/tabs/converter.py:245 src/epubforge/gui/tabs/fixer.py:412
 #: src/epubforge/gui/tabs/kfx.py:362
 #, python-brace-format
 msgid "BŁĄD: {message}"
@@ -456,7 +500,7 @@ msgstr ""
 msgid "Konwersja przerwana błędem"
 msgstr ""
 
-#: src/epubforge/gui/tabs/converter.py:273 src/epubforge/gui/tabs/fixer.py:394
+#: src/epubforge/gui/tabs/converter.py:273 src/epubforge/gui/tabs/fixer.py:485
 #: src/epubforge/gui/tabs/kfx.py:386 src/epubforge/gui/tabs/kfx.py:418
 #, python-brace-format
 msgid "BŁĄD: {error}"
@@ -480,179 +524,242 @@ msgstr ""
 msgid "Auto: PDF → Calibre, pozostałe → Pandoc (fallback Calibre)"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:76 src/epubforge/gui/tabs/kfx.py:244
+#: src/epubforge/gui/tabs/fixer.py:87 src/epubforge/gui/tabs/kfx.py:244
 msgid "Dodaj pliki EPUB"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:83 src/epubforge/gui/tabs/kfx.py:85
+#: src/epubforge/gui/tabs/fixer.py:94 src/epubforge/gui/tabs/kfx.py:85
 #: src/epubforge/gui/tabs/metadata.py:78
 msgid "Pliki EPUB"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:104
+#: src/epubforge/gui/tabs/fixer.py:116
 msgid "Dzielenie wyrazów"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:106
+#: src/epubforge/gui/tabs/fixer.py:118
 msgid "Włącz"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:108
+#: src/epubforge/gui/tabs/fixer.py:120
 msgid "Włącz dzielenie wyrazów dla wybranych EPUB"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:117
+#: src/epubforge/gui/tabs/fixer.py:129
 msgid "Język słownika dzielenia wyrazów (pyphen), np. pl, en_US"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:132
+#: src/epubforge/gui/tabs/fixer.py:144
 msgid "Metoda"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:135
+#: src/epubforge/gui/tabs/fixer.py:147
 msgid "Soft-hyphen może psuć słownik i wyszukiwarkę na czytniku Kindle."
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:140
+#: src/epubforge/gui/tabs/fixer.py:152
 msgid "Pomiń nagłówki"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:142
+#: src/epubforge/gui/tabs/fixer.py:154
 msgid "Nie dziel wyrazów w nagłówkach (h1-h3)"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:149
+#: src/epubforge/gui/tabs/fixer.py:161
 msgid "CSS Fixer"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:153
+#: src/epubforge/gui/tabs/fixer.py:165
 msgid "Usuń kolory"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:155
+#: src/epubforge/gui/tabs/fixer.py:167
 msgid "Usuwa deklaracje color/background z CSS (czytnik narzuca własne)"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:159
+#: src/epubforge/gui/tabs/fixer.py:171
 msgid "Usuń fonty"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:162
+#: src/epubforge/gui/tabs/fixer.py:174
 msgid ""
 "UWAGA: usuwa @font-face i pliki fontów z EPUB — nieodwracalne dla danej "
 "kopii"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:167
+#: src/epubforge/gui/tabs/fixer.py:179
 msgid "Dodaj reset CSS"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:169
+#: src/epubforge/gui/tabs/fixer.py:181
 msgid "Dodaje delikatny reset (marginesy/padding) dla spójnego renderowania"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:173
+#: src/epubforge/gui/tabs/fixer.py:185
 msgid "Zamień justowanie na lewe"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:175
+#: src/epubforge/gui/tabs/fixer.py:187
 msgid "Zamienia text-align: justify na left (mniej dużych odstępów)"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:179
+#: src/epubforge/gui/tabs/fixer.py:191
 msgid "Wyłącz hyphenację nagłówków"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:181
+#: src/epubforge/gui/tabs/fixer.py:193
 msgid "Dodaje regułę CSS wyłączającą dzielenie wyrazów w nagłówkach"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:185
+#: src/epubforge/gui/tabs/fixer.py:197
 msgid "Margines książki"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:186
+#: src/epubforge/gui/tabs/fixer.py:198
 msgid "Wstrzykuje margines strony (w px) z pola obok"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:191
+#: src/epubforge/gui/tabs/fixer.py:203
 msgid "Szerokość marginesu strony w pikselach (0-120)"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:209
+#: src/epubforge/gui/tabs/fixer.py:213
+msgid "Preset CSS"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:215
+msgid "Zastosuj preset"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:217
+msgid "Dołącza wybrany arkusz stylów do EPUB podczas naprawy"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:223
+msgid "Wbudowane presety oraz zaimportowane przez Ciebie"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:228
+msgid "Dołącz"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:228
+msgid "Zastąp"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:237
+msgid "Importuj własny…"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:238
+msgid "Zaimportuj własny plik .css jako preset"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:259
+msgid "Importuj preset CSS"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:259
+msgid "Arkusze CSS (*.css)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:265
+#, python-brace-format
+msgid "Nie udało się zaimportować presetu: {error}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:268
+#, python-brace-format
+msgid "Zaimportowano preset: {name}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:291
 msgid "Napraw"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:211
+#: src/epubforge/gui/tabs/fixer.py:293
 msgid "Hyphenacja i naprawa CSS wybranych plików (zapis w miejscu)."
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:218
+#: src/epubforge/gui/tabs/fixer.py:300
 msgid "Podgląd w Calibre Viewer"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:219
+#: src/epubforge/gui/tabs/fixer.py:301
 msgid "Otwiera ostatni naprawiony EPUB w Calibre Viewer"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:246
+#: src/epubforge/gui/tabs/fixer.py:328
 #, python-brace-format
 msgid "Wybrano {n} plik"
 msgid_plural "Wybrano {n} plików"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/epubforge/gui/tabs/fixer.py:290
+#: src/epubforge/gui/tabs/fixer.py:372
 msgid "Brak plików EPUB do naprawy"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:298
+#: src/epubforge/gui/tabs/fixer.py:380
 msgid "Naprawianie..."
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:311
+#: src/epubforge/gui/tabs/fixer.py:397
 #, python-brace-format
 msgid "Naprawianie {current}/{total}"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:327
+#: src/epubforge/gui/tabs/fixer.py:413
 msgid "Naprawa przerwana błędem"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:346
+#: src/epubforge/gui/tabs/fixer.py:432
 msgid "Nie wykryto Calibre Viewer albo brak wyniku"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:355
+#: src/epubforge/gui/tabs/fixer.py:441
 #, python-brace-format
 msgid "BŁĄD: Nie udało się otworzyć podglądu: {error}"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:359
+#: src/epubforge/gui/tabs/fixer.py:445
 #, python-brace-format
 msgid "Uruchomiono podgląd: {name}"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:387
+#: src/epubforge/gui/tabs/fixer.py:474
 msgid "Hyphenation..."
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:389
+#: src/epubforge/gui/tabs/fixer.py:476
 msgid "CSS Fixer..."
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:396
+#: src/epubforge/gui/tabs/fixer.py:480
+#, python-brace-format
+msgid "Preset CSS: {name}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:487
 #, python-brace-format
 msgid "OK: {path}"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:405
+#: src/epubforge/gui/tabs/fixer.py:495
+msgid "Usuwa istniejące arkusze CSS z EPUB i wstawia tylko wybrany preset."
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:496
+msgid "Dodaje preset obok istniejących arkuszy (nadpisuje je kaskadą CSS)."
+msgstr ""
+
+#: src/epubforge/gui/tabs/fixer.py:503
 msgid ""
 "Wstrzykuje regułę CSS 'hyphens: auto' — czysty tekst, ale słabo wspierane"
 " na Kindle."
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:408
+#: src/epubforge/gui/tabs/fixer.py:506
 msgid ""
 "Wstawia miękkie myślniki (\\u00ad) w tekście. Działa na KAŻDYM czytniku "
 "(też starym Kindle), ALE psuje słownik i wyszukiwarkę na czytniku."
@@ -846,10 +953,6 @@ msgstr ""
 
 #: src/epubforge/gui/tabs/metadata.py:123
 msgid "Opis/streszczenie książki (dc:description)"
-msgstr ""
-
-#: src/epubforge/gui/tabs/metadata.py:125
-msgid "Opis"
 msgstr ""
 
 #: src/epubforge/gui/tabs/metadata.py:134

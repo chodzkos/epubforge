@@ -1,0 +1,58 @@
+[
+  {
+    "id": "reader-friendly",
+    "name": {
+      "pl": "Czytelny",
+      "en": "Reader-friendly",
+      "de": "Lesefreundlich"
+    },
+    "description": {
+      "pl": "Wygodna interlinia, wcięcia akapitów, wyrównanie do lewej.",
+      "en": "Comfortable line height, paragraph indents, left alignment.",
+      "de": "Angenehmer Zeilenabstand, Absatzeinzüge, linksbündig."
+    },
+    "file": "reader-friendly.css"
+  },
+  {
+    "id": "print-like",
+    "name": {
+      "pl": "Jak druk",
+      "en": "Print-like",
+      "de": "Wie gedruckt"
+    },
+    "description": {
+      "pl": "Krój szeryfowy, tekst justowany, wcięcia jak w książce papierowej.",
+      "en": "Serif font, justified text, indents like a printed book.",
+      "de": "Serifenschrift, Blocksatz, Einzüge wie im gedruckten Buch."
+    },
+    "file": "print-like.css"
+  },
+  {
+    "id": "dark-oled",
+    "name": {
+      "pl": "Ciemny OLED",
+      "en": "Dark OLED",
+      "de": "Dunkel OLED"
+    },
+    "description": {
+      "pl": "Czysta czerń tła pod OLED (e-ink i tryb ciemny nadpisują kolory).",
+      "en": "Pure black background for OLED (e-ink and dark mode override colors).",
+      "de": "Reines Schwarz für OLED (E-Ink und Dunkelmodus überschreiben Farben)."
+    },
+    "file": "dark-oled.css"
+  },
+  {
+    "id": "manga-rtl",
+    "name": {
+      "pl": "Manga RTL",
+      "en": "Manga RTL",
+      "de": "Manga RTL"
+    },
+    "description": {
+      "pl": "Czytanie od prawej do lewej (ograniczone wsparcie czytników).",
+      "en": "Right-to-left reading (limited reader support).",
+      "de": "Lesen von rechts nach links (eingeschränkte Reader-Unterstützung)."
+    },
+    "file": "manga-rtl.css"
+  }
+]

@@ -1,0 +1,27 @@
+/*
+ * EpubForge — preset „Manga RTL" (manga-rtl).
+ *
+ * Przeznaczenie: kierunek czytania od prawej do lewej dla mang i komiksów —
+ * obrazy wyśrodkowane, strony bez marginesów, łamanie po stronie.
+ * Ograniczenia czytników: wsparcie dla RTL jest NIEROWNE — część czytników
+ * (zwłaszcza starsze Kindle) ignoruje `direction: rtl` i `page-progression`.
+ * Pełny efekt RTL wymaga też `page-progression-direction="rtl"` w OPF (spine),
+ * czego ten preset nie ustawia. Traktuj jako pomoc, nie gwarancję.
+ */
+
+html, body {
+  direction: rtl;
+  margin: 0;
+  padding: 0;
+}
+
+img, svg {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  height: auto;
+}
+
+p {
+  text-align: right;
+}

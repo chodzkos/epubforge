@@ -8,7 +8,7 @@ from collections.abc import Callable
 from typing import cast
 
 from epubforge import __version__
-from epubforge.cli import convert, fix, hyphenate, kfx, meta, mobi
+from epubforge.cli import convert, fix, hyphenate, kfx, meta, mobi, presets
 from epubforge.core import default_config_path, load_config
 from epubforge.i18n import _, init_i18n
 
@@ -43,6 +43,7 @@ def main(argv: list[str] | None = None) -> int:
     kfx.add_parser(subparsers)
     meta.add_parser(subparsers)
     mobi.add_parser(subparsers)
+    presets.add_parser(subparsers)
 
     args = parser.parse_args(argv)
 

@@ -8,6 +8,14 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Added
+- **Biblioteka presetów CSS (F11)** — gotowe szablony stylów dołączane do EPUB-a:
+  `reader-friendly`, `print-like`, `dark-oled`, `manga-rtl` oraz import własnych
+  arkuszy (walidacja tinycss2, katalog `config_dir()/presets`). API
+  (`list_presets`/`get_preset`/`apply_preset`/`import_user_preset`), CLI
+  (`epubforge presets list`, `fix --preset ID [--preset-mode replace]`) i sekcja
+  „Preset CSS" w zakładce Fixer. Tryb `append` dopina arkusz idempotentnie
+  (`<item>` w manifeście + `<link>` jako ostatnie dziecko `<head>`), `replace`
+  najpierw usuwa istniejące arkusze.
 - **Internacjonalizacja GUI i CLI przez gettext** — wspólne katalogi PL/EN/DE
   (`msgid` po polsku), kompilowane `.mo` w repo i przełącznik **Język** w górnym
   pasku GUI (zmiana działa po restarcie). Build kompiluje locale przed PyInstallerem

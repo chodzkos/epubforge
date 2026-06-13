@@ -22,6 +22,7 @@
 | Konwersja → EPUB | ✅ |
 | Hyphenacja | ✅ |
 | CSS Fixer | ✅ |
+| Presety CSS (wbudowane + własne) | ✅ |
 | KFX / MOBI / AZW3 | ✅ |
 | GUI (motyw jasny/ciemny) | ✅ |
 | Build: portable `.exe` + instalator | ✅ |
@@ -39,6 +40,7 @@
 - **📚 Eksport Kindle** — EPUB → KFX / MOBI / AZW3 (Calibre zalecane; KP3/kindlegen opcjonalnie)
 - **✂️ Hyphenation** — dzielenie wyrazów dla 50+ języków
 - **🎨 CSS Fixer** — czyszczenie kolorów, fontów, justify, marginesy
+- **🎨 Presety CSS** — wbudowane szablony stylów + import własnych (dołącz / zastąp)
 - **🏷️ Metadata** — pełna edycja Dublin Core + seria/tom (Calibre i EPUB 3)
 - **🔍 Auto-detekcja** — Pandoc, Calibre, Sigil, Kindle Previewer, kindlegen
 
@@ -89,6 +91,11 @@ epubforge convert input.pdf output.epub --engine calibre
 # Naprawa EPUB
 epubforge fix book.epub --remove-colors --replace-justify
 
+# Presety CSS (gotowe szablony stylów)
+epubforge presets list                              # lista presetów
+epubforge fix book.epub --preset reader-friendly    # dołącz preset
+epubforge fix book.epub --preset dark-oled --preset-mode replace  # zastąp istniejące arkusze
+
 # Hyphenacja
 epubforge hyphenate book.epub --lang pl --skip-headers
 
@@ -98,6 +105,21 @@ epubforge meta book.epub --title "Nowy tytuł" --author "Jan Kowalski"
 # Konwersja do KFX
 epubforge kfx book.epub --engine calibre
 ```
+
+### Presety CSS
+
+Gotowe szablony stylów dołączane do EPUB-a. Tryb `append` (domyślny) dodaje arkusz obok
+istniejących; `replace` usuwa istniejące arkusze i wstawia tylko preset.
+
+| ID | Opis | Uwagi |
+|---|---|---|
+| `reader-friendly` | Wygodna interlinia, wcięcia akapitów, wyrównanie do lewej | — |
+| `print-like` | Krój szeryfowy, justowanie, wcięcia jak w druku | font własny nie jest dołączany |
+| `dark-oled` | Czysta czerń tła pod OLED | e-ink i tryb ciemny czytnika nadpisują kolory |
+| `manga-rtl` | Czytanie od prawej do lewej | ograniczone wsparcie czytników |
+
+Własne presety dodasz przez `Importuj własny…` w GUI (zakładka **Fixer**) — trafiają do
+`config_dir()/presets/*.css` i pojawiają się na liście obok wbudowanych.
 
 ### Python API
 
@@ -121,6 +143,10 @@ with Epub("book.epub") as ebook:
     
     # Hyphenacja
     hyphenate(ebook, HyphenationOptions(language="pl"))
+
+    # Preset CSS
+    from epubforge.fixers import apply_preset, get_preset
+    apply_preset(ebook, get_preset("reader-friendly"), mode="append")
     
     ebook.save()  # zapisuje + tworzy backup
 ```
