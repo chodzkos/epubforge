@@ -22,28 +22,23 @@ from PySide6.QtWidgets import QFileDialog, QStyle, QToolButton, QWidget
 from epubforge.core.config import Config
 from epubforge.gui.theme import ThemeName, current_theme, system_scheme
 from epubforge.gui.window_theme import sync_titlebar
-from epubforge.i18n import _
 
 logger = logging.getLogger(__name__)
 
-# Wewnętrzne przyciski toolbara QFileDialog (objectName → ikona standardowa).
-# Przy Fusion + custom QSS bywają puste (zostaje sam tooltip) — wymuszamy ikonę i tekst.
-_TOOLBAR_BUTTONS: tuple[tuple[str, QStyle.StandardPixmap], ...] = (
-    ("backButton", QStyle.StandardPixmap.SP_ArrowBack),
-    ("forwardButton", QStyle.StandardPixmap.SP_ArrowForward),
-    ("toParentButton", QStyle.StandardPixmap.SP_FileDialogToParent),
-    ("newFolderButton", QStyle.StandardPixmap.SP_FileDialogNewFolder),
-)
+# Standardowe ikony przycisków nawigacji nienatywnego QFileDialog (po objectName).
+_NAV_ICONS: dict[str, QStyle.StandardPixmap] = {
+    "backButton": QStyle.StandardPixmap.SP_ArrowBack,
+    "forwardButton": QStyle.StandardPixmap.SP_ArrowForward,
+    "toParentButton": QStyle.StandardPixmap.SP_FileDialogToParent,
+    "newFolderButton": QStyle.StandardPixmap.SP_FileDialogNewFolder,
+}
 
-
-def _toolbar_label(name: str) -> str:
-    """Etykieta przycisku toolbara (osobne literały ``_()`` dla ekstrakcji Babel)."""
-    return {
-        "backButton": _("Wstecz"),
-        "forwardButton": _("Do przodu"),
-        "toParentButton": _("Do góry"),
-        "newFolderButton": _("Nowy folder"),
-    }.get(name, "")
+# Diagnoza (offscreen + Windows): dialog przypina przyciski toolbara do ~22 px,
+# a app-owy QSS `QToolButton { padding: 4px 12px; border: 1px }` dokłada 24 px
+# poziomego paddingu — w 22 px przycisku przycina ikonę DO ZERA (stąd „puste,
+# tylko tooltip"). Per-widget QSS o wyższym priorytecie zdejmuje to przycięcie,
+# żeby standardowa ikona 16 px się zmieściła (tekst i tak nie wejdzie w 22 px).
+_TOOLBUTTON_RESET_QSS = "QToolButton { padding: 1px; border: none; }"
 
 
 # Klucz i domyślny rozmiar okna dialogu Qt (zapamiętywane w configu).
@@ -142,30 +137,23 @@ def _dark_dialog(parent: QWidget, title: str, start_dir: str, config: Config | N
 
 
 def _force_toolbar_buttons(dialog: QFileDialog) -> None:
-    """Wymusza ikonę i etykietę na przyciskach toolbara (GUI_STANDARD v2.4 §4).
+    """Przywraca widoczność przycisków toolbara nienatywnego QFileDialog.
 
-    Przy Fusion + własnym QSS wewnętrzne ``QToolButton``-y dialogu potrafią być
-    puste — zostaje tylko tooltip. Uzupełniamy ikonę standardową (gdy brak) oraz
-    tekst; gdy ikona dalej pusta, pokazujemy sam tekst. Wołane tuż przed
-    ``exec()``, gdy drzewo widgetów dialogu jest już w pełni zbudowane.
+    Zdejmuje z KAŻDEGO ``QToolButton`` dialogu app-owy QSS (padding/border), który
+    w wąskim (~22 px) przycisku przycinał ikonę do zera (back/forward/toParent/
+    newFolder oraz przełączniki widoku) — zostawał sam tooltip. Przyciskom
+    nawigacji dokłada standardową ikonę, gdy ich własna jest pusta. Wołane tuż
+    przed ``exec()``, gdy drzewo widgetów dialogu jest już zbudowane.
     """
+    buttons = dialog.findChildren(QToolButton)
     # Diagnostyka regresji „puste przyciski" — realne objectName w danej wersji Qt.
-    logger.debug(
-        "QFileDialog toolbar buttons: %s",
-        [button.objectName() for button in dialog.findChildren(QToolButton)],
-    )
+    logger.debug("QFileDialog toolbar buttons: %s", [b.objectName() for b in buttons])
     style = dialog.style()
-    for name, pixmap in _TOOLBAR_BUTTONS:
-        button = dialog.findChild(QToolButton, name)
-        if button is None:  # bezpiecznik na zmianę nazw w przyszłych Qt
-            continue
-        if button.icon().isNull():
+    for button in buttons:
+        button.setStyleSheet(_TOOLBUTTON_RESET_QSS)
+        pixmap = _NAV_ICONS.get(button.objectName())
+        if pixmap is not None and button.icon().isNull():
             button.setIcon(style.standardIcon(pixmap))
-        button.setText(_toolbar_label(name))
-        if button.icon().isNull():
-            button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
-        else:
-            button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
 
 
 def _sidebar_urls(start_dir: str, config: Config | None) -> list[QUrl]:
