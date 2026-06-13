@@ -62,6 +62,10 @@ motywu, „O programie") i zakładki robocze:
   `.css` trafia do katalogu presetów). Naprawa działa **w miejscu**.
 - **Eksport Kindle** — wybierz format (KFX / MOBI / AZW3) i silnik, opcjonalnie napraw
   EPUB przed konwersją, wskaż folder wyjściowy.
+- **Edytor** — otwórz EPUB, przeglądaj pliki w drzewie (Tekst/Style/Obrazy/Fonty/Inne),
+  edytuj HTML/CSS z podświetlaniem i wyszukiwarką (Ctrl+F). Edycja jest domyślnie
+  wyłączona — włącz **Tryb edycji**. Zapis pliku: Ctrl+S (XHTML/OPF jest walidowany);
+  **Zapisz EPUB** utrwala zmiany na dysk (kopia `.bak`). Pliki nie-UTF-8 są tylko do odczytu.
 
 **Motyw:** górny pasek → przełącznik **Automatyczny / Jasny / Ciemny** (auto podąża za
 systemem). Na Windows zmienia się też kolor paska tytułu.

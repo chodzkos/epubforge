@@ -8,6 +8,14 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Added
+- **Edytor wewnętrzny EPUB (F3, część 1)** — zakładka „Edytor": drzewo plików
+  pogrupowane wg media-type (Tekst/Style/Obrazy/Fonty/Inne), edytor z numeracją
+  linii, podświetlaniem składni XML/CSS (kolory z motywu), wyszukiwarką (Ctrl+F,
+  F3/Shift+F3, licznik trafień) i statusem wiersz:kolumna. Podgląd obrazów,
+  panel info dla binariów. Start w trybie tylko-do-odczytu (przełącznik „Tryb
+  edycji"); zapis pliku (Ctrl+S, walidacja XML), „Zapisz EPUB" z backupem `.bak`;
+  pliki nie-UTF-8 są tylko do odczytu. Kontrakt `MainWindow.open_in_editor(...)`
+  dla kolejnych funkcji.
 - **Biblioteka presetów CSS (F11)** — gotowe szablony stylów dołączane do EPUB-a:
   `reader-friendly`, `print-like`, `dark-oled`, `manga-rtl` oraz import własnych
   arkuszy (walidacja tinycss2, katalog `config_dir()/presets`). API

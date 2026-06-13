@@ -32,13 +32,11 @@ def _make_window(qtbot: QtBot, qapp: QApplication, tmp_path: Path, config: dict)
     return window
 
 
-def test_main_window_has_four_working_tabs(
-    qtbot: QtBot, qapp: QApplication, tmp_path: Path
-) -> None:
-    """Okno buduje 4 zakładki robocze (About wyjęte do górnego paska)."""
+def test_main_window_has_working_tabs(qtbot: QtBot, qapp: QApplication, tmp_path: Path) -> None:
+    """Okno buduje zakładki robocze (About wyjęte do górnego paska)."""
     window = _make_window(qtbot, qapp, tmp_path, {})
     titles = [window.tabs.tabText(i) for i in range(window.tabs.count())]
-    assert titles == ["Metadane", "Konwerter", "Fixer", "Eksport Kindle"]
+    assert titles == ["Metadane", "Konwerter", "Fixer", "Eksport Kindle", "Edytor"]
 
 
 def test_main_window_status_shows_detected_tools(

@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
 
 from epubforge import __version__
 from epubforge.core import ConfigStore, Tool, default_config_path, detect_with_cache, load_config
-from epubforge.gui.tabs import ConverterTab, FixerTab, KfxTab, MetadataTab
+from epubforge.gui.tabs import ConverterTab, EditorTab, FixerTab, KfxTab, MetadataTab
 from epubforge.gui.theme import ThemeManager, ThemeName, ThemeSetting
 from epubforge.gui.widgets import AboutPanel, LogView
 from epubforge.gui.window_theme import sync_titlebar
@@ -189,10 +189,12 @@ class MainWindow(QMainWindow):
         self.converter_tab = ConverterTab(config=self.config_data)
         self.fixer_tab = FixerTab(tools=self.tools)
         self.kfx_tab = KfxTab(tools=self.tools, config=self.config_data)
+        self.editor_tab = EditorTab()
         self.tabs.addTab(self.metadata_tab, _("Metadane"))
         self.tabs.addTab(self.converter_tab, _("Konwerter"))
         self.tabs.addTab(self.fixer_tab, _("Fixer"))
         self.tabs.addTab(self.kfx_tab, _("Eksport Kindle"))
+        self.tabs.addTab(self.editor_tab, _("Edytor"))
         layout.addWidget(self.tabs, stretch=1)
 
     def _build_status_bar(self) -> None:
@@ -243,6 +245,7 @@ class MainWindow(QMainWindow):
         self._sync_language_actions()
         for log_view in self._log_views():
             log_view.set_theme(self.theme_manager.theme)
+        self.editor_tab.set_theme(self.theme_manager.theme)
         if self._about_dialog is not None:
             self._about_dialog.set_mode(self.theme_manager.theme.name)
 
@@ -311,8 +314,29 @@ class MainWindow(QMainWindow):
         if event.type() == QEvent.Type.ActivationChange:
             self._sync_titlebar()
 
+    def open_in_editor(
+        self, epub_path: Path, internal_path: str | None = None, line: int | None = None
+    ) -> None:
+        """Otwiera plik EPUB w zakładce Edytor (kontrakt dla F-D/F-E).
+
+        Przełącza na zakładkę Edytor, otwiera EPUB (jeśli inny niż bieżący — z
+        obsługą niezapisanych zmian), zaznacza plik i ustawia kursor na linii.
+        """
+        self.tabs.setCurrentWidget(self.editor_tab)
+        self.editor_tab.open_external(epub_path, internal_path, line)
+
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802 — Qt API
-        """Zapisuje konfigurację (motyw, geometria) bezwarunkowo przy zamknięciu."""
+        """Pyta o niezapisane zmiany Edytora, potem zapisuje konfigurację."""
+        if self.editor_tab.has_unsaved_changes():
+            answer = QMessageBox.question(
+                self,
+                _("Niezapisane zmiany"),
+                _("Edytor ma niezapisane zmiany. Zamknąć mimo to?"),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if answer != QMessageBox.StandardButton.Yes:
+                event.ignore()
+                return
         self.config_data["theme"] = self.theme_manager.setting
         self.config_data[_GEOMETRY_KEY] = bytes(self.saveGeometry().toHex().data()).decode("ascii")
         self.config_data.save_now()
