@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 from epubforge.core import Epub, EpubError
-from epubforge.fixers import CssFixOptions, fix_css
+from epubforge.fixers import CssFixOptions, PresetError, apply_preset, fix_css, get_preset
 from epubforge.i18n import _
 
 
@@ -37,6 +37,13 @@ def add_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) 
         default=True,
         help=_("Nie dodawaj reguły h1-h3 { hyphens: none }"),
     )
+    parser.add_argument("--preset", help=_("Dołącz preset CSS o podanym ID (zob. presets list)"))
+    parser.add_argument(
+        "--preset-mode",
+        choices=("append", "replace"),
+        default="append",
+        help=_("Tryb presetu: dołącz obok istniejących arkuszy albo zastąp je"),
+    )
     parser.set_defaults(func=run)
 
 
@@ -51,8 +58,16 @@ def run(args: argparse.Namespace) -> int:
         skip_hyphenation_headers=args.skip_hyphenation_headers,
     )
     try:
+        preset = get_preset(args.preset) if args.preset else None
+    except PresetError as exc:
+        print(_("Błąd: {error}").format(error=exc), file=sys.stderr)
+        return 1
+
+    try:
         with Epub(args.file) as epub:
             fix_css(epub, options)
+            if preset is not None:
+                apply_preset(epub, preset, mode=args.preset_mode)
             epub.save()
     except EpubError as exc:
         print(_("Błąd: {error}").format(error=exc), file=sys.stderr)

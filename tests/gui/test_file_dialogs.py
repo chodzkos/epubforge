@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from PySide6.QtWidgets import QFileDialog
+from PySide6.QtWidgets import QFileDialog, QToolButton
 from pytestqt.qtbot import QtBot
 
 from epubforge.gui import file_dialogs
@@ -113,6 +113,17 @@ def test_dark_dialog_restores_size_and_persists_on_run(
     monkeypatch.setattr(dialog, "exec", lambda: 0)  # anulowanie
     file_dialogs._first_selected(dialog, config)
     assert config["file_dialog_size"] == [910, 540]
+
+
+def test_dark_dialog_toolbar_buttons_have_icon_and_text(qtbot: QtBot) -> None:
+    """Przyciski toolbara fallbacku mają ikonę i etykietę (GUI_STANDARD v2.4)."""
+    dialog = file_dialogs._dark_dialog(None, "Tytuł", "", None)
+    qtbot.addWidget(dialog)
+    for name, _pixmap in file_dialogs._TOOLBAR_BUTTONS:
+        button = dialog.findChild(QToolButton, name)
+        assert button is not None
+        assert button.text()  # niepusta etykieta
+        assert not button.icon().isNull()
 
 
 def _theme(name: str) -> object:

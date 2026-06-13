@@ -1,0 +1,33 @@
+/*
+ * EpubForge — preset „Jak druk" (print-like).
+ *
+ * Przeznaczenie: wygląd zbliżony do książki papierowej — szeryfowy krój,
+ * tekst justowany, wcięcia pierwszego wiersza zamiast odstępów między akapitami.
+ * Ograniczenia czytników: justowanie na wąskim ekranie potrafi tworzyć duże
+ * odstępy między słowami; krój szeryfowy zadziała tylko, jeśli czytnik ma
+ * rodzinę „serif" (większość ma) — własny font nie jest dołączany.
+ */
+
+body {
+  font-family: serif;
+  line-height: 1.45;
+  text-align: justify;
+  margin: 0 1em;
+}
+
+p {
+  margin: 0;
+  text-indent: 1.4em;
+  orphans: 2;
+  widows: 2;
+}
+
+p:first-of-type {
+  text-indent: 0;
+}
+
+h1, h2, h3 {
+  font-family: serif;
+  hyphens: none;
+  page-break-after: avoid;
+}

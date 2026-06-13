@@ -16,11 +16,32 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import QDir, QStandardPaths, Qt, QUrl
-from PySide6.QtWidgets import QFileDialog, QWidget
+from PySide6.QtWidgets import QFileDialog, QStyle, QToolButton, QWidget
 
 from epubforge.core.config import Config
 from epubforge.gui.theme import ThemeName, current_theme, system_scheme
 from epubforge.gui.window_theme import sync_titlebar
+from epubforge.i18n import _
+
+# Wewnętrzne przyciski toolbara QFileDialog (objectName → ikona standardowa).
+# Przy Fusion + custom QSS bywają puste (zostaje sam tooltip) — wymuszamy ikonę i tekst.
+_TOOLBAR_BUTTONS: tuple[tuple[str, QStyle.StandardPixmap], ...] = (
+    ("backButton", QStyle.StandardPixmap.SP_ArrowBack),
+    ("forwardButton", QStyle.StandardPixmap.SP_ArrowForward),
+    ("toParentButton", QStyle.StandardPixmap.SP_FileDialogToParent),
+    ("newFolderButton", QStyle.StandardPixmap.SP_FileDialogNewFolder),
+)
+
+
+def _toolbar_label(name: str) -> str:
+    """Etykieta przycisku toolbara (osobne literały ``_()`` dla ekstrakcji Babel)."""
+    return {
+        "backButton": _("Wstecz"),
+        "forwardButton": _("Do przodu"),
+        "toParentButton": _("Do góry"),
+        "newFolderButton": _("Nowy folder"),
+    }.get(name, "")
+
 
 # Klucz i domyślny rozmiar okna dialogu Qt (zapamiętywane w configu).
 _DIALOG_SIZE_KEY = "file_dialog_size"
@@ -110,8 +131,30 @@ def _dark_dialog(parent: QWidget, title: str, start_dir: str, config: Config | N
     dialog.setViewMode(QFileDialog.ViewMode.Detail)
     dialog.setSidebarUrls(_sidebar_urls(start_dir, config))
     _restore_size(dialog, config)
+    _force_toolbar_buttons(dialog)
     sync_titlebar(dialog, current_theme().name, system_scheme())
     return dialog
+
+
+def _force_toolbar_buttons(dialog: QFileDialog) -> None:
+    """Wymusza ikonę i etykietę na przyciskach toolbara (GUI_STANDARD v2.4 §4).
+
+    Przy Fusion + własnym QSS wewnętrzne ``QToolButton``-y dialogu potrafią być
+    puste — zostaje tylko tooltip. Uzupełniamy ikonę standardową (gdy brak) oraz
+    tekst; gdy ikona dalej pusta, pokazujemy sam tekst.
+    """
+    style = dialog.style()
+    for name, pixmap in _TOOLBAR_BUTTONS:
+        button = dialog.findChild(QToolButton, name)
+        if button is None:  # bezpiecznik na zmianę nazw w przyszłych Qt
+            continue
+        if button.icon().isNull():
+            button.setIcon(style.standardIcon(pixmap))
+        button.setText(_toolbar_label(name))
+        if button.icon().isNull():
+            button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        else:
+            button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
 
 
 def _sidebar_urls(start_dir: str, config: Config | None) -> list[QUrl]:

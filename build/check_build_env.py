@@ -16,7 +16,9 @@ _REQUIRED_MODULES = {
     "platformdirs": "platformdirs",
 }
 
-_LOCALE_DIR = Path(__file__).resolve().parent.parent / "src" / "epubforge" / "locale"
+_SRC_DIR = Path(__file__).resolve().parent.parent / "src" / "epubforge"
+_LOCALE_DIR = _SRC_DIR / "locale"
+_PRESETS_DIR = _SRC_DIR / "fixers" / "presets"
 
 
 def main() -> int:
@@ -50,6 +52,9 @@ def main() -> int:
     if not any(_LOCALE_DIR.glob("*/LC_MESSAGES/epubforge.mo")):
         print("[BLAD] Brak skompilowanych plikow locale (*.mo).")
         print("Uruchom: python build/compile_locales.py")
+        return 1
+    if not (_PRESETS_DIR / "presets.json").is_file() or not any(_PRESETS_DIR.glob("*.css")):
+        print("[BLAD] Brak presetow CSS (fixers/presets/presets.json + *.css).")
         return 1
     print("[OK] Srodowisko buildu zawiera wymagane zaleznosci.")
     return 0

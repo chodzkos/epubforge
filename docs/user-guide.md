@@ -57,7 +57,9 @@ motywu, „O programie") i zakładki robocze:
   (Auto / Pandoc / Calibre) i folder wyjściowy, kliknij **Konwertuj**. PDF wymaga
   potwierdzenia (konwersja eksperymentalna).
 - **Fixer** — hyphenacja (język, metoda soft-hyphen/CSS) i normalizacja CSS
-  (usuń kolory/fonty, reset, justify→lewo, margines). Naprawa działa **w miejscu**.
+  (usuń kolory/fonty, reset, justify→lewo, margines). Sekcja **Preset CSS** dołącza
+  gotowy szablon stylów (Dołącz/Zastąp), z możliwością **Importuj własny…** (plik
+  `.css` trafia do katalogu presetów). Naprawa działa **w miejscu**.
 - **Eksport Kindle** — wybierz format (KFX / MOBI / AZW3) i silnik, opcjonalnie napraw
   EPUB przed konwersją, wskaż folder wyjściowy.
 
@@ -79,6 +81,11 @@ epubforge convert input.pdf output.epub --engine calibre
 # Naprawa EPUB (hyphenacja + CSS)
 epubforge fix book.epub --remove-colors --replace-justify
 epubforge hyphenate book.epub --lang pl --method soft-hyphen --skip-headers
+
+# Presety CSS — gotowe szablony stylów
+epubforge presets list                            # lista dostępnych presetów
+epubforge fix book.epub --preset reader-friendly  # dołącz preset do EPUB
+epubforge fix book.epub --preset dark-oled --preset-mode replace  # zastąp arkusze
 
 # Metadane (podgląd i edycja, w tym seria/tom)
 epubforge meta book.epub

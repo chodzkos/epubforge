@@ -24,8 +24,19 @@ from PySide6.QtWidgets import (
 )
 
 from epubforge.core import Epub, Tool, Tools
-from epubforge.fixers import CssFixOptions, HyphenationOptions, fix_css, hyphenate
+from epubforge.fixers import (
+    CssFixOptions,
+    HyphenationOptions,
+    PresetError,
+    apply_preset,
+    fix_css,
+    get_preset,
+    hyphenate,
+    import_user_preset,
+    list_presets,
+)
 from epubforge.fixers.hyphenator import HyphenationMethod
+from epubforge.gui.file_dialogs import open_file
 from epubforge.gui.widgets import FileList, LogView, Section
 from epubforge.gui.workers import CREATE_NO_WINDOW, EmitLine, EmitProgress, Worker
 from epubforge.i18n import _, ngettext
@@ -96,6 +107,7 @@ class FixerTab(QWidget):
         options.addWidget(self._build_css_section(), stretch=1)
         layout.addLayout(options)
 
+        layout.addWidget(self._build_preset_section())
         self._build_log(layout)
         self._build_actions(layout)
 
@@ -195,6 +207,76 @@ class FixerTab(QWidget):
         section.content_layout().addLayout(margin)
         section.content_layout().addStretch(1)
         return section
+
+    def _build_preset_section(self) -> Section:
+        """Buduje sekcję wyboru i importu presetu CSS."""
+        section = Section(_("Preset CSS"))
+
+        self.preset_enabled = QCheckBox(_("Zastosuj preset"))
+        self.preset_enabled.setToolTip(_("Dołącza wybrany arkusz stylów do EPUB podczas naprawy"))
+        section.add_widget(self.preset_enabled)
+
+        row = QHBoxLayout()
+        self.preset_box = QComboBox()
+        self.preset_box.setToolTip(_("Wbudowane presety oraz zaimportowane przez Ciebie"))
+        self._populate_presets()
+        row.addWidget(self.preset_box, stretch=1)
+
+        self.preset_mode_group = QButtonGroup(self)
+        for label, value in ((_("Dołącz"), "append"), (_("Zastąp"), "replace")):
+            radio = QRadioButton(label)
+            radio.setProperty("mode", value)
+            radio.setToolTip(_preset_mode_tooltip(value))
+            if value == "append":
+                radio.setChecked(True)
+            self.preset_mode_group.addButton(radio)
+            row.addWidget(radio)
+
+        self.preset_import_button = QPushButton(_("Importuj własny…"))
+        self.preset_import_button.setToolTip(_("Zaimportuj własny plik .css jako preset"))
+        self.preset_import_button.clicked.connect(self._import_preset)
+        row.addWidget(self.preset_import_button)
+        section.content_layout().addLayout(row)
+        section.content_layout().addStretch(1)
+        return section
+
+    def _populate_presets(self, select_id: str | None = None) -> None:
+        """Wypełnia listę presetów (nazwa — opis); opcjonalnie zaznacza ``select_id``."""
+        self.preset_box.clear()
+        for preset in list_presets():
+            description = preset.display_description()
+            label = (
+                f"{preset.display_name()} — {description}" if description else preset.display_name()
+            )
+            self.preset_box.addItem(label, preset.id)
+        if select_id is not None:
+            index = self.preset_box.findData(select_id)
+            if index >= 0:
+                self.preset_box.setCurrentIndex(index)
+
+    def _import_preset(self) -> None:
+        """Importuje własny plik CSS jako preset i odświeża listę."""
+        path = open_file(self, _("Importuj preset CSS"), "", _("Arkusze CSS (*.css)"))
+        if not path:
+            return
+        try:
+            preset = import_user_preset(Path(path))
+        except PresetError as exc:
+            self._set_status(_("Nie udało się zaimportować presetu: {error}").format(error=exc))
+            return
+        self._populate_presets(select_id=preset.id)
+        self._set_status(_("Zaimportowano preset: {name}").format(name=preset.display_name()))
+
+    def _preset_choice(self) -> tuple[str, str] | None:
+        """Zwraca ``(id, tryb)`` wybranego presetu albo ``None``, gdy wyłączony."""
+        if not self.preset_enabled.isChecked():
+            return None
+        preset_id = self.preset_box.currentData()
+        if not preset_id:
+            return None
+        button = self.preset_mode_group.checkedButton()
+        mode = cast(str, button.property("mode")) if button is not None else "append"
+        return str(preset_id), mode
 
     def _build_log(self, layout: QVBoxLayout) -> None:
         """Buduje pole logu naprawy EPUB."""
@@ -298,7 +380,11 @@ class FixerTab(QWidget):
         self._set_status(_("Naprawianie..."))
 
         self._worker = Worker(
-            _run_fix_worker, files, self._build_hyphen_options(), self._build_css_options()
+            _run_fix_worker,
+            files,
+            self._build_hyphen_options(),
+            self._build_css_options(),
+            self._preset_choice(),
         )
         self._worker.line.connect(self.log_view.append_line)
         self._worker.progress.connect(self._on_progress)
@@ -370,6 +456,7 @@ def _run_fix_worker(
     files: list[Path],
     hyphen_options: HyphenationOptions | None,
     css_options: CssFixOptions,
+    preset_choice: tuple[str, str] | None,
 ) -> tuple[int, int, Path | None]:
     """Naprawia pliki po kolei w wątku roboczym.
 
@@ -388,6 +475,10 @@ def _run_fix_worker(
                     hyphenate(epub, hyphen_options)
                 emit_line(_("CSS Fixer..."), "info")
                 fix_css(epub, css_options)
+                if preset_choice is not None:
+                    preset_id, preset_mode = preset_choice
+                    emit_line(_("Preset CSS: {name}").format(name=preset_id), "info")
+                    apply_preset(epub, get_preset(preset_id), mode=preset_mode)
                 last_fixed = epub.save()
         except Exception as exc:
             logger.exception("Nie udało się naprawić EPUB: %s", path)
@@ -396,6 +487,13 @@ def _run_fix_worker(
         emit_line(_("OK: {path}").format(path=last_fixed), "ok")
         succeeded += 1
     return succeeded, total, last_fixed
+
+
+def _preset_mode_tooltip(value: str) -> str:
+    """Zwraca tooltip trybu presetu jako literal gettext dla Babel."""
+    if value == "replace":
+        return _("Usuwa istniejące arkusze CSS z EPUB i wstawia tylko wybrany preset.")
+    return _("Dodaje preset obok istniejących arkuszy (nadpisuje je kaskadą CSS).")
 
 
 def _method_tooltip(value: str) -> str:

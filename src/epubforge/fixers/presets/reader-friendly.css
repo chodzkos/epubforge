@@ -1,0 +1,28 @@
+/*
+ * EpubForge — preset „Czytelny" (reader-friendly).
+ *
+ * Przeznaczenie: wygodne czytanie ciągłego tekstu — łagodna interlinia,
+ * marginesy akapitów i wyrównanie do lewej (bez dużych „rzek" justowania).
+ * Ograniczenia czytników: rozmiar fontu i marginesy strony i tak nadpisuje
+ * większość czytników (Kindle/Kobo) z ustawień użytkownika — preset wpływa
+ * głównie na interlinię, wcięcia i wyrównanie.
+ */
+
+body {
+  line-height: 1.5;
+  text-align: left;
+  margin: 0 1em;
+}
+
+p {
+  margin: 0 0 0.6em 0;
+  text-indent: 1.2em;
+  orphans: 2;
+  widows: 2;
+}
+
+h1, h2, h3 {
+  line-height: 1.2;
+  hyphens: none;
+  page-break-after: avoid;
+}

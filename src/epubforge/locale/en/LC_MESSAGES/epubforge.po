@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EpubForge 1.0.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-06-12 13:24+0200\n"
+"POT-Creation-Date: 2026-06-13 22:20+0200\n"
 "PO-Revision-Date: 2026-06-12 13:30+0200\n"
 "Last-Translator: EpubForge translators <noreply@example.com>\n"
 "Language: en\n"
@@ -35,10 +35,10 @@ msgid "Silnik konwersji (domyślnie: auto)"
 msgstr "Conversion engine (default: auto)"
 
 #: src/epubforge/cli/convert.py:32 src/epubforge/cli/convert.py:35
-#: src/epubforge/cli/fix.py:58 src/epubforge/cli/hyphenate.py:57
-#: src/epubforge/cli/kfx.py:43 src/epubforge/cli/kfx.py:46
-#: src/epubforge/cli/meta.py:40 src/epubforge/cli/mobi.py:54
-#: src/epubforge/cli/mobi.py:57
+#: src/epubforge/cli/fix.py:63 src/epubforge/cli/fix.py:73
+#: src/epubforge/cli/hyphenate.py:57 src/epubforge/cli/kfx.py:43
+#: src/epubforge/cli/kfx.py:46 src/epubforge/cli/meta.py:40
+#: src/epubforge/cli/mobi.py:54 src/epubforge/cli/mobi.py:57
 #, python-brace-format
 msgid "Błąd: {error}"
 msgstr "Error: {error}"
@@ -81,7 +81,15 @@ msgstr "Add @page margin in px"
 msgid "Nie dodawaj reguły h1-h3 { hyphens: none }"
 msgstr "Do not add the h1-h3 { hyphens: none } rule"
 
-#: src/epubforge/cli/fix.py:61 src/epubforge/cli/hyphenate.py:60
+#: src/epubforge/cli/fix.py:40
+msgid "Dołącz preset CSS o podanym ID (zob. presets list)"
+msgstr "Append the CSS preset with the given ID (see presets list)"
+
+#: src/epubforge/cli/fix.py:45
+msgid "Tryb presetu: dołącz obok istniejących arkuszy albo zastąp je"
+msgstr "Preset mode: append alongside existing stylesheets or replace them"
+
+#: src/epubforge/cli/fix.py:76 src/epubforge/cli/hyphenate.py:60
 #, python-brace-format
 msgid "Zaktualizowano EPUB: {path}"
 msgstr "Updated EPUB: {path}"
@@ -139,7 +147,7 @@ msgstr "Available commands"
 msgid "Wyświetl informacje o wersji i wykrytych narzędziach"
 msgstr "Show version and detected tool information"
 
-#: src/epubforge/cli/main.py:55
+#: src/epubforge/cli/main.py:56
 msgid "Wykryte narzędzia: (TODO - etap 3)"
 msgstr "Detected tools: (TODO - stage 3)"
 
@@ -242,14 +250,32 @@ msgstr "Target format (default: mobi)"
 
 #: src/epubforge/cli/mobi.py:31
 msgid "Silnik konwersji; Calibre zalecany, kindlegen wycofany (domyślnie calibre)"
-msgstr ""
-"Conversion engine; Calibre recommended, kindlegen deprecated (default: "
-"calibre)"
+msgstr "Conversion engine; Calibre recommended, kindlegen deprecated (default: calibre)"
 
 #: src/epubforge/cli/mobi.py:62
 #, python-brace-format
 msgid "Utworzono {format}: {path}"
 msgstr "Created {format}: {path}"
+
+#: src/epubforge/cli/presets.py:13
+msgid "Biblioteka presetów CSS"
+msgstr "CSS preset library"
+
+#: src/epubforge/cli/presets.py:15
+msgid "Wypisz dostępne presety CSS"
+msgstr "List available CSS presets"
+
+#: src/epubforge/cli/presets.py:24
+msgid "ID"
+msgstr "ID"
+
+#: src/epubforge/cli/presets.py:24
+msgid "Nazwa"
+msgstr "Name"
+
+#: src/epubforge/cli/presets.py:24 src/epubforge/gui/tabs/metadata.py:125
+msgid "Opis"
+msgstr "Description"
 
 #: src/epubforge/gui/app.py:59 src/epubforge/gui/app.py:179
 msgid "O programie"
@@ -291,7 +317,7 @@ msgid "Motyw: {theme}"
 msgstr "Theme: {theme}"
 
 #: src/epubforge/gui/app.py:222 src/epubforge/gui/tabs/converter.py:117
-#: src/epubforge/gui/tabs/fixer.py:119 src/epubforge/gui/tabs/metadata.py:111
+#: src/epubforge/gui/tabs/fixer.py:131 src/epubforge/gui/tabs/metadata.py:111
 msgid "Język"
 msgstr "Language"
 
@@ -348,6 +374,22 @@ msgid ""
 msgstr ""
 "An unexpected error occurred:\n"
 "{error}"
+
+#: src/epubforge/gui/file_dialogs.py:39
+msgid "Wstecz"
+msgstr "Back"
+
+#: src/epubforge/gui/file_dialogs.py:40
+msgid "Do przodu"
+msgstr "Forward"
+
+#: src/epubforge/gui/file_dialogs.py:41
+msgid "Do góry"
+msgstr "Up"
+
+#: src/epubforge/gui/file_dialogs.py:42
+msgid "Nowy folder"
+msgstr "New folder"
 
 #: src/epubforge/gui/tabs/converter.py:72
 msgid "Dodaj pliki wejściowe"
@@ -423,7 +465,7 @@ msgstr ""
 "Converts selected files to EPUB with the chosen engine.\n"
 "Empty 'Output folder' = save next to the source file."
 
-#: src/epubforge/gui/tabs/converter.py:165 src/epubforge/gui/tabs/fixer.py:201
+#: src/epubforge/gui/tabs/converter.py:165 src/epubforge/gui/tabs/fixer.py:283
 #: src/epubforge/gui/tabs/kfx.py:220
 msgid "Log"
 msgstr "Log"
@@ -433,13 +475,8 @@ msgid "Konwersja PDF → EPUB"
 msgstr "PDF → EPUB conversion"
 
 #: src/epubforge/gui/tabs/converter.py:185
-msgid ""
-"Konwersja PDF → EPUB jest eksperymentalna. Calibre wstawia sztywne "
-"marginesy i może łamać akapity. Najlepsze wyniki dla prostych PDF "
-"tekstowych. Kontynuować?"
-msgstr ""
-"PDF → EPUB conversion is experimental. Calibre inserts fixed margins and "
-"may break paragraphs. Best results are for simple text PDFs. Continue?"
+msgid "Konwersja PDF → EPUB jest eksperymentalna. Calibre wstawia sztywne marginesy i może łamać akapity. Najlepsze wyniki dla prostych PDF tekstowych. Kontynuować?"
+msgstr "PDF → EPUB conversion is experimental. Calibre inserts fixed margins and may break paragraphs. Best results are for simple text PDFs. Continue?"
 
 #: src/epubforge/gui/tabs/converter.py:214
 msgid "Brak plików do konwersji"
@@ -449,13 +486,13 @@ msgstr "No files to convert"
 msgid "Konwertowanie..."
 msgstr "Converting..."
 
-#: src/epubforge/gui/tabs/converter.py:239 src/epubforge/gui/tabs/fixer.py:320
+#: src/epubforge/gui/tabs/converter.py:239 src/epubforge/gui/tabs/fixer.py:406
 #: src/epubforge/gui/tabs/kfx.py:356
 #, python-brace-format
 msgid "Zakończono: {done}/{total} OK"
 msgstr "Finished: {done}/{total} OK"
 
-#: src/epubforge/gui/tabs/converter.py:245 src/epubforge/gui/tabs/fixer.py:326
+#: src/epubforge/gui/tabs/converter.py:245 src/epubforge/gui/tabs/fixer.py:412
 #: src/epubforge/gui/tabs/kfx.py:362
 #, python-brace-format
 msgid "BŁĄD: {message}"
@@ -465,7 +502,7 @@ msgstr "ERROR: {message}"
 msgid "Konwersja przerwana błędem"
 msgstr "Conversion stopped with an error"
 
-#: src/epubforge/gui/tabs/converter.py:273 src/epubforge/gui/tabs/fixer.py:394
+#: src/epubforge/gui/tabs/converter.py:273 src/epubforge/gui/tabs/fixer.py:485
 #: src/epubforge/gui/tabs/kfx.py:386 src/epubforge/gui/tabs/kfx.py:418
 #, python-brace-format
 msgid "BŁĄD: {error}"
@@ -489,191 +526,240 @@ msgstr "Force Calibre ebook-convert (also supports PDF/MOBI/FB2)"
 msgid "Auto: PDF → Calibre, pozostałe → Pandoc (fallback Calibre)"
 msgstr "Auto: PDF → Calibre, others → Pandoc (fallback Calibre)"
 
-#: src/epubforge/gui/tabs/fixer.py:76 src/epubforge/gui/tabs/kfx.py:244
+#: src/epubforge/gui/tabs/fixer.py:87 src/epubforge/gui/tabs/kfx.py:244
 msgid "Dodaj pliki EPUB"
 msgstr "Add EPUB files"
 
-#: src/epubforge/gui/tabs/fixer.py:83 src/epubforge/gui/tabs/kfx.py:85
+#: src/epubforge/gui/tabs/fixer.py:94 src/epubforge/gui/tabs/kfx.py:85
 #: src/epubforge/gui/tabs/metadata.py:78
 msgid "Pliki EPUB"
 msgstr "EPUB files"
 
-#: src/epubforge/gui/tabs/fixer.py:104
+#: src/epubforge/gui/tabs/fixer.py:116
 msgid "Dzielenie wyrazów"
 msgstr "Hyphenation"
 
-#: src/epubforge/gui/tabs/fixer.py:106
+#: src/epubforge/gui/tabs/fixer.py:118
 msgid "Włącz"
 msgstr "Enable"
 
-#: src/epubforge/gui/tabs/fixer.py:108
+#: src/epubforge/gui/tabs/fixer.py:120
 msgid "Włącz dzielenie wyrazów dla wybranych EPUB"
 msgstr "Enable hyphenation for selected EPUB files"
 
-#: src/epubforge/gui/tabs/fixer.py:117
+#: src/epubforge/gui/tabs/fixer.py:129
 msgid "Język słownika dzielenia wyrazów (pyphen), np. pl, en_US"
 msgstr "Hyphenation dictionary language (pyphen), e.g. pl, en_US"
 
-#: src/epubforge/gui/tabs/fixer.py:132
+#: src/epubforge/gui/tabs/fixer.py:144
 msgid "Metoda"
 msgstr "Method"
 
-#: src/epubforge/gui/tabs/fixer.py:135
+#: src/epubforge/gui/tabs/fixer.py:147
 msgid "Soft-hyphen może psuć słownik i wyszukiwarkę na czytniku Kindle."
 msgstr "Soft hyphens may break dictionary lookup and search on Kindle readers."
 
-#: src/epubforge/gui/tabs/fixer.py:140
+#: src/epubforge/gui/tabs/fixer.py:152
 msgid "Pomiń nagłówki"
 msgstr "Skip headings"
 
-#: src/epubforge/gui/tabs/fixer.py:142
+#: src/epubforge/gui/tabs/fixer.py:154
 msgid "Nie dziel wyrazów w nagłówkach (h1-h3)"
 msgstr "Do not hyphenate headings (h1-h3)"
 
-#: src/epubforge/gui/tabs/fixer.py:149
+#: src/epubforge/gui/tabs/fixer.py:161
 msgid "CSS Fixer"
 msgstr "CSS Fixer"
 
-#: src/epubforge/gui/tabs/fixer.py:153
+#: src/epubforge/gui/tabs/fixer.py:165
 msgid "Usuń kolory"
 msgstr "Remove colors"
 
-#: src/epubforge/gui/tabs/fixer.py:155
+#: src/epubforge/gui/tabs/fixer.py:167
 msgid "Usuwa deklaracje color/background z CSS (czytnik narzuca własne)"
-msgstr ""
-"Removes color/background declarations from CSS (reader controls its own "
-"colors)"
+msgstr "Removes color/background declarations from CSS (reader controls its own colors)"
 
-#: src/epubforge/gui/tabs/fixer.py:159
+#: src/epubforge/gui/tabs/fixer.py:171
 msgid "Usuń fonty"
 msgstr "Remove fonts"
 
-#: src/epubforge/gui/tabs/fixer.py:162
-msgid ""
-"UWAGA: usuwa @font-face i pliki fontów z EPUB — nieodwracalne dla danej "
-"kopii"
-msgstr ""
-"WARNING: removes @font-face and font files from the EPUB — irreversible "
-"for that copy"
+#: src/epubforge/gui/tabs/fixer.py:174
+msgid "UWAGA: usuwa @font-face i pliki fontów z EPUB — nieodwracalne dla danej kopii"
+msgstr "WARNING: removes @font-face and font files from the EPUB — irreversible for that copy"
 
-#: src/epubforge/gui/tabs/fixer.py:167
+#: src/epubforge/gui/tabs/fixer.py:179
 msgid "Dodaj reset CSS"
 msgstr "Add CSS reset"
 
-#: src/epubforge/gui/tabs/fixer.py:169
+#: src/epubforge/gui/tabs/fixer.py:181
 msgid "Dodaje delikatny reset (marginesy/padding) dla spójnego renderowania"
 msgstr "Adds a gentle reset (margins/padding) for consistent rendering"
 
-#: src/epubforge/gui/tabs/fixer.py:173
+#: src/epubforge/gui/tabs/fixer.py:185
 msgid "Zamień justowanie na lewe"
 msgstr "Align justified text left"
 
-#: src/epubforge/gui/tabs/fixer.py:175
+#: src/epubforge/gui/tabs/fixer.py:187
 msgid "Zamienia text-align: justify na left (mniej dużych odstępów)"
 msgstr "Changes text-align: justify to left (fewer large gaps)"
 
-#: src/epubforge/gui/tabs/fixer.py:179
+#: src/epubforge/gui/tabs/fixer.py:191
 msgid "Wyłącz hyphenację nagłówków"
 msgstr "Disable heading hyphenation"
 
-#: src/epubforge/gui/tabs/fixer.py:181
+#: src/epubforge/gui/tabs/fixer.py:193
 msgid "Dodaje regułę CSS wyłączającą dzielenie wyrazów w nagłówkach"
 msgstr "Adds a CSS rule that disables hyphenation in headings"
 
-#: src/epubforge/gui/tabs/fixer.py:185
+#: src/epubforge/gui/tabs/fixer.py:197
 msgid "Margines książki"
 msgstr "Book margin"
 
-#: src/epubforge/gui/tabs/fixer.py:186
+#: src/epubforge/gui/tabs/fixer.py:198
 msgid "Wstrzykuje margines strony (w px) z pola obok"
 msgstr "Injects a page margin (px) from the field next to it"
 
-#: src/epubforge/gui/tabs/fixer.py:191
+#: src/epubforge/gui/tabs/fixer.py:203
 msgid "Szerokość marginesu strony w pikselach (0-120)"
 msgstr "Page margin width in pixels (0-120)"
 
-#: src/epubforge/gui/tabs/fixer.py:209
+#: src/epubforge/gui/tabs/fixer.py:213
+msgid "Preset CSS"
+msgstr "CSS preset"
+
+#: src/epubforge/gui/tabs/fixer.py:215
+msgid "Zastosuj preset"
+msgstr "Apply preset"
+
+#: src/epubforge/gui/tabs/fixer.py:217
+msgid "Dołącza wybrany arkusz stylów do EPUB podczas naprawy"
+msgstr "Attaches the selected stylesheet to the EPUB during fixing"
+
+#: src/epubforge/gui/tabs/fixer.py:223
+msgid "Wbudowane presety oraz zaimportowane przez Ciebie"
+msgstr "Built-in presets and the ones you imported"
+
+#: src/epubforge/gui/tabs/fixer.py:228
+msgid "Dołącz"
+msgstr "Append"
+
+#: src/epubforge/gui/tabs/fixer.py:228
+msgid "Zastąp"
+msgstr "Replace"
+
+#: src/epubforge/gui/tabs/fixer.py:237
+msgid "Importuj własny…"
+msgstr "Import your own…"
+
+#: src/epubforge/gui/tabs/fixer.py:238
+msgid "Zaimportuj własny plik .css jako preset"
+msgstr "Import your own .css file as a preset"
+
+#: src/epubforge/gui/tabs/fixer.py:259
+msgid "Importuj preset CSS"
+msgstr "Import CSS preset"
+
+#: src/epubforge/gui/tabs/fixer.py:259
+msgid "Arkusze CSS (*.css)"
+msgstr "CSS stylesheets (*.css)"
+
+#: src/epubforge/gui/tabs/fixer.py:265
+#, python-brace-format
+msgid "Nie udało się zaimportować presetu: {error}"
+msgstr "Failed to import preset: {error}"
+
+#: src/epubforge/gui/tabs/fixer.py:268
+#, python-brace-format
+msgid "Zaimportowano preset: {name}"
+msgstr "Imported preset: {name}"
+
+#: src/epubforge/gui/tabs/fixer.py:291
 msgid "Napraw"
 msgstr "Fix"
 
-#: src/epubforge/gui/tabs/fixer.py:211
+#: src/epubforge/gui/tabs/fixer.py:293
 msgid "Hyphenacja i naprawa CSS wybranych plików (zapis w miejscu)."
 msgstr "Hyphenation and CSS repair for selected files (saved in place)."
 
-#: src/epubforge/gui/tabs/fixer.py:218
+#: src/epubforge/gui/tabs/fixer.py:300
 msgid "Podgląd w Calibre Viewer"
 msgstr "Preview in Calibre Viewer"
 
-#: src/epubforge/gui/tabs/fixer.py:219
+#: src/epubforge/gui/tabs/fixer.py:301
 msgid "Otwiera ostatni naprawiony EPUB w Calibre Viewer"
 msgstr "Opens the last fixed EPUB in Calibre Viewer"
 
-#: src/epubforge/gui/tabs/fixer.py:246
+#: src/epubforge/gui/tabs/fixer.py:328
 #, python-brace-format
 msgid "Wybrano {n} plik"
 msgid_plural "Wybrano {n} plików"
 msgstr[0] "{n} file selected"
 msgstr[1] "{n} files selected"
 
-#: src/epubforge/gui/tabs/fixer.py:290
+#: src/epubforge/gui/tabs/fixer.py:372
 msgid "Brak plików EPUB do naprawy"
 msgstr "No EPUB files to fix"
 
-#: src/epubforge/gui/tabs/fixer.py:298
+#: src/epubforge/gui/tabs/fixer.py:380
 msgid "Naprawianie..."
 msgstr "Fixing..."
 
-#: src/epubforge/gui/tabs/fixer.py:311
+#: src/epubforge/gui/tabs/fixer.py:397
 #, python-brace-format
 msgid "Naprawianie {current}/{total}"
 msgstr "Fixing {current}/{total}"
 
-#: src/epubforge/gui/tabs/fixer.py:327
+#: src/epubforge/gui/tabs/fixer.py:413
 msgid "Naprawa przerwana błędem"
 msgstr "Fixing stopped with an error"
 
-#: src/epubforge/gui/tabs/fixer.py:346
+#: src/epubforge/gui/tabs/fixer.py:432
 msgid "Nie wykryto Calibre Viewer albo brak wyniku"
 msgstr "Calibre Viewer not detected or no result available"
 
-#: src/epubforge/gui/tabs/fixer.py:355
+#: src/epubforge/gui/tabs/fixer.py:441
 #, python-brace-format
 msgid "BŁĄD: Nie udało się otworzyć podglądu: {error}"
 msgstr "ERROR: Could not open preview: {error}"
 
-#: src/epubforge/gui/tabs/fixer.py:359
+#: src/epubforge/gui/tabs/fixer.py:445
 #, python-brace-format
 msgid "Uruchomiono podgląd: {name}"
 msgstr "Preview started: {name}"
 
-#: src/epubforge/gui/tabs/fixer.py:387
+#: src/epubforge/gui/tabs/fixer.py:474
 msgid "Hyphenation..."
 msgstr "Hyphenation..."
 
-#: src/epubforge/gui/tabs/fixer.py:389
+#: src/epubforge/gui/tabs/fixer.py:476
 msgid "CSS Fixer..."
 msgstr "CSS Fixer..."
 
-#: src/epubforge/gui/tabs/fixer.py:396
+#: src/epubforge/gui/tabs/fixer.py:480
+#, python-brace-format
+msgid "Preset CSS: {name}"
+msgstr "CSS preset: {name}"
+
+#: src/epubforge/gui/tabs/fixer.py:487
 #, python-brace-format
 msgid "OK: {path}"
 msgstr "OK: {path}"
 
-#: src/epubforge/gui/tabs/fixer.py:405
-msgid ""
-"Wstrzykuje regułę CSS 'hyphens: auto' — czysty tekst, ale słabo wspierane"
-" na Kindle."
-msgstr ""
-"Injects the CSS rule 'hyphens: auto' — clean text, but poorly supported "
-"on Kindle."
+#: src/epubforge/gui/tabs/fixer.py:495
+msgid "Usuwa istniejące arkusze CSS z EPUB i wstawia tylko wybrany preset."
+msgstr "Removes existing CSS stylesheets from the EPUB and inserts only the selected preset."
 
-#: src/epubforge/gui/tabs/fixer.py:408
-msgid ""
-"Wstawia miękkie myślniki (\\u00ad) w tekście. Działa na KAŻDYM czytniku "
-"(też starym Kindle), ALE psuje słownik i wyszukiwarkę na czytniku."
-msgstr ""
-"Inserts soft hyphens (\\u00ad) into text. Works on EVERY reader "
-"(including old Kindle), BUT breaks dictionary lookup and search."
+#: src/epubforge/gui/tabs/fixer.py:496
+msgid "Dodaje preset obok istniejących arkuszy (nadpisuje je kaskadą CSS)."
+msgstr "Adds the preset alongside existing stylesheets (overrides them via the CSS cascade)."
+
+#: src/epubforge/gui/tabs/fixer.py:503
+msgid "Wstrzykuje regułę CSS 'hyphens: auto' — czysty tekst, ale słabo wspierane na Kindle."
+msgstr "Injects the CSS rule 'hyphens: auto' — clean text, but poorly supported on Kindle."
+
+#: src/epubforge/gui/tabs/fixer.py:506
+msgid "Wstawia miękkie myślniki (\\u00ad) w tekście. Działa na KAŻDYM czytniku (też starym Kindle), ALE psuje słownik i wyszukiwarkę na czytniku."
+msgstr "Inserts soft hyphens (\\u00ad) into text. Works on EVERY reader (including old Kindle), BUT breaks dictionary lookup and search."
 
 #: src/epubforge/gui/tabs/kfx.py:103
 msgid "Format docelowy"
@@ -696,12 +782,8 @@ msgid "ZALECANE"
 msgstr "RECOMMENDED"
 
 #: src/epubforge/gui/tabs/kfx.py:142
-msgid ""
-"Eksperymentalny silnik KFX — wrażliwy na nieidealny EPUB. Preferuj "
-"Calibre + wtyczkę KFX Output."
-msgstr ""
-"Experimental KFX engine — sensitive to imperfect EPUB files. Prefer "
-"Calibre + KFX Output plugin."
+msgid "Eksperymentalny silnik KFX — wrażliwy na nieidealny EPUB. Preferuj Calibre + wtyczkę KFX Output."
+msgstr "Experimental KFX engine — sensitive to imperfect EPUB files. Prefer Calibre + KFX Output plugin."
 
 #: src/epubforge/gui/tabs/kfx.py:150
 msgid "EKSPERYMENTALNE - wrażliwe na formatowanie"
@@ -716,12 +798,8 @@ msgid "Zalecany silnik MOBI/AZW3 — nowoczesny i aktywnie rozwijany"
 msgstr "Recommended MOBI/AZW3 engine — modern and actively maintained"
 
 #: src/epubforge/gui/tabs/kfx.py:174
-msgid ""
-"Wycofany przez Amazon (utknął na 2.9). Działa do MOBI, ale zalecany jest "
-"Calibre ebook-convert."
-msgstr ""
-"Deprecated by Amazon (stuck at 2.9). Works for MOBI, but Calibre ebook-"
-"convert is recommended."
+msgid "Wycofany przez Amazon (utknął na 2.9). Działa do MOBI, ale zalecany jest Calibre ebook-convert."
+msgstr "Deprecated by Amazon (stuck at 2.9). Works for MOBI, but Calibre ebook-convert is recommended."
 
 #: src/epubforge/gui/tabs/kfx.py:181
 msgid "WYCOFANY - opcjonalny"
@@ -744,12 +822,8 @@ msgid "Folder na pliki wynikowe; puste = zapis obok pliku źródłowego"
 msgstr "Folder for output files; empty = save next to the source file"
 
 #: src/epubforge/gui/tabs/kfx.py:232
-msgid ""
-"Eksportuje wybrane pliki EPUB do wybranego formatu Kindle "
-"(KFX/MOBI/AZW3). Puste pole folderu = zapis obok źródła."
-msgstr ""
-"Exports selected EPUB files to the chosen Kindle format (KFX/MOBI/AZW3). "
-"Empty folder field = save next to the source."
+msgid "Eksportuje wybrane pliki EPUB do wybranego formatu Kindle (KFX/MOBI/AZW3). Puste pole folderu = zapis obok źródła."
+msgstr "Exports selected EPUB files to the chosen Kindle format (KFX/MOBI/AZW3). Empty folder field = save next to the source."
 
 #: src/epubforge/gui/tabs/kfx.py:269
 #, python-brace-format
@@ -789,26 +863,12 @@ msgid "KFX — nowoczesny format Kindle (Calibre + wtyczka KFX Output)"
 msgstr "KFX — modern Kindle format (Calibre + KFX Output plugin)"
 
 #: src/epubforge/gui/tabs/kfx.py:445
-msgid ""
-"Kindle Previewer 3 jest eksperymentalny i bardziej wrażliwy na błędy "
-"EPUB. Przed konwersją usuń niestandardowe fonty, uprość CSS, unikaj "
-"wymuszonych marginesów i zostaw włączoną naprawę EPUB. Jeśli konwersja "
-"się nie powiedzie, wróć do silnika Calibre + wtyczka KFX Output."
-msgstr ""
-"Kindle Previewer 3 is experimental and more sensitive to EPUB errors. "
-"Before conversion, remove custom fonts, simplify CSS, avoid forced "
-"margins, and keep EPUB repair enabled. If conversion fails, switch back "
-"to Calibre + KFX Output plugin."
+msgid "Kindle Previewer 3 jest eksperymentalny i bardziej wrażliwy na błędy EPUB. Przed konwersją usuń niestandardowe fonty, uprość CSS, unikaj wymuszonych marginesów i zostaw włączoną naprawę EPUB. Jeśli konwersja się nie powiedzie, wróć do silnika Calibre + wtyczka KFX Output."
+msgstr "Kindle Previewer 3 is experimental and more sensitive to EPUB errors. Before conversion, remove custom fonts, simplify CSS, avoid forced margins, and keep EPUB repair enabled. If conversion fails, switch back to Calibre + KFX Output plugin."
 
 #: src/epubforge/gui/tabs/kfx.py:455
-msgid ""
-"kindlegen jest oficjalnie wycofany przez Amazon (utknął na wersji 2.9) i "
-"nie jest już rozwijany. Nadal tworzy poprawne pliki MOBI, ale zalecanym, "
-"nowocześniejszym silnikiem jest Calibre ebook-convert."
-msgstr ""
-"kindlegen is officially deprecated by Amazon (stuck at version 2.9) and "
-"is no longer developed. It still creates valid MOBI files, but Calibre "
-"ebook-convert is the recommended modern engine."
+msgid "kindlegen jest oficjalnie wycofany przez Amazon (utknął na wersji 2.9) i nie jest już rozwijany. Nadal tworzy poprawne pliki MOBI, ale zalecanym, nowocześniejszym silnikiem jest Calibre ebook-convert."
+msgstr "kindlegen is officially deprecated by Amazon (stuck at version 2.9) and is no longer developed. It still creates valid MOBI files, but Calibre ebook-convert is the recommended modern engine."
 
 #: src/epubforge/gui/tabs/metadata.py:71 src/epubforge/gui/tabs/metadata.py:252
 msgid "Wybierz plik EPUB"
@@ -877,10 +937,6 @@ msgstr "Subjects"
 #: src/epubforge/gui/tabs/metadata.py:123
 msgid "Opis/streszczenie książki (dc:description)"
 msgstr "Description/summary of the book (dc:description)"
-
-#: src/epubforge/gui/tabs/metadata.py:125
-msgid "Opis"
-msgstr "Description"
 
 #: src/epubforge/gui/tabs/metadata.py:134
 msgid "Nazwa cyklu/serii, np. Wiedźmin"
@@ -980,12 +1036,8 @@ msgid "Tom nr nie jest liczbą; zapisano pozostałe metadane"
 msgstr "Volume number is not a number; other metadata was saved"
 
 #: src/epubforge/gui/tabs/metadata.py:334
-msgid ""
-"Pole „Tom nr” musi być liczbą, np. 2 albo 1.5. Ta wartość nie zostanie "
-"zmieniona."
-msgstr ""
-"The “Vol. no” field must be a number, e.g. 2 or 1.5. This value will not "
-"be changed."
+msgid "Pole „Tom nr” musi być liczbą, np. 2 albo 1.5. Ta wartość nie zostanie zmieniona."
+msgstr "The “Vol. no” field must be a number, e.g. 2 or 1.5. This value will not be changed."
 
 #: src/epubforge/gui/widgets/about_panel.py:59
 #, python-brace-format
