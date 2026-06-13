@@ -110,16 +110,20 @@ def test_dark_dialog_restores_size_and_persists_on_run(
     assert config["file_dialog_size"] == [910, 540]
 
 
-def test_dark_dialog_toolbar_buttons_have_icon_and_text(qtbot: QtBot) -> None:
-    """Po obsadzeniu (tuż przed exec) przyciski toolbara mają ikonę i etykietę (v2.4)."""
+def test_dark_dialog_toolbar_buttons_get_icon_and_unclipped(qtbot: QtBot) -> None:
+    """Przyciski nawigacji dostają ikonę, a przycinający app-owy padding jest zdjęty.
+
+    To była przyczyna „pustych przycisków" — w 22 px przycisku padding 4px 12px
+    z app-QSS przycinał ikonę do zera. Labeling wołany tuż przed exec().
+    """
     dialog = file_dialogs._dark_dialog(None, "Tytuł", "", None)
     qtbot.addWidget(dialog)
     file_dialogs._force_toolbar_buttons(dialog)  # w produkcji wołane tuż przed exec()
-    for name, _pixmap in file_dialogs._TOOLBAR_BUTTONS:
+    for name in file_dialogs._NAV_ICONS:
         button = dialog.findChild(QToolButton, name)
         assert button is not None
-        assert button.text()  # niepusta etykieta
         assert not button.icon().isNull()
+        assert "padding: 1px" in button.styleSheet()  # ciężki padding zneutralizowany
 
 
 def _theme(name: str) -> object:

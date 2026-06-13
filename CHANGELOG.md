@@ -27,10 +27,11 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
   (bez pomijania „przy zgodzie z systemem"), na KAŻDYM oknie top-level przy każdym
   `apply()` oraz w `changeEvent`/aktywacji. Wcześniej końcowy jasny zostawiał
   czarną belkę.
-- **Etykiety przycisków toolbara nienatywnego `QFileDialog`** — obsadzenie ikon
-  i tekstu (back/forward/toParent/newFolder) przeniesione tuż przed `exec()`
-  (drzewo widgetów dialogu bywa nieobsadzone zaraz po konstrukcji); dodano log
-  DEBUG z realnymi `objectName` do diagnostyki.
+- **Puste przyciski toolbara nienatywnego `QFileDialog`** — dialog przypina
+  przyciski do ~22 px, a app-owy QSS `QToolButton { padding: 4px 12px }` przycinał
+  w nich ikonę do zera (zostawał sam tooltip). Per-widget QSS zdejmuje teraz to
+  przycięcie z każdego przycisku toolbara, a przyciskom nawigacji (back/forward/
+  toParent/newFolder) dokładana jest standardowa ikona, gdy własna jest pusta.
 - **Tooltipy po zmianie motywu w locie** — `QToolTip` dostaje jawnie świeżą
   paletę po każdym `apply()`, a QSS jest ponownie generowany i ustawiany dla
   bieżących kolorów.
