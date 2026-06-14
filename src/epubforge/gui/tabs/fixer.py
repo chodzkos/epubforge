@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
     QComboBox,
+    QDialog,
     QFormLayout,
     QHBoxLayout,
     QLabel,
@@ -37,7 +38,8 @@ from epubforge.fixers import (
 )
 from epubforge.fixers.hyphenator import HyphenationMethod
 from epubforge.gui.file_dialogs import open_file
-from epubforge.gui.widgets import FileList, LogView, Section
+from epubforge.gui.theme import current_theme
+from epubforge.gui.widgets import CssInspector, FileList, LogView, Section
 from epubforge.gui.workers import CREATE_NO_WINDOW, EmitLine, EmitProgress, Worker
 from epubforge.i18n import _, ngettext
 
@@ -232,6 +234,11 @@ class FixerTab(QWidget):
             self.preset_mode_group.addButton(radio)
             row.addWidget(radio)
 
+        self.preset_preview_button = QPushButton(_("Podgląd…"))
+        self.preset_preview_button.setToolTip(_("Podejrzyj reguły presetu na przykładowym tekście"))
+        self.preset_preview_button.clicked.connect(self._preview_preset)
+        row.addWidget(self.preset_preview_button)
+
         self.preset_import_button = QPushButton(_("Importuj własny…"))
         self.preset_import_button.setToolTip(_("Zaimportuj własny plik .css jako preset"))
         self.preset_import_button.clicked.connect(self._import_preset)
@@ -266,6 +273,26 @@ class FixerTab(QWidget):
             return
         self._populate_presets(select_id=preset.id)
         self._set_status(_("Zaimportowano preset: {name}").format(name=preset.display_name()))
+
+    def _preview_preset(self) -> None:
+        """Otwiera podgląd reguł wybranego presetu (inspektor CSS tylko do odczytu)."""
+        preset_id = self.preset_box.currentData()
+        if not preset_id:
+            return
+        try:
+            preset = get_preset(str(preset_id))
+        except PresetError as exc:
+            self._set_status(_("Nie udało się wczytać presetu: {error}").format(error=exc))
+            return
+        css = preset.read_css()
+        dialog = QDialog(self)
+        dialog.setWindowTitle(_("Podgląd presetu: {name}").format(name=preset.display_name()))
+        dialog.resize(640, 560)
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(
+            CssInspector(get_source=lambda: css, apply_replacement=None, theme=current_theme())
+        )
+        dialog.exec()
 
     def _preset_choice(self) -> tuple[str, str] | None:
         """Zwraca ``(id, tryb)`` wybranego presetu albo ``None``, gdy wyłączony."""

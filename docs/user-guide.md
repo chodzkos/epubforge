@@ -66,6 +66,14 @@ motywu, „O programie") i zakładki robocze:
   edytuj HTML/CSS z podświetlaniem i wyszukiwarką (Ctrl+F). Edycja jest domyślnie
   wyłączona — włącz **Tryb edycji**. Zapis pliku: Ctrl+S (XHTML/OPF jest walidowany);
   **Zapisz EPUB** utrwala zmiany na dysk (kopia `.bak`). Pliki nie-UTF-8 są tylko do odczytu.
+  Przy otwartym `.css` panel **Inspektor CSS** pokazuje listę reguł i podgląd na żywo —
+  edytujesz regułę, a „Zastosuj do arkusza" wpisuje ją z powrotem do pliku.
+
+  > ⚠️ **Podgląd jest przybliżony.** Renderuje go silnik rich text Qt, który obsługuje
+  > tylko podzbiór CSS (m.in. `font-*`, `color`, `text-align`, `margin/padding`,
+  > `line-height`). Właściwości spoza tego zakresu (np. `letter-spacing`, `hyphens`,
+  > `float`) są wypisywane jako „nieobsługiwane w podglądzie" i **nie** wpływają na obraz.
+  > Docelowy czytnik może renderować inaczej — traktuj podgląd jako orientacyjny.
 
 **Motyw:** górny pasek → przełącznik **Automatyczny / Jasny / Ciemny** (auto podąża za
 systemem). Na Windows zmienia się też kolor paska tytułu.

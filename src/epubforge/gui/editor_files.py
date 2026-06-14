@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import posixpath
 from typing import Literal
+from urllib.parse import unquote, urldefrag
 
 # Profil podświetlania składni edytora.
 Profile = Literal["xml", "css"]
@@ -90,6 +91,16 @@ def is_editable(internal_path: str, media_type: str | None = None) -> bool:
 def is_image(internal_path: str, media_type: str | None = None) -> bool:
     """Czy plik to obraz rastrowy (podgląd przez QPixmap)."""
     return classify(internal_path, media_type) == GROUP_IMAGE
+
+
+def resolve_internal_path(href: str, opf_dir: str) -> str:
+    """Rozwiązuje ``href`` manifestu (względem katalogu OPF) do ścieżki w archiwum."""
+    path = unquote(urldefrag(href)[0])
+    if path.startswith("/"):
+        return posixpath.normpath(path.lstrip("/"))
+    return (
+        posixpath.normpath(posixpath.join(opf_dir, path)) if opf_dir else posixpath.normpath(path)
+    )
 
 
 def decode_text(data: bytes) -> tuple[str, bool]:
