@@ -36,7 +36,7 @@ def test_main_window_has_working_tabs(qtbot: QtBot, qapp: QApplication, tmp_path
     """Okno buduje zakładki robocze (About wyjęte do górnego paska)."""
     window = _make_window(qtbot, qapp, tmp_path, {})
     titles = [window.tabs.tabText(i) for i in range(window.tabs.count())]
-    assert titles == ["Metadane", "Konwerter", "Fixer", "Eksport Kindle", "Edytor"]
+    assert titles == ["Metadane", "Konwerter", "Fixer", "Eksport Kindle", "Edytor", "Walidacja"]
 
 
 def test_main_window_status_shows_detected_tools(

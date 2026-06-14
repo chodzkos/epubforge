@@ -195,6 +195,8 @@ def test_detect_all_keys(monkeypatch: pytest.MonkeyPatch) -> None:
         "sigil",
         "kindle_previewer",
         "kindlegen",
+        "java",
+        "epubcheck",
     }
     assert all(isinstance(t, Tool) for t in tools.values())
 
@@ -250,6 +252,8 @@ def test_detect_with_cache_writes(tmp_path: Path, no_tools: None) -> None:
         "sigil",
         "kindle_previewer",
         "kindlegen",
+        "java",
+        "epubcheck",
     }
     saved = load_config(cfg)
     assert "last_detected" in saved

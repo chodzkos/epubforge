@@ -17,6 +17,7 @@ from epubforge.core.exceptions import (
     EpubNotOpenError,
     InvalidEpubError,
     OpfNotFoundError,
+    ValidationError,
 )
 from epubforge.core.metadata import Metadata
 
@@ -34,6 +35,7 @@ __all__ = [
     "OpfNotFoundError",
     "Tool",
     "Tools",
+    "ValidationError",
     "config_dir",
     "default_config_path",
     "detect_with_cache",

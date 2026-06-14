@@ -40,6 +40,12 @@ Część funkcji korzysta z zewnętrznych programów — EpubForge wykrywa je au
 | **Sigil**, **Calibre Editor/Viewer** | edycja/podgląd EPUB z poziomu zakładki Metadane |
 | **Kindle Previewer 3** | eksperymentalny silnik KFX |
 | **kindlegen** | wycofany silnik MOBI (zalecane Calibre) |
+| **Java (Temurin JRE 17+)** + **EpubCheck 5.x** | walidacja EPUB (zakładka Walidacja / `epubforge check`) |
+
+**EpubCheck.** Walidacja wymaga Javy (Temurin JRE 17+) oraz pliku `epubcheck.jar`
+([EpubCheck 5.x z W3C](https://github.com/w3c/epubcheck/releases)). Rozpakuj jara do
+`<katalog konfiguracji>/epubcheck/epubcheck.jar` albo wskaż go przyciskiem
+**Wskaż epubcheck.jar…** w zakładce Walidacja (ścieżka zapisuje się w configu).
 
 Status wykrytych narzędzi widać na dolnym pasku GUI.
 
@@ -74,6 +80,11 @@ motywu, „O programie") i zakładki robocze:
   > `line-height`). Właściwości spoza tego zakresu (np. `letter-spacing`, `hyphens`,
   > `float`) są wypisywane jako „nieobsługiwane w podglądzie" i **nie** wpływają na obraz.
   > Docelowy czytnik może renderować inaczej — traktuj podgląd jako orientacyjny.
+- **Walidacja** — dodaj pliki EPUB, kliknij **Sprawdź zaznaczony**: EpubForge uruchamia
+  EpubCheck i pokazuje raport (poziom, kod, plik:linia, komunikat) z paskiem podsumowania
+  i filtrami błędy/ostrzeżenia/informacje. **Dwuklik** błędu z lokalizacją otwiera plik
+  w zakładce Edytor na właściwej linii. **Eksport…** zapisuje raport jako JSON lub HTML.
+  Gdy brak Javy/`epubcheck.jar`, zakładka pokazuje instrukcję i przycisk **Wskaż epubcheck.jar…**.
 
 **Motyw:** górny pasek → przełącznik **Automatyczny / Jasny / Ciemny** (auto podąża za
 systemem). Na Windows zmienia się też kolor paska tytułu.
@@ -89,6 +100,10 @@ systemem). Na Windows zmienia się też kolor paska tytułu.
 # Konwersja do EPUB
 epubforge convert book.docx book.epub
 epubforge convert input.pdf output.epub --engine calibre
+
+# Walidacja EpubCheck (wymaga Javy + epubcheck.jar)
+epubforge check book.epub                          # raport; exit 0=OK, 1=błędy, 2=brak narzędzi
+epubforge check book.epub --json report.json --min-severity warning
 
 # Naprawa EPUB (hyphenacja + CSS)
 epubforge fix book.epub --remove-colors --replace-justify

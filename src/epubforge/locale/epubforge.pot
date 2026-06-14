@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-06-14 21:43+0200\n"
+"POT-Creation-Date: 2026-06-14 22:48+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,6 +16,58 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
+
+#: src/epubforge/cli/check.py:31
+msgid "Waliduj EPUB przez EpubCheck"
+msgstr ""
+
+#: src/epubforge/cli/check.py:32
+msgid "Plik EPUB do walidacji"
+msgstr ""
+
+#: src/epubforge/cli/check.py:33
+msgid "Zapisz pełny raport do pliku JSON"
+msgstr ""
+
+#: src/epubforge/cli/check.py:38
+msgid "Pokaż tylko komunikaty od tego poziomu wzwyż"
+msgstr ""
+
+#: src/epubforge/cli/check.py:57 src/epubforge/cli/convert.py:32
+#: src/epubforge/cli/convert.py:35 src/epubforge/cli/fix.py:63
+#: src/epubforge/cli/fix.py:73 src/epubforge/cli/hyphenate.py:57
+#: src/epubforge/cli/kfx.py:43 src/epubforge/cli/kfx.py:46
+#: src/epubforge/cli/meta.py:40 src/epubforge/cli/mobi.py:54
+#: src/epubforge/cli/mobi.py:57
+#, python-brace-format
+msgid "Błąd: {error}"
+msgstr ""
+
+#: src/epubforge/cli/check.py:82
+#, python-brace-format
+msgid "EPUB: {path}"
+msgstr ""
+
+#: src/epubforge/cli/check.py:83
+msgid " — POPRAWNY"
+msgstr ""
+
+#: src/epubforge/cli/check.py:83
+msgid " — NIEPOPRAWNY"
+msgstr ""
+
+#: src/epubforge/cli/check.py:86
+#, python-brace-format
+msgid "Błędów: {fatal_error}  ·  Ostrzeżeń: {warning}  ·  Informacji: {info}"
+msgstr ""
+
+#: src/epubforge/cli/check.py:118
+msgid ""
+"Walidacja wymaga Javy (Temurin JRE 17+) oraz epubcheck.jar.\n"
+"1. Zainstaluj Temurin: https://adoptium.net/\n"
+"2. Pobierz epubcheck-5.x: https://github.com/w3c/epubcheck/releases\n"
+"3. Rozpakuj jar do <config>/epubcheck/epubcheck.jar lub wskaż go w GUI."
+msgstr ""
 
 #: src/epubforge/cli/convert.py:15
 msgid "Konwertuj plik wejściowy do EPUB"
@@ -31,15 +83,6 @@ msgstr ""
 
 #: src/epubforge/cli/convert.py:22
 msgid "Silnik konwersji (domyślnie: auto)"
-msgstr ""
-
-#: src/epubforge/cli/convert.py:32 src/epubforge/cli/convert.py:35
-#: src/epubforge/cli/fix.py:63 src/epubforge/cli/fix.py:73
-#: src/epubforge/cli/hyphenate.py:57 src/epubforge/cli/kfx.py:43
-#: src/epubforge/cli/kfx.py:46 src/epubforge/cli/meta.py:40
-#: src/epubforge/cli/mobi.py:54 src/epubforge/cli/mobi.py:57
-#, python-brace-format
-msgid "Błąd: {error}"
 msgstr ""
 
 #: src/epubforge/cli/convert.py:40
@@ -146,7 +189,7 @@ msgstr ""
 msgid "Wyświetl informacje o wersji i wykrytych narzędziach"
 msgstr ""
 
-#: src/epubforge/cli/main.py:56
+#: src/epubforge/cli/main.py:57
 msgid "Wykryte narzędzia: (TODO - etap 3)"
 msgstr ""
 
@@ -276,109 +319,113 @@ msgstr ""
 msgid "Opis"
 msgstr ""
 
-#: src/epubforge/gui/app.py:59 src/epubforge/gui/app.py:179
+#: src/epubforge/gui/app.py:66 src/epubforge/gui/app.py:186
 msgid "O programie"
 msgstr ""
 
-#: src/epubforge/gui/app.py:65
+#: src/epubforge/gui/app.py:72
 msgid "Zamknij"
 msgstr ""
 
-#: src/epubforge/gui/app.py:145
+#: src/epubforge/gui/app.py:152
 msgid "Motyw: Automatyczny / Jasny / Ciemny"
 msgstr ""
 
-#: src/epubforge/gui/app.py:161
+#: src/epubforge/gui/app.py:168
 msgid "Język interfejsu"
 msgstr ""
 
-#: src/epubforge/gui/app.py:193 src/epubforge/gui/tabs/metadata.py:216
+#: src/epubforge/gui/app.py:203 src/epubforge/gui/tabs/metadata.py:216
 #: src/epubforge/gui/tabs/metadata.py:238
 #: src/epubforge/gui/tabs/metadata.py:333
 msgid "Metadane"
 msgstr ""
 
-#: src/epubforge/gui/app.py:194
+#: src/epubforge/gui/app.py:204
 msgid "Konwerter"
 msgstr ""
 
-#: src/epubforge/gui/app.py:195
+#: src/epubforge/gui/app.py:205
 msgid "Fixer"
 msgstr ""
 
-#: src/epubforge/gui/app.py:196
+#: src/epubforge/gui/app.py:206
 msgid "Eksport Kindle"
 msgstr ""
 
-#: src/epubforge/gui/app.py:197
+#: src/epubforge/gui/app.py:207
 msgid "Edytor"
 msgstr ""
 
-#: src/epubforge/gui/app.py:216
+#: src/epubforge/gui/app.py:208
+msgid "Walidacja"
+msgstr ""
+
+#: src/epubforge/gui/app.py:227
 #, python-brace-format
 msgid "Motyw: {theme}"
 msgstr ""
 
-#: src/epubforge/gui/app.py:224 src/epubforge/gui/tabs/converter.py:117
+#: src/epubforge/gui/app.py:235 src/epubforge/gui/tabs/converter.py:117
 #: src/epubforge/gui/tabs/fixer.py:133 src/epubforge/gui/tabs/metadata.py:111
 msgid "Język"
 msgstr ""
 
-#: src/epubforge/gui/app.py:225
+#: src/epubforge/gui/app.py:236
 msgid "Zmiana języka zadziała po ponownym uruchomieniu aplikacji."
 msgstr ""
 
-#: src/epubforge/gui/app.py:238
+#: src/epubforge/gui/app.py:249
 #, python-brace-format
 msgid "Język: {language}"
 msgstr ""
 
-#: src/epubforge/gui/app.py:333 src/epubforge/gui/tabs/editor.py:444
+#: src/epubforge/gui/app.py:345 src/epubforge/gui/tabs/editor.py:444
 #: src/epubforge/gui/tabs/editor.py:460
 msgid "Niezapisane zmiany"
 msgstr ""
 
-#: src/epubforge/gui/app.py:334
+#: src/epubforge/gui/app.py:346
 msgid "Edytor ma niezapisane zmiany. Zamknąć mimo to?"
 msgstr ""
 
-#: src/epubforge/gui/app.py:368
+#: src/epubforge/gui/app.py:382
 msgid "brak"
 msgstr ""
 
-#: src/epubforge/gui/app.py:376
+#: src/epubforge/gui/app.py:390
 msgid "Automatyczny"
 msgstr ""
 
-#: src/epubforge/gui/app.py:377 src/epubforge/gui/app.py:385
+#: src/epubforge/gui/app.py:391 src/epubforge/gui/app.py:399
 msgid "Jasny"
 msgstr ""
 
-#: src/epubforge/gui/app.py:378 src/epubforge/gui/app.py:387
+#: src/epubforge/gui/app.py:392 src/epubforge/gui/app.py:401
 msgid "Ciemny"
 msgstr ""
 
-#: src/epubforge/gui/app.py:388 src/epubforge/gui/app.py:399
+#: src/epubforge/gui/app.py:402 src/epubforge/gui/app.py:413
 msgid "Auto"
 msgstr ""
 
-#: src/epubforge/gui/app.py:394
+#: src/epubforge/gui/app.py:408
 msgid "Polski"
 msgstr ""
 
-#: src/epubforge/gui/app.py:396
+#: src/epubforge/gui/app.py:410
 msgid "English"
 msgstr ""
 
-#: src/epubforge/gui/app.py:398
+#: src/epubforge/gui/app.py:412
 msgid "Deutsch"
 msgstr ""
 
-#: src/epubforge/gui/app.py:419
+#: src/epubforge/gui/app.py:433
 msgid "Błąd krytyczny"
 msgstr ""
 
-#: src/epubforge/gui/app.py:420
+#: src/epubforge/gui/app.py:434
 #, python-brace-format
 msgid ""
 "Wystąpił nieoczekiwany błąd:\n"
@@ -578,6 +625,7 @@ msgid "Pliki EPUB (*.epub)"
 msgstr ""
 
 #: src/epubforge/gui/tabs/editor.py:186 src/epubforge/gui/tabs/editor.py:431
+#: src/epubforge/gui/tabs/validator.py:352
 msgid "Błąd"
 msgstr ""
 
@@ -655,7 +703,7 @@ msgid "Dodaj pliki EPUB"
 msgstr ""
 
 #: src/epubforge/gui/tabs/fixer.py:96 src/epubforge/gui/tabs/kfx.py:85
-#: src/epubforge/gui/tabs/metadata.py:78
+#: src/epubforge/gui/tabs/metadata.py:78 src/epubforge/gui/tabs/validator.py:76
 msgid "Pliki EPUB"
 msgstr ""
 
@@ -1196,6 +1244,158 @@ msgid ""
 "zmieniona."
 msgstr ""
 
+#: src/epubforge/gui/tabs/validator.py:94
+msgid "Dodaj pliki EPUB i kliknij „Sprawdź zaznaczony”."
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:99
+msgid "Sprawdź zaznaczony"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:100
+msgid "Uruchom EpubCheck na zaznaczonym pliku"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:104
+msgid "Eksport…"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:105
+msgid "Zapisz raport jako JSON lub HTML"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:113
+msgid "Pokaż:"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:114
+msgid "Błędy"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:115
+msgid "Ostrzeżenia"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:116
+msgid "Informacje"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:132
+msgid "Poziom"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:132
+msgid "Kod"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:132
+msgid "Plik:linia"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:132
+msgid "Komunikat"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:149
+msgid "Wskaż epubcheck.jar…"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:187
+msgid "Java (Temurin JRE 17+)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:191
+#, python-brace-format
+msgid ""
+"<b>Walidacja wymaga dodatkowych narzędzi.</b><br>Brakuje: "
+"{missing}.<br><br>1. Zainstaluj <a href='https://adoptium.net/'>Temurin "
+"JRE 17+</a>.<br>2. Pobierz <a "
+"href='https://github.com/w3c/epubcheck/releases'>epubcheck-5.x</a>.<br>3."
+" Rozpakuj i wskaż <code>epubcheck.jar</code> przyciskiem poniżej."
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:199
+msgid "Wskaż epubcheck.jar"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:199
+msgid "Plik JAR (*.jar)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:227
+#, python-brace-format
+msgid "Walidacja: {name}…"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:239
+msgid "POPRAWNY"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:239
+msgid "NIEPOPRAWNY"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:241
+#, python-brace-format
+msgid "Zakończono w {sec:.1f}s — {verdict}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:250
+#, python-brace-format
+msgid "Walidacja nieudana: {error}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:311
+#, python-brace-format
+msgid "{n} błąd"
+msgid_plural "{n} błędów"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/epubforge/gui/tabs/validator.py:312
+#, python-brace-format
+msgid "{n} ostrzeżenie"
+msgid_plural "{n} ostrzeżeń"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/epubforge/gui/tabs/validator.py:313
+#, python-brace-format
+msgid "{n} informacja"
+msgid_plural "{n} informacji"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/epubforge/gui/tabs/validator.py:325
+msgid "Eksport raportu"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:325
+msgid "JSON (*.json);;HTML (*.html)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:336
+#, python-brace-format
+msgid "Nie udało się zapisać: {error}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:338
+#, python-brace-format
+msgid "Zapisano raport: {name}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:351
+msgid "Krytyczny"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:353
+msgid "Ostrzeżenie"
+msgstr ""
+
+#: src/epubforge/gui/tabs/validator.py:354
+msgid "Informacja"
+msgstr ""
+
 #: src/epubforge/gui/widgets/about_panel.py:59
 #, python-brace-format
 msgid "Wersja {version}"
@@ -1351,5 +1551,31 @@ msgstr ""
 
 #: src/epubforge/gui/widgets/path_entry.py:126
 msgid "Zapisz jako"
+msgstr ""
+
+#: src/epubforge/validators/epubcheck.py:189
+#, python-brace-format
+msgid "EpubCheck przekroczył limit czasu ({timeout}s)."
+msgstr ""
+
+#: src/epubforge/validators/epubcheck.py:193
+#, python-brace-format
+msgid "Nie udało się uruchomić EpubCheck: {error}"
+msgstr ""
+
+#: src/epubforge/validators/epubcheck.py:213
+#, python-brace-format
+msgid ""
+"EpubCheck nie utworzył raportu JSON.\n"
+"{stderr}"
+msgstr ""
+
+#: src/epubforge/validators/epubcheck.py:220
+#, python-brace-format
+msgid "Nie udało się odczytać raportu EpubCheck: {error}"
+msgstr ""
+
+#: src/epubforge/validators/epubcheck.py:223
+msgid "Raport EpubCheck ma nieoczekiwany format."
 msgstr ""
 
