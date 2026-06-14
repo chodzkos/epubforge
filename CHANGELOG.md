@@ -8,6 +8,19 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Added
+- **Walidacja EPUB przez EpubCheck 5.x (F2)** — nowa zakładka „Walidacja" oraz
+  komenda `epubforge check`. Detekcja `java` (Temurin JRE 17+, wersja z `java -version`
+  na STDERR, wymagane ≥ 11) i `epubcheck.jar` (override `tools.epubcheck_jar` → glob
+  ProgramFiles/`~` → `<config>/epubcheck/epubcheck.jar` → obok exe; wersja z
+  `META-INF/MANIFEST.MF` bez uruchamiania Javy). Moduł `validators/epubcheck.py`:
+  `run_epubcheck` uruchamia `java -jar … --json` (tempfile, timeout, CREATE_NO_WINDOW),
+  exit≠0 z poprawnym JSON to raport `valid=False`, brak/zepsuty JSON lub timeout to
+  `ValidationError`; parser defensywny z normalizacją ścieżek do wewnętrznych. CLI
+  zwraca kody 0 (poprawny) / 1 (błędy) / 2 (brak narzędzi), opcje `--json`,
+  `--min-severity`. GUI: FileList + Worker, podsumowanie z formami mnogimi, filtry
+  severity, `QTreeWidget` z kolorami z motywu — **dwuklik błędu skacze do linii w
+  edytorze** (`open_in_editor`), eksport raportu do JSON/HTML, panel pomocy i
+  „Wskaż epubcheck.jar…" gdy brak narzędzi.
 - **Inspektor reguł CSS z podglądem na żywo (F3+)** — w edytorze, przy otwartym
   `.css`, panel z listą reguł arkusza; dla wybranej reguły podgląd przykładowego
   tekstu sformatowanego zgodnie z nią (silnik rich text Qt, biała „papierowa"

@@ -1,0 +1,44 @@
+{
+  "checker": {
+    "checkerVersion": "5.1.0",
+    "validationDate": "2026-06-14T12:00:00Z"
+  },
+  "messages": [
+    {
+      "ID": "PKG-001",
+      "severity": "FATAL",
+      "message": "Validation aborted.",
+      "locations": [
+        {"path": "book.epub/OEBPS/content.opf", "line": 1, "column": 1}
+      ]
+    },
+    {
+      "ID": "RSC-005",
+      "severity": "ERROR",
+      "message": "Error while parsing file: element not allowed here.",
+      "locations": [
+        {"path": "book.epub/OEBPS/ch1.xhtml", "line": 10, "column": 5}
+      ]
+    },
+    {
+      "ID": "RSC-006",
+      "severity": "ERROR",
+      "message": "Remote resource reference not allowed.",
+      "locations": [
+        {"path": "OEBPS/ch2.xhtml", "line": 20, "column": -1}
+      ]
+    },
+    {
+      "ID": "OPF-003",
+      "severity": "WARNING",
+      "message": "Item not declared in spine.",
+      "locations": []
+    },
+    {
+      "ID": "ACC-001",
+      "severity": "USAGE",
+      "message": "Consider adding accessibility metadata.",
+      "locations": []
+    }
+  ]
+}

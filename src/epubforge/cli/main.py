@@ -8,7 +8,7 @@ from collections.abc import Callable
 from typing import cast
 
 from epubforge import __version__
-from epubforge.cli import convert, fix, hyphenate, kfx, meta, mobi, presets
+from epubforge.cli import check, convert, fix, hyphenate, kfx, meta, mobi, presets
 from epubforge.core import default_config_path, load_config
 from epubforge.i18n import _, init_i18n
 
@@ -37,6 +37,7 @@ def main(argv: list[str] | None = None) -> int:
 
     subparsers = parser.add_subparsers(dest="command", help=_("Dostępne komendy"))
     subparsers.add_parser("info", help=_("Wyświetl informacje o wersji i wykrytych narzędziach"))
+    check.add_parser(subparsers)
     convert.add_parser(subparsers)
     fix.add_parser(subparsers)
     hyphenate.add_parser(subparsers)

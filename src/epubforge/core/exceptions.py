@@ -31,6 +31,15 @@ class OpfNotFoundError(EpubError):
     """
 
 
+class ValidationError(EpubError):
+    """Walidacja EPUB nie mogła zostać przeprowadzona.
+
+    Dotyczy sytuacji technicznych (brak/zepsuty raport JSON, timeout, brak
+    narzędzi), a NIE samego wyniku „EPUB jest niepoprawny" — ten wraca jako
+    :class:`~epubforge.validators.ValidationReport` z ``valid=False``.
+    """
+
+
 class ConversionError(EpubError):
     """Konwersja pliku nie powiodła się."""
 

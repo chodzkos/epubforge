@@ -24,6 +24,7 @@
 | CSS Fixer | ✅ |
 | Presety CSS (wbudowane + własne) | ✅ |
 | Edytor wewnętrzny EPUB (podgląd + edycja) | ✅ |
+| Walidacja EpubCheck (klikalne błędy) | ✅ |
 | KFX / MOBI / AZW3 | ✅ |
 | GUI (motyw jasny/ciemny) | ✅ |
 | Build: portable `.exe` + instalator | ✅ |
@@ -44,6 +45,7 @@
 - **🎨 Presety CSS** — wbudowane szablony stylów + import własnych (dołącz / zastąp)
 - **📝 Edytor wewnętrzny** — przegląd i szybka edycja plików w EPUB z podświetlaniem XML/CSS
 - **🔎 Inspektor CSS** — lista reguł arkusza z podglądem na żywo i edycją reguły (podgląd przybliżony)
+- **✅ Walidacja EpubCheck** — raport błędów/ostrzeżeń EPUB; dwuklik błędu skacze do linii w edytorze (wymaga Javy + epubcheck.jar)
 - **🏷️ Metadata** — pełna edycja Dublin Core + seria/tom (Calibre i EPUB 3)
 - **🔍 Auto-detekcja** — Pandoc, Calibre, Sigil, Kindle Previewer, kindlegen
 
@@ -90,6 +92,11 @@ standardowy katalog `Program Files`).
 # Konwersja
 epubforge convert book.docx book.epub
 epubforge convert input.pdf output.epub --engine calibre
+
+# Walidacja EpubCheck (wymaga Javy + epubcheck.jar)
+epubforge check book.epub                            # raport + kod wyjścia 0/1/2
+epubforge check book.epub --json report.json         # pełny raport do pliku
+epubforge check book.epub --min-severity warning     # tylko ostrzeżenia i błędy
 
 # Naprawa EPUB
 epubforge fix book.epub --remove-colors --replace-justify
@@ -250,6 +257,7 @@ python build/compile_locales.py
   - [Calibre](https://calibre-ebook.com) — fallback + KFX
   - [Sigil](https://sigil-ebook.com) — edytor EPUB
   - [Kindle Previewer 3](https://www.amazon.com/gp/feature.html?ie=UTF8&docId=1000765261) — KFX (experimental)
+  - [Temurin JRE 17+](https://adoptium.net/) + [EpubCheck 5.x](https://github.com/w3c/epubcheck/releases) — walidacja EPUB (`epubforge check` / zakładka **Walidacja**); rozpakuj `epubcheck.jar` do `<config>/epubcheck/epubcheck.jar` lub wskaż go w GUI
 
 ### Do developmentu
 - Python 3.10+

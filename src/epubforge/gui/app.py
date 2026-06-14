@@ -27,7 +27,14 @@ from PySide6.QtWidgets import (
 
 from epubforge import __version__
 from epubforge.core import ConfigStore, Tool, default_config_path, detect_with_cache, load_config
-from epubforge.gui.tabs import ConverterTab, EditorTab, FixerTab, KfxTab, MetadataTab
+from epubforge.gui.tabs import (
+    ConverterTab,
+    EditorTab,
+    FixerTab,
+    KfxTab,
+    MetadataTab,
+    ValidatorTab,
+)
 from epubforge.gui.theme import ThemeManager, ThemeName, ThemeSetting
 from epubforge.gui.widgets import AboutPanel, LogView
 from epubforge.gui.window_theme import sync_titlebar
@@ -190,11 +197,15 @@ class MainWindow(QMainWindow):
         self.fixer_tab = FixerTab(tools=self.tools)
         self.kfx_tab = KfxTab(tools=self.tools, config=self.config_data)
         self.editor_tab = EditorTab()
+        self.validator_tab = ValidatorTab(
+            tools=self.tools, config=self.config_data, main_window=self
+        )
         self.tabs.addTab(self.metadata_tab, _("Metadane"))
         self.tabs.addTab(self.converter_tab, _("Konwerter"))
         self.tabs.addTab(self.fixer_tab, _("Fixer"))
         self.tabs.addTab(self.kfx_tab, _("Eksport Kindle"))
         self.tabs.addTab(self.editor_tab, _("Edytor"))
+        self.tabs.addTab(self.validator_tab, _("Walidacja"))
         layout.addWidget(self.tabs, stretch=1)
 
     def _build_status_bar(self) -> None:
@@ -246,6 +257,7 @@ class MainWindow(QMainWindow):
         for log_view in self._log_views():
             log_view.set_theme(self.theme_manager.theme)
         self.editor_tab.set_theme(self.theme_manager.theme)
+        self.validator_tab.set_theme(self.theme_manager.theme)
         if self._about_dialog is not None:
             self._about_dialog.set_mode(self.theme_manager.theme.name)
 
@@ -361,6 +373,8 @@ def _format_tools_status(tools: dict[str, Tool]) -> str:
         "calibre_editor": "Editor",
         "sigil": "Sigil",
         "kindle_previewer": "KP3",
+        "java": "Java",
+        "epubcheck": "EpubCheck",
     }
     parts: list[str] = []
     for key, label in labels.items():

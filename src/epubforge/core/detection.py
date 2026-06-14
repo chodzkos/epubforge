@@ -12,19 +12,32 @@ proces uruchamiamy z flagą ``CREATE_NO_WINDOW``, żeby nie migało okno konsoli
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import sys
+import zipfile
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from epubforge.core.config import Config, default_config_path, load_config, save_config
+from epubforge.core.config import (
+    Config,
+    config_dir,
+    default_config_path,
+    load_config,
+    save_config,
+)
 
 # Flaga ukrywająca okno konsoli przy subprocess na Windows (pułapka #7).
 _NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 _VERSION_TIMEOUT = 10  # sekundy
 _CACHE_MAX_AGE = timedelta(days=7)
+
+# Minimalna wersja Javy wymagana przez EpubCheck 5.x.
+_JAVA_MIN_MAJOR = 11
+# Klucz w sekcji ``tools`` configu wskazujący ręcznie wybrany plik epubcheck.jar.
+_EPUBCHECK_JAR_KEY = "epubcheck_jar"
 
 
 @dataclass(frozen=True)
@@ -144,8 +157,104 @@ def _calibre_plugins_dir() -> Path:
     return base / "plugins"
 
 
+def _parse_java_major(version_line: str) -> int | None:
+    """Wyciąga główny numer wersji z linii ``java -version``.
+
+    Obsługuje oba formaty: nowy (``"17.0.9"`` → 17) i stary (``"1.8.0_391"`` → 8,
+    gdzie wiodące ``1.`` jest historycznym prefiksem). Zwraca ``None``, gdy nie da
+    się sparsować.
+    """
+    match = re.search(r'version "([0-9][0-9._]*)"', version_line)
+    if match is None:
+        return None
+    parts = match.group(1).replace("_", ".").split(".")
+    try:
+        if parts[0] == "1" and len(parts) > 1:
+            return int(parts[1])
+        return int(parts[0])
+    except ValueError:
+        return None
+
+
+def _java_dirs() -> list[Path]:
+    """Składa katalogi do przeszukania w poszukiwaniu ``java`` (poza ``PATH``)."""
+    dirs: list[Path] = []
+    java_home = os.environ.get("JAVA_HOME")
+    if java_home:
+        dirs.append(Path(java_home) / "bin")
+    # %ProgramFiles%/Eclipse Adoptium/<jdk>/bin — typowa instalacja Temurin.
+    for base in _env_dirs("Eclipse Adoptium"):
+        if base.is_dir():
+            dirs.extend(sorted(base.glob("*/bin")))
+    dirs.append(Path("/usr/bin"))
+    return dirs
+
+
+def _detect_java() -> Tool:
+    """Wykrywa ``java`` i sprawdza, czy wersja spełnia minimum dla EpubCheck."""
+    path = _find_executable(_exe_names("java"), _java_dirs())
+    if path is None:
+        return Tool(name="java", path=None, version="", available=False)
+    version_line = _get_version(path, ("-version",))  # java pisze na STDERR
+    major = _parse_java_major(version_line)
+    available = major is not None and major >= _JAVA_MIN_MAJOR
+    return Tool(name="java", path=path, version=version_line, available=available)
+
+
+def _epubcheck_jar_candidates(override: Path | None) -> list[Path]:
+    """Składa listę kandydatów na plik ``epubcheck.jar`` w kolejności priorytetu."""
+    candidates: list[Path] = []
+    if override is not None:
+        candidates.append(override)
+    for var in ("ProgramFiles", "ProgramFiles(x86)", "ProgramW6432"):
+        root = os.environ.get(var)
+        if root:
+            candidates.extend(sorted(Path(root).glob("epubcheck*/epubcheck*.jar")))
+    candidates.extend(sorted(Path.home().glob("epubcheck*/epubcheck*.jar")))
+    candidates.append(config_dir() / "epubcheck" / "epubcheck.jar")
+    if getattr(sys, "frozen", False):  # obok zamrożonego exe
+        candidates.append(Path(sys.executable).parent / "epubcheck.jar")
+    return candidates
+
+
+def _epubcheck_version(jar: Path) -> str:
+    """Czyta ``Implementation-Version`` z ``META-INF/MANIFEST.MF`` jara (bez Javy)."""
+    try:
+        with zipfile.ZipFile(jar) as archive:
+            manifest = archive.read("META-INF/MANIFEST.MF").decode("utf-8", "replace")
+    except (OSError, KeyError, zipfile.BadZipFile):
+        return ""
+    for line in manifest.splitlines():
+        if line.lower().startswith("implementation-version:"):
+            return line.split(":", 1)[1].strip()
+    return ""
+
+
+def _detect_epubcheck(override: Path | None = None) -> Tool:
+    """Wyszukuje ``epubcheck.jar`` i ustala jego wersję z manifestu."""
+    for candidate in _epubcheck_jar_candidates(override):
+        if candidate.is_file():
+            return Tool(
+                name="epubcheck",
+                path=candidate,
+                version=_epubcheck_version(candidate),
+                available=True,
+            )
+    return Tool(name="epubcheck", path=None, version="", available=False)
+
+
 class Tools:
     """Zbiór statycznych detektorów narzędzi zewnętrznych."""
+
+    @staticmethod
+    def java() -> Tool:
+        """Wykrywa ``java`` (wymagane przez EpubCheck; wersja ≥ 11)."""
+        return _detect_java()
+
+    @staticmethod
+    def epubcheck(jar_override: Path | None = None) -> Tool:
+        """Wyszukuje ``epubcheck.jar`` (override → glob → config_dir → obok exe)."""
+        return _detect_epubcheck(jar_override)
 
     @staticmethod
     def pandoc() -> Tool:
@@ -272,8 +381,12 @@ class Tools:
         return any(plugins_dir.glob("KFX Output*"))
 
     @staticmethod
-    def detect_all() -> dict[str, Tool]:
-        """Uruchamia wszystkie detektory i zwraca mapę ``nazwa -> Tool``."""
+    def detect_all(epubcheck_jar: Path | None = None) -> dict[str, Tool]:
+        """Uruchamia wszystkie detektory i zwraca mapę ``nazwa -> Tool``.
+
+        Args:
+            epubcheck_jar: ręcznie wskazany plik jara (override z configu).
+        """
         return {
             "pandoc": Tools.pandoc(),
             "calibre_ebook_convert": Tools.calibre_ebook_convert(),
@@ -282,6 +395,8 @@ class Tools:
             "sigil": Tools.sigil(),
             "kindle_previewer": Tools.kindle_previewer(),
             "kindlegen": Tools.kindlegen(),
+            "java": Tools.java(),
+            "epubcheck": Tools.epubcheck(epubcheck_jar),
         }
 
 
@@ -307,19 +422,31 @@ def _tool_from_dict(data: dict[str, object]) -> Tool:
     )
 
 
+def _override_tool(name: str, path: Path) -> Tool:
+    """Buduje :class:`Tool` z ręcznie wskazanej ścieżki (z detekcją wersji per typ).
+
+    ``java`` i ``epubcheck`` mają własne ustalanie wersji/dostępności (Java ≥ 11,
+    epubcheck z manifestu) — generyczne ``--version`` by je zepsuło.
+    """
+    if name == "java":
+        version = _get_version(path, ("-version",)) if path.is_file() else ""
+        major = _parse_java_major(version)
+        ok = path.is_file() and major is not None and major >= _JAVA_MIN_MAJOR
+        return Tool("java", path, version, ok)
+    if name == "epubcheck":
+        return _detect_epubcheck(path)
+    exists = path.is_file()
+    return Tool(
+        name=name, path=path, version=_get_version(path) if exists else "", available=exists
+    )
+
+
 def _apply_overrides(tools: dict[str, Tool], overrides: dict[str, object]) -> None:
     """Nadpisuje ścieżki narzędzi wartościami z konfiguracji (ręczny override)."""
     for name, raw in overrides.items():
         if name not in tools or not isinstance(raw, str) or not raw:
             continue
-        path = Path(raw)
-        exists = path.is_file()
-        tools[name] = Tool(
-            name=name,
-            path=path,
-            version=_get_version(path) if exists else "",
-            available=exists,
-        )
+        tools[name] = _override_tool(name, Path(raw))
 
 
 def _cache_is_fresh(config: Config, max_age: timedelta) -> bool:
@@ -361,15 +488,32 @@ def detect_with_cache(
     overrides = overrides if isinstance(overrides, dict) else {}
 
     cached_tools = config.get("tools")
-    if not force and _cache_is_fresh(config, max_age) and isinstance(cached_tools, dict):
-        tools = {name: _tool_from_dict(value) for name, value in cached_tools.items()}
+    cached_tools = cached_tools if isinstance(cached_tools, dict) else {}
+    # Override jara epubcheck żyje jako skalarny klucz w sekcji ``tools``.
+    jar_override = _epubcheck_jar_override(cached_tools)
+
+    if not force and _cache_is_fresh(config, max_age) and cached_tools:
+        # Pomijamy skalarny klucz override — to nie jest serializowany Tool.
+        tools = {
+            name: _tool_from_dict(value)
+            for name, value in cached_tools.items()
+            if isinstance(value, dict)
+        }
         _apply_overrides(tools, overrides)
         return tools
 
-    tools = Tools.detect_all()
+    tools = Tools.detect_all(epubcheck_jar=jar_override)
     _apply_overrides(tools, overrides)
     config["tools"] = {name: _tool_to_dict(tool) for name, tool in tools.items()}
+    if jar_override is not None:  # zachowaj ręcznie wskazany jar między detekcjami
+        config["tools"][_EPUBCHECK_JAR_KEY] = str(jar_override)
     config["kfx_plugin"] = Tools.calibre_kfx_plugin()
     config["last_detected"] = datetime.now(timezone.utc).isoformat()
     save_config(path, config)
     return tools
+
+
+def _epubcheck_jar_override(cached_tools: dict[str, object]) -> Path | None:
+    """Czyta ścieżkę ręcznie wskazanego jara z ``tools.epubcheck_jar`` (jeśli jest)."""
+    raw = cached_tools.get(_EPUBCHECK_JAR_KEY)
+    return Path(raw) if isinstance(raw, str) and raw else None
