@@ -8,6 +8,14 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Added
+- **Inspektor reguł CSS z podglądem na żywo (F3+)** — w edytorze, przy otwartym
+  `.css`, panel z listą reguł arkusza; dla wybranej reguły podgląd przykładowego
+  tekstu sformatowanego zgodnie z nią (silnik rich text Qt, biała „papierowa"
+  karta niezależna od motywu). Edycja reguły aktualizuje podgląd na żywo;
+  „Zastosuj do arkusza" wpisuje zmianę jedną operacją kursora (undo cofa całość).
+  Logika w `fixers/css_rules.py` (parsowanie po offsetach, podmiana po spanie bez
+  re-serializacji). Podgląd obsługuje podzbiór CSS — nieobsługiwane właściwości są
+  wypisywane. Synergia z presetami: przycisk „Podgląd…" w zakładce Fixer.
 - **Edytor wewnętrzny EPUB (F3, część 1)** — zakładka „Edytor": drzewo plików
   pogrupowane wg media-type (Tekst/Style/Obrazy/Fonty/Inne), edytor z numeracją
   linii, podświetlaniem składni XML/CSS (kolory z motywu), wyszukiwarką (Ctrl+F,
