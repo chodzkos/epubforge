@@ -150,6 +150,70 @@ def test_non_utf8_file_is_read_only(qtbot: QtBot, tmp_path: Path) -> None:
     assert tab.info_bar.text()  # pasek informacyjny niesie ostrzeżenie
 
 
+def test_edit_mode_indicator_toggles(qtbot: QtBot, tmp_path: Path) -> None:
+    """Przełącznik zmienia read-only, etykietę statusu i obwódkę edytora (akcent)."""
+    from epubforge.gui.theme import current_theme
+
+    accent = current_theme().accent
+    book = _copy_fixture(tmp_path)
+    tab = EditorTab()
+    qtbot.addWidget(tab)
+    tab.open_epub(book)
+    tab._select_path(_CHAPTER)
+
+    # Start: tryb podglądu — read-only, brak akcentu w obwódce, status fg2.
+    assert tab.code_editor.read_only is True
+    assert "Edycja" not in tab.mode_label.text()
+    assert accent not in tab.code_editor.editor.styleSheet()
+
+    # Włączenie edycji — edytor edytowalny, akcent w obwódce, etykieta „● Edycja".
+    tab.edit_toggle.setChecked(True)
+    assert tab.code_editor.read_only is False
+    assert "Edycja" in tab.mode_label.text()
+    assert accent in tab.code_editor.editor.styleSheet()
+    assert "edycja" in tab.edit_toggle.text().lower()
+
+    # Powrót do podglądu — akcent znika.
+    tab.edit_toggle.setChecked(False)
+    assert tab.code_editor.read_only is True
+    assert accent not in tab.code_editor.editor.styleSheet()
+
+
+def test_non_utf8_has_no_accent_frame_despite_edit_mode(qtbot: QtBot, tmp_path: Path) -> None:
+    """Plik nie-UTF-8 zostaje read-only i bez akcentu mimo włączonego trybu edycji."""
+    from epubforge.gui.theme import current_theme
+
+    accent = current_theme().accent
+    book = tmp_path / "bad.epub"
+    container = (
+        b'<?xml version="1.0"?><container version="1.0" '
+        b'xmlns="urn:oasis:names:tc:opendocument:xmlns:container">'
+        b'<rootfiles><rootfile full-path="OEBPS/content.opf" '
+        b'media-type="application/oebps-package+xml"/></rootfiles></container>'
+    )
+    opf = (
+        b'<?xml version="1.0" encoding="UTF-8"?>'
+        b'<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="i">'
+        b'<metadata xmlns:dc="http://purl.org/dc/elements/1.1/">'
+        b'<dc:identifier id="i">x</dc:identifier><dc:title>T</dc:title></metadata>'
+        b'<manifest><item id="c" href="text/ch.xhtml" media-type="application/xhtml+xml"/>'
+        b'</manifest><spine><itemref idref="c"/></spine></package>'
+    )
+    with zipfile.ZipFile(book, "w") as zf:
+        zf.writestr("mimetype", b"application/epub+zip", compress_type=zipfile.ZIP_STORED)
+        zf.writestr("META-INF/container.xml", container)
+        zf.writestr("OEBPS/content.opf", opf)
+        zf.writestr("OEBPS/text/ch.xhtml", b"<html><body>\xff\xfe bad</body></html>")
+
+    tab = EditorTab()
+    qtbot.addWidget(tab)
+    tab.open_epub(book)
+    tab.edit_toggle.setChecked(True)  # tryb edycji włączony per sesja
+    tab._select_path("OEBPS/text/ch.xhtml")
+    assert tab.code_editor.read_only is True  # wymuszony read-only
+    assert accent not in tab.code_editor.editor.styleSheet()  # brak akcentu
+
+
 def test_open_external_selects_file_and_line(qtbot: QtBot) -> None:
     """open_external (kontrakt open_in_editor) zaznacza plik i ustawia linię."""
     tab = EditorTab()

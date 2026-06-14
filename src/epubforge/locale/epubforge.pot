@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-06-14 20:46+0200\n"
+"POT-Creation-Date: 2026-06-14 21:43+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -333,8 +333,8 @@ msgstr ""
 msgid "Język: {language}"
 msgstr ""
 
-#: src/epubforge/gui/app.py:333 src/epubforge/gui/tabs/editor.py:421
-#: src/epubforge/gui/tabs/editor.py:437
+#: src/epubforge/gui/app.py:333 src/epubforge/gui/tabs/editor.py:444
+#: src/epubforge/gui/tabs/editor.py:460
 msgid "Niezapisane zmiany"
 msgstr ""
 
@@ -537,70 +537,82 @@ msgstr ""
 msgid "Inne"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:129
+#: src/epubforge/gui/tabs/editor.py:135
 msgid "Otwórz EPUB…"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:130
+#: src/epubforge/gui/tabs/editor.py:136
 msgid "Otwórz plik EPUB do podglądu i edycji"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:134
+#: src/epubforge/gui/tabs/editor.py:140
 msgid "Nie otwarto pliku"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:138
-msgid "Tryb edycji"
-msgstr ""
-
-#: src/epubforge/gui/tabs/editor.py:139
+#: src/epubforge/gui/tabs/editor.py:144
 msgid "Włącz edycję (domyślnie tylko do odczytu)"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:145
+#: src/epubforge/gui/tabs/editor.py:150
 msgid "Inspektor CSS"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:146
+#: src/epubforge/gui/tabs/editor.py:151
 msgid "Pokaż panel reguł CSS z podglądem na żywo"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:153
+#: src/epubforge/gui/tabs/editor.py:158
 msgid "Zapisz EPUB"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:154
+#: src/epubforge/gui/tabs/editor.py:159
 msgid "Zapisuje zmiany do pliku EPUB (kopia .bak)"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:168
+#: src/epubforge/gui/tabs/editor.py:173
 msgid "Otwórz EPUB"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:168
+#: src/epubforge/gui/tabs/editor.py:173
 msgid "Pliki EPUB (*.epub)"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:181 src/epubforge/gui/tabs/editor.py:408
+#: src/epubforge/gui/tabs/editor.py:186 src/epubforge/gui/tabs/editor.py:431
 msgid "Błąd"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:181
+#: src/epubforge/gui/tabs/editor.py:186
 #, python-brace-format
 msgid ""
 "Nie udało się otworzyć EPUB:\n"
 "{e}"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:310
+#: src/epubforge/gui/tabs/editor.py:315
 msgid "Plik zawiera znaki nie-UTF-8 — edycja zablokowana."
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:393
+#: src/epubforge/gui/tabs/editor.py:372
+msgid "Tryb: edycja"
+msgstr ""
+
+#: src/epubforge/gui/tabs/editor.py:372
+msgid "Tryb: tylko podgląd"
+msgstr ""
+
+#: src/epubforge/gui/tabs/editor.py:374
+msgid "● Edycja"
+msgstr ""
+
+#: src/epubforge/gui/tabs/editor.py:377
+msgid "● Tylko podgląd"
+msgstr ""
+
+#: src/epubforge/gui/tabs/editor.py:416
 msgid "Niepoprawny XML"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:394
+#: src/epubforge/gui/tabs/editor.py:417
 #, python-brace-format
 msgid ""
 "Plik nie jest poprawnym XML:\n"
@@ -609,23 +621,23 @@ msgid ""
 "Zapisać mimo to?"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:408
+#: src/epubforge/gui/tabs/editor.py:431
 #, python-brace-format
 msgid ""
 "Nie udało się zapisać EPUB:\n"
 "{e}"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:422
+#: src/epubforge/gui/tabs/editor.py:445
 #, python-brace-format
 msgid "Plik „{name}” ma niezapisane zmiany."
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:438
+#: src/epubforge/gui/tabs/editor.py:461
 msgid "EPUB ma niezapisane zmiany. Zapisać przed zamknięciem?"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:496
+#: src/epubforge/gui/tabs/editor.py:520
 #, python-brace-format
 msgid ""
 "{name}\n"
@@ -634,7 +646,7 @@ msgid ""
 "Rozmiar: {size} B"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:497
+#: src/epubforge/gui/tabs/editor.py:521
 msgid "nieznany"
 msgstr ""
 
@@ -1206,21 +1218,21 @@ msgstr ""
 msgid "Otwórz w przeglądarce: {url}"
 msgstr ""
 
-#: src/epubforge/gui/widgets/code_editor.py:154
-#: src/epubforge/gui/widgets/code_editor.py:330
+#: src/epubforge/gui/widgets/code_editor.py:155
+#: src/epubforge/gui/widgets/code_editor.py:340
 #, python-brace-format
 msgid "Wiersz {line}, kolumna {col}"
 msgstr ""
 
-#: src/epubforge/gui/widgets/code_editor.py:163
+#: src/epubforge/gui/widgets/code_editor.py:164
 msgid "Szukaj…"
 msgstr ""
 
-#: src/epubforge/gui/widgets/code_editor.py:169
+#: src/epubforge/gui/widgets/code_editor.py:170
 msgid "Poprzedni"
 msgstr ""
 
-#: src/epubforge/gui/widgets/code_editor.py:172
+#: src/epubforge/gui/widgets/code_editor.py:173
 msgid "Następny"
 msgstr ""
 

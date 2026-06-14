@@ -148,6 +148,7 @@ class CodeEditor(QWidget):
         self.editor.cursorPositionChanged.connect(self._update_status)
         self.editor.document().modificationChanged.connect(self.modified_changed.emit)
         layout.addWidget(self.editor, stretch=1)
+        self._apply_frame()
 
         layout.addWidget(self._build_search_bar())
 
@@ -221,18 +222,27 @@ class CodeEditor(QWidget):
     @read_only.setter
     def read_only(self, value: bool) -> None:
         self.editor.setReadOnly(value)
+        # W trybie podglądu chowamy karetkę (szerokość 0), w edycji jest widoczna.
+        self.editor.setCursorWidth(0 if value else 2)
+        self._apply_frame()
 
     def is_modified(self) -> bool:
         """Czy dokument ma niezapisane zmiany."""
         return self.editor.document().isModified()
 
     def set_theme(self, theme: Theme) -> None:
-        """Aktualizuje kolory (numery linii, podświetlanie, trafienia)."""
+        """Aktualizuje kolory (numery linii, podświetlanie, trafienia, obwódka)."""
         self._theme = theme
         self.editor.set_theme(theme)
         if self._highlighter is not None:
             self._highlighter.set_theme(theme)
         self._refresh_match_highlight()
+        self._apply_frame()
+
+    def _apply_frame(self) -> None:
+        """Obwódka edytora: akcent gdy edytowalny, zwykła ramka w trybie podglądu."""
+        color = self._theme.border if self.editor.isReadOnly() else self._theme.accent
+        self.editor.setStyleSheet(f"QPlainTextEdit {{ border: 1px solid {color}; }}")
 
     # ── Wyszukiwanie ────────────────────────────────────────────────────────--
 

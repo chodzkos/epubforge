@@ -65,6 +65,13 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
   opóźnione przemalowanie częściowo widocznych okien.
 
 ### Changed
+- **Wyraźniejsza sygnalizacja trybu edycji w edytorze EPUB** — przełącznik pokazuje
+  aktualny stan tekstem („Tryb: tylko podgląd" / „Tryb: edycja"), nad obszarem
+  edytora jest status trybu w kolorze motywu (akcent + „● Edycja" w edycji, `fg2`
+  w podglądzie), a obszar edytora ma obwódkę w kolorze akcentu tylko gdy edycja jest
+  aktywna (karetka widoczna w edycji, ukryta w podglądzie). Tryb jest pamiętany per
+  sesja; pliki nie-UTF-8 pozostają tylko do odczytu (bez akcentu) mimo włączonego
+  trybu edycji.
 - **Własny silnik motywu zamiast `qdarktheme`** (GUI standard v2.0) — `theme.py`
   buduje motyw sam: styl Fusion + `QPalette` (baza kolorów) + QSS wyłącznie na
   akcenty, z akcentem marki `#5DCAA5` i pełną tabelą stanów (hover/pressed/focus/

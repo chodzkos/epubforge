@@ -75,6 +75,7 @@ class EditorTab(QWidget):
         self._build_ui()
         self._wire_shortcuts()
         self._refresh_actions()
+        self._update_mode_indicator()
 
     # ── Budowa UI ─────────────────────────────────────────────────────────────
 
@@ -87,6 +88,11 @@ class EditorTab(QWidget):
         self.info_bar.setWordWrap(True)
         self.info_bar.setVisible(False)
         outer.addWidget(self.info_bar)
+
+        # Wyraźny status trybu edycji (kolor z motywu) tuż nad obszarem edytora.
+        self.mode_label = QLabel()
+        self.mode_label.setContentsMargins(2, 0, 2, 4)
+        outer.addWidget(self.mode_label)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         outer.addWidget(splitter, stretch=1)
@@ -135,7 +141,6 @@ class EditorTab(QWidget):
         toolbar.addWidget(self.path_label, stretch=1)
 
         self.edit_toggle = QToolButton()
-        self.edit_toggle.setText(_("Tryb edycji"))
         self.edit_toggle.setToolTip(_("Włącz edycję (domyślnie tylko do odczytu)"))
         self.edit_toggle.setCheckable(True)
         self.edit_toggle.toggled.connect(self._on_edit_toggled)
@@ -352,8 +357,26 @@ class EditorTab(QWidget):
     # ── Edycja / zapis ─────────────────────────────────────────────────────--
 
     def _on_edit_toggled(self, _checked: bool) -> None:
-        """Przełącza tryb edycji i aktualizuje read-only edytora."""
+        """Przełącza tryb edycji, aktualizuje read-only i sygnalizację trybu."""
         self._apply_read_only()
+        self._update_mode_indicator()
+
+    def _update_mode_indicator(self) -> None:
+        """Wzmacnia sygnał trybu: etykieta przełącznika i status w kolorze motywu.
+
+        Tryb jest pamiętany per sesja (nie per plik) — przełącznik nie resetuje się
+        przy zmianie pliku. Obwódka edytora (akcent w edycji) jest sterowana przez
+        ``CodeEditor`` ze stanu read-only, więc pliki nie-UTF-8 pozostają bez akcentu.
+        """
+        editing = self.edit_toggle.isChecked()
+        self.edit_toggle.setText(_("Tryb: edycja") if editing else _("Tryb: tylko podgląd"))
+        if editing:
+            self.mode_label.setText(_("● Edycja"))
+            color = self._theme.accent
+        else:
+            self.mode_label.setText(_("● Tylko podgląd"))
+            color = self._theme.fg2
+        self.mode_label.setStyleSheet(f"QLabel {{ color: {color}; }}")
 
     def _apply_read_only(self) -> None:
         """Edytor jest edytowalny tylko w trybie edycji i dla plików bez zastępczych."""
@@ -457,6 +480,7 @@ class EditorTab(QWidget):
         self._theme = theme
         self.code_editor.set_theme(theme)
         self.css_inspector.set_theme(theme)
+        self._update_mode_indicator()
 
     def _close_epub(self) -> None:
         """Zamyka bieżący EPUB i czyści stan edycji."""

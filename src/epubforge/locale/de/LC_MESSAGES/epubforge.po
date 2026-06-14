@@ -551,9 +551,21 @@ msgstr "EPUB-Datei zum Ansehen und Bearbeiten öffnen"
 msgid "Nie otwarto pliku"
 msgstr "Keine Datei geöffnet"
 
-#: src/epubforge/gui/tabs/editor.py:138
-msgid "Tryb edycji"
-msgstr "Bearbeitungsmodus"
+#: src/epubforge/gui/tabs/editor.py
+msgid "Tryb: tylko podgląd"
+msgstr "Modus: nur Vorschau"
+
+#: src/epubforge/gui/tabs/editor.py
+msgid "Tryb: edycja"
+msgstr "Modus: Bearbeitung"
+
+#: src/epubforge/gui/tabs/editor.py
+msgid "● Edycja"
+msgstr "● Bearbeitung"
+
+#: src/epubforge/gui/tabs/editor.py
+msgid "● Tylko podgląd"
+msgstr "● Nur Vorschau"
 
 #: src/epubforge/gui/tabs/editor.py:139
 msgid "Włącz edycję (domyślnie tylko do odczytu)"
