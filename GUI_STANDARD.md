@@ -4,16 +4,20 @@
 > Punkt odniesienia dla wszystkich aplikacji i dla Claude Code.
 > Dwa tory technologiczne, wspólne zasady wyglądu i zachowania.
 
-| Wersja | Data | Zmiany |
-|---|---|---|
-| 2.6 | 2026-06-12 | KOREKTA fallbacku toolbara: prawdziwa przyczyna pustych przycisków to przeciekający app-QSS `QToolButton{padding/border}` przycinający przypięty ~22px przycisk — NIE brak ikon. Fix: per-widget QSS zdejmujący padding/border (wyższa specyficzność) + standardIcon gdy pusta; PORZUCONO wymuszanie etykiet (nie mieszczą się w 22px). Test geometryczny size vs sizeHint (działa offscreen) |
-| 2.5 | 2026-06-12 | KOREKTA reguły belki: DWM ustawiany BEZWARUNKOWO = motyw app przy każdym apply() (atrybut DWM jest stanowy — „nic nie rób przy zgodności" zostawiało starą wartość → belka zamrożona; usterka po F-C); nota o timingu labelingu toolbara (po setOption, przed exec) |
-| 2.4 | 2026-06-12 | fallback QFileDialog: wymuszenie ikon+etykiet na przyciskach toolbara (back/forward/toParent/newFolder przez objectName) — przy custom QSS bywają puste, zostaje sam tooltip |
-| 2.3 | 2026-06-12 | zmiana motywu w locie: QSS regenerowany przy każdym apply() (zakaz cache'owania stringa z hexami), jawne QToolTip.setPalette() — elementy statyczne Qt nie podążają za app.setPalette() (usterka z EpubForge F-A) |
-| 2.2 | 2026-06-12 | dialog fallback: jawny binarny trade-off przy rozjeździe + standard konfiguracji nienatywnego QFileDialog (sidebar, Detail, rozmiar, instancyjne API); odrzucona opcja „zawsze natywne" z warunkiem rewizji |
-| 2.1 | 2026-06-12 | symetryczna reguła rozjazdu motywów (dialogi natywne I pasek tytułu — oba kierunki, nie tylko app dark + system light); odczyt motywu systemu przy otwarciu dialogu; update() po re-aplikacji motywu (usterka z EpubForge F-S) |
-| 2.0 | 2026-06-12 | usunięcie qdarktheme (projekt porzucony) → własny theme.py; platformdirs; stany palety; pułapki PyInstaller+Qt; niuanse DWM/Qt 6.5+ |
-| 1.0 | — | wersja pierwotna |
+**Ostatnia rewizja:** 2026-06-14 · **Wersja:** 2.7
+*(wersje 2.0–2.7 powstały w jednej sesji przeglądowej 2026-06-14; przyszłe edycje datować per zmiana)*
+
+| Wersja | Zmiany |
+|---|---|
+| 2.7 | sekcja Ikonografia rozszerzona: zestaw Lucide (ISC) / Tabler (MIT) kopiowany do repo; mechanizm przebarwialnych SVG `get_icon()` z podmianą currentColor wg palety + cache + clear na theme_changed (powód: NIE statyczne PNG); ICON_MAP; zasada „nazwa→tooltip+setText"; audyt tooltipów. Komponent IconProvider w §7 (z IcoForge feat/icon-system) |
+| 2.6 | KOREKTA fallbacku toolbara: prawdziwa przyczyna pustych przycisków to przeciekający app-QSS `QToolButton{padding/border}` przycinający przypięty ~22px przycisk — NIE brak ikon. Fix: per-widget QSS zdejmujący padding/border (wyższa specyficzność) + standardIcon gdy pusta; PORZUCONO wymuszanie etykiet (nie mieszczą się w 22px). Test geometryczny size vs sizeHint (działa offscreen) |
+| 2.5 | KOREKTA reguły belki: DWM ustawiany BEZWARUNKOWO = motyw app przy każdym apply() (atrybut DWM jest stanowy — „nic nie rób przy zgodności" zostawiało starą wartość → belka zamrożona; usterka po F-C); nota o timingu labelingu toolbara (po setOption, przed exec) |
+| 2.4 | fallback QFileDialog: wymuszenie ikon+etykiet na przyciskach toolbara (back/forward/toParent/newFolder przez objectName) — przy custom QSS bywają puste, zostaje sam tooltip |
+| 2.3 | zmiana motywu w locie: QSS regenerowany przy każdym apply() (zakaz cache'owania stringa z hexami), jawne QToolTip.setPalette() — elementy statyczne Qt nie podążają za app.setPalette() (usterka z EpubForge F-A) |
+| 2.2 | dialog fallback: jawny binarny trade-off przy rozjeździe + standard konfiguracji nienatywnego QFileDialog (sidebar, Detail, rozmiar, instancyjne API); odrzucona opcja „zawsze natywne" z warunkiem rewizji |
+| 2.1 | symetryczna reguła rozjazdu motywów (dialogi natywne I pasek tytułu — oba kierunki, nie tylko app dark + system light); odczyt motywu systemu przy otwarciu dialogu; update() po re-aplikacji motywu (usterka z EpubForge F-S) |
+| 2.0 | usunięcie qdarktheme (projekt porzucony) → własny theme.py; platformdirs; stany palety; pułapki PyInstaller+Qt; niuanse DWM/Qt 6.5+ |
+| 1.0 | wersja pierwotna (przed sesją przeglądową) |
 
 ---
 
@@ -329,6 +333,43 @@ amber    #b25000
 - sukces/akcja główna → `accent`
 - ikony spójne w obrębie aplikacji (jeden zestaw)
 
+#### Zestaw ikon
+- **Lucide** (licencja ISC) jako domyślny; **Tabler** (MIT) jako alternatywa.
+- Wybrane SVG **kopiowane do repo** (`assets/icons/`) — zero zależności
+  runtime. W repo plik `LICENSE-icons` z licencją zestawu.
+
+#### Mechanizm: przebarwialne SVG, NIE statyczne PNG (komponent `IconProvider`)
+Powód SVG zamiast PNG: ikony muszą przebarwiać się razem z motywem.
+Moduł (gui-kit: `qt/icons.py`) z funkcją `get_icon(name, color=None) -> QIcon`:
+- ładuje `assets/icons/<name>.svg`, podmienia `currentColor` na token palety
+  (domyślnie `fg`; semantyczne `red`/`amber`/`accent`; ikona pełniąca rolę
+  TEKSTU w jasnym motywie → `accent_text`/`text_accent()` — reguła kontrastu §5),
+- render do QPixmap 16/24 px + warianty HiDPI (`devicePixelRatio`),
+- cache po kluczu `(name, color, size)`; **`clear_cache()` na sygnale
+  `theme_changed`**, po czym widgety wołają ponownie `setIcon()`,
+- ścieżki przez `get_resource_path()` (działa w PyInstallerze;
+  `assets/icons/*` w `datas`).
+- **`ICON_MAP`** — jedna stała mapująca akcję → plik SVG, jedyne miejsce
+  zmiany przy podmianie ikon (pencil/eraser/pipette/paint-bucket/square/
+  square-dashed/arrow-left-right/rotate-ccw/zoom-in/zoom-out/save/undo-2/
+  redo-2/copy/scissors/clipboard-paste/file-plus/folder-open/sun-moon/info…).
+
+#### Zasada „nazwa NIE znika, tylko się przenosi"
+Przy zamianie tekstowych etykiet na ikony (toolbar `ToolButtonIconOnly`,
+`setIconSize(20×20)`, odstępy 6–8px):
+- tekst akcji wędruje do **tooltipa** w formacie „Nazwa (skrót)" (np.
+  „Ołówek (B)") — spójne z wymogiem tooltipów,
+- i **zostaje w `setText()`** (czytniki ekranu, menu kontekstowe, menu Plik
+  gdzie Qt pokazuje ikonę automatycznie),
+- narzędzie aktywne: `setCheckable(True)` + `QActionGroup` (exclusive) —
+  podświetlenie zamiast zgadywania,
+- po `theme_changed`: ponowne `setIcon()` (po `clear_cache()`).
+- **Audyt tooltipów** jako test: iteracja po `findChildren(QAbstractButton)`
+  + akcjach toolbarów; element interaktywny bez tooltipa = fail.
+
+> Wzorzec wdrożony pierwotnie w IcoForge (etap `feat/icon-system`,
+> kroki 4.1–4.6) — kandydat do ekstrakcji do gui-kit jako `qt/icons.py`.
+
 ---
 
 ## 6. Wspólne wzorce układu
@@ -378,6 +419,7 @@ Biblioteka widgetów do reużycia w każdym projekcie. Docelowo: prywatny pakiet
 | `FileDialogs` | dialogi wg reguły rozjazdu + skonfigurowany fallback | tk.filedialog (zawsze natywne-jasne, ograniczenie toru) | natywny: statyczne get*; fallback: instancja QFileDialog (sidebar, Detail, rozmiar z config) |
 | `FileList` | lista plików z toolbar + D&D | tk.Listbox | QListWidget |
 | `Checkbox` | stylizowany checkbox (nie switch!) | tk.Checkbutton | QCheckBox |
+| `IconProvider` | przebarwialne ikony SVG wg palety | — (brak; PNG lub emoji) | get_icon(name,color)→QIcon, currentColor z palety, cache, clear na theme_changed |
 | `Tooltip` | podpowiedź reagująca na motyw | Toplevel | QToolTip: QSS z theme.py + setPalette przy każdym apply() (statyczna paleta!) |
 | `Section` | sekcja z tytułem | ttk.LabelFrame | QGroupBox |
 | `LogStreamer` | strumień subprocess → log | kolejka + after | QThread + signal |
