@@ -2,10 +2,12 @@
 
 | Wersja | Data | Zmiany |
 |---|---|---|
+| 2.1 | 2026-06-15 | dodano etap **F-P** (podgląd XHTML + handoff do Sigil/Calibre); odnotowano poprawki po-etapowe (symetryczna reguła dialogów, fallback QFileDialog, paleta tooltipów, wskaźnik trybu edycji); statusy ✅ dla F-S/F-A/F-C/F-D |
 | 2.0 | 2026-06-12 | dostosowanie do GUI_STANDARD v2.0: nowy etap **F-S** (własny theme.py zamiast qdarktheme, platformdirs, debounce configu, niuanse DWM/dialogów, build/CI); statusy ✅ dla F-0 i F-M; aktualizacja stacku, ryzyk i promptów |
 | 1.0 | 2026-06-12 | wersja pierwotna (migracja PySide6 + plan F1/F2/F3+/F7/F8/F10/F11) |
 
-**Status realizacji:** F-0 ✅ · F-M ✅ (wg standardu v1.0 — stąd F-S) · F-S → F-A → F-B → F-C → F-D → F-E → F-F → F-G → F-H
+**Status realizacji:** F-0 ✅ · F-M ✅ · F-S ✅ · F-A ✅ · F-C ✅ · F-D ✅ · **F-P** (nowy — podgląd XHTML) → F-B → F-E → F-F → F-G → F-H
+*(plus poprawki po-etapowe: symetryczna reguła natywnych dialogów + repaint na zmianę motywu systemu, ucywilizowany fallback QFileDialog, paleta tooltipów przy zmianie motywu, wyraźniejszy wskaźnik trybu edycji)*
 
 Plan rozwoju po wydaniu v1.0. Obejmuje wykonaną migrację GUI na **PySide6** oraz funkcje z `FEATURES.md`: **F1** (i18n), **F2** (EpubCheck), **F3** (edytor — **rozszerzony o inspektor reguł CSS z podglądem na żywo**), **F7** (MOBI→EPUB), **F8** (statystyki), **F10** (TOC), **F11** (presety CSS).
 
@@ -33,10 +35,11 @@ F-H (F8 statystyki) — niezależny
 | F-0 | dokumenty planu w repo | `docs/features-v1.1-plan` | 0,5 h | ✅ |
 | F-M | migracja gui/ na PySide6 (parytet 1:1) | `refactor/gui-pyside6` | 10–14 h | ✅ |
 | **F-S** | **zgodność z GUI_STANDARD v2.0** (theme.py, platformdirs, config-debounce, DWM/dialogi, build/CI) | `refactor/gui-standard-v2` | **4–6 h** | po F-M |
-| F-A | F1 — i18n (gettext) | `feature/f1-i18n` | 5–7 h | F-S |
+| F-A | F1 — i18n (gettext) | `feature/f1-i18n` | 5–7 h | ✅ |
 | F-B | F11 — presety CSS | `feature/f11-css-presets` | 4–5 h | F-A |
-| F-C | F3 — edytor (core) | `feature/f3-editor-core` | 7–9 h | F-A |
-| F-D | F3+ — inspektor CSS live | `feature/f3-css-inspector` | 7–9 h | F-C |
+| F-C | F3 — edytor (core) | `feature/f3-editor-core` | 7–9 h | ✅ |
+| F-D | F3+ — inspektor CSS live | `feature/f3-css-inspector` | 7–9 h | ✅ |
+| **F-P** | **podgląd XHTML w edytorze + handoff do Sigil/Calibre** | `feature/xhtml-preview` | **4–5 h** | F-D |
 | F-E | F2 — EpubCheck | `feature/f2-epubcheck` | 6–8 h | F-C |
 | F-F | F10 — TOC | `feature/f10-toc` | 8–10 h | F-C |
 | F-G | F7 — MOBI→EPUB | `feature/f7-mobi-to-epub` | 3–4 h | F-S |
@@ -200,7 +203,22 @@ CLI: `epubforge presets list`, `epubforge fix --preset ID [--preset-mode replace
 
 ---
 
-### F-E · F2 — Walidacja przez EpubCheck
+### F-P · Podgląd XHTML w edytorze + handoff do Sigil/Calibre *(rozszerzenie spoza FEATURES.md)*
+
+**Cel:** dla plików HTML/XHTML prawy panel edytora dostaje przełączalny **podgląd** (Kod ⇄ Podgląd) renderowany tym samym silnikiem `QTextDocument` co inspektor CSS; jawna adnotacja o ograniczeniach silnika + przyciski do pełnego podglądu w Sigil/Calibre Editor. Domyka filozofię „quick fix, nie Sigil": szybki rzut oka w aplikacji, pełny podgląd jednym kliknięciem na zewnątrz.
+
+**Decyzja architektoniczna:** **nie** rozpychamy inspektora CSS (jest o regułach) — dochodzi osobny widget `gui/widgets/html_preview.py` jako trzeci stan prawego panelu (Kod / Podgląd / — dla css inspektor jak dotąd). Funkcja renderująca i escaping reużyte z F-D (wspólny moduł, jeśli to tanie).
+
+**Projekt:**
+- `HtmlPreview(QWidget)`: QTextEdit/QTextBrowser read-only przez `QTextDocument.setHtml`. **Obrazki:** względne `src` rozwiązywane z otwartego Epub — preferowane **data: URI** z bajtów (bezstanowe, odporne); duże pliki (> kilka MB) jako placeholder z nazwą, by base64 nie puchło. Tło „papierowe" białe **niezależne od motywu** (jak podgląd inspektora), 1 px ramka `border` z Theme.
+- Pasek adnotacji nad podglądem: „Podgląd przybliżony (silnik Qt) — nie pokazuje pełnego CSS, fontów osadzonych ani układu czytnika" + przyciski **[Sigil] [Calibre Editor]** reużywające istniejące akcje (działają na bieżącym pliku/EPUB). Opcjonalnie lista nieobsługiwanych aspektów jak w inspektorze, jeśli tania.
+- `tabs/editor.py`: dla `text/html` i `application/xhtml+xml` przełącznik Kod/Podgląd (domyślnie **Kod** — duch quick-fix); CSS dalej z inspektorem. Podgląd odświeżany z bieżącej treści edytora (po przełączeniu + debounce ~400 ms gdy aktywny), więc pokazuje **niezapisane** zmiany. Spójność z trybem edycji: podgląd zawsze read-only.
+
+**Testy:** render XHTML z `<img src="rel.png">` → obrazek jako data: URI z bajtów Epub; przełącznik Kod/Podgląd zmienia widok i edycja kodu odświeża podgląd; przyciski Sigil/Calibre wołane z właściwą ścieżką (mock); tło podglądu niezależne od motywu.
+
+**Twoje zadania:** ocena użyteczności podglądu na 2–3 prawdziwych książkach (czy przybliżenie jest dość pomocne, by zostać); weryfikacja, że handoff do Sigil/Calibre otwiera właściwy plik; decyzja, czy podgląd ma kiedyś dostać tryb „pełny" przez QtWebEngine (na razie świadomie **nie** — waga + licencja + rozmiar exe).
+
+---
 
 **Projekt:** detekcja w `core/detection.py` wg wzorca Tooli: `Tools.java()` (PATH/JAVA_HOME/Temurin; wersja z `java -version` — **stderr**; wymagane ≥ 11) i `Tools.epubcheck()` (jar: config override `tools.epubcheck_jar` → glob ProgramFiles/`~` → `<config(platformdirs)>/epubcheck/epubcheck.jar` → obok exe; wersja z `META-INF/MANIFEST.MF` bez uruchamiania javy). `validators/epubcheck.py`: `ValidationMessage/ValidationReport(counts())`, `run_epubcheck` — `java -jar … --json tmp.json` (tempfile, CREATE_NO_WINDOW, utf-8/replace, timeout); exit≠0 z poprawnym JSON = raport `valid=False`; brak JSON/timeout = `EpubforgeError`; parser defensywny, normalizacja ścieżek do wewnętrznych. CLI `epubforge check` (exit 0/1/2). GUI `tabs/validator.py`: FileList + Worker, podsumowanie z **ngettext**, filtry severity, QTreeWidget (kolory `red`/`amber`/`fg2` z Theme; dane w `Qt.UserRole`), **dwuklik → `open_in_editor(epub, internal_path, line)`**, eksport JSON/HTML; brak narzędzi ⇒ panel pomocy (Temurin 17+, epubcheck z W3C GitHub) + „Wskaż epubcheck.jar…" (config → re-detekcja). Bez auto-pobierania jara w v1.
 
@@ -247,7 +265,7 @@ CLI: `epubforge presets list`, `epubforge fix --preset ID [--preset-mode replace
 - **CI test.yml:** F-S weryfikuje `concurrency` + `paths-ignore`; offscreen z F-M zostaje.
 - **README / docs / CHANGELOG:** per etap; F-S dodaje adnotację o portable vs instalator.
 - **GUI_STANDARD.md w repo:** F-S podmienia na v2.0; **CLAUDE.md:** pułapki Qt zaktualizowane (Fusion przed setPalette; DWM tylko przy motywie ≠ system; QPalette vs QSS bez dublowania; upx=False).
-- **Wersjonowanie (przypomnienie):** F-M+F-S → v2.0.0; dalej F-A..F-B → 2.1, F-C..F-D → 2.2, F-E → 2.3, F-F → 2.4, F-G..F-H → 2.5 (lub wedle twojej decyzji per merge).
+- **Wersjonowanie (przypomnienie):** F-M+F-S → v2.0.0; dalej F-A..F-B → 2.1, F-C..F-D → 2.2, F-P → 2.2.x (rozszerzenie edytora), F-E → 2.3, F-F → 2.4, F-G..F-H → 2.5 (lub wedle twojej decyzji per merge).
 
 ## 5. Twoja lista zadań — zbiorczo
 

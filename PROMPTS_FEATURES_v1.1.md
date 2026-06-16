@@ -2,10 +2,11 @@
 
 | Wersja | Data | Zmiany |
 |---|---|---|
+| 2.1 | 2026-06-15 | dodano prompt etapu **F-P** (podgląd XHTML); F-S/F-A/F-C/F-D oznaczone ✅ |
 | 2.0 | 2026-06-12 | dostosowanie do GUI_STANDARD v2.0: nowy etap **F-S** (własny theme.py, platformdirs, debounce configu, DWM/dialogi, build/CI); F-0 i F-M oznaczone ✅; prompty F-A…F-H zaktualizowane (bez qdarktheme, stany Theme, ścieżki configu) |
 | 1.0 | 2026-06-12 | wersja pierwotna |
 
-Gotowe do wklejenia prompty dla etapów z `ROADMAP_FEATURES_v1.1.md`. Kolejność: ~~F-0~~ ✅ → ~~F-M~~ ✅ → **F-S** → F-A → F-B → F-C → F-D → F-E → F-F → F-G → F-H. Skopiuj cały blok, wklej do Claude Code, czekaj. **Przed każdym etapem: jesteś na `main` po `git pull`.**
+Gotowe do wklejenia prompty dla etapów z `ROADMAP_FEATURES_v1.1.md`. Kolejność: ~~F-0~~ ✅ → ~~F-M~~ ✅ → ~~F-S~~ ✅ → ~~F-A~~ ✅ → ~~F-C~~ ✅ → ~~F-D~~ ✅ → **F-P** → F-B → F-E → F-F → F-G → F-H. Skopiuj cały blok, wklej do Claude Code, czekaj. **Przed każdym etapem: jesteś na `main` po `git pull`.**
 
 ---
 
@@ -291,6 +292,50 @@ PUŁAPKI:
 - tinycss2: source_line/source_column wskazują POCZĄTEK tokenu, 1-indeksowane.
 - Nie re-serializuj arkusza tinycss2 — replace_rule po spanie to jedyna ścieżka zapisu.
 - Przy ogromnych arkuszach (Calibre) lista reguł może mieć tysiące pozycji — buduj itemy hurtowo (setUpdatesEnabled(False) na czas wypełniania).
+```
+
+---
+
+## 👁️ Etap F-P — Podgląd XHTML w edytorze + handoff do Sigil/Calibre
+
+```
+EpubForge, rozszerzenie edytora (po F-D): podgląd plików HTML/XHTML w prawym panelu. Przeczytaj CLAUDE.md, ROADMAP_FEATURES_v1.1.md (sekcja F-P), gui/tabs/editor.py, gui/widgets/css_inspector.py (funkcja renderująca QTextDocument / build_preview_html + lista nieobsługiwanych), oraz miejsce, gdzie wołane są akcje Sigil/Calibre Editor dla bieżącego EPUB (poszukaj w gui/tabs/). Stringi przez _() + en/de + .mo.
+
+ZADANIE: dla plików HTML/XHTML prawy panel edytora dostaje przełączalny podgląd (Kod ⇄ Podgląd) renderowany silnikiem QTextDocument, z adnotacją o ograniczeniach i przyciskami do pełnego podglądu w Sigil/Calibre. CSS dalej ma inspektor jak teraz — NIE rozpychamy inspektora CSS.
+
+1. main + pull. Gałąź: feature/xhtml-preview
+
+2. gui/widgets/html_preview.py — HtmlPreview(QWidget):
+   - QTextBrowser (lub QTextEdit) read-only renderujący XHTML przez QTextDocument.setHtml
+   - OBRAZKI: względne src rozwiązywane z otwartego Epub. Preferuj przepisanie <img src> na data: URI z bajtów Epub (bezstanowe, odporne); pliki > ~3 MB → placeholder z nazwą pliku zamiast base64 (żeby dokument nie puchł). Alternatywa (jeśli wolisz): QTextDocument z nadpisanym loadResource czytającym z Epub — wybierz prostsze, data: URI jest OK.
+   - pasek adnotacji na górze: _("Podgląd przybliżony (silnik Qt) — nie pokazuje pełnego CSS, fontów osadzonych ani układu czytnika. Pełny podgląd:") + przyciski [Sigil] [Calibre Editor] reużywające istniejące akcje (przekaż bieżący plik/EPUB); tooltipy
+   - opcjonalnie pod podglądem lista nieobsługiwanych aspektów (reużyj z css_inspector jeśli tanie); jeśli niełatwe — sama ogólna adnotacja wystarczy
+   - tło "papierowe" białe NIEZALEŻNE od motywu aplikacji (jak podgląd inspektora), 1px ramka border z Theme
+   - API: set_content(xhtml_text: str, epub, internal_path) + set_epub_context(...) — tak, by obrazki i przyciski znały bieżący plik
+
+3. gui/tabs/editor.py:
+   - dla media_type text/html i application/xhtml+xml: w prawym panelu przełącznik "Kod / Podgląd" (QTabBar albo dwa toggle-buttony), DOMYŚLNIE Kod (duch quick-fix)
+   - podgląd odświeżany z BIEŻĄCEJ treści edytora: po przełączeniu na Podgląd oraz z debounce ~400 ms gdy Podgląd aktywny i tekst się zmienia → pokazuje niezapisane zmiany
+   - podgląd zawsze read-only, spójny z trybem edycji (gdy tryb podglądu/edycji z F-C — podgląd HTML nie zależy od niego, ale nie może pozwalać na edycję)
+   - przyciski Sigil/Calibre w pasku podglądu działają na AKTUALNYM pliku/EPUB
+   - CSS bez zmian (inspektor), inne typy bez zmian
+
+4. Reużycie: jeśli renderowanie/escaping da się wyciągnąć ze css_inspector do wspólnego modułu (gui/widgets/preview_common.py lub w fixers/) bez rozdmuchania zmian — zrób to; inaczej zostaw osobno.
+
+5. Testy (pytest-qt + czyste):
+   - render XHTML z <img src="rel.png"> → wynikowy HTML zawiera obrazek jako data: URI z bajtów Epub (fixture); obraz > 3 MB → placeholder, nie base64
+   - przełącznik Kod/Podgląd zmienia widok; edycja kodu + przełączenie na Podgląd odświeża treść
+   - przyciski Sigil/Calibre wołane z właściwą ścieżką (mock akcji)
+   - tło podglądu niezależne od motywu (sprawdź po apply dark/light)
+
+6. README/user-guide (sekcja edytora: podgląd + jego ograniczenia + handoff), CHANGELOG (Added). pytest, ruff --fix, mypy.
+7. Commit: "feat(gui): approximate XHTML preview with handoff to Sigil/Calibre"
+8. Zaproponuj push i PR. NIE pushuj automatycznie.
+
+PUŁAPKI:
+- QTextDocument nie wykona JS ani złożonego CSS — to świadome; adnotacja ma to jasno mówić.
+- data: URI dla dużych PNG puchnie — limit rozmiaru + placeholder.
+- Przyciski Sigil/Calibre: reużyj ISTNIEJĄCE akcje, nie duplikuj logiki uruchamiania narzędzi.
 ```
 
 ---
