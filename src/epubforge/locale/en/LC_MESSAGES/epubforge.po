@@ -1611,3 +1611,206 @@ msgstr "Could not read the EpubCheck report: {error}"
 msgid "Raport EpubCheck ma nieoczekiwany format."
 msgstr "The EpubCheck report has an unexpected format."
 
+#: src/epubforge/cli/toc.py:25
+msgid "Spis treści: podgląd, generowanie, naprawa"
+msgstr "Table of contents: view, generate, repair"
+
+#: src/epubforge/cli/toc.py:28
+msgid "Wypisz bieżący spis treści"
+msgstr "Print the current table of contents"
+
+#: src/epubforge/cli/toc.py:30
+msgid "Wygeneruj spis z nagłówków dokumentów"
+msgstr "Generate the TOC from document headings"
+
+#: src/epubforge/cli/toc.py:32
+msgid "Usuń martwe wpisy ze spisu"
+msgstr "Remove dead entries from the TOC"
+
+#: src/epubforge/cli/toc.py:37
+msgid "Najgłębszy poziom nagłówka przy --generate (1-6, domyślnie 3)"
+msgstr "Deepest heading level for --generate (1-6, default 3)"
+
+#: src/epubforge/cli/toc.py:40
+msgid "Zapisz wynik do nowego pliku zamiast nadpisywać"
+msgstr "Write the result to a new file instead of overwriting"
+
+#: src/epubforge/cli/toc.py:43
+msgid "Tylko pokaż zmiany przy --repair, nie zapisuj"
+msgstr "Only show changes for --repair, do not write"
+
+#: src/epubforge/cli/toc.py:66
+msgid "Brak spisu treści w EPUB-ie."
+msgstr "No table of contents in the EPUB."
+
+#: src/epubforge/cli/toc.py:68
+#, python-brace-format
+msgid "Źródło spisu: {source}"
+msgstr "TOC source: {source}"
+
+#: src/epubforge/cli/toc.py:77
+msgid "Nie znaleziono nagłówków do zbudowania spisu."
+msgstr "No headings found to build the TOC."
+
+#: src/epubforge/cli/toc.py:82
+#, python-brace-format
+msgid "Zapisano spis treści do: {path}"
+msgstr "Saved table of contents to: {path}"
+
+#: src/epubforge/cli/toc.py:91
+msgid "Spis treści jest poprawny — brak martwych wpisów."
+msgstr "The table of contents is valid — no dead entries."
+
+#: src/epubforge/cli/toc.py:94
+#, python-brace-format
+msgid "✗ {href} — {reason}"
+msgstr "✗ {href} — {reason}"
+
+#: src/epubforge/cli/toc.py:96
+msgid "(--dry-run) Nie zapisano zmian."
+msgstr "(--dry-run) No changes written."
+
+#: src/epubforge/cli/toc.py:101
+#, python-brace-format
+msgid "Usunięto {n} wpisów. Zapisano do: {path}"
+msgstr "Removed {n} entries. Saved to: {path}"
+
+#: src/epubforge/gui/app.py:211
+msgid "Spis treści"
+msgstr "Table of contents"
+
+#: src/epubforge/gui/app.py:350
+msgid "Są niezapisane zmiany. Zamknąć mimo to?"
+msgstr "There are unsaved changes. Close anyway?"
+
+#: src/epubforge/gui/tabs/toc.py:70 src/epubforge/gui/tabs/toc.py:377
+msgid "Cel"
+msgstr "Target"
+
+#: src/epubforge/gui/tabs/toc.py:116
+msgid "Wskaż plik EPUB…"
+msgstr "Select an EPUB file…"
+
+#: src/epubforge/gui/tabs/toc.py:131
+msgid "Wskaż plik EPUB, aby wczytać spis treści."
+msgstr "Select an EPUB file to load its table of contents."
+
+#: src/epubforge/gui/tabs/toc.py:136
+msgid "Generuj"
+msgstr "Generate"
+
+#: src/epubforge/gui/tabs/toc.py:136
+msgid "Zbuduj spis z nagłówków"
+msgstr "Build the TOC from headings"
+
+#: src/epubforge/gui/tabs/toc.py:138
+msgid "Poziom:"
+msgstr "Level:"
+
+#: src/epubforge/gui/tabs/toc.py:142
+msgid "Najgłębszy poziom nagłówka przy generowaniu"
+msgstr "Deepest heading level when generating"
+
+#: src/epubforge/gui/tabs/toc.py:144
+msgid "Usuń martwe wpisy"
+msgstr "Remove dead entries"
+
+#: src/epubforge/gui/tabs/toc.py:147
+msgid "Dodaj"
+msgstr "Add"
+
+#: src/epubforge/gui/tabs/toc.py:147
+msgid "Dodaj nową pozycję"
+msgstr "Add a new entry"
+
+#: src/epubforge/gui/tabs/toc.py:149
+msgid "Usuń zaznaczoną pozycję"
+msgstr "Remove the selected entry"
+
+#: src/epubforge/gui/tabs/toc.py:151
+msgid "W górę (rodzeństwo)"
+msgstr "Move up (sibling)"
+
+#: src/epubforge/gui/tabs/toc.py:153
+msgid "W dół (rodzeństwo)"
+msgstr "Move down (sibling)"
+
+#: src/epubforge/gui/tabs/toc.py:155
+msgid "Wyżej (poziom)"
+msgstr "Outdent (level up)"
+
+#: src/epubforge/gui/tabs/toc.py:157
+msgid "Głębiej (poziom)"
+msgstr "Indent (level down)"
+
+#: src/epubforge/gui/tabs/toc.py:161
+msgid "Zapisz do EPUB"
+msgstr "Save to EPUB"
+
+#: src/epubforge/gui/tabs/toc.py:161
+msgid "Zapisz spis treści (nav + ncx) do pliku"
+msgstr "Save the table of contents (nav + ncx) to the file"
+
+#: src/epubforge/gui/tabs/toc.py:191
+#, python-brace-format
+msgid "Nie udało się otworzyć: {error}"
+msgstr "Could not open: {error}"
+
+#: src/epubforge/gui/tabs/toc.py:200
+#, python-brace-format
+msgid "Wczytano spis ({source}): {count}"
+msgstr "Loaded TOC ({source}): {count}"
+
+#: src/epubforge/gui/tabs/toc.py:304
+msgid "Nowa pozycja"
+msgstr "New entry"
+
+#: src/epubforge/gui/tabs/toc.py:333
+msgid "Zastąpić bieżący spis treści wygenerowanym?"
+msgstr "Replace the current table of contents with a generated one?"
+
+#: src/epubforge/gui/tabs/toc.py:338
+#, python-brace-format
+msgid "Wygenerowano spis: {count}"
+msgstr "Generated TOC: {count}"
+
+#: src/epubforge/gui/tabs/toc.py:346
+msgid "Spis treści jest poprawny."
+msgstr "The table of contents is valid."
+
+#: src/epubforge/gui/tabs/toc.py:353
+#, python-brace-format
+msgid "Usunięto {n} wpisów."
+msgstr "Removed {n} entries."
+
+#: src/epubforge/gui/tabs/toc.py:367
+msgid "Zapisano spis treści do EPUB."
+msgstr "Saved table of contents to the EPUB."
+
+#: src/epubforge/gui/tabs/toc.py:373
+msgid "Problemy spisu treści"
+msgstr "Table of contents problems"
+
+#: src/epubforge/gui/tabs/toc.py:375
+msgid "Znalezione martwe wpisy zostaną usunięte:"
+msgstr "The dead entries found will be removed:"
+
+#: src/epubforge/gui/tabs/toc.py:377
+msgid "Powód"
+msgstr "Reason"
+
+#: src/epubforge/gui/tabs/toc.py:399
+#, python-brace-format
+msgid "{n} pozycja"
+msgid_plural "{n} pozycji"
+msgstr[0] "{n} entry"
+msgstr[1] "{n} entries"
+
+#: src/epubforge/gui/tabs/toc.py:436
+msgid "Potwierdzenie"
+msgstr "Confirmation"
+
+#: src/epubforge/gui/tabs/toc.py:446
+msgid "Spis treści ma niezapisane zmiany. Porzucić je?"
+msgstr "The table of contents has unsaved changes. Discard them?"
+

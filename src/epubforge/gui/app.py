@@ -33,6 +33,7 @@ from epubforge.gui.tabs import (
     FixerTab,
     KfxTab,
     MetadataTab,
+    TocTab,
     ValidatorTab,
 )
 from epubforge.gui.theme import ThemeManager, ThemeName, ThemeSetting
@@ -200,12 +201,14 @@ class MainWindow(QMainWindow):
         self.validator_tab = ValidatorTab(
             tools=self.tools, config=self.config_data, main_window=self
         )
+        self.toc_tab = TocTab(config=self.config_data)
         self.tabs.addTab(self.metadata_tab, _("Metadane"))
         self.tabs.addTab(self.converter_tab, _("Konwerter"))
         self.tabs.addTab(self.fixer_tab, _("Fixer"))
         self.tabs.addTab(self.kfx_tab, _("Eksport Kindle"))
         self.tabs.addTab(self.editor_tab, _("Edytor"))
         self.tabs.addTab(self.validator_tab, _("Walidacja"))
+        self.tabs.addTab(self.toc_tab, _("Spis treści"))
         layout.addWidget(self.tabs, stretch=1)
 
     def _build_status_bar(self) -> None:
@@ -258,6 +261,7 @@ class MainWindow(QMainWindow):
             log_view.set_theme(self.theme_manager.theme)
         self.editor_tab.set_theme(self.theme_manager.theme)
         self.validator_tab.set_theme(self.theme_manager.theme)
+        self.toc_tab.set_theme(self.theme_manager.theme)
         if self._about_dialog is not None:
             self._about_dialog.set_mode(self.theme_manager.theme.name)
 
@@ -338,12 +342,12 @@ class MainWindow(QMainWindow):
         self.editor_tab.open_external(epub_path, internal_path, line)
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802 — Qt API
-        """Pyta o niezapisane zmiany Edytora, potem zapisuje konfigurację."""
-        if self.editor_tab.has_unsaved_changes():
+        """Pyta o niezapisane zmiany Edytora/Spisu treści, potem zapisuje konfigurację."""
+        if self.editor_tab.has_unsaved_changes() or self.toc_tab.has_unsaved_changes():
             answer = QMessageBox.question(
                 self,
                 _("Niezapisane zmiany"),
-                _("Edytor ma niezapisane zmiany. Zamknąć mimo to?"),
+                _("Są niezapisane zmiany. Zamknąć mimo to?"),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
             if answer != QMessageBox.StandardButton.Yes:

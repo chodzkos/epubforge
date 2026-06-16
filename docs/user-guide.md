@@ -85,6 +85,12 @@ motywu, „O programie") i zakładki robocze:
   i filtrami błędy/ostrzeżenia/informacje. **Dwuklik** błędu z lokalizacją otwiera plik
   w zakładce Edytor na właściwej linii. **Eksport…** zapisuje raport jako JSON lub HTML.
   Gdy brak Javy/`epubcheck.jar`, zakładka pokazuje instrukcję i przycisk **Wskaż epubcheck.jar…**.
+- **Spis treści** — wskaż EPUB, a EpubForge wczyta jego spis (nav.xhtml lub toc.ncx).
+  **Generuj** buduje spis z nagłówków `h1..hN` (poziom ustawia **Poziom:**), **Napraw**
+  usuwa martwe wpisy (z potwierdzeniem). Drzewo edytujesz: dwuklik tytułu zmienia tekst,
+  przyciski **Dodaj/Usuń/⬆⬇** (rodzeństwo) i **⬅➡** (poziom) oraz **drag&drop** zmieniają
+  strukturę. Martwe wpisy są na czerwono z tooltipem. **Zapisz do EPUB** zapisuje nav + ncx
+  (kopia `.bak`). Niezapisane zmiany są pilnowane przy zmianie pliku i zamknięciu.
 
 **Motyw:** górny pasek → przełącznik **Automatyczny / Jasny / Ciemny** (auto podąża za
 systemem). Na Windows zmienia się też kolor paska tytułu.
@@ -104,6 +110,11 @@ epubforge convert input.pdf output.epub --engine calibre
 # Walidacja EpubCheck (wymaga Javy + epubcheck.jar)
 epubforge check book.epub                          # raport; exit 0=OK, 1=błędy, 2=brak narzędzi
 epubforge check book.epub --json report.json --min-severity warning
+
+# Spis treści (podgląd / generowanie / naprawa)
+epubforge toc book.epub --show
+epubforge toc book.epub --generate --max-level 3 --output out.epub
+epubforge toc book.epub --repair --dry-run
 
 # Naprawa EPUB (hyphenacja + CSS)
 epubforge fix book.epub --remove-colors --replace-justify

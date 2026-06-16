@@ -1621,3 +1621,206 @@ msgstr "EpubCheck-Bericht konnte nicht gelesen werden: {error}"
 msgid "Raport EpubCheck ma nieoczekiwany format."
 msgstr "Der EpubCheck-Bericht hat ein unerwartetes Format."
 
+#: src/epubforge/cli/toc.py:25
+msgid "Spis treści: podgląd, generowanie, naprawa"
+msgstr "Inhaltsverzeichnis: Ansicht, Erzeugen, Reparatur"
+
+#: src/epubforge/cli/toc.py:28
+msgid "Wypisz bieżący spis treści"
+msgstr "Aktuelles Inhaltsverzeichnis ausgeben"
+
+#: src/epubforge/cli/toc.py:30
+msgid "Wygeneruj spis z nagłówków dokumentów"
+msgstr "Inhaltsverzeichnis aus Dokumentüberschriften erzeugen"
+
+#: src/epubforge/cli/toc.py:32
+msgid "Usuń martwe wpisy ze spisu"
+msgstr "Tote Einträge aus dem Verzeichnis entfernen"
+
+#: src/epubforge/cli/toc.py:37
+msgid "Najgłębszy poziom nagłówka przy --generate (1-6, domyślnie 3)"
+msgstr "Tiefste Überschriftenebene bei --generate (1-6, Standard 3)"
+
+#: src/epubforge/cli/toc.py:40
+msgid "Zapisz wynik do nowego pliku zamiast nadpisywać"
+msgstr "Ergebnis in neue Datei schreiben statt zu überschreiben"
+
+#: src/epubforge/cli/toc.py:43
+msgid "Tylko pokaż zmiany przy --repair, nie zapisuj"
+msgstr "Bei --repair nur Änderungen zeigen, nicht schreiben"
+
+#: src/epubforge/cli/toc.py:66
+msgid "Brak spisu treści w EPUB-ie."
+msgstr "Kein Inhaltsverzeichnis im EPUB."
+
+#: src/epubforge/cli/toc.py:68
+#, python-brace-format
+msgid "Źródło spisu: {source}"
+msgstr "Verzeichnisquelle: {source}"
+
+#: src/epubforge/cli/toc.py:77
+msgid "Nie znaleziono nagłówków do zbudowania spisu."
+msgstr "Keine Überschriften zum Aufbau des Verzeichnisses gefunden."
+
+#: src/epubforge/cli/toc.py:82
+#, python-brace-format
+msgid "Zapisano spis treści do: {path}"
+msgstr "Inhaltsverzeichnis gespeichert nach: {path}"
+
+#: src/epubforge/cli/toc.py:91
+msgid "Spis treści jest poprawny — brak martwych wpisów."
+msgstr "Das Inhaltsverzeichnis ist gültig — keine toten Einträge."
+
+#: src/epubforge/cli/toc.py:94
+#, python-brace-format
+msgid "✗ {href} — {reason}"
+msgstr "✗ {href} — {reason}"
+
+#: src/epubforge/cli/toc.py:96
+msgid "(--dry-run) Nie zapisano zmian."
+msgstr "(--dry-run) Keine Änderungen geschrieben."
+
+#: src/epubforge/cli/toc.py:101
+#, python-brace-format
+msgid "Usunięto {n} wpisów. Zapisano do: {path}"
+msgstr "{n} Einträge entfernt. Gespeichert nach: {path}"
+
+#: src/epubforge/gui/app.py:211
+msgid "Spis treści"
+msgstr "Inhaltsverzeichnis"
+
+#: src/epubforge/gui/app.py:350
+msgid "Są niezapisane zmiany. Zamknąć mimo to?"
+msgstr "Es gibt ungespeicherte Änderungen. Trotzdem schließen?"
+
+#: src/epubforge/gui/tabs/toc.py:70 src/epubforge/gui/tabs/toc.py:377
+msgid "Cel"
+msgstr "Ziel"
+
+#: src/epubforge/gui/tabs/toc.py:116
+msgid "Wskaż plik EPUB…"
+msgstr "EPUB-Datei auswählen…"
+
+#: src/epubforge/gui/tabs/toc.py:131
+msgid "Wskaż plik EPUB, aby wczytać spis treści."
+msgstr "EPUB-Datei auswählen, um das Inhaltsverzeichnis zu laden."
+
+#: src/epubforge/gui/tabs/toc.py:136
+msgid "Generuj"
+msgstr "Erzeugen"
+
+#: src/epubforge/gui/tabs/toc.py:136
+msgid "Zbuduj spis z nagłówków"
+msgstr "Verzeichnis aus Überschriften aufbauen"
+
+#: src/epubforge/gui/tabs/toc.py:138
+msgid "Poziom:"
+msgstr "Ebene:"
+
+#: src/epubforge/gui/tabs/toc.py:142
+msgid "Najgłębszy poziom nagłówka przy generowaniu"
+msgstr "Tiefste Überschriftenebene beim Erzeugen"
+
+#: src/epubforge/gui/tabs/toc.py:144
+msgid "Usuń martwe wpisy"
+msgstr "Tote Einträge entfernen"
+
+#: src/epubforge/gui/tabs/toc.py:147
+msgid "Dodaj"
+msgstr "Hinzufügen"
+
+#: src/epubforge/gui/tabs/toc.py:147
+msgid "Dodaj nową pozycję"
+msgstr "Neuen Eintrag hinzufügen"
+
+#: src/epubforge/gui/tabs/toc.py:149
+msgid "Usuń zaznaczoną pozycję"
+msgstr "Ausgewählten Eintrag entfernen"
+
+#: src/epubforge/gui/tabs/toc.py:151
+msgid "W górę (rodzeństwo)"
+msgstr "Nach oben (Geschwister)"
+
+#: src/epubforge/gui/tabs/toc.py:153
+msgid "W dół (rodzeństwo)"
+msgstr "Nach unten (Geschwister)"
+
+#: src/epubforge/gui/tabs/toc.py:155
+msgid "Wyżej (poziom)"
+msgstr "Ausrücken (Ebene höher)"
+
+#: src/epubforge/gui/tabs/toc.py:157
+msgid "Głębiej (poziom)"
+msgstr "Einrücken (Ebene tiefer)"
+
+#: src/epubforge/gui/tabs/toc.py:161
+msgid "Zapisz do EPUB"
+msgstr "In EPUB speichern"
+
+#: src/epubforge/gui/tabs/toc.py:161
+msgid "Zapisz spis treści (nav + ncx) do pliku"
+msgstr "Inhaltsverzeichnis (nav + ncx) in die Datei speichern"
+
+#: src/epubforge/gui/tabs/toc.py:191
+#, python-brace-format
+msgid "Nie udało się otworzyć: {error}"
+msgstr "Öffnen fehlgeschlagen: {error}"
+
+#: src/epubforge/gui/tabs/toc.py:200
+#, python-brace-format
+msgid "Wczytano spis ({source}): {count}"
+msgstr "Verzeichnis geladen ({source}): {count}"
+
+#: src/epubforge/gui/tabs/toc.py:304
+msgid "Nowa pozycja"
+msgstr "Neuer Eintrag"
+
+#: src/epubforge/gui/tabs/toc.py:333
+msgid "Zastąpić bieżący spis treści wygenerowanym?"
+msgstr "Aktuelles Inhaltsverzeichnis durch ein erzeugtes ersetzen?"
+
+#: src/epubforge/gui/tabs/toc.py:338
+#, python-brace-format
+msgid "Wygenerowano spis: {count}"
+msgstr "Verzeichnis erzeugt: {count}"
+
+#: src/epubforge/gui/tabs/toc.py:346
+msgid "Spis treści jest poprawny."
+msgstr "Das Inhaltsverzeichnis ist gültig."
+
+#: src/epubforge/gui/tabs/toc.py:353
+#, python-brace-format
+msgid "Usunięto {n} wpisów."
+msgstr "{n} Einträge entfernt."
+
+#: src/epubforge/gui/tabs/toc.py:367
+msgid "Zapisano spis treści do EPUB."
+msgstr "Inhaltsverzeichnis im EPUB gespeichert."
+
+#: src/epubforge/gui/tabs/toc.py:373
+msgid "Problemy spisu treści"
+msgstr "Probleme des Inhaltsverzeichnisses"
+
+#: src/epubforge/gui/tabs/toc.py:375
+msgid "Znalezione martwe wpisy zostaną usunięte:"
+msgstr "Die gefundenen toten Einträge werden entfernt:"
+
+#: src/epubforge/gui/tabs/toc.py:377
+msgid "Powód"
+msgstr "Grund"
+
+#: src/epubforge/gui/tabs/toc.py:399
+#, python-brace-format
+msgid "{n} pozycja"
+msgid_plural "{n} pozycji"
+msgstr[0] "{n} Eintrag"
+msgstr[1] "{n} Einträge"
+
+#: src/epubforge/gui/tabs/toc.py:436
+msgid "Potwierdzenie"
+msgstr "Bestätigung"
+
+#: src/epubforge/gui/tabs/toc.py:446
+msgid "Spis treści ma niezapisane zmiany. Porzucić je?"
+msgstr "Das Inhaltsverzeichnis hat ungespeicherte Änderungen. Verwerfen?"
+

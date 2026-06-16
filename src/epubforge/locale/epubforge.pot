@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-06-14 22:48+0200\n"
+"POT-Creation-Date: 2026-06-16 17:48+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -38,7 +38,7 @@ msgstr ""
 #: src/epubforge/cli/fix.py:73 src/epubforge/cli/hyphenate.py:57
 #: src/epubforge/cli/kfx.py:43 src/epubforge/cli/kfx.py:46
 #: src/epubforge/cli/meta.py:40 src/epubforge/cli/mobi.py:54
-#: src/epubforge/cli/mobi.py:57
+#: src/epubforge/cli/mobi.py:57 src/epubforge/cli/toc.py:58
 #, python-brace-format
 msgid "Błąd: {error}"
 msgstr ""
@@ -189,7 +189,7 @@ msgstr ""
 msgid "Wyświetl informacje o wersji i wykrytych narzędziach"
 msgstr ""
 
-#: src/epubforge/cli/main.py:57
+#: src/epubforge/cli/main.py:58
 msgid "Wykryte narzędzia: (TODO - etap 3)"
 msgstr ""
 
@@ -197,7 +197,7 @@ msgstr ""
 msgid "Podgląd i edycja metadanych EPUB"
 msgstr ""
 
-#: src/epubforge/cli/meta.py:16
+#: src/epubforge/cli/meta.py:16 src/epubforge/cli/toc.py:26
 msgid "Plik EPUB"
 msgstr ""
 
@@ -319,113 +319,181 @@ msgstr ""
 msgid "Opis"
 msgstr ""
 
-#: src/epubforge/gui/app.py:66 src/epubforge/gui/app.py:186
+#: src/epubforge/cli/toc.py:25
+msgid "Spis treści: podgląd, generowanie, naprawa"
+msgstr ""
+
+#: src/epubforge/cli/toc.py:28
+msgid "Wypisz bieżący spis treści"
+msgstr ""
+
+#: src/epubforge/cli/toc.py:30
+msgid "Wygeneruj spis z nagłówków dokumentów"
+msgstr ""
+
+#: src/epubforge/cli/toc.py:32
+msgid "Usuń martwe wpisy ze spisu"
+msgstr ""
+
+#: src/epubforge/cli/toc.py:37
+msgid "Najgłębszy poziom nagłówka przy --generate (1-6, domyślnie 3)"
+msgstr ""
+
+#: src/epubforge/cli/toc.py:40
+msgid "Zapisz wynik do nowego pliku zamiast nadpisywać"
+msgstr ""
+
+#: src/epubforge/cli/toc.py:43
+msgid "Tylko pokaż zmiany przy --repair, nie zapisuj"
+msgstr ""
+
+#: src/epubforge/cli/toc.py:66
+msgid "Brak spisu treści w EPUB-ie."
+msgstr ""
+
+#: src/epubforge/cli/toc.py:68
+#, python-brace-format
+msgid "Źródło spisu: {source}"
+msgstr ""
+
+#: src/epubforge/cli/toc.py:77
+msgid "Nie znaleziono nagłówków do zbudowania spisu."
+msgstr ""
+
+#: src/epubforge/cli/toc.py:82
+#, python-brace-format
+msgid "Zapisano spis treści do: {path}"
+msgstr ""
+
+#: src/epubforge/cli/toc.py:91
+msgid "Spis treści jest poprawny — brak martwych wpisów."
+msgstr ""
+
+#: src/epubforge/cli/toc.py:94
+#, python-brace-format
+msgid "✗ {href} — {reason}"
+msgstr ""
+
+#: src/epubforge/cli/toc.py:96
+msgid "(--dry-run) Nie zapisano zmian."
+msgstr ""
+
+#: src/epubforge/cli/toc.py:101
+#, python-brace-format
+msgid "Usunięto {n} wpisów. Zapisano do: {path}"
+msgstr ""
+
+#: src/epubforge/gui/app.py:67 src/epubforge/gui/app.py:187
 msgid "O programie"
 msgstr ""
 
-#: src/epubforge/gui/app.py:72
+#: src/epubforge/gui/app.py:73
 msgid "Zamknij"
 msgstr ""
 
-#: src/epubforge/gui/app.py:152
+#: src/epubforge/gui/app.py:153
 msgid "Motyw: Automatyczny / Jasny / Ciemny"
 msgstr ""
 
-#: src/epubforge/gui/app.py:168
+#: src/epubforge/gui/app.py:169
 msgid "Język interfejsu"
 msgstr ""
 
-#: src/epubforge/gui/app.py:203 src/epubforge/gui/tabs/metadata.py:216
+#: src/epubforge/gui/app.py:205 src/epubforge/gui/tabs/metadata.py:216
 #: src/epubforge/gui/tabs/metadata.py:238
 #: src/epubforge/gui/tabs/metadata.py:333
 msgid "Metadane"
 msgstr ""
 
-#: src/epubforge/gui/app.py:204
+#: src/epubforge/gui/app.py:206
 msgid "Konwerter"
 msgstr ""
 
-#: src/epubforge/gui/app.py:205
+#: src/epubforge/gui/app.py:207
 msgid "Fixer"
 msgstr ""
 
-#: src/epubforge/gui/app.py:206
+#: src/epubforge/gui/app.py:208
 msgid "Eksport Kindle"
 msgstr ""
 
-#: src/epubforge/gui/app.py:207
+#: src/epubforge/gui/app.py:209
 msgid "Edytor"
 msgstr ""
 
-#: src/epubforge/gui/app.py:208
+#: src/epubforge/gui/app.py:210
 msgid "Walidacja"
 msgstr ""
 
-#: src/epubforge/gui/app.py:227
+#: src/epubforge/gui/app.py:211
+msgid "Spis treści"
+msgstr ""
+
+#: src/epubforge/gui/app.py:230
 #, python-brace-format
 msgid "Motyw: {theme}"
 msgstr ""
 
-#: src/epubforge/gui/app.py:235 src/epubforge/gui/tabs/converter.py:117
+#: src/epubforge/gui/app.py:238 src/epubforge/gui/tabs/converter.py:117
 #: src/epubforge/gui/tabs/fixer.py:133 src/epubforge/gui/tabs/metadata.py:111
 msgid "Język"
 msgstr ""
 
-#: src/epubforge/gui/app.py:236
+#: src/epubforge/gui/app.py:239
 msgid "Zmiana języka zadziała po ponownym uruchomieniu aplikacji."
 msgstr ""
 
-#: src/epubforge/gui/app.py:249
+#: src/epubforge/gui/app.py:252
 #, python-brace-format
 msgid "Język: {language}"
 msgstr ""
 
-#: src/epubforge/gui/app.py:345 src/epubforge/gui/tabs/editor.py:444
+#: src/epubforge/gui/app.py:349 src/epubforge/gui/tabs/editor.py:444
 #: src/epubforge/gui/tabs/editor.py:460
 msgid "Niezapisane zmiany"
 msgstr ""
 
-#: src/epubforge/gui/app.py:346
-msgid "Edytor ma niezapisane zmiany. Zamknąć mimo to?"
+#: src/epubforge/gui/app.py:350
+msgid "Są niezapisane zmiany. Zamknąć mimo to?"
 msgstr ""
 
-#: src/epubforge/gui/app.py:382
+#: src/epubforge/gui/app.py:386
 msgid "brak"
 msgstr ""
 
-#: src/epubforge/gui/app.py:390
+#: src/epubforge/gui/app.py:394
 msgid "Automatyczny"
 msgstr ""
 
-#: src/epubforge/gui/app.py:391 src/epubforge/gui/app.py:399
+#: src/epubforge/gui/app.py:395 src/epubforge/gui/app.py:403
 msgid "Jasny"
 msgstr ""
 
-#: src/epubforge/gui/app.py:392 src/epubforge/gui/app.py:401
+#: src/epubforge/gui/app.py:396 src/epubforge/gui/app.py:405
 msgid "Ciemny"
 msgstr ""
 
-#: src/epubforge/gui/app.py:402 src/epubforge/gui/app.py:413
+#: src/epubforge/gui/app.py:406 src/epubforge/gui/app.py:417
 msgid "Auto"
 msgstr ""
 
-#: src/epubforge/gui/app.py:408
+#: src/epubforge/gui/app.py:412
 msgid "Polski"
 msgstr ""
 
-#: src/epubforge/gui/app.py:410
+#: src/epubforge/gui/app.py:414
 msgid "English"
 msgstr ""
 
-#: src/epubforge/gui/app.py:412
+#: src/epubforge/gui/app.py:416
 msgid "Deutsch"
 msgstr ""
 
-#: src/epubforge/gui/app.py:433
+#: src/epubforge/gui/app.py:437
 msgid "Błąd krytyczny"
 msgstr ""
 
-#: src/epubforge/gui/app.py:434
+#: src/epubforge/gui/app.py:438
 #, python-brace-format
 msgid ""
 "Wystąpił nieoczekiwany błąd:\n"
@@ -449,7 +517,7 @@ msgid "Tytuł książki w wynikowym EPUB (opcjonalny)"
 msgstr ""
 
 #: src/epubforge/gui/tabs/converter.py:107
-#: src/epubforge/gui/tabs/metadata.py:103
+#: src/epubforge/gui/tabs/metadata.py:103 src/epubforge/gui/tabs/toc.py:70
 msgid "Tytuł"
 msgstr ""
 
@@ -625,7 +693,7 @@ msgid "Pliki EPUB (*.epub)"
 msgstr ""
 
 #: src/epubforge/gui/tabs/editor.py:186 src/epubforge/gui/tabs/editor.py:431
-#: src/epubforge/gui/tabs/validator.py:352
+#: src/epubforge/gui/tabs/validator.py:349
 msgid "Błąd"
 msgstr ""
 
@@ -703,7 +771,8 @@ msgid "Dodaj pliki EPUB"
 msgstr ""
 
 #: src/epubforge/gui/tabs/fixer.py:96 src/epubforge/gui/tabs/kfx.py:85
-#: src/epubforge/gui/tabs/metadata.py:78 src/epubforge/gui/tabs/validator.py:76
+#: src/epubforge/gui/tabs/metadata.py:78 src/epubforge/gui/tabs/toc.py:115
+#: src/epubforge/gui/tabs/validator.py:76
 msgid "Pliki EPUB"
 msgstr ""
 
@@ -865,7 +934,7 @@ msgstr ""
 msgid "Podgląd presetu: {name}"
 msgstr ""
 
-#: src/epubforge/gui/tabs/fixer.py:318
+#: src/epubforge/gui/tabs/fixer.py:318 src/epubforge/gui/tabs/toc.py:146
 msgid "Napraw"
 msgstr ""
 
@@ -1244,6 +1313,146 @@ msgid ""
 "zmieniona."
 msgstr ""
 
+#: src/epubforge/gui/tabs/toc.py:70 src/epubforge/gui/tabs/toc.py:379
+msgid "Cel"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:116
+msgid "Wskaż plik EPUB…"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:131
+msgid "Wskaż plik EPUB, aby wczytać spis treści."
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:137
+msgid "Generuj"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:137
+msgid "Zbuduj spis z nagłówków"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:140
+msgid "Poziom:"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:144
+msgid "Najgłębszy poziom nagłówka przy generowaniu"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:146
+msgid "Usuń martwe wpisy"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:149
+msgid "Dodaj"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:149
+msgid "Dodaj nową pozycję"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:152 src/epubforge/gui/widgets/file_list.py:72
+msgid "Usuń"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:152
+msgid "Usuń zaznaczoną pozycję"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:155
+msgid "W górę (rodzeństwo)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:157
+msgid "W dół (rodzeństwo)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:159
+msgid "Wyżej (poziom)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:161
+msgid "Głębiej (poziom)"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:165
+msgid "Zapisz do EPUB"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:165
+msgid "Zapisz spis treści (nav + ncx) do pliku"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:195
+#, python-brace-format
+msgid "Nie udało się otworzyć: {error}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:204
+#, python-brace-format
+msgid "Wczytano spis ({source}): {count}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:306
+msgid "Nowa pozycja"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:335
+msgid "Zastąpić bieżący spis treści wygenerowanym?"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:340
+#, python-brace-format
+msgid "Wygenerowano spis: {count}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:348
+msgid "Spis treści jest poprawny."
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:355
+#, python-brace-format
+msgid "Usunięto {n} wpisów."
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:365 src/epubforge/gui/tabs/validator.py:333
+#, python-brace-format
+msgid "Nie udało się zapisać: {error}"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:369
+msgid "Zapisano spis treści do EPUB."
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:375
+msgid "Problemy spisu treści"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:377
+msgid "Znalezione martwe wpisy zostaną usunięte:"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:379
+msgid "Powód"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:401
+#, python-brace-format
+msgid "{n} pozycja"
+msgid_plural "{n} pozycji"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/epubforge/gui/tabs/toc.py:438
+msgid "Potwierdzenie"
+msgstr ""
+
+#: src/epubforge/gui/tabs/toc.py:448
+msgid "Spis treści ma niezapisane zmiany. Porzucić je?"
+msgstr ""
+
 #: src/epubforge/gui/tabs/validator.py:94
 msgid "Dodaj pliki EPUB i kliknij „Sprawdź zaznaczony”."
 msgstr ""
@@ -1345,54 +1554,49 @@ msgstr ""
 msgid "Walidacja nieudana: {error}"
 msgstr ""
 
-#: src/epubforge/gui/tabs/validator.py:311
+#: src/epubforge/gui/tabs/validator.py:308
 #, python-brace-format
 msgid "{n} błąd"
 msgid_plural "{n} błędów"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/epubforge/gui/tabs/validator.py:312
+#: src/epubforge/gui/tabs/validator.py:309
 #, python-brace-format
 msgid "{n} ostrzeżenie"
 msgid_plural "{n} ostrzeżeń"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/epubforge/gui/tabs/validator.py:313
+#: src/epubforge/gui/tabs/validator.py:310
 #, python-brace-format
 msgid "{n} informacja"
 msgid_plural "{n} informacji"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/epubforge/gui/tabs/validator.py:325
+#: src/epubforge/gui/tabs/validator.py:322
 msgid "Eksport raportu"
 msgstr ""
 
-#: src/epubforge/gui/tabs/validator.py:325
+#: src/epubforge/gui/tabs/validator.py:322
 msgid "JSON (*.json);;HTML (*.html)"
 msgstr ""
 
-#: src/epubforge/gui/tabs/validator.py:336
-#, python-brace-format
-msgid "Nie udało się zapisać: {error}"
-msgstr ""
-
-#: src/epubforge/gui/tabs/validator.py:338
+#: src/epubforge/gui/tabs/validator.py:335
 #, python-brace-format
 msgid "Zapisano raport: {name}"
 msgstr ""
 
-#: src/epubforge/gui/tabs/validator.py:351
+#: src/epubforge/gui/tabs/validator.py:348
 msgid "Krytyczny"
 msgstr ""
 
-#: src/epubforge/gui/tabs/validator.py:353
+#: src/epubforge/gui/tabs/validator.py:350
 msgid "Ostrzeżenie"
 msgstr ""
 
-#: src/epubforge/gui/tabs/validator.py:354
+#: src/epubforge/gui/tabs/validator.py:351
 msgid "Informacja"
 msgstr ""
 
@@ -1484,10 +1688,6 @@ msgstr ""
 
 #: src/epubforge/gui/widgets/file_list.py:69
 msgid "Dodaj obsługiwane pliki z wybranego folderu"
-msgstr ""
-
-#: src/epubforge/gui/widgets/file_list.py:72
-msgid "Usuń"
 msgstr ""
 
 #: src/epubforge/gui/widgets/file_list.py:72

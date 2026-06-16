@@ -2,15 +2,33 @@
 
 from __future__ import annotations
 
+import importlib.util
 import shutil
 import zipfile
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from epubforge.i18n import init_i18n
 
 FIXTURE_EPUB = Path(__file__).parent / "fixtures" / "sample.epub"
+_MAKE_SAMPLE = Path(__file__).parent / "fixtures" / "make_sample_epub.py"
+
+
+def _load_fixture_builder() -> Any:
+    """Ładuje moduł generatora fixture'ów (nie jest pakietem importowalnym)."""
+    spec = importlib.util.spec_from_file_location("make_sample_epub", _MAKE_SAMPLE)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.fixture
+def toc_epub(tmp_path: Path) -> Path:
+    """EPUB do testów spisu treści (rozdziały z nagłówkami + nav z martwym wpisem)."""
+    return Path(_load_fixture_builder().make_toc_epub(tmp_path / "toc.epub"))
 
 
 @pytest.fixture(autouse=True)
