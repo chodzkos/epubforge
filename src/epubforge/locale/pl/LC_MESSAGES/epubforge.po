@@ -1824,3 +1824,15 @@ msgstr "Potwierdzenie"
 msgid "Spis treści ma niezapisane zmiany. Porzucić je?"
 msgstr "Spis treści ma niezapisane zmiany. Porzucić je?"
 
+#: src/epubforge/gui/tabs/validator.py:149
+msgid "Wskaż java.exe…"
+msgstr "Wskaż java.exe…"
+
+#: src/epubforge/gui/tabs/validator.py:208
+msgid "Wskaż java.exe"
+msgstr "Wskaż java.exe"
+
+#: src/epubforge/gui/tabs/validator.py:208
+msgid "Plik wykonywalny Java (java*)"
+msgstr "Plik wykonywalny Java (java*)"
+

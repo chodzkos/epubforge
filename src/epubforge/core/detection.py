@@ -20,6 +20,7 @@ import zipfile
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 from epubforge.core.config import (
     Config,
@@ -36,8 +37,23 @@ _CACHE_MAX_AGE = timedelta(days=7)
 
 # Minimalna wersja Javy wymagana przez EpubCheck 5.x.
 _JAVA_MIN_MAJOR = 11
-# Klucz w sekcji ``tools`` configu wskazujący ręcznie wybrany plik epubcheck.jar.
+# Klucze w sekcji ``tools`` configu wskazujące ręcznie wybrane pliki (override).
+# Osobne od kluczy narzędzi (``epubcheck``/``java``), bo tam żyją serializowane
+# :class:`Tool` — override przeżywa nadpisanie cache (jest re-utrwalany).
 _EPUBCHECK_JAR_KEY = "epubcheck_jar"
+_JAVA_EXE_KEY = "java_path"
+
+# winreg istnieje tylko na Windows; trzymamy referencję jako ``Any``, by dało się
+# ją podmienić w testach (mock), a na innych systemach detekcja zwracała None
+# (import jest warunkowy, więc mypy --platform linux/darwin go nie analizuje).
+_winreg: Any = None
+if sys.platform == "win32":  # pragma: no cover — gałąź tylko dla Windows
+    import winreg as _winreg_module
+
+    _winreg = _winreg_module
+
+# Klucz App Paths Windows wskazujący pełną ścieżkę do java.exe.
+_JAVA_APP_PATHS = r"Software\Microsoft\Windows\CurrentVersion\App Paths\java.exe"
 
 
 @dataclass(frozen=True)
@@ -177,22 +193,97 @@ def _parse_java_major(version_line: str) -> int | None:
 
 
 def _java_dirs() -> list[Path]:
-    """Składa katalogi do przeszukania w poszukiwaniu ``java`` (poza ``PATH``)."""
+    """Składa typowe katalogi z ``java`` (poza ``PATH``), w kolejności priorytetu."""
     dirs: list[Path] = []
-    java_home = os.environ.get("JAVA_HOME")
-    if java_home:
-        dirs.append(Path(java_home) / "bin")
     # %ProgramFiles%/Eclipse Adoptium/<jdk>/bin — typowa instalacja Temurin.
     for base in _env_dirs("Eclipse Adoptium"):
         if base.is_dir():
             dirs.extend(sorted(base.glob("*/bin")))
-    dirs.append(Path("/usr/bin"))
+    java_home = os.environ.get("JAVA_HOME")  # JAVA_HOME na końcu (po typowych)
+    if java_home:
+        dirs.append(Path(java_home) / "bin")
+    dirs.extend((Path("/usr/bin"), Path("/usr/local/bin")))
     return dirs
 
 
-def _detect_java() -> Tool:
+def _java_from_app_paths() -> Path | None:
+    """Czyta pełną ścieżkę java.exe z App Paths w rejestrze (Temurin 25 nie dodaje PATH)."""
+    if _winreg is None:
+        return None
+    for hive in (_winreg.HKEY_LOCAL_MACHINE, _winreg.HKEY_CURRENT_USER):
+        try:
+            with _winreg.OpenKey(hive, _JAVA_APP_PATHS) as key:
+                value, _type = _winreg.QueryValueEx(key, "")  # wartość domyślna = ścieżka
+        except OSError:
+            continue
+        candidate = Path(str(value))
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _java_from_adoptium_registry() -> Path | None:
+    """Czyta ścieżkę instalacji z kluczy rejestru Eclipse Adoptium (JRE/JDK → MSI/Path)."""
+    if _winreg is None:
+        return None
+    for product in ("JRE", "JDK"):
+        candidate = _adoptium_product_java(rf"SOFTWARE\Eclipse Adoptium\{product}")
+        if candidate is not None:
+            return candidate
+    return None
+
+
+def _adoptium_product_java(key_path: str) -> Path | None:
+    """Przegląda podklucze wersji danego produktu Adoptium, zwraca pierwsze java.exe."""
+    assert _winreg is not None
+    try:
+        root = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, key_path)
+    except OSError:
+        return None
+    with root:
+        for index in range(_subkey_count(root)):
+            try:
+                version = _winreg.EnumKey(root, index)
+                with _winreg.OpenKey(root, rf"{version}\hotspot\MSI") as msi:
+                    install_path, _type = _winreg.QueryValueEx(msi, "Path")
+            except OSError:
+                continue
+            candidate = Path(str(install_path)) / "bin" / "java.exe"
+            if candidate.is_file():
+                return candidate
+    return None
+
+
+def _subkey_count(key: object) -> int:
+    """Zwraca liczbę podkluczy (z ``winreg.QueryInfoKey``); 0 przy błędzie."""
+    assert _winreg is not None
+    try:
+        subkeys, _values, _modified = _winreg.QueryInfoKey(key)
+    except OSError:
+        return 0
+    return int(subkeys)
+
+
+def _find_java(override: Path | None) -> Path | None:
+    """Lokalizuje ``java`` wg kolejności: override → PATH → App Paths → Adoptium → katalogi."""
+    if override is not None and override.is_file():
+        return override
+    for name in _exe_names("java"):
+        found = shutil.which(name)
+        if found:
+            return Path(found)
+    app_path = _java_from_app_paths()
+    if app_path is not None:
+        return app_path
+    registry_path = _java_from_adoptium_registry()
+    if registry_path is not None:
+        return registry_path
+    return _find_executable(_exe_names("java"), _java_dirs())
+
+
+def _detect_java(override: Path | None = None) -> Tool:
     """Wykrywa ``java`` i sprawdza, czy wersja spełnia minimum dla EpubCheck."""
-    path = _find_executable(_exe_names("java"), _java_dirs())
+    path = _find_java(override)
     if path is None:
         return Tool(name="java", path=None, version="", available=False)
     version_line = _get_version(path, ("-version",))  # java pisze na STDERR
@@ -247,9 +338,9 @@ class Tools:
     """Zbiór statycznych detektorów narzędzi zewnętrznych."""
 
     @staticmethod
-    def java() -> Tool:
-        """Wykrywa ``java`` (wymagane przez EpubCheck; wersja ≥ 11)."""
-        return _detect_java()
+    def java(java_override: Path | None = None) -> Tool:
+        """Wykrywa ``java`` (override → PATH → App Paths → rejestr → katalogi; ≥ 11)."""
+        return _detect_java(java_override)
 
     @staticmethod
     def epubcheck(jar_override: Path | None = None) -> Tool:
@@ -381,11 +472,14 @@ class Tools:
         return any(plugins_dir.glob("KFX Output*"))
 
     @staticmethod
-    def detect_all(epubcheck_jar: Path | None = None) -> dict[str, Tool]:
+    def detect_all(
+        epubcheck_jar: Path | None = None, java_path: Path | None = None
+    ) -> dict[str, Tool]:
         """Uruchamia wszystkie detektory i zwraca mapę ``nazwa -> Tool``.
 
         Args:
             epubcheck_jar: ręcznie wskazany plik jara (override z configu).
+            java_path: ręcznie wskazany plik java (override z configu).
         """
         return {
             "pandoc": Tools.pandoc(),
@@ -395,7 +489,7 @@ class Tools:
             "sigil": Tools.sigil(),
             "kindle_previewer": Tools.kindle_previewer(),
             "kindlegen": Tools.kindlegen(),
-            "java": Tools.java(),
+            "java": Tools.java(java_path),
             "epubcheck": Tools.epubcheck(epubcheck_jar),
         }
 
@@ -489,11 +583,12 @@ def detect_with_cache(
 
     cached_tools = config.get("tools")
     cached_tools = cached_tools if isinstance(cached_tools, dict) else {}
-    # Override jara epubcheck żyje jako skalarny klucz w sekcji ``tools``.
-    jar_override = _epubcheck_jar_override(cached_tools)
+    # Override'y żyją jako skalarne klucze w sekcji ``tools`` (osobne od narzędzi).
+    jar_override = _scalar_override(cached_tools, _EPUBCHECK_JAR_KEY)
+    java_override = _scalar_override(cached_tools, _JAVA_EXE_KEY)
 
     if not force and _cache_is_fresh(config, max_age) and cached_tools:
-        # Pomijamy skalarny klucz override — to nie jest serializowany Tool.
+        # Pomijamy skalarne klucze override — to nie są serializowane Tool.
         tools = {
             name: _tool_from_dict(value)
             for name, value in cached_tools.items()
@@ -502,18 +597,21 @@ def detect_with_cache(
         _apply_overrides(tools, overrides)
         return tools
 
-    tools = Tools.detect_all(epubcheck_jar=jar_override)
+    tools = Tools.detect_all(epubcheck_jar=jar_override, java_path=java_override)
     _apply_overrides(tools, overrides)
     config["tools"] = {name: _tool_to_dict(tool) for name, tool in tools.items()}
-    if jar_override is not None:  # zachowaj ręcznie wskazany jar między detekcjami
+    # Zachowaj ręcznie wskazane ścieżki między detekcjami (cache jest nadpisywany).
+    if jar_override is not None:
         config["tools"][_EPUBCHECK_JAR_KEY] = str(jar_override)
+    if java_override is not None:
+        config["tools"][_JAVA_EXE_KEY] = str(java_override)
     config["kfx_plugin"] = Tools.calibre_kfx_plugin()
     config["last_detected"] = datetime.now(timezone.utc).isoformat()
     save_config(path, config)
     return tools
 
 
-def _epubcheck_jar_override(cached_tools: dict[str, object]) -> Path | None:
-    """Czyta ścieżkę ręcznie wskazanego jara z ``tools.epubcheck_jar`` (jeśli jest)."""
-    raw = cached_tools.get(_EPUBCHECK_JAR_KEY)
+def _scalar_override(cached_tools: dict[str, object], key: str) -> Path | None:
+    """Czyta ścieżkę ręcznie wskazanego pliku ze skalarnego klucza sekcji ``tools``."""
+    raw = cached_tools.get(key)
     return Path(raw) if isinstance(raw, str) and raw else None

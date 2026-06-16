@@ -9,11 +9,12 @@ from pathlib import Path
 
 import pytest
 
-from epubforge.core import ValidationError
+from epubforge.core import ValidationError, detect_with_cache, detection
 from epubforge.core.detection import (
     Tools,
     _detect_java,
     _epubcheck_version,
+    _java_from_app_paths,
     _parse_java_major,
 )
 from epubforge.validators import Severity, parse_report, run_epubcheck
@@ -136,19 +137,22 @@ def test_run_epubcheck_broken_json_raises(monkeypatch: pytest.MonkeyPatch, tmp_p
 @pytest.mark.parametrize(
     ("line", "expected"),
     [
+        ('openjdk version "25.0.3" 2025-10-21', 25),  # Temurin 25 LTS — krótki format
+        ('openjdk version "21.0.5"', 21),
         ('openjdk version "17.0.9" 2023-10-17', 17),
-        ('java version "1.8.0_391"', 8),
         ('openjdk version "11.0.21"', 11),
+        ('java version "1.8.0_391"', 8),
         ("garbage output", None),
     ],
 )
 def test_parse_java_major(line: str, expected: int | None) -> None:
-    """Parser majora Javy obsługuje formaty 17.x i 1.8.x."""
+    """Parser majora Javy obsługuje krótki format (25/21/17) i historyczny 1.8."""
     assert _parse_java_major(line) == expected
 
 
 def test_detect_java_requires_min_version(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Java 8 jest niedostępna (wymagane ≥ 11), Java 17 dostępna."""
+    """Java 8 jest niedostępna (wymagane ≥ 11), Java 25 dostępna."""
+    monkeypatch.setattr("epubforge.core.detection.shutil.which", lambda _name: None)
     monkeypatch.setattr(
         "epubforge.core.detection._find_executable", lambda *_: Path("/usr/bin/java")
     )
@@ -159,7 +163,7 @@ def test_detect_java_requires_min_version(monkeypatch: pytest.MonkeyPatch) -> No
     assert _detect_java().available is False
 
     monkeypatch.setattr(
-        "epubforge.core.detection._get_version", lambda *_: 'openjdk version "17.0.9"'
+        "epubforge.core.detection._get_version", lambda *_: 'openjdk version "25.0.3"'
     )
     java = _detect_java()
     assert java.available is True
@@ -196,3 +200,91 @@ def test_epubcheck_missing_jar_unavailable(tmp_path: Path) -> None:
     """Nieistniejący override → niedostępne (bez wyjątku)."""
     tool = Tools.epubcheck(tmp_path / "nope.jar")
     assert tool.available is False
+
+
+# ── Detekcja Javy przez rejestr (App Paths) ────────────────────────────────--
+
+
+class _FakeKey:
+    """Atrapa uchwytu klucza rejestru (context manager)."""
+
+    def __enter__(self) -> _FakeKey:
+        return self
+
+    def __exit__(self, *_exc: object) -> bool:
+        return False
+
+
+def test_java_from_app_paths_reads_default_value(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """App Paths: domyślna wartość klucza java.exe to pełna ścieżka (Temurin 25 bez PATH)."""
+    java = tmp_path / "java.exe"
+    java.write_text("x")
+
+    class FakeWinreg:
+        HKEY_LOCAL_MACHINE = 1
+        HKEY_CURRENT_USER = 2
+
+        def OpenKey(self, hive: int, sub: str) -> _FakeKey:  # noqa: N802 — API winreg
+            if hive == self.HKEY_LOCAL_MACHINE:
+                return _FakeKey()
+            raise OSError
+
+        def QueryValueEx(self, _key: object, _name: str) -> tuple[str, int]:  # noqa: N802
+            return (str(java), 1)
+
+    monkeypatch.setattr(detection, "_winreg", FakeWinreg())
+    assert _java_from_app_paths() == java
+
+
+def test_java_from_app_paths_none_without_winreg(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Bez winreg (np. Linux) detekcja App Paths zwraca None."""
+    monkeypatch.setattr(detection, "_winreg", None)
+    assert _java_from_app_paths() is None
+
+
+# ── Override Javy w configu + wymuszona re-detekcja ─────────────────────────--
+
+
+def test_java_override_in_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """tools.java_path nadpisuje detekcję Javy i jest re-utrwalany w cache."""
+    java = tmp_path / "java.exe"
+    java.write_text("x")
+    monkeypatch.setattr(detection, "_get_version", lambda *_a, **_k: 'openjdk version "25.0.3"')
+    cfg = tmp_path / "config.json"
+    cfg.write_text(json.dumps({"tools": {"java_path": str(java)}}), encoding="utf-8")
+
+    tools = detect_with_cache(cfg, force=True)
+    assert tools["java"].available is True
+    assert tools["java"].path == java
+    saved = json.loads(cfg.read_text(encoding="utf-8"))
+    assert saved["tools"]["java_path"] == str(java)  # override przeżył nadpisanie cache
+
+
+def test_java_override_forces_redetect_over_stale_cache(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Świeży cache „brak Javy" nie blokuje override przy force=True (pułapka cache)."""
+    import datetime as _dt
+
+    java = tmp_path / "java.exe"
+    java.write_text("x")
+    monkeypatch.setattr(detection, "_get_version", lambda *_a, **_k: 'openjdk version "25.0.3"')
+    cfg = tmp_path / "config.json"
+    # Świeży cache twierdzi, że Javy nie ma — ale jest override java_path.
+    cfg.write_text(
+        json.dumps(
+            {
+                "last_detected": _dt.datetime.now(_dt.timezone.utc).isoformat(),
+                "tools": {
+                    "java": {"name": "java", "path": None, "version": "", "available": False},
+                    "java_path": str(java),
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    tools = detect_with_cache(cfg, force=True)  # GUI wymusza force po „Wskaż…"
+    assert tools["java"].available is True
+    assert tools["java"].path == java

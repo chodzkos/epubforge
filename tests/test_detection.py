@@ -296,6 +296,7 @@ def test_detect_with_cache_stale_redetects(tmp_path: Path, no_tools: None) -> No
 
 def test_manual_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Ręczny override ścieżki z config jest stosowany."""
+    monkeypatch.setattr(detection.shutil, "which", lambda _name: None)
     monkeypatch.setattr(detection, "_find_executable", lambda names, dirs: None)
     monkeypatch.setattr(Tools, "calibre_kfx_plugin", staticmethod(lambda: False))
     monkeypatch.setattr(detection, "_get_version", lambda path: "custom 1.0")

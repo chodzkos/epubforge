@@ -65,6 +65,17 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
   i sprawdza obecność plików `.mo`.
 
 ### Fixed
+- **Detekcja Javy dla Temurin 25 (LTS) i innych bez wpisu w PATH** — instalatory
+  Temurin rejestrują `java.exe` przez App Paths w rejestrze, ale nie dodają
+  katalogu do `PATH`, więc `Tools.java()` nie znajdowało Javy mimo działającego
+  `java -version`. Detekcja przeszukuje teraz kolejno: override `tools.java_path`
+  → `PATH` → App Paths (HKLM/HKCU) → rejestr Eclipse Adoptium (JRE/JDK → MSI/Path)
+  → typowe katalogi `Program Files\Eclipse Adoptium\*\bin` → `JAVA_HOME`. Parser
+  wersji obejmuje krótki format (np. `25.0.3` → 25). Dodano override
+  `tools.java_path` (pełna ścieżka do java) z re-utrwalaniem w cache i przycisk
+  „Wskaż java.exe…"
+  w panelu pomocy walidacji; po wskazaniu ścieżki detekcja jest wymuszana, więc
+  stare „brak Javy" z cache nie blokuje.
 - **Pasek tytułu zamrożony po sekwencji jasny→ciemny→jasny** — atrybut DWM jest
   stanowy, więc `sync_titlebar` ustawia go teraz BEZWARUNKOWO na motyw aplikacji
   (bez pomijania „przy zgodzie z systemem"), na KAŻDYM oknie top-level przy każdym
