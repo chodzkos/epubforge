@@ -119,9 +119,13 @@ def test_writer_creates_nav_when_absent(toc_epub: Path) -> None:
     with Epub(toc_epub) as epub:
         # Usuń istniejący nav (plik + wpis manifestu), by wymusić utworzenie nowego.
         epub.delete_file("OEBPS/nav.xhtml")
-        opf = epub.read_file(epub.opf_path).decode("utf-8").replace(
-            '<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>',
-            "",
+        opf = (
+            epub.read_file(epub.opf_path)
+            .decode("utf-8")
+            .replace(
+                '<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>',
+                "",
+            )
         )
         epub.write_file(epub.opf_path, opf.encode("utf-8"))
         write_toc(epub, [TocEntry("Rozdział", "OEBPS/text/ch1.xhtml")], write_ncx=False)
