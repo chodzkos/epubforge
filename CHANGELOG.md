@@ -8,6 +8,20 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Added
+- **Generator i edytor spisu treści (F10)** — pakiet `toc/` (czysta logika) +
+  komenda `epubforge toc` + zakładka „Spis treści". `generate_toc` buduje drzewo
+  z nagłówków `h1..h{max_level}` w kolejności spine (lxml recover), podciąga
+  osierocone nagłówki, wstrzykuje brakujące `id="efh-NNNN"` (idempotentnie,
+  z zachowaniem deklaracji XML i DOCTYPE), pierwszy nagłówek pliku linkuje bez
+  fragmentu, pliki bez nagłówków pomija. `write_toc` zapisuje nav.xhtml (podmienia
+  tylko `<nav epub:type="toc">` lub tworzy dokument + `properties="nav"`, spine
+  nietknięty) i pełny toc.ncx (playOrder DFS, `spine@toc`); href względne liczone
+  `posixpath.relpath` (różne bazy). `read_toc` czyta nav z fallbackiem do ncx.
+  `validate_toc`/`repair_toc` wykrywają i usuwają martwe wpisy (dzieci podciągane).
+  GUI: drzewo Tytuł|Cel z edycją tytułu, drag&drop (`InternalMove` + synchronizacja
+  modelu przez `move_entry`), przyciski Generuj/Napraw/Dodaj/Usuń/⬆⬇⬅➡ i zapis;
+  martwe wpisy kolorem `red` z tooltipem. CLI `--show`/`--generate`/`--repair`.
+
 - **Walidacja EPUB przez EpubCheck 5.x (F2)** — nowa zakładka „Walidacja" oraz
   komenda `epubforge check`. Detekcja `java` (Temurin JRE 17+, wersja z `java -version`
   na STDERR, wymagane ≥ 11) i `epubcheck.jar` (override `tools.epubcheck_jar` → glob

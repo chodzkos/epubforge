@@ -25,6 +25,7 @@
 | Presety CSS (wbudowane + własne) | ✅ |
 | Edytor wewnętrzny EPUB (podgląd + edycja) | ✅ |
 | Walidacja EpubCheck (klikalne błędy) | ✅ |
+| Spis treści (generator + edytor drzewa) | ✅ |
 | KFX / MOBI / AZW3 | ✅ |
 | GUI (motyw jasny/ciemny) | ✅ |
 | Build: portable `.exe` + instalator | ✅ |
@@ -46,6 +47,7 @@
 - **📝 Edytor wewnętrzny** — przegląd i szybka edycja plików w EPUB z podświetlaniem XML/CSS
 - **🔎 Inspektor CSS** — lista reguł arkusza z podglądem na żywo i edycją reguły (podgląd przybliżony)
 - **✅ Walidacja EpubCheck** — raport błędów/ostrzeżeń EPUB; dwuklik błędu skacze do linii w edytorze (wymaga Javy + epubcheck.jar)
+- **📑 Spis treści** — generowanie z nagłówków (nav.xhtml + toc.ncx), edytor drzewa z drag&drop, wykrywanie i naprawa martwych wpisów
 - **🏷️ Metadata** — pełna edycja Dublin Core + seria/tom (Calibre i EPUB 3)
 - **🔍 Auto-detekcja** — Pandoc, Calibre, Sigil, Kindle Previewer, kindlegen
 
@@ -97,6 +99,11 @@ epubforge convert input.pdf output.epub --engine calibre
 epubforge check book.epub                            # raport + kod wyjścia 0/1/2
 epubforge check book.epub --json report.json         # pełny raport do pliku
 epubforge check book.epub --min-severity warning     # tylko ostrzeżenia i błędy
+
+# Spis treści (generowanie z nagłówków, naprawa martwych wpisów)
+epubforge toc book.epub --show
+epubforge toc book.epub --generate --max-level 3
+epubforge toc book.epub --repair --dry-run
 
 # Naprawa EPUB
 epubforge fix book.epub --remove-colors --replace-justify

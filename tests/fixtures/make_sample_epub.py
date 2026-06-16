@@ -58,6 +58,92 @@ CHAPTER1_XHTML = """<?xml version="1.0" encoding="UTF-8"?>
 """
 
 
+_TOC_OPF = """<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="bookid">urn:uuid:epubforge-toc-0001</dc:identifier>
+    <dc:title>Książka ze spisem</dc:title>
+    <dc:language>pl</dc:language>
+  </metadata>
+  <manifest>
+    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+    <item id="ch1" href="text/ch1.xhtml" media-type="application/xhtml+xml"/>
+    <item id="ch2" href="text/ch2.xhtml" media-type="application/xhtml+xml"/>
+    <item id="ch3" href="text/ch3.xhtml" media-type="application/xhtml+xml"/>
+  </manifest>
+  <spine>
+    <itemref idref="ch1"/>
+    <itemref idref="ch2"/>
+    <itemref idref="ch3"/>
+  </spine>
+</package>
+"""
+
+# ch1: h1 + dwa h2 (jeden z <em> w środku), nagłówki bez id.
+_TOC_CH1 = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head><title>Rozdział pierwszy</title></head>
+  <body>
+    <h1>Rozdział pierwszy</h1>
+    <p>Zażółć gęślą jaźń.</p>
+    <h2>Wstęp do tematu</h2>
+    <p>Treść.</p>
+    <h2>Rozdział <em>drugi</em> akt</h2>
+    <p>Więcej treści.</p>
+  </body>
+</html>
+"""
+
+# ch2: h1 bez id + osierocony h3 (brak h2 pośredniego).
+_TOC_CH2 = """<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head><title>Rozdział drugi</title></head>
+  <body>
+    <h1>Rozdział drugi</h1>
+    <h3>Podrozdział osierocony</h3>
+    <p>Tekst.</p>
+  </body>
+</html>
+"""
+
+# ch3: brak nagłówków, ale jest <title>.
+_TOC_CH3 = """<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head><title>Bez nagłówków</title></head>
+  <body><p>Sam akapit, żadnego nagłówka.</p></body>
+</html>
+"""
+
+# Prosty nav z jednym MARTWYM wpisem (plik nie istnieje).
+_TOC_NAV = """<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+  <head><title>Spis treści</title></head>
+  <body>
+    <nav epub:type="toc">
+      <ol>
+        <li><a href="text/ch1.xhtml">Rozdział pierwszy</a></li>
+        <li><a href="text/missing.xhtml">Martwy wpis</a></li>
+      </ol>
+    </nav>
+  </body>
+</html>
+"""
+
+
+def make_toc_epub(output: Path) -> Path:
+    """Buduje EPUB do testów TOC (rozdziały z nagłówkami + nav z martwym wpisem)."""
+    with zipfile.ZipFile(output, "w") as zf:
+        zf.writestr("mimetype", b"application/epub+zip", compress_type=zipfile.ZIP_STORED)
+        zf.writestr("META-INF/container.xml", CONTAINER_XML.encode(), zipfile.ZIP_DEFLATED)
+        zf.writestr("OEBPS/content.opf", _TOC_OPF.encode(), zipfile.ZIP_DEFLATED)
+        zf.writestr("OEBPS/nav.xhtml", _TOC_NAV.encode(), zipfile.ZIP_DEFLATED)
+        zf.writestr("OEBPS/text/ch1.xhtml", _TOC_CH1.encode(), zipfile.ZIP_DEFLATED)
+        zf.writestr("OEBPS/text/ch2.xhtml", _TOC_CH2.encode(), zipfile.ZIP_DEFLATED)
+        zf.writestr("OEBPS/text/ch3.xhtml", _TOC_CH3.encode(), zipfile.ZIP_DEFLATED)
+    return output
+
+
 def build(output: Path = OUTPUT) -> Path:
     """Buduje fixture EPUB pod wskazaną ścieżką i zwraca tę ścieżkę."""
     with zipfile.ZipFile(output, "w") as zf:
