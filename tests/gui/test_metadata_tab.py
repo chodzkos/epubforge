@@ -141,7 +141,7 @@ def test_metadata_external_tool_buttons(
         calls.append(cmd)
         return object()
 
-    monkeypatch.setattr("epubforge.gui.tabs.metadata.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("epubforge.gui.external_tools.subprocess.Popen", fake_popen)
 
     tab = MetadataTab(tools=_tools())
     qtbot.addWidget(tab)

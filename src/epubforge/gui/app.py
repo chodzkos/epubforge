@@ -197,7 +197,7 @@ class MainWindow(QMainWindow):
         self.converter_tab = ConverterTab(config=self.config_data)
         self.fixer_tab = FixerTab(tools=self.tools)
         self.kfx_tab = KfxTab(tools=self.tools, config=self.config_data)
-        self.editor_tab = EditorTab()
+        self.editor_tab = EditorTab(tools=self.tools)
         self.validator_tab = ValidatorTab(
             tools=self.tools, config=self.config_data, main_window=self
         )

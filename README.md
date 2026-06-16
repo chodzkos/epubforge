@@ -44,7 +44,7 @@
 - **✂️ Hyphenation** — dzielenie wyrazów dla 50+ języków
 - **🎨 CSS Fixer** — czyszczenie kolorów, fontów, justify, marginesy
 - **🎨 Presety CSS** — wbudowane szablony stylów + import własnych (dołącz / zastąp)
-- **📝 Edytor wewnętrzny** — przegląd i szybka edycja plików w EPUB z podświetlaniem XML/CSS
+- **📝 Edytor wewnętrzny** — przegląd i szybka edycja plików w EPUB z podświetlaniem XML/CSS, przybliżony podgląd HTML (Kod ⇄ Podgląd) + handoff do Sigil/Calibre
 - **🔎 Inspektor CSS** — lista reguł arkusza z podglądem na żywo i edycją reguły (podgląd przybliżony)
 - **✅ Walidacja EpubCheck** — raport błędów/ostrzeżeń EPUB; dwuklik błędu skacze do linii w edytorze (wymaga Javy + epubcheck.jar)
 - **📑 Spis treści** — generowanie z nagłówków (nav.xhtml + toc.ncx), edytor drzewa z drag&drop, wykrywanie i naprawa martwych wpisów

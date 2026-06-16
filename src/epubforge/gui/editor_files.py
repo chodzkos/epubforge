@@ -93,6 +93,16 @@ def is_image(internal_path: str, media_type: str | None = None) -> bool:
     return classify(internal_path, media_type) == GROUP_IMAGE
 
 
+def is_html(internal_path: str, media_type: str | None = None) -> bool:
+    """Czy plik to dokument (X)HTML — kwalifikuje się do przybliżonego podglądu.
+
+    Wyłącza generyczny XML (OPF/NCX) i SVG — podgląd HTML dotyczy treści rozdziałów.
+    """
+    suffix = _suffix(internal_path)
+    mt = (media_type or "").lower()
+    return mt in {"text/html", "application/xhtml+xml"} or suffix in {".xhtml", ".html", ".htm"}
+
+
 def resolve_internal_path(href: str, opf_dir: str) -> str:
     """Rozwiązuje ``href`` manifestu (względem katalogu OPF) do ścieżki w archiwum."""
     path = unquote(urldefrag(href)[0])

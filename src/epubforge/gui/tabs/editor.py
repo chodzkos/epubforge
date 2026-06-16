@@ -16,14 +16,13 @@ from pathlib import Path
 
 from lxml import etree
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QKeySequence, QShortcut, QTextCursor
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMessageBox,
     QPushButton,
     QSplitter,
-    QStackedWidget,
     QToolButton,
     QTreeWidget,
     QTreeWidgetItem,
@@ -31,20 +30,22 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from epubforge.core import Epub
+from epubforge.core import Epub, Tool
 from epubforge.gui import editor_files as ef
 from epubforge.gui.file_dialogs import open_file
+from epubforge.gui.tabs.editor_preview import (
+    _PAGE_EDITOR,
+    _PAGE_IMAGE,
+    _PAGE_INFO,
+    EditorPreviewMixin,
+)
 from epubforge.gui.theme import Theme, current_theme
 from epubforge.gui.widgets.code_editor import CodeEditor
-from epubforge.gui.widgets.css_inspector import CssInspector
-from epubforge.gui.widgets.image_preview import ImagePreview
 from epubforge.i18n import _
 
 logger = logging.getLogger(__name__)
 
 _PATH_ROLE = Qt.ItemDataRole.UserRole
-# Strony QStackedWidget: edytor / podgląd obrazu / panel info.
-_PAGE_EDITOR, _PAGE_IMAGE, _PAGE_INFO = 0, 1, 2
 
 
 def _group_label(key: str) -> str:
@@ -58,12 +59,19 @@ def _group_label(key: str) -> str:
     }.get(key, key)
 
 
-class EditorTab(QWidget):
-    """Przegląd i edycja zawartości EPUB z podświetlaniem składni."""
+class EditorTab(EditorPreviewMixin, QWidget):
+    """Przegląd i edycja zawartości EPUB z podświetlaniem składni.
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    Prawy panel (inspektor CSS + podgląd HTML + przełącznik Kod/Podgląd) jest
+    w :class:`~epubforge.gui.tabs.editor_preview.EditorPreviewMixin`.
+    """
+
+    def __init__(
+        self, parent: QWidget | None = None, *, tools: dict[str, Tool] | None = None
+    ) -> None:
         super().__init__(parent)
         self._theme: Theme = current_theme()
+        self._tools = tools if tools is not None else {}
         self._epub: Epub | None = None
         self._epub_path: Path | None = None
         self._dirty: dict[str, str] = {}  # ścieżka → tekst zapisany do bufora EPUB
@@ -72,6 +80,7 @@ class EditorTab(QWidget):
         self._media_types: dict[str, str] = {}
         self._switching = False  # blokada rekurencji przy cofaniu zaznaczenia
 
+        self._make_preview_timer()
         self._build_ui()
         self._wire_shortcuts()
         self._refresh_actions()
@@ -102,31 +111,9 @@ class EditorTab(QWidget):
         self.tree.currentItemChanged.connect(self._on_item_changed)
         splitter.addWidget(self.tree)
 
-        self.stack = QStackedWidget()
         self.code_editor = CodeEditor()
         self.code_editor.modified_changed.connect(self._on_modified)
-        self.image_preview = ImagePreview()
-        self.info_panel = QLabel()
-        self.info_panel.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.info_panel.setWordWrap(True)
-        self.stack.addWidget(self.code_editor)
-        self.stack.addWidget(self.image_preview)
-        self.stack.addWidget(self.info_panel)
-
-        right = QSplitter(Qt.Orientation.Horizontal)
-        right.addWidget(self.stack)
-        self.css_inspector = CssInspector(
-            get_source=self.code_editor.get_text,
-            apply_replacement=self._apply_css_replacement,
-            theme=self._theme,
-        )
-        self.css_inspector.setVisible(False)
-        right.addWidget(self.css_inspector)
-        right.setStretchFactor(0, 3)
-        right.setStretchFactor(1, 2)
-        self.code_editor.editor.textChanged.connect(self._on_main_editor_changed)
-
-        splitter.addWidget(right)
+        splitter.addWidget(self._build_right_panel())  # prawy panel z mixinu
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 3)
 
@@ -298,12 +285,14 @@ class EditorTab(QWidget):
         if ef.is_image(internal, media_type):
             self.image_preview.show_data(data)
             self.stack.setCurrentIndex(_PAGE_IMAGE)
+            self.view_switch.setVisible(False)
             self._set_info_bar("")
         elif ef.is_editable(internal, media_type):
             self._show_in_editor(internal, media_type, data)
         else:
             self.info_panel.setText(self._binary_info(internal, media_type, len(data)))
             self.stack.setCurrentIndex(_PAGE_INFO)
+            self.view_switch.setVisible(False)
             self._set_info_bar("")
         self._update_inspector()
 
@@ -319,40 +308,7 @@ class EditorTab(QWidget):
         self.code_editor.load(text, ef.profile_for(internal, media_type))
         self.stack.setCurrentIndex(_PAGE_EDITOR)
         self._apply_read_only()
-
-    # ── Inspektor CSS ─────────────────────────────────────────────────────────
-
-    def _current_is_css(self) -> bool:
-        """Czy bieżący plik jest arkuszem CSS pokazanym w edytorze."""
-        return (
-            self._current is not None
-            and self.stack.currentIndex() == _PAGE_EDITOR
-            and ef.profile_for(self._current, self._media_types.get(self._current))
-            == ef.PROFILE_CSS
-        )
-
-    def _update_inspector(self) -> None:
-        """Pokazuje inspektor tylko dla CSS i gdy toggle włączony; odświeża go."""
-        is_css = self._current_is_css()
-        self.inspector_toggle.setEnabled(is_css)
-        visible = is_css and self.inspector_toggle.isChecked()
-        self.css_inspector.setVisible(visible)
-        if visible:
-            self.css_inspector.refresh()
-
-    def _on_main_editor_changed(self) -> None:
-        """Edycja w głównym edytorze → odroczone odświeżenie inspektora (gdy widoczny)."""
-        if self.css_inspector.isVisible():
-            self.css_inspector.schedule_external_refresh()
-
-    def _apply_css_replacement(self, start: int, end: int, new_text: str) -> None:
-        """Wpisuje zmianę reguły do głównego edytora JEDNĄ operacją kursora (undo cofa całość)."""
-        editor = self.code_editor.editor
-        cursor = editor.textCursor()
-        cursor.setPosition(start)
-        cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
-        cursor.insertText(new_text)
-        editor.setTextCursor(cursor)
+        self._update_view_switch(internal, media_type)
 
     # ── Edycja / zapis ─────────────────────────────────────────────────────--
 
@@ -480,6 +436,7 @@ class EditorTab(QWidget):
         self._theme = theme
         self.code_editor.set_theme(theme)
         self.css_inspector.set_theme(theme)
+        self.html_preview.set_theme(theme)
         self._update_mode_indicator()
 
     def _close_epub(self) -> None:

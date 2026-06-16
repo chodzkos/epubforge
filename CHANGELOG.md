@@ -8,6 +8,16 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Added
+- **Przybliżony podgląd XHTML w edytorze (F-P)** — dla plików HTML/XHTML prawy
+  panel edytora ma przełącznik **Kod ⇄ Podgląd** (domyślnie Kod). Podgląd renderuje
+  silnik `QTextDocument` (jak inspektor CSS) na białej „papierowej" karcie
+  niezależnej od motywu; obrazki o względnych `src` są osadzane jako `data:` URI
+  z bajtów EPUB (duże > 3 MB → placeholder z nazwą, by dokument nie puchł). Podgląd
+  odświeża się z bieżącej (niezapisanej) treści edytora z debounce ~400 ms i jest
+  zawsze tylko do odczytu. Pasek nad podglądem niesie adnotację o ograniczeniach
+  silnika oraz przyciski **Sigil / Calibre Editor** otwierające pełny podgląd
+  (wspólny helper `gui/external_tools.py`, bez duplikowania logiki uruchamiania).
+  Inspektor CSS bez zmian.
 - **Generator i edytor spisu treści (F10)** — pakiet `toc/` (czysta logika) +
   komenda `epubforge toc` + zakładka „Spis treści". `generate_toc` buduje drzewo
   z nagłówków `h1..h{max_level}` w kolejności spine (lxml recover), podciąga

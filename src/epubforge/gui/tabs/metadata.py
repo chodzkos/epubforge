@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import subprocess
 from collections.abc import Callable
 from math import isfinite
 from pathlib import Path
@@ -22,8 +21,8 @@ from PySide6.QtWidgets import (
 )
 
 from epubforge.core import Epub, EpubError, Metadata, Tool, Tools
+from epubforge.gui.external_tools import ToolUnavailableError, launch_tool
 from epubforge.gui.widgets import FileList, PathEntry, Section
-from epubforge.gui.workers import CREATE_NO_WINDOW
 from epubforge.i18n import _, ngettext
 
 _TOOL_LABELS = {
@@ -244,18 +243,13 @@ class MetadataTab(QWidget):
 
     def _open_external(self, key: str, label: str) -> None:
         """Uruchamia zewnętrzny edytor/podgląd dla aktualnego EPUB."""
-        tool = self.tools.get(key)
-        if tool is None or not tool.available or tool.path is None:
-            self._set_status(_("Nie wykryto {tool}").format(tool=label))
-            return
         if self.current_path is None:
             self._set_status(_("Wybierz plik EPUB"))
             return
         try:
-            subprocess.Popen(
-                [str(tool.path), str(self.current_path)],
-                creationflags=CREATE_NO_WINDOW,
-            )
+            launch_tool(self.tools.get(key), self.current_path)
+        except ToolUnavailableError:
+            self._set_status(_("Nie wykryto {tool}").format(tool=label))
         except OSError as exc:
             self._set_status(
                 _("Nie udało się uruchomić {tool}: {error}").format(tool=label, error=exc)
