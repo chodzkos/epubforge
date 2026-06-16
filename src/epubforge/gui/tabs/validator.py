@@ -146,6 +146,9 @@ class ValidatorTab(QWidget):
         self.help_label.setOpenExternalLinks(True)
         box.addWidget(self.help_label)
         pick = QHBoxLayout()
+        self.pick_java_button = QPushButton(_("Wskaż java.exe…"))
+        self.pick_java_button.clicked.connect(self._pick_java)
+        pick.addWidget(self.pick_java_button)
         self.pick_jar_button = QPushButton(_("Wskaż epubcheck.jar…"))
         self.pick_jar_button.clicked.connect(self._pick_jar)
         pick.addWidget(self.pick_jar_button)
@@ -197,12 +200,25 @@ class ValidatorTab(QWidget):
     def _pick_jar(self) -> None:
         """Pozwala wskazać plik epubcheck.jar; zapisuje override i ponawia detekcję."""
         path = open_file(self, _("Wskaż epubcheck.jar"), "", _("Plik JAR (*.jar)"))
-        if not path:
-            return
+        if path:
+            self._set_tool_override("epubcheck_jar", path)
+
+    def _pick_java(self) -> None:
+        """Pozwala wskazać plik java(.exe); zapisuje override i ponawia detekcję."""
+        path = open_file(self, _("Wskaż java.exe"), "", _("Plik wykonywalny Java (java*)"))
+        if path:
+            self._set_tool_override("java_path", path)
+
+    def _set_tool_override(self, key: str, path: str) -> None:
+        """Zapisuje override ścieżki w ``config['tools'][key]`` i wymusza re-detekcję.
+
+        Ponowna detekcja jest WYMUSZONA (``force=True``), żeby stary zacache'owany
+        wynik („brak narzędzia") nie blokował świeżo wskazanej ścieżki.
+        """
         if self._config is not None:
             tools_section = self._config.get("tools")
             tools_section = tools_section if isinstance(tools_section, dict) else {}
-            tools_section["epubcheck_jar"] = path
+            tools_section[key] = path
             self._config["tools"] = tools_section  # mark_dirty
             self._config.save_now()  # detect_with_cache czyta z dysku
             self.tools = detect_with_cache(self._config.path, force=True)

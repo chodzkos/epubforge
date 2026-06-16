@@ -7,7 +7,8 @@ from pathlib import Path
 import pytest
 from pytestqt.qtbot import QtBot
 
-from epubforge.core import Tool
+from epubforge.core import ConfigStore, Tool
+from epubforge.gui.tabs import validator as validator_module
 from epubforge.gui.tabs.validator import ValidatorTab
 from epubforge.validators import Severity, ValidationMessage, ValidationReport
 
@@ -91,3 +92,22 @@ def test_help_panel_when_tools_missing(qtbot: QtBot) -> None:
     qtbot.addWidget(tab)
     assert tab.stack.currentIndex() == 1  # _PAGE_HELP
     assert "Temurin" in tab.help_label.text()
+    assert tab.pick_java_button.text().startswith("Wskaż java")
+
+
+def test_pick_java_sets_override_and_redetects(
+    qtbot: QtBot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """„Wskaż java.exe…" zapisuje override do config['tools']['java_path'] i re-detekuje."""
+    config = ConfigStore(tmp_path / "config.json", {})
+    tab = ValidatorTab(tools={"java": Tool("java", None, "", False)}, config=config)
+    qtbot.addWidget(tab)
+    java = tmp_path / "java.exe"
+    java.write_text("x")
+
+    monkeypatch.setattr(validator_module, "open_file", lambda *a, **k: str(java))
+    monkeypatch.setattr(validator_module, "detect_with_cache", lambda *a, **k: _ready_tools())
+    tab._pick_java()
+
+    assert config["tools"]["java_path"] == str(java)
+    assert tab.stack.currentIndex() == 0  # wyniki — narzędzia gotowe po re-detekcji
