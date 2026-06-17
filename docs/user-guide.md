@@ -74,6 +74,14 @@ motywu, „O programie") i zakładki robocze:
   **Zapisz EPUB** utrwala zmiany na dysk (kopia `.bak`). Pliki nie-UTF-8 są tylko do odczytu.
   Przy otwartym `.css` panel **Inspektor CSS** pokazuje listę reguł i podgląd na żywo —
   edytujesz regułę, a „Zastosuj do arkusza" wpisuje ją z powrotem do pliku.
+  Dla plików HTML/XHTML prawy panel ma przełącznik **Kod ⇄ Podgląd** (domyślnie Kod):
+  podgląd renderuje przybliżony obraz silnikiem Qt (obrazki osadzone z EPUB) i
+  odświeża się z niezapisanej treści. Pasek nad podglądem ma przyciski **Sigil /
+  Calibre Editor** otwierające plik do pełnego podglądu w zewnętrznym programie.
+
+  > ⚠️ **Podgląd HTML jest przybliżony** — silnik `QTextDocument` nie wykonuje
+  > JavaScriptu ani pełnego CSS i nie odwzorowuje układu czytnika. Do wiernego
+  > podglądu użyj przycisków Sigil/Calibre Editor.
 
   > ⚠️ **Podgląd jest przybliżony.** Renderuje go silnik rich text Qt, który obsługuje
   > tylko podzbiór CSS (m.in. `font-*`, `color`, `text-align`, `margin/padding`,

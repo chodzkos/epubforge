@@ -1836,3 +1836,41 @@ msgstr "Wskaż java.exe"
 msgid "Plik wykonywalny Java (java*)"
 msgstr "Plik wykonywalny Java (java*)"
 
+#: src/epubforge/gui/tabs/editor.py:199
+msgid "Podgląd"
+msgstr "Podgląd"
+
+#: src/epubforge/gui/tabs/editor.py:201
+msgid "Przybliżony podgląd HTML (silnik Qt)"
+msgstr "Przybliżony podgląd HTML (silnik Qt)"
+
+#: src/epubforge/gui/tabs/editor.py:438
+msgid "Najpierw otwórz EPUB"
+msgstr "Najpierw otwórz EPUB"
+
+#: src/epubforge/gui/widgets/html_preview.py:109
+#, python-brace-format
+msgid "[obraz: {name}]"
+msgstr "[obraz: {name}]"
+
+#: src/epubforge/gui/widgets/html_preview.py:143
+msgid ""
+"Podgląd przybliżony (silnik Qt) — nie pokazuje pełnego CSS, fontów osadzonych ani "
+"układu czytnika. Pełny podgląd:"
+msgstr ""
+"Podgląd przybliżony (silnik Qt) — nie pokazuje pełnego CSS, fontów osadzonych ani "
+"układu czytnika. Pełny podgląd:"
+
+#: src/epubforge/gui/widgets/html_preview.py:149
+msgid "Sigil"
+msgstr "Sigil"
+
+#: src/epubforge/gui/widgets/html_preview.py:150
+msgid "Calibre Editor"
+msgstr "Calibre Editor"
+
+#: src/epubforge/gui/widgets/html_preview.py:167
+#, python-brace-format
+msgid "Otwórz bieżący plik w: {tool}"
+msgstr "Otwórz bieżący plik w: {tool}"
+
