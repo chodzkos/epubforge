@@ -61,7 +61,9 @@ motywu, „O programie") i zakładki robocze:
   `.bak`). Przyciski Sigil / Calibre Editor / Viewer otwierają plik w zewnętrznym programie.
 - **Konwerter** — dodaj pliki wejściowe, ustaw metadane i okładkę, wybierz silnik
   (Auto / Pandoc / Calibre) i folder wyjściowy, kliknij **Konwertuj**. PDF wymaga
-  potwierdzenia (konwersja eksperymentalna).
+  potwierdzenia (konwersja eksperymentalna). Formaty Kindle (MOBI/AZW3/AZW/PRC)
+  wymuszają silnik Calibre; pliki zabezpieczone **DRM** są odrzucane ostrzeżeniem
+  — EpubForge nie usuwa zabezpieczeń.
 - **Fixer** — hyphenacja (język, metoda soft-hyphen/CSS) i normalizacja CSS
   (usuń kolory/fonty, reset, justify→lewo, margines). Sekcja **Preset CSS** dołącza
   gotowy szablon stylów (Dołącz/Zastąp), z możliwością **Importuj własny…** (plik

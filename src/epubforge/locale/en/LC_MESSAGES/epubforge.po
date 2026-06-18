@@ -1864,3 +1864,42 @@ msgstr "Calibre Editor"
 msgid "Otwórz bieżący plik w: {tool}"
 msgstr "Open the current file in: {tool}"
 
+#: src/epubforge/cli/convert.py:19
+msgid ""
+"Konwertuje plik do EPUB. Formaty Kindle (MOBI/AZW3/AZW/PRC) idą przez Calibre; pliki "
+"zabezpieczone DRM są odrzucane (EpubForge nie usuwa DRM)."
+msgstr ""
+"Converts a file to EPUB. Kindle formats (MOBI/AZW3/AZW/PRC) go through Calibre; DRM-"
+"protected files are rejected (EpubForge does not remove DRM)."
+
+#: src/epubforge/cli/convert.py:24
+msgid "Plik wejściowy (TXT/MD/DOCX/HTML/PDF/MOBI/AZW3…)"
+msgstr "Input file (TXT/MD/DOCX/HTML/PDF/MOBI/AZW3…)"
+
+#: src/epubforge/converters/to_epub.py:56
+msgid "Plik jest zabezpieczony DRM — konwersja niemożliwa. EpubForge nie usuwa zabezpieczeń."
+msgstr ""
+"The file is DRM-protected — conversion is not possible. EpubForge does not remove "
+"protection."
+
+#: src/epubforge/converters/to_epub.py:137
+msgid "Pandoc nie obsługuje formatów Kindle (MOBI/AZW3/AZW/PRC) — użyj Calibre."
+msgstr "Pandoc does not support Kindle formats (MOBI/AZW3/AZW/PRC) — use Calibre."
+
+#: src/epubforge/gui/tabs/converter.py:134
+msgid "Pliki Kindle (MOBI/AZW3) wymagają Calibre."
+msgstr "Kindle files (MOBI/AZW3) require Calibre."
+
+#: src/epubforge/gui/tabs/converter.py:206
+msgid "Plik z DRM"
+msgstr "DRM-protected file"
+
+#: src/epubforge/gui/tabs/converter.py:208
+#, python-brace-format
+msgid ""
+"Plik „{name}” jest zabezpieczony DRM — EpubForge nie konwertuje plików DRM i nie "
+"usuwa zabezpieczeń."
+msgstr ""
+"The file \"{name}\" is DRM-protected — EpubForge does not convert DRM files and does "
+"not remove protection."
+

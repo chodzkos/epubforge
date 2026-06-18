@@ -8,6 +8,14 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Added
+- **Konwersja formatów Kindle → EPUB (F7)** — MOBI/AZW3/AZW/PRC jako wejście
+  konwersji (silnik **wyłącznie Calibre**; Pandoc jawnie odrzuca formaty Kindle
+  czytelnym błędem). Lekki detektor `converters/kindle_drm.py` (czysty `struct`
+  na nagłówku PalmDB/MOBI) wykrywa DRM (typ szyfrowania 1/2) i **przed** Calibre
+  zgłasza przyjazny `ConversionError`; dodatkowo „DRM" w stderr Calibre jest
+  mapowane na ten sam komunikat. EpubForge nie usuwa zabezpieczeń (KindleUnpack
+  pominięty — GPL). GUI: pliki Kindle wymuszają silnik Calibre (etykieta), a pliki
+  z DRM są odrzucane ostrzeżeniem zamiast śladu w logu. CLI `convert` działa od ręki.
 - **Przybliżony podgląd XHTML w edytorze (F-P)** — dla plików HTML/XHTML prawy
   panel edytora ma przełącznik **Kod ⇄ Podgląd** (domyślnie Kod). Podgląd renderuje
   silnik `QTextDocument` (jak inspektor CSS) na białej „papierowej" karcie

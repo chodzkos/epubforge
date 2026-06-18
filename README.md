@@ -246,6 +246,10 @@ python build/compile_locales.py
 | RTF | Pandoc | średnia | |
 | **PDF** | Calibre | **eksperymentalna** | tylko PDF tekstowe; skany wymagają OCR (planowane) |
 | FB2 / LIT | Calibre | dobra | |
+| **MOBI / AZW3 / AZW / PRC** | Calibre | dobra | formaty Kindle; pliki z DRM są odrzucane |
+
+> ⚠️ **DRM:** EpubForge **nie usuwa** zabezpieczeń DRM. Pliki Kindle z DRM są
+> wykrywane (nagłówek MOBI) i odrzucane z czytelnym komunikatem — nie trafiają do Calibre.
 
 > ⚠️ **PDF → EPUB jest eksperymentalne.** Najlepsze wyniki dla PDF z tekstem (nie skanów).
 > PDF wielokolumnowe, naukowe i skany dają słabą jakość. OCR planowany w przyszłych wersjach.

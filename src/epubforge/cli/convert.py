@@ -12,8 +12,17 @@ from epubforge.i18n import _
 
 def add_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     """Rejestruje subkomendę ``convert`` w głównym parserze argparse."""
-    parser = subparsers.add_parser("convert", help=_("Konwertuj plik wejściowy do EPUB"))
-    parser.add_argument("source", type=Path, help=_("Plik wejściowy"))
+    parser = subparsers.add_parser(
+        "convert",
+        help=_("Konwertuj plik wejściowy do EPUB"),
+        description=_(
+            "Konwertuje plik do EPUB. Formaty Kindle (MOBI/AZW3/AZW/PRC) idą przez "
+            "Calibre; pliki zabezpieczone DRM są odrzucane (EpubForge nie usuwa DRM)."
+        ),
+    )
+    parser.add_argument(
+        "source", type=Path, help=_("Plik wejściowy (TXT/MD/DOCX/HTML/PDF/MOBI/AZW3…)")
+    )
     parser.add_argument("target", type=Path, help=_("Docelowy plik EPUB"))
     parser.add_argument(
         "--engine",
