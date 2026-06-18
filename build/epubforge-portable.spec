@@ -18,6 +18,7 @@ spec_dir = os.path.abspath(SPECPATH)
 assets_dir = os.path.abspath(os.path.join(spec_dir, "..", "src", "epubforge", "gui", "assets"))
 locale_dir = os.path.abspath(os.path.join(spec_dir, "..", "src", "epubforge", "locale"))
 presets_dir = os.path.abspath(os.path.join(spec_dir, "..", "src", "epubforge", "fixers", "presets"))
+stopwords_dir = os.path.abspath(os.path.join(spec_dir, "..", "src", "epubforge", "stats_stopwords"))
 
 # Ikona: użyj prawdziwej z assets, gdy dostarczona; inaczej placeholder z build/.
 _assets_icon = os.path.join(assets_dir, "icon.ico")
@@ -58,6 +59,7 @@ a = Analysis(
         (assets_dir, "epubforge/gui/assets"),  # logo/ikona dla okna About
         (locale_dir, "epubforge/locale"),
         (presets_dir, "epubforge/fixers/presets"),
+        (stopwords_dir, "epubforge/stats_stopwords"),
     ],
     hiddenimports=[
         "PySide6.QtCore",

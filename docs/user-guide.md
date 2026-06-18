@@ -102,6 +102,12 @@ motywu, „O programie") i zakładki robocze:
   strukturę. Martwe wpisy są na czerwono z tooltipem. **Zapisz do EPUB** zapisuje nav + ncx
   (kopia `.bak`). Niezapisane zmiany są pilnowane przy zmianie pliku i zamknięciu.
 
+- **Statystyki** — wskaż EPUB i kliknij **Oblicz**: liczba słów, szac. stron, czas
+  czytania, język i najczęstsze słowa oraz tabela rozdziałów. **Eksport HTML…**
+  zapisuje samowystarczalny raport (do druku Ctrl+P → PDF), **Otwórz raport** pokazuje
+  go w przeglądarce. Wykrywanie języka wymaga `pip install epubforge[stats]` — bez
+  tego język pochodzi z metadanych EPUB-a.
+
 **Motyw:** górny pasek → przełącznik **Automatyczny / Jasny / Ciemny** (auto podąża za
 systemem). Na Windows zmienia się też kolor paska tytułu.
 
@@ -139,6 +145,9 @@ epubforge fix book.epub --preset dark-oled --preset-mode replace  # zastąp arku
 epubforge meta book.epub
 epubforge meta book.epub --title "Krew elfów" --author "Sapkowski, Andrzej" \
     --series "Wiedźmin" --series-index 3
+
+# Statystyki książki (+ raport HTML)
+epubforge stats book.epub --report stats.html --top 50
 
 # Eksport Kindle
 epubforge kfx book.epub --engine calibre

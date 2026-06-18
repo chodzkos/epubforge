@@ -26,6 +26,7 @@
 | Edytor wewnętrzny EPUB (podgląd + edycja) | ✅ |
 | Walidacja EpubCheck (klikalne błędy) | ✅ |
 | Spis treści (generator + edytor drzewa) | ✅ |
+| Statystyki książki (raport HTML) | ✅ |
 | KFX / MOBI / AZW3 | ✅ |
 | GUI (motyw jasny/ciemny) | ✅ |
 | Build: portable `.exe` + instalator | ✅ |
@@ -48,6 +49,7 @@
 - **🔎 Inspektor CSS** — lista reguł arkusza z podglądem na żywo i edycją reguły (podgląd przybliżony)
 - **✅ Walidacja EpubCheck** — raport błędów/ostrzeżeń EPUB; dwuklik błędu skacze do linii w edytorze (wymaga Javy + epubcheck.jar)
 - **📑 Spis treści** — generowanie z nagłówków (nav.xhtml + toc.ncx), edytor drzewa z drag&drop, wykrywanie i naprawa martwych wpisów
+- **📊 Statystyki** — słowa, szac. strony, czas czytania, język i top-słowa + samowystarczalny raport HTML (wykrywanie języka: `pip install epubforge[stats]`)
 - **🏷️ Metadata** — pełna edycja Dublin Core + seria/tom (Calibre i EPUB 3)
 - **🔍 Auto-detekcja** — Pandoc, Calibre, Sigil, Kindle Previewer, kindlegen
 
@@ -118,6 +120,9 @@ epubforge hyphenate book.epub --lang pl --skip-headers
 
 # Edycja metadanych
 epubforge meta book.epub --title "Nowy tytuł" --author "Jan Kowalski"
+
+# Statystyki książki (+ raport HTML)
+epubforge stats book.epub --report stats.html --top 50
 
 # Konwersja do KFX
 epubforge kfx book.epub --engine calibre
@@ -269,6 +274,7 @@ python build/compile_locales.py
   - [Sigil](https://sigil-ebook.com) — edytor EPUB
   - [Kindle Previewer 3](https://www.amazon.com/gp/feature.html?ie=UTF8&docId=1000765261) — KFX (experimental)
   - [Temurin JRE 17+](https://adoptium.net/) + [EpubCheck 5.x](https://github.com/w3c/epubcheck/releases) — walidacja EPUB (`epubforge check` / zakładka **Walidacja**); rozpakuj `epubcheck.jar` do `<config>/epubcheck/epubcheck.jar` lub wskaż go w GUI
+  - `pip install epubforge[stats]` — wykrywanie języka w statystykach (langdetect); bez tego język brany jest z metadanych
 
 ### Do developmentu
 - Python 3.10+

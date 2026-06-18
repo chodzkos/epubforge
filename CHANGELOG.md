@@ -8,6 +8,15 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Added
+- **Statystyki książki (F8)** — moduł `stats.py`: liczba słów/znaków, szac. stron
+  (250 słów/stronę), czas czytania (200 słów/min), wykryty język (opcjonalny
+  `langdetect` z extra `[stats]`, fallback do metadanych) i top-słowa (stop-listy
+  pl/en/de). Samowystarczalny **raport HTML** (inline CSS jasnej palety, inline SVG
+  wykresu — zero zasobów sieciowych, `html.escape` na wszystkim z książki): karty
+  liczb, chmurka top-słów (skala log), tabela rozdziałów, wykres słupkowy. CLI
+  `epubforge stats book.epub [--report out.html] [--top] [--words-per-page] [--wpm]`
+  oraz zakładka GUI „Statystyki" (karty, top-słowa, rozdziały, eksport/otwarcie
+  raportu). Stop-listy pakowane do wheel/.exe.
 - **Konwersja formatów Kindle → EPUB (F7)** — MOBI/AZW3/AZW/PRC jako wejście
   konwersji (silnik **wyłącznie Calibre**; Pandoc jawnie odrzuca formaty Kindle
   czytelnym błędem). Lekki detektor `converters/kindle_drm.py` (czysty `struct`

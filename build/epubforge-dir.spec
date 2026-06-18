@@ -17,6 +17,7 @@ spec_dir = os.path.abspath(SPECPATH)
 assets_dir = os.path.abspath(os.path.join(spec_dir, "..", "src", "epubforge", "gui", "assets"))
 locale_dir = os.path.abspath(os.path.join(spec_dir, "..", "src", "epubforge", "locale"))
 presets_dir = os.path.abspath(os.path.join(spec_dir, "..", "src", "epubforge", "fixers", "presets"))
+stopwords_dir = os.path.abspath(os.path.join(spec_dir, "..", "src", "epubforge", "stats_stopwords"))
 
 _assets_icon = os.path.join(assets_dir, "icon.ico")
 icon_path = _assets_icon if os.path.exists(_assets_icon) else os.path.join(spec_dir, "icon.ico")
@@ -56,6 +57,7 @@ a = Analysis(
         (assets_dir, "epubforge/gui/assets"),
         (locale_dir, "epubforge/locale"),
         (presets_dir, "epubforge/fixers/presets"),
+        (stopwords_dir, "epubforge/stats_stopwords"),
     ],
     hiddenimports=[
         "PySide6.QtCore",
