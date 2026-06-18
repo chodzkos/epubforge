@@ -264,3 +264,79 @@ def test_cli_convert_subcommand(
     assert seen == {"source": source, "target": target, "options": None, "engine": "pandoc"}
     assert "cli log" in captured.out
     assert f"Utworzono EPUB: {target}" in captured.out
+
+
+# ── Formaty Kindle (F7) ──────────────────────────────────────────────────────
+
+
+def test_mobi_routes_to_calibre(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """input.mobi (auto) wymusza Calibre z poprawnymi argumentami ebook-convert."""
+    calls: list[tuple[list[str], dict[str, object]]] = []
+    monkeypatch.setattr(converter, "has_kindle_drm", lambda _path: False)
+    monkeypatch.setattr(converter.Tools, "pandoc", staticmethod(lambda: _tool("pandoc", "/pandoc")))
+    monkeypatch.setattr(
+        converter.Tools,
+        "calibre_ebook_convert",
+        staticmethod(lambda: _tool("calibre_ebook_convert", "/bin/ebook-convert")),
+    )
+    monkeypatch.setattr(converter.subprocess, "run", _fake_run(calls, stdout="calibre log"))
+
+    result = to_epub(tmp_path / "input.mobi", tmp_path / "out.epub")
+
+    assert result.engine == "calibre"
+    assert calls[0][0][0] == _path_arg("/bin/ebook-convert")
+    assert calls[0][0][1] == _path_arg(str(tmp_path / "input.mobi"))
+
+
+def test_mobi_with_pandoc_engine_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Jawny engine=pandoc dla pliku Kindle → ConversionError (Pandoc nie czyta)."""
+    monkeypatch.setattr(converter, "has_kindle_drm", lambda _path: False)
+    with pytest.raises(ConversionError, match="Pandoc"):
+        to_epub(tmp_path / "input.azw3", tmp_path / "out.epub", engine="pandoc")
+
+
+def test_mobi_without_calibre_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Brak Calibre dla pliku Kindle → ConverterNotFoundError."""
+    monkeypatch.setattr(converter, "has_kindle_drm", lambda _path: False)
+    monkeypatch.setattr(
+        converter.Tools,
+        "calibre_ebook_convert",
+        staticmethod(lambda: _missing_tool("calibre_ebook_convert")),
+    )
+    with pytest.raises(ConverterNotFoundError):
+        to_epub(tmp_path / "input.mobi", tmp_path / "out.epub")
+
+
+def test_drm_blocks_before_subprocess(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Plik z DRM → ConversionError zanim ruszy subprocess."""
+    calls: list[tuple[list[str], dict[str, object]]] = []
+    monkeypatch.setattr(converter, "has_kindle_drm", lambda _path: True)
+    monkeypatch.setattr(
+        converter.Tools,
+        "calibre_ebook_convert",
+        staticmethod(lambda: _tool("calibre_ebook_convert", "/bin/ebook-convert")),
+    )
+    monkeypatch.setattr(converter.subprocess, "run", _fake_run(calls))
+
+    with pytest.raises(ConversionError, match="DRM"):
+        to_epub(tmp_path / "input.mobi", tmp_path / "out.epub")
+    assert calls == []  # subprocess NIE wywołany
+
+
+def test_calibre_drm_stderr_mapped(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """„DRMError" w stderr Calibre mapuje się na przyjazny komunikat DRM."""
+    calls: list[tuple[list[str], dict[str, object]]] = []
+    monkeypatch.setattr(converter, "has_kindle_drm", lambda _path: False)
+    monkeypatch.setattr(
+        converter.Tools,
+        "calibre_ebook_convert",
+        staticmethod(lambda: _tool("calibre_ebook_convert", "/bin/ebook-convert")),
+    )
+    monkeypatch.setattr(
+        converter.subprocess,
+        "run",
+        _fake_run(calls, stderr="DRMError: This book has DRM.", returncode=1),
+    )
+
+    with pytest.raises(ConversionError, match="zabezpieczony DRM"):
+        to_epub(tmp_path / "input.mobi", tmp_path / "out.epub", engine="calibre")

@@ -21,7 +21,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from epubforge.converters import SUPPORTED_INPUT_EXTENSIONS, ConvertOptions, to_epub
+from epubforge.converters import (
+    KINDLE_INPUT_EXTENSIONS,
+    SUPPORTED_INPUT_EXTENSIONS,
+    ConvertOptions,
+    has_kindle_drm,
+    to_epub,
+)
 from epubforge.converters.to_epub import Engine
 from epubforge.core import Metadata
 from epubforge.core.config import Config
@@ -125,6 +131,11 @@ class ConverterTab(QWidget):
 
         form.addRow(_("Silnik"), self._build_engine_row())
 
+        self.kindle_notice = QLabel(_("Pliki Kindle (MOBI/AZW3) wymagają Calibre."))
+        self.kindle_notice.setWordWrap(True)
+        self.kindle_notice.setVisible(False)
+        section.content_layout().addWidget(self.kindle_notice)
+
         self.output_entry = PathEntry(
             mode="dir", config=self.config_data, remember_key="last_output_dir"
         )
@@ -149,6 +160,7 @@ class ConverterTab(QWidget):
         row = QHBoxLayout(widget)
         row.setContentsMargins(0, 0, 0, 0)
         self.engine_group = QButtonGroup(self)
+        self._engine_radios: dict[str, QRadioButton] = {}
         for value, label in (("auto", "Auto"), ("pandoc", "Pandoc"), ("calibre", "Calibre")):
             radio = QRadioButton(label)
             radio.setToolTip(_engine_tooltip(value))
@@ -156,6 +168,7 @@ class ConverterTab(QWidget):
             if value == "auto":
                 radio.setChecked(True)
             self.engine_group.addButton(radio)
+            self._engine_radios[value] = radio
             row.addWidget(radio)
         row.addStretch(1)
         return widget
@@ -170,13 +183,34 @@ class ConverterTab(QWidget):
     # ── Logika ────────────────────────────────────────────────────────────────
 
     def _on_files_changed(self, files: list[Path]) -> None:
-        """Podpowiada katalog wyjściowy katalogiem pierwszego pliku, gdy pole puste."""
+        """Podpowiada katalog wyjściowy i blokuje silnik na Calibre dla plików Kindle."""
         if files and not self.output_entry.get().strip():
             self.output_entry.set(str(files[0].parent))
+        self._apply_kindle_engine_lock(files)
+
+    def _apply_kindle_engine_lock(self, files: list[Path]) -> None:
+        """Dla plików Kindle wymusza silnik Calibre (Auto/Pandoc zablokowane)."""
+        has_kindle = any(path.suffix.lower() in KINDLE_INPUT_EXTENSIONS for path in files)
+        self.kindle_notice.setVisible(has_kindle)
+        if has_kindle:
+            self._engine_radios["calibre"].setChecked(True)
+        self._engine_radios["auto"].setEnabled(not has_kindle)
+        self._engine_radios["pandoc"].setEnabled(not has_kindle)
 
     def _confirm_file(self, path: Path) -> bool:
-        """Dla plików PDF wymaga potwierdzenia (konwersja eksperymentalna)."""
-        if path.suffix.lower() != ".pdf":
+        """Odrzuca pliki Kindle z DRM (ostrzeżenie); PDF wymaga potwierdzenia."""
+        suffix = path.suffix.lower()
+        if suffix in KINDLE_INPUT_EXTENSIONS and has_kindle_drm(path):
+            QMessageBox.warning(
+                self,
+                _("Plik z DRM"),
+                _(
+                    "Plik „{name}” jest zabezpieczony DRM — EpubForge nie konwertuje "
+                    "plików DRM i nie usuwa zabezpieczeń."
+                ).format(name=path.name),
+            )
+            return False
+        if suffix != ".pdf":
             return True
         answer = QMessageBox.question(
             self,

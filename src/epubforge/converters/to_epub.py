@@ -13,15 +13,19 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from epubforge.converters.kindle_drm import has_kindle_drm
 from epubforge.core.detection import Tool, Tools
 from epubforge.core.exceptions import ConversionError, ConverterNotFoundError
 from epubforge.core.metadata import Metadata
+from epubforge.i18n import _
 
 EpubVersion = Literal["epub2", "epub3"]
 Engine = Literal["pandoc", "calibre", "auto"]
 
 _NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 _PDF_EXTENSIONS = {".pdf"}
+# Formaty Kindle — wyłącznie Calibre (Pandoc ich nie czyta), z detekcją DRM.
+KINDLE_INPUT_EXTENSIONS = {".mobi", ".azw3", ".azw", ".prc"}
 
 # Rozszerzenia wejściowe obsługiwane przez konwersję do EPUB (źródło prawdy dla UI/CLI).
 SUPPORTED_INPUT_EXTENSIONS = frozenset(
@@ -38,8 +42,18 @@ SUPPORTED_INPUT_EXTENSIONS = frozenset(
         ".fb2",
         ".lit",
         ".mobi",
+        ".azw3",
+        ".azw",
+        ".prc",
     }
 )
+
+
+def _drm_error() -> ConversionError:
+    """Buduje uprzejmy błąd dla plików zabezpieczonych DRM."""
+    return ConversionError(
+        _("Plik jest zabezpieczony DRM — konwersja niemożliwa. EpubForge nie usuwa zabezpieczeń.")
+    )
 
 
 @dataclass
@@ -102,6 +116,9 @@ def to_epub(
         :class:`ConversionResult` z logiem procesu i faktycznie użytym silnikiem.
     """
     actual_options = options if options is not None else ConvertOptions()
+    # DRM sprawdzamy PRZED doborem silnika i uruchomieniem Calibre.
+    if source.suffix.lower() in KINDLE_INPUT_EXTENSIONS and has_kindle_drm(source):
+        raise _drm_error()
     actual_engine, tool = _resolve_engine(source, engine)
     command = _build_command(actual_engine, tool, source, target, actual_options)
     log = _run_converter(command, actual_engine)
@@ -110,12 +127,18 @@ def to_epub(
 
 def _resolve_engine(source: Path, engine: Engine) -> tuple[Literal["pandoc", "calibre"], Tool]:
     """Wybiera i weryfikuje dostępność silnika konwersji."""
+    suffix = source.suffix.lower()
     if engine == "pandoc":
+        if suffix in KINDLE_INPUT_EXTENSIONS:
+            raise ConversionError(
+                _("Pandoc nie obsługuje formatów Kindle (MOBI/AZW3/AZW/PRC) — użyj Calibre.")
+            )
         return "pandoc", _require_pandoc()
     if engine == "calibre":
         return "calibre", _require_calibre()
 
-    if source.suffix.lower() in _PDF_EXTENSIONS:
+    # Formaty Kindle i PDF wymuszają Calibre (Pandoc ich nie czyta).
+    if suffix in _PDF_EXTENSIONS or suffix in KINDLE_INPUT_EXTENSIONS:
         return "calibre", _require_calibre()
 
     pandoc = Tools.pandoc()
@@ -282,6 +305,8 @@ def _run_converter(command: list[str], engine: Literal["pandoc", "calibre"]) -> 
 
     log = _combined_log(result.stdout, result.stderr)
     if result.returncode != 0:
+        if "drm" in log.lower():  # Calibre sygnalizuje DRM w stderr
+            raise _drm_error()
         raise ConversionError(
             f"Konwersja przez {engine} nie powiodła się "
             f"(kod wyjścia {result.returncode}): {_log_fragment(log)}"
