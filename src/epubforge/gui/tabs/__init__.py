@@ -5,6 +5,7 @@ from epubforge.gui.tabs.editor import EditorTab
 from epubforge.gui.tabs.fixer import FixerTab
 from epubforge.gui.tabs.kfx import KfxTab
 from epubforge.gui.tabs.metadata import MetadataTab
+from epubforge.gui.tabs.stats import StatsTab
 from epubforge.gui.tabs.toc import TocTab
 from epubforge.gui.tabs.validator import ValidatorTab
 
@@ -14,6 +15,7 @@ __all__ = [
     "FixerTab",
     "KfxTab",
     "MetadataTab",
+    "StatsTab",
     "TocTab",
     "ValidatorTab",
 ]

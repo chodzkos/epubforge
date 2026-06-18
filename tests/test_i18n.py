@@ -126,6 +126,7 @@ def test_main_window_uses_english_language_from_config(
         "Editor",
         "Validation",
         "Table of contents",
+        "Statistics",
     ]
 
 

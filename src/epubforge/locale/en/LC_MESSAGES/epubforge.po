@@ -1903,3 +1903,138 @@ msgstr ""
 "The file \"{name}\" is DRM-protected — EpubForge does not convert DRM files and does "
 "not remove protection."
 
+#: src/epubforge/cli/stats.py:19
+msgid "Statystyki książki (słowa, czas, top-słowa)"
+msgstr "Book statistics (words, time, top words)"
+
+#: src/epubforge/cli/stats.py:21
+msgid "Zapisz raport HTML do pliku"
+msgstr "Save the HTML report to a file"
+
+#: src/epubforge/cli/stats.py:22
+msgid "Liczba top-słów (domyślnie 50)"
+msgstr "Number of top words (default 50)"
+
+#: src/epubforge/cli/stats.py:24
+msgid "Słów na stronę (domyślnie 250)"
+msgstr "Words per page (default 250)"
+
+#: src/epubforge/cli/stats.py:27
+msgid "Tempo czytania słów/min (domyślnie 200)"
+msgstr "Reading speed in words/min (default 200)"
+
+#: src/epubforge/cli/stats.py:45
+#, python-brace-format
+msgid "Zapisano raport: {path}"
+msgstr "Report saved: {path}"
+
+#: src/epubforge/cli/stats.py:54
+#, python-brace-format
+msgid "Słowa: {n}"
+msgstr "Words: {n}"
+
+#: src/epubforge/cli/stats.py:55
+#, python-brace-format
+msgid "Rozdziały: {n}"
+msgstr "Chapters: {n}"
+
+#: src/epubforge/cli/stats.py:56
+#, python-brace-format
+msgid "Szac. strony: {n}"
+msgstr "Est. pages: {n}"
+
+#: src/epubforge/cli/stats.py:57
+#, python-brace-format
+msgid "Czas czytania: {n} min"
+msgstr "Reading time: {n} min"
+
+#: src/epubforge/cli/stats.py:58
+#, python-brace-format
+msgid "Język: {lang}"
+msgstr "Language: {lang}"
+
+#: src/epubforge/cli/stats.py:60
+msgid "Top słowa:"
+msgstr "Top words:"
+
+#: src/epubforge/gui/app.py:214
+msgid "Statystyki"
+msgstr "Statistics"
+
+#: src/epubforge/gui/tabs/stats.py:68
+msgid "Oblicz"
+msgstr "Compute"
+
+#: src/epubforge/gui/tabs/stats.py:75
+msgid "Język z metadanych — zainstaluj epubforge[stats] dla wykrywania języka."
+msgstr "Language from metadata — install epubforge[stats] for language detection."
+
+#: src/epubforge/gui/tabs/stats.py:84
+msgid "Wskaż plik EPUB i kliknij „Oblicz”."
+msgstr "Select an EPUB file and click \"Compute\"."
+
+#: src/epubforge/gui/tabs/stats.py:89
+msgid "Podsumowanie"
+msgstr "Summary"
+
+#: src/epubforge/gui/tabs/stats.py:92 src/epubforge/gui/tabs/stats.py:119
+msgid "Słowa"
+msgstr "Words"
+
+#: src/epubforge/gui/tabs/stats.py:93
+msgid "Szac. strony"
+msgstr "Est. pages"
+
+#: src/epubforge/gui/tabs/stats.py:94
+msgid "Czas czytania"
+msgstr "Reading time"
+
+#: src/epubforge/gui/tabs/stats.py:112
+msgid "Najczęstsze słowa"
+msgstr "Most frequent words"
+
+#: src/epubforge/gui/tabs/stats.py:117
+msgid "Rozdziały"
+msgstr "Chapters"
+
+#: src/epubforge/gui/tabs/stats.py:129
+msgid "Eksport HTML…"
+msgstr "Export HTML…"
+
+#: src/epubforge/gui/tabs/stats.py:132
+msgid "Otwórz raport"
+msgstr "Open report"
+
+#: src/epubforge/gui/tabs/stats.py:133
+msgid "Zapisuje raport tymczasowo i otwiera w przeglądarce"
+msgstr "Saves the report to a temp file and opens it in the browser"
+
+#: src/epubforge/gui/tabs/stats.py:144
+msgid "Wskaż plik EPUB"
+msgstr "Select an EPUB file"
+
+#: src/epubforge/gui/tabs/stats.py:148
+msgid "Liczenie…"
+msgstr "Computing…"
+
+#: src/epubforge/gui/tabs/stats.py:164
+#, python-brace-format
+msgid "Rozdział {n}"
+msgstr "Chapter {n}"
+
+#: src/epubforge/gui/tabs/stats.py:166
+msgid "Gotowe"
+msgstr "Done"
+
+#: src/epubforge/gui/tabs/stats.py:191
+msgid "Eksport raportu HTML"
+msgstr "Export HTML report"
+
+#: src/epubforge/gui/tabs/stats.py:191
+msgid "HTML (*.html)"
+msgstr "HTML (*.html)"
+
+#: src/epubforge/gui/tabs/stats.py:204
+msgid "Otwarto raport w przeglądarce"
+msgstr "Report opened in the browser"
+

@@ -44,6 +44,7 @@ def test_main_window_has_working_tabs(qtbot: QtBot, qapp: QApplication, tmp_path
         "Edytor",
         "Walidacja",
         "Spis treści",
+        "Statystyki",
     ]
 
 
