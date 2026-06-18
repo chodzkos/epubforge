@@ -2,11 +2,12 @@
 
 | Wersja | Data | Zmiany |
 |---|---|---|
+| 2.2 | 2026-06-18 | wszystkie etapy ukończone i scalone do `main`; kolejność oznaczona ✅ |
 | 2.1 | 2026-06-15 | dodano prompt etapu **F-P** (podgląd XHTML); F-S/F-A/F-C/F-D oznaczone ✅ |
 | 2.0 | 2026-06-12 | dostosowanie do GUI_STANDARD v2.0: nowy etap **F-S** (własny theme.py, platformdirs, debounce configu, DWM/dialogi, build/CI); F-0 i F-M oznaczone ✅; prompty F-A…F-H zaktualizowane (bez qdarktheme, stany Theme, ścieżki configu) |
 | 1.0 | 2026-06-12 | wersja pierwotna |
 
-Gotowe do wklejenia prompty dla etapów z `ROADMAP_FEATURES_v1.1.md`. Kolejność: ~~F-0~~ ✅ → ~~F-M~~ ✅ → ~~F-S~~ ✅ → ~~F-A~~ ✅ → ~~F-C~~ ✅ → ~~F-D~~ ✅ → **F-P** → F-B → F-E → F-F → F-G → F-H. Skopiuj cały blok, wklej do Claude Code, czekaj. **Przed każdym etapem: jesteś na `main` po `git pull`.**
+Gotowe do wklejenia prompty dla etapów z `ROADMAP_FEATURES_v1.1.md`. **Wszystkie etapy ukończone i scalone do `main`** (✅): ~~F-0~~ → ~~F-M~~ → ~~F-S~~ → ~~F-A~~ → ~~F-B~~ → ~~F-C~~ → ~~F-D~~ → ~~F-P~~ → ~~F-E~~ → ~~F-F~~ → ~~F-G~~ → ~~F-H~~. Prompty zostają jako referencja. **Przed każdym nowym etapem: jesteś na `main` po `git pull`.**
 
 ---
 
