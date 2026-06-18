@@ -2,12 +2,13 @@
 
 | Wersja | Data | Zmiany |
 |---|---|---|
+| 2.2 | 2026-06-18 | **wszystkie etapy ukończone** — domknięcie F-B, F-E, F-F, F-G, F-H, F-P (scalone do `main`); plus poprawka detekcji Javy (App Paths/Temurin 25); statusy ✅ w całej tabeli |
 | 2.1 | 2026-06-15 | dodano etap **F-P** (podgląd XHTML + handoff do Sigil/Calibre); odnotowano poprawki po-etapowe (symetryczna reguła dialogów, fallback QFileDialog, paleta tooltipów, wskaźnik trybu edycji); statusy ✅ dla F-S/F-A/F-C/F-D |
 | 2.0 | 2026-06-12 | dostosowanie do GUI_STANDARD v2.0: nowy etap **F-S** (własny theme.py zamiast qdarktheme, platformdirs, debounce configu, niuanse DWM/dialogów, build/CI); statusy ✅ dla F-0 i F-M; aktualizacja stacku, ryzyk i promptów |
 | 1.0 | 2026-06-12 | wersja pierwotna (migracja PySide6 + plan F1/F2/F3+/F7/F8/F10/F11) |
 
-**Status realizacji:** F-0 ✅ · F-M ✅ · F-S ✅ · F-A ✅ · F-C ✅ · F-D ✅ · **F-P** (nowy — podgląd XHTML) → F-B → F-E → F-F → F-G → F-H
-*(plus poprawki po-etapowe: symetryczna reguła natywnych dialogów + repaint na zmianę motywu systemu, ucywilizowany fallback QFileDialog, paleta tooltipów przy zmianie motywu, wyraźniejszy wskaźnik trybu edycji)*
+**Status realizacji:** ✅ **WSZYSTKIE ETAPY UKOŃCZONE** — F-0 ✅ · F-M ✅ · F-S ✅ · F-A ✅ · F-B ✅ · F-C ✅ · F-D ✅ · F-P ✅ · F-E ✅ · F-F ✅ · F-G ✅ · F-H ✅
+*(plus poprawki po-etapowe: symetryczna reguła natywnych dialogów + repaint na zmianę motywu systemu, ucywilizowany fallback QFileDialog, paleta tooltipów przy zmianie motywu, wyraźniejszy wskaźnik trybu edycji, detekcja Javy przez App Paths/rejestr Adoptium dla Temurin 25)*
 
 Plan rozwoju po wydaniu v1.0. Obejmuje wykonaną migrację GUI na **PySide6** oraz funkcje z `FEATURES.md`: **F1** (i18n), **F2** (EpubCheck), **F3** (edytor — **rozszerzony o inspektor reguł CSS z podglądem na żywo**), **F7** (MOBI→EPUB), **F8** (statystyki), **F10** (TOC), **F11** (presety CSS).
 
@@ -34,16 +35,16 @@ F-H (F8 statystyki) — niezależny
 |---|---|---|---|---|
 | F-0 | dokumenty planu w repo | `docs/features-v1.1-plan` | 0,5 h | ✅ |
 | F-M | migracja gui/ na PySide6 (parytet 1:1) | `refactor/gui-pyside6` | 10–14 h | ✅ |
-| **F-S** | **zgodność z GUI_STANDARD v2.0** (theme.py, platformdirs, config-debounce, DWM/dialogi, build/CI) | `refactor/gui-standard-v2` | **4–6 h** | po F-M |
+| **F-S** | **zgodność z GUI_STANDARD v2.0** (theme.py, platformdirs, config-debounce, DWM/dialogi, build/CI) | `refactor/gui-standard-v2` | **4–6 h** | ✅ |
 | F-A | F1 — i18n (gettext) | `feature/f1-i18n` | 5–7 h | ✅ |
-| F-B | F11 — presety CSS | `feature/f11-css-presets` | 4–5 h | F-A |
+| F-B | F11 — presety CSS | `feature/f11-css-presets` | 4–5 h | ✅ |
 | F-C | F3 — edytor (core) | `feature/f3-editor-core` | 7–9 h | ✅ |
 | F-D | F3+ — inspektor CSS live | `feature/f3-css-inspector` | 7–9 h | ✅ |
-| **F-P** | **podgląd XHTML w edytorze + handoff do Sigil/Calibre** | `feature/xhtml-preview` | **4–5 h** | F-D |
-| F-E | F2 — EpubCheck | `feature/f2-epubcheck` | 6–8 h | F-C |
-| F-F | F10 — TOC | `feature/f10-toc` | 8–10 h | F-C |
-| F-G | F7 — MOBI→EPUB | `feature/f7-mobi-to-epub` | 3–4 h | F-S |
-| F-H | F8 — statystyki | `feature/f8-stats` | 6–8 h | F-A |
+| **F-P** | **podgląd XHTML w edytorze + handoff do Sigil/Calibre** | `feature/xhtml-preview` | **4–5 h** | ✅ |
+| F-E | F2 — EpubCheck | `feature/f2-epubcheck` | 6–8 h | ✅ |
+| F-F | F10 — TOC | `feature/f10-toc` | 8–10 h | ✅ |
+| F-G | F7 — MOBI→EPUB | `feature/f7-mobi-to-epub` | 3–4 h | ✅ |
+| F-H | F8 — statystyki | `feature/f8-stats` | 6–8 h | ✅ |
 
 Uzasadnienie wstawienia F-S **przed** funkcjami: (1) standard v2.0 usuwa qdarktheme — im dłużej kod na nim wisi, tym więcej miejsc do poprawy później; (2) nowe zakładki (F-C…F-H) mają od razu korzystać z ról i **stanów** własnego `theme.py` (highlightery, kolory severity, fokus); (3) zmiana ścieżki configu (platformdirs) dotyka miejsc, na których budują F-B (presety użytkownika) i F-E (ścieżka jara) — lepiej ustalić ją raz, przed nimi.
 
