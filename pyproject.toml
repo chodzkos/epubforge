@@ -86,6 +86,11 @@ Changelog = "https://github.com/chodzkos/epubforge/blob/main/CHANGELOG.md"
 [tool.hatch.version]
 path = "src/epubforge/__init__.py"
 
+# Zależność chodzkos-gui-kit jest referencją bezpośrednią (git+https @ tag) — do
+# czasu publikacji kitu na PyPI hatchling wymaga jawnej zgody na takie odwołania.
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/epubforge"]
 
