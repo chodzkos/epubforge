@@ -8,7 +8,7 @@ import traceback
 from pathlib import Path
 from types import TracebackType
 
-from chodzkos_gui_kit.qt.theme import ThemeManager, ThemeName, ThemeSetting
+from chodzkos_gui_kit.qt.theme import ThemeManager, ThemeName, ThemeSetting, mode_of
 from chodzkos_gui_kit.qt.titlebar import sync_titlebar
 from PySide6.QtCore import QByteArray, QEvent, QTimer
 from PySide6.QtGui import QActionGroup, QCloseEvent, QShowEvent
@@ -266,7 +266,7 @@ class MainWindow(QMainWindow):
         self.validator_tab.set_theme(self.theme_manager.palette)
         self.toc_tab.set_theme(self.theme_manager.palette)
         if self._about_dialog is not None:
-            self._about_dialog.set_mode(self.theme_manager.palette.name)
+            self._about_dialog.set_mode(mode_of(self.theme_manager.palette))
 
     def _sync_titlebar(self) -> None:
         """Ustawia pasek tytułu na motyw aplikacji dla WSZYSTKICH okien top-level.
@@ -275,7 +275,7 @@ class MainWindow(QMainWindow):
         (nie tylko głównym), inaczej dialogi/okno About zostają z poprzednim
         kolorem belki po zmianie motywu.
         """
-        mode = self.theme_manager.palette.name
+        mode = mode_of(self.theme_manager.palette)
         for window in QApplication.topLevelWidgets():
             if window.isWindow():
                 sync_titlebar(window, mode)
@@ -307,7 +307,7 @@ class MainWindow(QMainWindow):
             self._about_dialog.raise_()
             self._about_dialog.activateWindow()
             return
-        dialog = AboutDialog(self, self.theme_manager.palette.name)
+        dialog = AboutDialog(self, mode_of(self.theme_manager.palette))
         dialog.finished.connect(self._on_about_closed)
         self._about_dialog = dialog
         dialog.show()

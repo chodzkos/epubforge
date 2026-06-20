@@ -71,8 +71,7 @@ def _is_portable() -> bool:
 
 def config_dir() -> Path:
     """Zwraca katalog konfiguracji EpubForge (kit liczy lokalizację z nazwy app)."""
-    # Path(...) zawęża zwrot kitu (bez py.typed w v0.1.0 mypy widzi Any).
-    return Path(_kit_config_dir(_APP_NAME))
+    return _kit_config_dir(_APP_NAME)
 
 
 def default_config_path() -> Path:

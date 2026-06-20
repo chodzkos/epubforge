@@ -371,12 +371,11 @@ def _severity_label(severity: Severity) -> str:
 
 def _severity_color(severity: Severity, theme: Theme) -> str:
     """Kolor wiersza dla poziomu istotności (rola z palety kitu)."""
-    # str(...) zawęża pole palety kitu (bez py.typed w v0.1.0 mypy widzi Any).
     if severity in (Severity.FATAL, Severity.ERROR):
-        return str(theme.red)
+        return theme.red
     if severity == Severity.WARNING:
-        return str(theme.amber)
-    return str(theme.fg2)
+        return theme.amber
+    return theme.fg2
 
 
 def _report_to_json(report: ValidationReport) -> str:
