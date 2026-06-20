@@ -13,6 +13,9 @@ from html import escape
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
+from chodzkos_gui_kit.palette import Palette as Theme
+from chodzkos_gui_kit.qt.dialogs import open_file, save_file
+from chodzkos_gui_kit.qt.theme import current_palette as current_theme
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
@@ -28,8 +31,6 @@ from PySide6.QtWidgets import (
 )
 
 from epubforge.core import ConfigStore, Tool, detect_with_cache
-from epubforge.gui.file_dialogs import open_file, save_file
-from epubforge.gui.theme import Theme, current_theme
 from epubforge.gui.widgets import FileList, Section
 from epubforge.gui.workers import EmitLine, EmitProgress, Worker
 from epubforge.i18n import _, ngettext
@@ -369,12 +370,13 @@ def _severity_label(severity: Severity) -> str:
 
 
 def _severity_color(severity: Severity, theme: Theme) -> str:
-    """Kolor wiersza dla poziomu istotności (rola z :class:`Theme`)."""
+    """Kolor wiersza dla poziomu istotności (rola z palety kitu)."""
+    # str(...) zawęża pole palety kitu (bez py.typed w v0.1.0 mypy widzi Any).
     if severity in (Severity.FATAL, Severity.ERROR):
-        return theme.red
+        return str(theme.red)
     if severity == Severity.WARNING:
-        return theme.amber
-    return theme.fg2
+        return str(theme.amber)
+    return str(theme.fg2)
 
 
 def _report_to_json(report: ValidationReport) -> str:

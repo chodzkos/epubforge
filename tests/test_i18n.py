@@ -13,6 +13,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import pytest
 from babel.messages.mofile import write_mo
 from babel.messages.pofile import read_po
+from chodzkos_gui_kit.qt.theme import ThemeManager
 from PySide6.QtWidgets import QApplication
 from pytestqt.qtbot import QtBot
 
@@ -20,7 +21,6 @@ from epubforge.cli.main import main
 from epubforge.core import Tool
 from epubforge.core.config import ConfigStore
 from epubforge.gui.app import MainWindow
-from epubforge.gui.theme import ThemeManager
 from epubforge.i18n import _, detect_system_language, init_i18n, ngettext
 
 LOCALE_DIR = Path(__file__).resolve().parents[1] / "src" / "epubforge" / "locale"
@@ -106,7 +106,8 @@ def test_main_window_uses_english_language_from_config(
 ) -> None:
     """MainWindow z configiem language=en buduje zakładki po angielsku."""
     config_path = tmp_path / "config.json"
-    store = ConfigStore(config_path, {"language": "en"})
+    store = ConfigStore("epubforge", path=config_path)
+    store.update({"language": "en"})  # seed in-memory (update omija __setitem__)
     tools = {
         "pandoc": Tool("pandoc", None, available=False),
         "calibre_ebook_convert": Tool(

@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Literal
 
+from chodzkos_gui_kit.qt.dialogs import open_file, pick_dir, save_file
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -15,7 +16,6 @@ from PySide6.QtWidgets import (
 )
 
 from epubforge.core.config import Config
-from epubforge.gui.file_dialogs import open_file, pick_dir, save_file
 from epubforge.i18n import _
 
 PathMode = Literal["dir", "file", "save"]

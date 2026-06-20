@@ -8,6 +8,8 @@ import traceback
 from pathlib import Path
 from types import TracebackType
 
+from chodzkos_gui_kit.qt.theme import ThemeManager, ThemeName, ThemeSetting
+from chodzkos_gui_kit.qt.titlebar import sync_titlebar
 from PySide6.QtCore import QByteArray, QEvent, QTimer
 from PySide6.QtGui import QActionGroup, QCloseEvent, QShowEvent
 from PySide6.QtWidgets import (
@@ -26,7 +28,7 @@ from PySide6.QtWidgets import (
 )
 
 from epubforge import __version__
-from epubforge.core import ConfigStore, Tool, default_config_path, detect_with_cache, load_config
+from epubforge.core import ConfigStore, Tool, default_config_path, detect_with_cache
 from epubforge.gui.tabs import (
     ConverterTab,
     EditorTab,
@@ -37,9 +39,7 @@ from epubforge.gui.tabs import (
     TocTab,
     ValidatorTab,
 )
-from epubforge.gui.theme import ThemeManager, ThemeName, ThemeSetting
 from epubforge.gui.widgets import AboutPanel, LogView
-from epubforge.gui.window_theme import sync_titlebar
 from epubforge.i18n import _, init_i18n
 
 logger = logging.getLogger(__name__)
@@ -261,12 +261,12 @@ class MainWindow(QMainWindow):
         self._sync_theme_actions()
         self._sync_language_actions()
         for log_view in self._log_views():
-            log_view.set_theme(self.theme_manager.theme)
-        self.editor_tab.set_theme(self.theme_manager.theme)
-        self.validator_tab.set_theme(self.theme_manager.theme)
-        self.toc_tab.set_theme(self.theme_manager.theme)
+            log_view.set_theme(self.theme_manager.palette)
+        self.editor_tab.set_theme(self.theme_manager.palette)
+        self.validator_tab.set_theme(self.theme_manager.palette)
+        self.toc_tab.set_theme(self.theme_manager.palette)
         if self._about_dialog is not None:
-            self._about_dialog.set_mode(self.theme_manager.theme.name)
+            self._about_dialog.set_mode(self.theme_manager.palette.name)
 
     def _sync_titlebar(self) -> None:
         """Ustawia pasek tytułu na motyw aplikacji dla WSZYSTKICH okien top-level.
@@ -275,7 +275,7 @@ class MainWindow(QMainWindow):
         (nie tylko głównym), inaczej dialogi/okno About zostają z poprzednim
         kolorem belki po zmianie motywu.
         """
-        mode = self.theme_manager.theme.name
+        mode = self.theme_manager.palette.name
         for window in QApplication.topLevelWidgets():
             if window.isWindow():
                 sync_titlebar(window, mode)
@@ -307,7 +307,7 @@ class MainWindow(QMainWindow):
             self._about_dialog.raise_()
             self._about_dialog.activateWindow()
             return
-        dialog = AboutDialog(self, self.theme_manager.theme.name)
+        dialog = AboutDialog(self, self.theme_manager.palette.name)
         dialog.finished.connect(self._on_about_closed)
         self._about_dialog = dialog
         dialog.show()
@@ -457,7 +457,8 @@ def main() -> None:
     except OSError:
         tools = {}
 
-    config = ConfigStore(config_path, load_config(config_path))
+    # Kit Config wczytuje plik sam (po detekcji, która dopisała już cache narzędzi).
+    config = ConfigStore("epubforge", path=config_path)
     init_i18n(str(config.get(_LANGUAGE_KEY, "auto")))
     theme_manager = ThemeManager(app, config)
     _install_excepthook(config_path)

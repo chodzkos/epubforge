@@ -7,6 +7,22 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 
 ## [Unreleased]
 
+### Changed
+- **Motyw, dialogi plików, pasek tytułu i config przeniesione do
+  `chodzkos-gui-kit` v0.1.0** — wspólne komponenty GUI (ekstrakcja P1) zamiast
+  lokalnych kopii. Usunięto `gui/theme.py`, `gui/window_theme.py`,
+  `gui/file_dialogs.py`; `core/config.py` to teraz cienki adapter nad
+  `chodzkos_gui_kit.config` (zostaje tylko glue EpubForge: nazwa aplikacji
+  `epubforge` + jednorazowa migracja configu spod `.exe`). Widgety i zakładki
+  importują motyw/dialogi z kitu (`chodzkos_gui_kit.qt.{theme,titlebar,dialogs}`,
+  `chodzkos_gui_kit.palette`); rola koloru dawnego `Theme.link` → własność
+  `Palette.accent_text`. Raport HTML statystyk czyta jasną paletę z kitu
+  (`chodzkos_gui_kit.palette.LIGHT`) zamiast zduplikowanych hexów. Testy logiki
+  motywu/dialogów/configu żyją w kicie; w EpubForge zostają testy integracyjne
+  „aplikacja używa kitu poprawnie" + migracja configu. Zależność: nowy pakiet
+  bazowy `chodzkos-gui-kit` (warstwa 0, czysty Python) w `dependencies`, tor Qt
+  przez extra `[qt]` w `gui`.
+
 ### Added
 - **Statystyki książki (F8)** — moduł `stats.py`: liczba słów/znaków, szac. stron
   (250 słów/stronę), czas czytania (200 słów/min), wykryty język (opcjonalny

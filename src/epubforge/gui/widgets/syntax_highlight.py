@@ -11,9 +11,9 @@ from __future__ import annotations
 import re
 from typing import ClassVar
 
+from chodzkos_gui_kit.palette import Palette as Theme
+from chodzkos_gui_kit.qt.theme import current_palette as current_theme
 from PySide6.QtGui import QColor, QSyntaxHighlighter, QTextCharFormat, QTextDocument
-
-from epubforge.gui.theme import Theme, current_theme
 
 # Span = (start, length, kind) — pozycja tokenu w jednej linii i jego rodzaj.
 Span = tuple[int, int, str]
@@ -34,18 +34,20 @@ _CSS_RULES: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"!important\b"), "important"),
 )
 
-# Rodzaj tokenu → nazwa roli/stanu w Theme (kolory wyłącznie stąd).
+# Rodzaj tokenu → nazwa roli/stanu palety (kolory wyłącznie stąd). „accent_text"
+# to bezpieczny dla tekstu wariant akcentu z kitu (dark→accent, light→accent2;
+# zastępuje dawne pole Theme.link).
 _XML_COLORS = {
     "tag": "accent",
     "attribute": "amber",
-    "value": "link",
+    "value": "accent_text",
     "entity": "red",
     "comment": "fg3",
 }
 _CSS_COLORS = {
     "atrule": "amber",
     "selector": "accent",
-    "property": "link",
+    "property": "accent_text",
     "value": "fg2",
     "important": "red",
     "comment": "fg3",

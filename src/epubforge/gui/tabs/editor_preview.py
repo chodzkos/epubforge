@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
+from chodzkos_gui_kit.palette import Palette as Theme
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import (
@@ -27,7 +28,6 @@ from PySide6.QtWidgets import (
 from epubforge.core import Epub, Tool
 from epubforge.gui import editor_files as ef
 from epubforge.gui.external_tools import ToolUnavailableError, launch_tool
-from epubforge.gui.theme import Theme
 from epubforge.gui.widgets.code_editor import CodeEditor
 from epubforge.gui.widgets.css_inspector import CssInspector
 from epubforge.gui.widgets.html_preview import HtmlPreview

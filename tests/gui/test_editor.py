@@ -152,7 +152,7 @@ def test_non_utf8_file_is_read_only(qtbot: QtBot, tmp_path: Path) -> None:
 
 def test_edit_mode_indicator_toggles(qtbot: QtBot, tmp_path: Path) -> None:
     """Przełącznik zmienia read-only, etykietę statusu i obwódkę edytora (akcent)."""
-    from epubforge.gui.theme import current_theme
+    from chodzkos_gui_kit.qt.theme import current_palette as current_theme
 
     accent = current_theme().accent
     book = _copy_fixture(tmp_path)
@@ -181,7 +181,7 @@ def test_edit_mode_indicator_toggles(qtbot: QtBot, tmp_path: Path) -> None:
 
 def test_non_utf8_has_no_accent_frame_despite_edit_mode(qtbot: QtBot, tmp_path: Path) -> None:
     """Plik nie-UTF-8 zostaje read-only i bez akcentu mimo włączonego trybu edycji."""
-    from epubforge.gui.theme import current_theme
+    from chodzkos_gui_kit.qt.theme import current_palette as current_theme
 
     accent = current_theme().accent
     book = tmp_path / "bad.epub"
