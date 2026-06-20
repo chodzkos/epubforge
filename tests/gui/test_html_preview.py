@@ -142,7 +142,7 @@ def test_external_button_launches_with_current_epub(
 
 def test_preview_paper_is_theme_independent(qtbot: QtBot, tmp_path: Path) -> None:
     """Tło podglądu pozostaje białe niezależnie od motywu aplikacji."""
-    from epubforge.gui.theme import DARK, LIGHT
+    from chodzkos_gui_kit.palette import DARK, LIGHT
 
     tab = _open_html(qtbot, tmp_path)
     tab.set_theme(DARK)

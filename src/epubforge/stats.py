@@ -17,6 +17,8 @@ from dataclasses import dataclass, field
 from functools import cache
 from pathlib import Path
 
+from chodzkos_gui_kit.palette import LIGHT
+
 from epubforge.core.epub import Epub
 from epubforge.toc._xml import (
     first_by_localname,
@@ -34,16 +36,16 @@ _MAX_BARS = 60
 _WORD_RE = re.compile(r"\w+", re.UNICODE)
 _SUPPORTED_STOP_LANGS = {"pl", "en", "de"}
 
-# Jasna paleta GUI_STANDARD §5 — zduplikowana ŚWIADOMIE: raport HTML to samodzielny
-# artefakt (otwierany w przeglądarce, drukowany do PDF), więc NIE importujemy
-# gui.theme, by warstwa core/CLI nie ciągnęła zależności od PySide6. Kolory tekstowe
-# akcentu = accent2 #0F7C5B (nota WCAG: kontrast na jasnym tle).
-_BG = "#ffffff"
-_BG2 = "#f5f5f7"
-_FG = "#1d1d1f"
-_FG2 = "#515154"
-_ACCENT2 = "#0F7C5B"
-_BORDER = "#d1d1d6"
+# Jasna paleta GUI_STANDARD §5 z kitu (chodzkos_gui_kit.palette — warstwa 0,
+# czysty Python bez Qt, więc core/CLI może ją importować). Raport HTML to
+# samodzielny artefakt (przeglądarka, druk do PDF) renderowany zawsze na jasno;
+# kolor tekstu akcentu = accent2 (nota WCAG: kontrast na jasnym tle).
+_BG = LIGHT.bg
+_BG2 = LIGHT.bg2
+_FG = LIGHT.fg
+_FG2 = LIGHT.fg2
+_ACCENT2 = LIGHT.accent2
+_BORDER = LIGHT.border
 
 
 @dataclass(frozen=True)

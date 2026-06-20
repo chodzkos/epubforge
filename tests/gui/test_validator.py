@@ -99,7 +99,7 @@ def test_pick_java_sets_override_and_redetects(
     qtbot: QtBot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """„Wskaż java.exe…" zapisuje override do config['tools']['java_path'] i re-detekuje."""
-    config = ConfigStore(tmp_path / "config.json", {})
+    config = ConfigStore("epubforge", path=tmp_path / "config.json")
     tab = ValidatorTab(tools={"java": Tool("java", None, "", False)}, config=config)
     qtbot.addWidget(tab)
     java = tmp_path / "java.exe"

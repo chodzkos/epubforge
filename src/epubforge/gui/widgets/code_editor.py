@@ -6,6 +6,8 @@ Kolory wyłącznie z :class:`Theme`. Numery linii to kanoniczny wzorzec Qt
 
 from __future__ import annotations
 
+from chodzkos_gui_kit.palette import Palette as Theme
+from chodzkos_gui_kit.qt.theme import current_palette as current_theme
 from PySide6.QtCore import QRect, QSize, Qt, Signal
 from PySide6.QtGui import (
     QColor,
@@ -29,7 +31,6 @@ from PySide6.QtWidgets import (
 )
 
 from epubforge.gui.editor_files import PROFILE_CSS, PROFILE_XML, Profile
-from epubforge.gui.theme import Theme, current_theme
 from epubforge.gui.widgets.syntax_highlight import (
     CssHighlighter,
     XmlHighlighter,

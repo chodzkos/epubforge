@@ -12,6 +12,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import cast
 
+from chodzkos_gui_kit.palette import Palette as Theme
+from chodzkos_gui_kit.qt.theme import current_palette as current_theme
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QDropEvent
 from PySide6.QtWidgets import (
@@ -30,7 +32,6 @@ from PySide6.QtWidgets import (
 )
 
 from epubforge.core import ConfigStore, Epub
-from epubforge.gui.theme import Theme, current_theme
 from epubforge.gui.widgets import PathEntry
 from epubforge.i18n import _, ngettext
 from epubforge.toc import (

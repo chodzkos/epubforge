@@ -6,12 +6,12 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
+from chodzkos_gui_kit.palette import DARK, LIGHT
 from PySide6.QtCore import QMimeData, QPoint, Qt, QUrl
 from PySide6.QtGui import QDropEvent
 from PySide6.QtWidgets import QLabel
 from pytestqt.qtbot import QtBot
 
-from epubforge.gui.theme import DARK, LIGHT
 from epubforge.gui.widgets import FileList, LogView, PathEntry, Section
 from epubforge.gui.workers import Worker, level_for_line
 

@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from chodzkos_gui_kit.palette import Palette as Theme
+from chodzkos_gui_kit.qt.theme import current_palette as current_theme
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
@@ -33,7 +35,6 @@ from epubforge.fixers.css_rules import (
     parse_rules,
     parse_single_rule,
 )
-from epubforge.gui.theme import Theme, current_theme
 from epubforge.gui.widgets.code_editor import CodeEditor
 from epubforge.i18n import _
 

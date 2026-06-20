@@ -6,20 +6,21 @@ import json
 from pathlib import Path
 
 import pytest
+from chodzkos_gui_kit.qt.theme import ThemeManager
 from PySide6.QtWidgets import QApplication
 from pytestqt.qtbot import QtBot
 
 from epubforge.core import Tool
 from epubforge.core.config import ConfigStore
 from epubforge.gui.app import MainWindow
-from epubforge.gui.theme import ThemeManager
 
 pytestmark = pytest.mark.gui
 
 
 def _make_window(qtbot: QtBot, qapp: QApplication, tmp_path: Path, config: dict) -> MainWindow:
     config_path = tmp_path / "config.json"
-    store = ConfigStore(config_path, config)
+    store = ConfigStore("epubforge", path=config_path)
+    store.update(config)  # seed in-memory (update omija __setitem__ → start „czysty")
     tools = {
         "pandoc": Tool("pandoc", None, available=False),
         "calibre_ebook_convert": Tool(
@@ -105,7 +106,7 @@ def test_window_starts_in_both_themes(qtbot: QtBot, qapp: QApplication, tmp_path
     window = _make_window(qtbot, qapp, tmp_path, {})
     for setting in ("dark", "light", "dark"):
         window.theme_manager.apply(setting)
-        assert window.theme_manager.theme.name == setting
+        assert window.theme_manager.palette.name == setting
 
 
 def test_config_flush_debounced_then_written(

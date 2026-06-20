@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 from pathlib import Path
 
+from chodzkos_gui_kit.qt.dialogs import open_files, pick_dir
 from PySide6.QtCore import Signal
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
 from PySide6.QtWidgets import (
@@ -18,7 +19,6 @@ from PySide6.QtWidgets import (
 )
 
 from epubforge.core.config import Config
-from epubforge.gui.file_dialogs import open_files, pick_dir
 from epubforge.i18n import _, ngettext
 
 DEFAULT_EXTENSIONS = {".epub", ".txt", ".md", ".markdown", ".docx", ".html", ".htm", ".pdf"}

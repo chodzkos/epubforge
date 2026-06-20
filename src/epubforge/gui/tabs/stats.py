@@ -7,6 +7,7 @@ import webbrowser
 from pathlib import Path
 from typing import cast
 
+from chodzkos_gui_kit.qt.dialogs import save_file
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -21,7 +22,6 @@ from PySide6.QtWidgets import (
 from epubforge import __version__
 from epubforge.core import Epub
 from epubforge.core.config import Config
-from epubforge.gui.file_dialogs import save_file
 from epubforge.gui.widgets import PathEntry, Section
 from epubforge.gui.workers import EmitLine, EmitProgress, Worker
 from epubforge.i18n import _

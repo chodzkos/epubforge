@@ -14,6 +14,9 @@ import logging
 from collections.abc import Iterator
 from pathlib import Path
 
+from chodzkos_gui_kit.palette import Palette as Theme
+from chodzkos_gui_kit.qt.dialogs import open_file
+from chodzkos_gui_kit.qt.theme import current_palette as current_theme
 from lxml import etree
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QShortcut
@@ -32,14 +35,12 @@ from PySide6.QtWidgets import (
 
 from epubforge.core import Epub, Tool
 from epubforge.gui import editor_files as ef
-from epubforge.gui.file_dialogs import open_file
 from epubforge.gui.tabs.editor_preview import (
     _PAGE_EDITOR,
     _PAGE_IMAGE,
     _PAGE_INFO,
     EditorPreviewMixin,
 )
-from epubforge.gui.theme import Theme, current_theme
 from epubforge.gui.widgets.code_editor import CodeEditor
 from epubforge.i18n import _
 

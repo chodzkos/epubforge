@@ -18,6 +18,8 @@ from collections.abc import Callable
 from typing import cast
 from urllib.parse import unquote
 
+from chodzkos_gui_kit.palette import Palette as Theme
+from chodzkos_gui_kit.qt.theme import current_palette as current_theme
 from lxml import etree
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
@@ -30,7 +32,6 @@ from PySide6.QtWidgets import (
 )
 
 from epubforge.core import Epub, Tool
-from epubforge.gui.theme import Theme, current_theme
 from epubforge.i18n import _
 
 # Limit rozmiaru obrazka osadzanego jako data: URI (większe → placeholder).

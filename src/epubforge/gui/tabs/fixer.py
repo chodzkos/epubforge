@@ -7,6 +7,8 @@ import subprocess
 from pathlib import Path
 from typing import cast
 
+from chodzkos_gui_kit.qt.dialogs import open_file
+from chodzkos_gui_kit.qt.theme import current_palette as current_theme
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QButtonGroup,
@@ -37,8 +39,6 @@ from epubforge.fixers import (
     list_presets,
 )
 from epubforge.fixers.hyphenator import HyphenationMethod
-from epubforge.gui.file_dialogs import open_file
-from epubforge.gui.theme import current_theme
 from epubforge.gui.widgets import CssInspector, FileList, LogView, Section
 from epubforge.gui.workers import CREATE_NO_WINDOW, EmitLine, EmitProgress, Worker
 from epubforge.i18n import _, ngettext
