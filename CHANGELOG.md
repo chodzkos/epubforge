@@ -8,6 +8,11 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Changed
+- **Podbicie `chodzkos-gui-kit` → v0.1.1** (marker `py.typed`): zdjęto mypy
+  override `ignore_missing_imports` dla `chodzkos_gui_kit.*` oraz obejścia
+  `str()/Path()` na granicy kitu. Przywrócone typowanie wychwyciło 3 utajone
+  niezgodności `palette.name: str` → `ThemeName` — naprawione przez
+  `chodzkos_gui_kit.qt.theme.mode_of()`.
 - **Motyw, dialogi plików, pasek tytułu i config przeniesione do
   `chodzkos-gui-kit` v0.1.0** — wspólne komponenty GUI (ekstrakcja P1) zamiast
   lokalnych kopii. Usunięto `gui/theme.py`, `gui/window_theme.py`,

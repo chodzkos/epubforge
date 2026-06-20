@@ -41,13 +41,10 @@ class LogView(QPlainTextEdit):
     def _color_for(self, level: str) -> str:
         """Mapuje poziom linii na kolor z ról motywu (GUI_STANDARD §5)."""
         theme = self._theme
-        # str(...) zawęża pole palety kitu (bez py.typed w v0.1.0 mypy widzi Any).
-        return str(
-            {
-                "ok": theme.accent,
-                "warn": theme.amber,
-                "err": theme.red,
-                "cmd": theme.fg3,
-                "info": theme.fg2,
-            }.get(level, theme.fg)
-        )
+        return {
+            "ok": theme.accent,
+            "warn": theme.amber,
+            "err": theme.red,
+            "cmd": theme.fg3,
+            "info": theme.fg2,
+        }.get(level, theme.fg)
