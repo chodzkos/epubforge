@@ -7,6 +7,19 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 
 ## [Unreleased]
 
+### Fixed
+- **Pasek tytułu jaśniał przy zmianie rozmiaru okna** po przełączeniu na ciemny
+  motyw: Windows resetuje atrybut DWM przy przerysowaniu ramki podczas resize, a
+  `_sync_titlebar` był wołany tylko na show/aktywacji/zmianie motywu. Dodano
+  `resizeEvent` z debounce'owanym `QTimer` (~120 ms, restartowany przy każdej
+  klatce, sync po ustaniu ciągnięcia) — re-synchronizuje belkę samego głównego
+  okna.
+- **Dolny pasek ze statusem narzędzi znikał po zmianie motywu** (i po każdej
+  interakcji z menu): status był jednorazowym `statusBar().showMessage()` —
+  tymczasowy komunikat nadpisywany przez statusTipy menu (Motyw/Język) i nie
+  przywracany. Zamieniono na TRWAŁY widget (`addPermanentWidget(QLabel)`); treść
+  liczona raz z `self.tools` (motyw tylko przemalowuje etykietę).
+
 ### Changed
 - **Podbicie `chodzkos-gui-kit` → v0.3.4**: wchodzi fix **repaintu item-views**
   w `_repolish` — po zmianie motywu `QAbstractItemView` (widoki walidacji/TOC)

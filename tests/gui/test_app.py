@@ -52,9 +52,9 @@ def test_main_window_has_working_tabs(qtbot: QtBot, qapp: QApplication, tmp_path
 def test_main_window_status_shows_detected_tools(
     qtbot: QtBot, qapp: QApplication, tmp_path: Path
 ) -> None:
-    """Pasek statusu pokazuje stan wykrytych narzędzi."""
+    """Pasek statusu pokazuje stan wykrytych narzędzi (trwały widget, nie message)."""
     window = _make_window(qtbot, qapp, tmp_path, {})
-    status = window.statusBar().currentMessage()
+    status = window._tools_status_label.text()
     assert "Calibre: OK" in status
     assert "Pandoc: brak" in status
 
@@ -120,3 +120,37 @@ def test_config_flush_debounced_then_written(
     window._flush_config()
     saved = json.loads((tmp_path / "config.json").read_text(encoding="utf-8"))
     assert saved["last_output_dir"] == "/x"
+
+
+def test_tool_status_survives_theme_change(
+    qtbot: QtBot, qapp: QApplication, tmp_path: Path
+) -> None:
+    """BUG 2: status narzędzi znikał po zmianie motywu (był temporary showMessage)."""
+    window = _make_window(qtbot, qapp, tmp_path, {})
+    before = window._tools_status_label.text()
+    assert "Calibre: OK" in before
+
+    window.theme_manager.apply("dark")
+    window.theme_manager.apply("light")
+
+    # Trwały widget — treść zachowana po przełączeniu motywu (nie odbudowana z zera).
+    assert window._tools_status_label.text() == before
+
+
+def test_resize_debounces_then_syncs_titlebar(
+    qtbot: QtBot, qapp: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """BUG 1: resize uzbraja debounce, a po ustaniu syncuje belkę SAMEGO okna."""
+    from PySide6.QtCore import QSize
+    from PySide6.QtGui import QResizeEvent
+
+    import epubforge.gui.app as app_mod
+
+    window = _make_window(qtbot, qapp, tmp_path, {})
+    window.resizeEvent(QResizeEvent(QSize(820, 560), QSize(800, 540)))
+    assert window._titlebar_resize_timer.isActive()  # debounce uzbrojony, nie sync co klatkę
+
+    synced: list[tuple[object, str]] = []
+    monkeypatch.setattr(app_mod, "sync_titlebar", lambda w, mode: synced.append((w, mode)))
+    window._on_resize_settled()
+    assert synced and synced[0][0] is window  # tylko główne okno, nie broadcast

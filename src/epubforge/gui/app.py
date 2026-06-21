@@ -11,7 +11,7 @@ from types import TracebackType
 from chodzkos_gui_kit.qt.theme import ThemeManager, ThemeName, ThemeSetting, mode_of
 from chodzkos_gui_kit.qt.titlebar import sync_titlebar
 from PySide6.QtCore import QByteArray, QEvent, QTimer
-from PySide6.QtGui import QActionGroup, QCloseEvent, QShowEvent
+from PySide6.QtGui import QActionGroup, QCloseEvent, QResizeEvent, QShowEvent
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
@@ -47,6 +47,11 @@ logger = logging.getLogger(__name__)
 # Opóźnienie debounce zapisu configu (GUI_STANDARD §8): zbieramy zmiany i piszemy
 # raz po ~1 s bezczynności, zamiast przy każdym naciśnięciu klawisza.
 _FLUSH_DEBOUNCE_MS = 1000
+
+# Debounce re-synchronizacji paska tytułu po resize: Windows resetuje ciemny
+# atrybut DWM podczas przerysowania ramki przy zmianie rozmiaru. Wołamy sync
+# raz po ustaniu ciągnięcia krawędzi, a nie w każdej klatce resizeEvent.
+_TITLEBAR_RESIZE_DEBOUNCE_MS = 120
 
 _LANGUAGE_MENU_ITEMS: tuple[tuple[str, str], ...] = (
     ("Auto", "auto"),
@@ -119,6 +124,13 @@ class MainWindow(QMainWindow):
         self._flush_timer.setInterval(_FLUSH_DEBOUNCE_MS)
         self._flush_timer.timeout.connect(self._flush_config)
         self.config_data.on_dirty = self._schedule_flush
+
+        # Debounce re-synchronizacji paska tytułu po resize (BUG belki przy ciągnięciu
+        # krawędzi w ciemnym motywie). Restartowany w resizeEvent, woła sync po ustaniu.
+        self._titlebar_resize_timer = QTimer(self)
+        self._titlebar_resize_timer.setSingleShot(True)
+        self._titlebar_resize_timer.setInterval(_TITLEBAR_RESIZE_DEBOUNCE_MS)
+        self._titlebar_resize_timer.timeout.connect(self._on_resize_settled)
 
         self.setWindowTitle(f"EpubForge {__version__}")
         self.setMinimumSize(760, 520)
@@ -215,8 +227,16 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.tabs, stretch=1)
 
     def _build_status_bar(self) -> None:
-        """Buduje dolny pasek statusu wykrytych narzędzi."""
-        self.statusBar().showMessage(_format_tools_status(self.tools))
+        """Buduje dolny pasek statusu wykrytych narzędzi — TRWAŁY widget.
+
+        Status to ``addPermanentWidget(QLabel)``, NIE ``showMessage()``: tymczasowy
+        komunikat znika po interakcji z menu (statusTipy menu Motyw/Język go
+        nadpisują, a po zamknięciu nic go nie przywraca) oraz po zmianie motywu.
+        Treść liczona RAZ z ``self.tools`` (motyw tylko przemalowuje etykietę, nie
+        odbudowuje jej treści).
+        """
+        self._tools_status_label = QLabel(_format_tools_status(self.tools))
+        self.statusBar().addPermanentWidget(self._tools_status_label)
 
     # ── Motyw ────────────────────────────────────────────────────────────────
 
@@ -332,6 +352,23 @@ class MainWindow(QMainWindow):
         super().changeEvent(event)
         if event.type() == QEvent.Type.ActivationChange:
             self._sync_titlebar()
+
+    def resizeEvent(self, event: QResizeEvent) -> None:  # noqa: N802 — Qt API
+        """Restartuje debounce re-synchronizacji belki (Windows resetuje DWM przy resize).
+
+        Sync wołamy DOPIERO po ustaniu ciągnięcia (timer), nie w każdej klatce —
+        inaczej przy przeciąganiu krawędzi leci dziesiątki wywołań na sekundę.
+        """
+        super().resizeEvent(event)
+        self._titlebar_resize_timer.start()
+
+    def _on_resize_settled(self) -> None:
+        """Po ustaniu resize przywraca kolor belki — tylko głównego okna.
+
+        Przy resize głównego okna inne top-levelki nie zmieniają rozmiaru, więc
+        broadcast jest zbędny (wystarczy ``self``).
+        """
+        sync_titlebar(self, mode_of(self.theme_manager.palette))
 
     def open_in_editor(
         self, epub_path: Path, internal_path: str | None = None, line: int | None = None
