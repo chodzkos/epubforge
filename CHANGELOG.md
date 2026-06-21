@@ -8,6 +8,12 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Changed
+- **Podbicie `chodzkos-gui-kit` → v0.3.2**: wchodzi m.in. fix marshalingu **DWM
+  HWND** (`wintypes.HWND` + `argtypes`) naprawiający truncację 64-bit uchwytów na
+  Win64 — poprawia ciemny/jasny pasek tytułu EpubForge na niektórych oknach.
+  API kompatybilne (bez zmian w kodzie EpubForge); kit po drodze dorobił tor
+  tkinter (v0.2.0, nieużywany tu), IconProvider (v0.3.0) i `set_current_palette`
+  (v0.3.1).
 - **Podbicie `chodzkos-gui-kit` → v0.1.1** (marker `py.typed`): zdjęto mypy
   override `ignore_missing_imports` dla `chodzkos_gui_kit.*` oraz obejścia
   `str()/Path()` na granicy kitu. Przywrócone typowanie wychwyciło 3 utajone
