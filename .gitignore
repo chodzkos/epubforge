@@ -78,6 +78,9 @@ config.json
 error.txt
 output/
 dist-exe/
+# Projekt jest pip-owy (CI: pip install -e); uv.lock ignorujemy, dopóki nie
+# przejdziemy świadomie na uv (wtedy: dodać [tool.uv] i wersjonować lock).
+uv.lock
 
 # GUI testing
 *.tcl

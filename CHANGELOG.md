@@ -28,6 +28,12 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
   bazowy `chodzkos-gui-kit` (warstwa 0, czysty Python) w `dependencies`, tor Qt
   przez extra `[qt]` w `gui`.
 
+### Removed
+- **Usunięto nieużywany `uv.lock`** — projekt jest pip-owy (CI: `pip install -e`),
+  nie ma sekcji `[tool.uv]`, a osierocony lock był nieaktualny i nie zawierał nawet
+  `chodzkos-gui-kit`. Dodany do `.gitignore`, by nie wrócił przypadkiem, dopóki
+  EpubForge nie przejdzie świadomie na uv.
+
 ### Added
 - **Statystyki książki (F8)** — moduł `stats.py`: liczba słów/znaków, szac. stron
   (250 słów/stronę), czas czytania (200 słów/min), wykryty język (opcjonalny
