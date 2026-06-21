@@ -8,6 +8,11 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Changed
+- **Podbicie `chodzkos-gui-kit` → v0.3.4**: wchodzi fix **repaintu item-views**
+  w `_repolish` — po zmianie motywu `QAbstractItemView` (widoki walidacji/TOC)
+  dostają świeżą paletę zamiast trzymać stary `Base` po `dark→light`. Plus
+  `save_file(initial_name=…)` (prefill nazwy, na razie nieużywany w EpubForge).
+  API kompatybilne, zero zmian w kodzie.
 - **Podbicie `chodzkos-gui-kit` → v0.3.2**: wchodzi m.in. fix marshalingu **DWM
   HWND** (`wintypes.HWND` + `argtypes`) naprawiający truncację 64-bit uchwytów na
   Win64 — poprawia ciemny/jasny pasek tytułu EpubForge na niektórych oknach.
