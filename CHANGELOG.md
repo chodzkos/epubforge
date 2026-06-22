@@ -7,6 +7,8 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-06-22
+
 ### Fixed
 - **Pasek tytułu jaśniał przy zmianie rozmiaru okna** po przełączeniu na ciemny
   motyw: Windows resetuje atrybut DWM przy przerysowaniu ramki podczas resize, a
