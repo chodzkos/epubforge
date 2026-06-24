@@ -33,7 +33,15 @@ from epubforge.core import Metadata
 from epubforge.core.config import Config
 from epubforge.core.exceptions import ConversionError, ConverterNotFoundError
 from epubforge.gui.output import remember_output_dir, remembered_output_dir, resolve_output_dir
-from epubforge.gui.widgets import FileList, LogView, PathEntry, Section, path_entry_texts
+from epubforge.gui.widgets import (
+    FileList,
+    LogView,
+    PathEntry,
+    Section,
+    file_list_count_label,
+    file_list_texts,
+    path_entry_texts,
+)
 from epubforge.gui.workers import EmitLine, EmitProgress, Worker
 from epubforge.i18n import _
 
@@ -88,6 +96,8 @@ class ConverterTab(QWidget):
             extensions=SUPPORTED_INPUT_EXTENSIONS,
             confirm=self._confirm_file,
             config=self.config_data,
+            texts=file_list_texts(),
+            count_label=file_list_count_label,
         )
         self.file_list.files_changed.connect(self._on_files_changed)
         section.add_widget(self.file_list)

@@ -31,7 +31,12 @@ from PySide6.QtWidgets import (
 )
 
 from epubforge.core import ConfigStore, Tool, detect_with_cache
-from epubforge.gui.widgets import FileList, Section
+from epubforge.gui.widgets import (
+    FileList,
+    Section,
+    file_list_count_label,
+    file_list_texts,
+)
 from epubforge.gui.workers import EmitLine, EmitProgress, Worker
 from epubforge.i18n import _, ngettext
 from epubforge.validators import Severity, ValidationMessage, ValidationReport, run_epubcheck
@@ -75,7 +80,12 @@ class ValidatorTab(QWidget):
         outer.setContentsMargins(12, 12, 12, 12)
 
         section = Section(_("Pliki EPUB"))
-        self.file_list = FileList(extensions={".epub"}, config=self._config)
+        self.file_list = FileList(
+            extensions={".epub"},
+            config=self._config,
+            texts=file_list_texts(),
+            count_label=file_list_count_label,
+        )
         self.file_list.selection_changed.connect(lambda _path: self._refresh_actions())
         self.file_list.files_changed.connect(lambda _files: self._refresh_actions())
         section.add_widget(self.file_list)

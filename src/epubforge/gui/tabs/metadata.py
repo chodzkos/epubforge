@@ -22,7 +22,14 @@ from PySide6.QtWidgets import (
 
 from epubforge.core import Epub, EpubError, Metadata, Tool, Tools
 from epubforge.gui.external_tools import ToolUnavailableError, launch_tool
-from epubforge.gui.widgets import FileList, PathEntry, Section, path_entry_texts
+from epubforge.gui.widgets import (
+    FileList,
+    PathEntry,
+    Section,
+    file_list_count_label,
+    file_list_texts,
+    path_entry_texts,
+)
 from epubforge.i18n import _, ngettext
 
 _TOOL_LABELS = {
@@ -84,7 +91,11 @@ class MetadataTab(QWidget):
         self.folder_entry.path_changed.connect(self._load_folder)
         browser.add_widget(self.folder_entry)
 
-        self.file_list = FileList(extensions={".epub"})
+        self.file_list = FileList(
+            extensions={".epub"},
+            texts=file_list_texts(),
+            count_label=file_list_count_label,
+        )
         self.file_list.files_changed.connect(self._on_files_changed)
         self.file_list.selection_changed.connect(self._on_file_selected)
         browser.add_widget(self.file_list)

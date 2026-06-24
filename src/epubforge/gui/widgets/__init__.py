@@ -1,33 +1,41 @@
 """Wielokrotnego użycia widgety Qt (PySide6) dla GUI EpubForge.
 
-``PathEntry`` pochodzi z chodzkos-gui-kit (warstwa ``qt/widgets``); re-eksportujemy
-go tutaj, by reszta GUI importowała widgety z jednego miejsca. Polskie etykiety
-dialogów wstrzykujemy przez :func:`path_entry_texts` (kit jest i18n-agnostyczny).
+``PathEntry`` i ``FileList`` pochodzą z chodzkos-gui-kit (warstwa ``qt/widgets``);
+re-eksportujemy je tutaj, by reszta GUI importowała widgety z jednego miejsca.
+Polskie etykiety i licznik (formy mnogie) wstrzykujemy przez :func:`path_entry_texts`,
+:func:`file_list_texts` i :func:`file_list_count_label` — kit jest i18n-agnostyczny.
 """
 
-from chodzkos_gui_kit.qt.widgets import PathEntry, PathEntryTexts
+from chodzkos_gui_kit.qt.widgets import (
+    FileList,
+    FileListTexts,
+    PathEntry,
+    PathEntryTexts,
+)
 
 from epubforge.gui.widgets.about_panel import AboutPanel
 from epubforge.gui.widgets.code_editor import CodeEditor
 from epubforge.gui.widgets.css_inspector import CssInspector
-from epubforge.gui.widgets.file_list import FileList
 from epubforge.gui.widgets.html_preview import HtmlPreview
 from epubforge.gui.widgets.image_preview import ImagePreview
 from epubforge.gui.widgets.log_view import LogView
 from epubforge.gui.widgets.section import Section
-from epubforge.i18n import _
+from epubforge.i18n import _, ngettext
 
 __all__ = [
     "AboutPanel",
     "CodeEditor",
     "CssInspector",
     "FileList",
+    "FileListTexts",
     "HtmlPreview",
     "ImagePreview",
     "LogView",
     "PathEntry",
     "PathEntryTexts",
     "Section",
+    "file_list_count_label",
+    "file_list_texts",
     "path_entry_texts",
 ]
 
@@ -47,3 +55,26 @@ def path_entry_texts() -> PathEntryTexts:
         title_file=_("Wybierz plik"),
         title_save=_("Zapisz jako"),
     )
+
+
+def file_list_texts() -> FileListTexts:
+    """Polskie (gettext) etykiety toolbara, tooltipów i filtra dla ``FileList``."""
+    return FileListTexts(
+        files=_("Pliki"),
+        folder=_("Folder"),
+        remove=_("Usuń"),
+        clear=_("Wyczyść"),
+        tooltip_files=_("Dodaj pliki przez okno wyboru"),
+        tooltip_folder=_("Dodaj obsługiwane pliki z wybranego folderu"),
+        tooltip_remove=_("Usuń zaznaczone pozycje z listy"),
+        tooltip_clear=_("Usuń wszystkie pozycje z listy"),
+        list_tooltip=_("Lista plików — przeciągnij pliki tutaj lub użyj przycisków powyżej"),
+        dialog_add_files=_("Dodaj pliki"),
+        dialog_add_folder=_("Dodaj folder"),
+        filter_supported=_("Obsługiwane ({pattern})"),
+    )
+
+
+def file_list_count_label(count: int) -> str:
+    """Licznik plików z polskimi formami mnogimi (gettext ``ngettext``)."""
+    return ngettext("{n} plik", "{n} plików", count).format(n=count)
