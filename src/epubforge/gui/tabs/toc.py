@@ -32,7 +32,7 @@ from PySide6.QtWidgets import (
 )
 
 from epubforge.core import ConfigStore, Epub
-from epubforge.gui.widgets import PathEntry
+from epubforge.gui.widgets import PathEntry, path_entry_texts
 from epubforge.i18n import _, ngettext
 from epubforge.toc import (
     MoveMode,
@@ -120,6 +120,7 @@ class TocTab(QWidget):
             placeholder=_("Wskaż plik EPUB…"),
             config=self._config,
             remember_key="toc_last_dir",
+            texts=path_entry_texts(),
         )
         self.path_entry.path_changed.connect(self._on_path_changed)
         outer.addWidget(self.path_entry)

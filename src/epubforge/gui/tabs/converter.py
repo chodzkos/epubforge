@@ -33,7 +33,7 @@ from epubforge.core import Metadata
 from epubforge.core.config import Config
 from epubforge.core.exceptions import ConversionError, ConverterNotFoundError
 from epubforge.gui.output import remember_output_dir, remembered_output_dir, resolve_output_dir
-from epubforge.gui.widgets import FileList, LogView, PathEntry, Section
+from epubforge.gui.widgets import FileList, LogView, PathEntry, Section, path_entry_texts
 from epubforge.gui.workers import EmitLine, EmitProgress, Worker
 from epubforge.i18n import _
 
@@ -125,6 +125,7 @@ class ConverterTab(QWidget):
         self.cover_entry = PathEntry(
             mode="file",
             filetypes=[(_("Obrazy"), "*.jpg *.jpeg *.png *.gif"), (_("Wszystkie pliki"), "*.*")],
+            texts=path_entry_texts(),
         )
         self.cover_entry.entry.setToolTip(_("Opcjonalny obraz okładki (jpg/png/gif)"))
         form.addRow(_("Okładka"), self.cover_entry)
@@ -137,7 +138,10 @@ class ConverterTab(QWidget):
         section.content_layout().addWidget(self.kindle_notice)
 
         self.output_entry = PathEntry(
-            mode="dir", config=self.config_data, remember_key="last_output_dir"
+            mode="dir",
+            config=self.config_data,
+            remember_key="last_output_dir",
+            texts=path_entry_texts(),
         )
         self.output_entry.entry.setToolTip(
             _("Folder na pliki .epub; puste = zapis obok pliku źródłowego")

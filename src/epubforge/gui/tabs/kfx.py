@@ -27,7 +27,7 @@ from epubforge.converters.to_mobi import MobiEngine, MobiFormat
 from epubforge.core import Tool
 from epubforge.core.config import Config
 from epubforge.gui.output import remember_output_dir, remembered_output_dir, resolve_output_dir
-from epubforge.gui.widgets import FileList, LogView, PathEntry, Section
+from epubforge.gui.widgets import FileList, LogView, PathEntry, Section, path_entry_texts
 from epubforge.gui.workers import EmitLine, EmitProgress, Worker
 from epubforge.i18n import _, ngettext
 
@@ -208,7 +208,10 @@ class KfxTab(QWidget):
         form = QFormLayout()
         section.content_layout().addLayout(form)
         self.output_dir = PathEntry(
-            mode="dir", config=self.config_data, remember_key="last_output_dir"
+            mode="dir",
+            config=self.config_data,
+            remember_key="last_output_dir",
+            texts=path_entry_texts(),
         )
         self.output_dir.entry.setToolTip(
             _("Folder na pliki wynikowe; puste = zapis obok pliku źródłowego")

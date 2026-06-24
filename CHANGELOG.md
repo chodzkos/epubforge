@@ -7,6 +7,9 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 
 ## [Unreleased]
 
+### Changed
+- **`PathEntry` pochodzi teraz z chodzkos-gui-kit** (`qt/widgets`, pin `v0.4.0`) — lokalny `gui/widgets/path_entry.py` usunięty. Zachowanie bez zmian (tryby dir/file/save, `remember_key`, `path_changed`, `get()/set()`); polskie etykiety dialogów wstrzykiwane przez `path_entry_texts()` (`PathEntryTexts` z `_()`), bo kit jest i18n-agnostyczny. `epubforge.gui.widgets` re-eksportuje kitowy widget, więc importy w zakładkach bez zmian.
+
 ## [2.0.0] - 2026-06-22
 
 ### Fixed

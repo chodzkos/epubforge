@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
 from epubforge import __version__
 from epubforge.core import Epub
 from epubforge.core.config import Config
-from epubforge.gui.widgets import PathEntry, Section
+from epubforge.gui.widgets import PathEntry, Section, path_entry_texts
 from epubforge.gui.workers import EmitLine, EmitProgress, Worker
 from epubforge.i18n import _
 from epubforge.stats import BookStats, StatsOptions, compute_stats, render_report_html
@@ -63,6 +63,7 @@ class StatsTab(QWidget):
             placeholder=_("Wskaż plik EPUB…"),
             config=self._config,
             remember_key="stats_last_dir",
+            texts=path_entry_texts(),
         )
         row.addWidget(self.path_entry, stretch=1)
         self.compute_button = QPushButton(_("Oblicz"))
