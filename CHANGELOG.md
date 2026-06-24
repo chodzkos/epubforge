@@ -8,7 +8,8 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Changed
-- **`PathEntry` pochodzi teraz z chodzkos-gui-kit** (`qt/widgets`, pin `v0.4.0`) — lokalny `gui/widgets/path_entry.py` usunięty. Zachowanie bez zmian (tryby dir/file/save, `remember_key`, `path_changed`, `get()/set()`); polskie etykiety dialogów wstrzykiwane przez `path_entry_texts()` (`PathEntryTexts` z `_()`), bo kit jest i18n-agnostyczny. `epubforge.gui.widgets` re-eksportuje kitowy widget, więc importy w zakładkach bez zmian.
+- **`PathEntry` pochodzi teraz z chodzkos-gui-kit** (`qt/widgets`, pin `v0.4.1`) — lokalny `gui/widgets/path_entry.py` usunięty. Zachowanie bez zmian (tryby dir/file/save, `remember_key`, `path_changed`, `get()/set()`); polskie etykiety dialogów wstrzykiwane przez `path_entry_texts()` (`PathEntryTexts` z `_()`), bo kit jest i18n-agnostyczny. `epubforge.gui.widgets` re-eksportuje kitowy widget, więc importy w zakładkach bez zmian.
+- **`FileList` pochodzi teraz z chodzkos-gui-kit** (`qt/widgets`, pin `v0.4.1`) — lokalny `gui/widgets/file_list.py` usunięty. Zachowanie bez zmian (toolbar, D&D z rekursją folderów, `files_changed`/`selection_changed`, `confirm`, `extensions`); polskie etykiety przez `file_list_texts()` oraz licznik z formami mnogimi przez wstrzykiwany `file_list_count_label` (`ngettext`), bo kit jest i18n-agnostyczny. Re-eksport z `epubforge.gui.widgets`.
 
 ## [2.0.0] - 2026-06-22
 

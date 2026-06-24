@@ -39,7 +39,14 @@ from epubforge.fixers import (
     list_presets,
 )
 from epubforge.fixers.hyphenator import HyphenationMethod
-from epubforge.gui.widgets import CssInspector, FileList, LogView, Section
+from epubforge.gui.widgets import (
+    CssInspector,
+    FileList,
+    LogView,
+    Section,
+    file_list_count_label,
+    file_list_texts,
+)
 from epubforge.gui.workers import CREATE_NO_WINDOW, EmitLine, EmitProgress, Worker
 from epubforge.i18n import _, ngettext
 
@@ -95,7 +102,11 @@ class FixerTab(QWidget):
         layout.setContentsMargins(0, 0, 10, 0)
         section = Section(_("Pliki EPUB"))
         layout.addWidget(section)
-        self.file_list = FileList(extensions={".epub"})
+        self.file_list = FileList(
+            extensions={".epub"},
+            texts=file_list_texts(),
+            count_label=file_list_count_label,
+        )
         self.file_list.files_changed.connect(self._on_files_changed)
         section.add_widget(self.file_list)
 

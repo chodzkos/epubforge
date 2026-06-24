@@ -27,7 +27,15 @@ from epubforge.converters.to_mobi import MobiEngine, MobiFormat
 from epubforge.core import Tool
 from epubforge.core.config import Config
 from epubforge.gui.output import remember_output_dir, remembered_output_dir, resolve_output_dir
-from epubforge.gui.widgets import FileList, LogView, PathEntry, Section, path_entry_texts
+from epubforge.gui.widgets import (
+    FileList,
+    LogView,
+    PathEntry,
+    Section,
+    file_list_count_label,
+    file_list_texts,
+    path_entry_texts,
+)
 from epubforge.gui.workers import EmitLine, EmitProgress, Worker
 from epubforge.i18n import _, ngettext
 
@@ -84,7 +92,12 @@ class KfxTab(QWidget):
         layout.setContentsMargins(0, 0, 10, 0)
         section = Section(_("Pliki EPUB"))
         layout.addWidget(section)
-        self.file_list = FileList(extensions={".epub"}, config=self.config_data)
+        self.file_list = FileList(
+            extensions={".epub"},
+            config=self.config_data,
+            texts=file_list_texts(),
+            count_label=file_list_count_label,
+        )
         self.file_list.files_changed.connect(self._on_files_changed)
         section.add_widget(self.file_list)
 

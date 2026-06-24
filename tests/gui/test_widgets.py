@@ -12,7 +12,13 @@ from PySide6.QtGui import QDropEvent
 from PySide6.QtWidgets import QLabel
 from pytestqt.qtbot import QtBot
 
-from epubforge.gui.widgets import FileList, LogView, PathEntry, Section
+from epubforge.gui.widgets import (
+    FileList,
+    LogView,
+    PathEntry,
+    Section,
+    file_list_count_label,
+)
 from epubforge.gui.workers import Worker, level_for_line
 
 pytestmark = pytest.mark.gui
@@ -33,7 +39,7 @@ def test_path_entry_get_set_and_signal(qtbot: QtBot, tmp_path: Path) -> None:
 
 def test_file_list_filters_and_emits(qtbot: QtBot, tmp_path: Path) -> None:
     """FileList przyjmuje tylko pasujące rozszerzenia i emituje files_changed."""
-    file_list = FileList(extensions={".epub"})
+    file_list = FileList(extensions={".epub"}, count_label=file_list_count_label)
     qtbot.addWidget(file_list)
 
     emitted: list[list[Path]] = []
