@@ -36,7 +36,7 @@ dependencies = [
     "platformdirs>=4.0",
     # Wspólny rdzeń GUI (paleta + config) — warstwa 0 kitu, czysty Python bez Qt;
     # core/CLI używają chodzkos_gui_kit.config i .palette. Tor Qt dokłada extra [qt].
-    "chodzkos-gui-kit @ git+https://github.com/chodzkos/gui-kit@v0.4.1",
+    "chodzkos-gui-kit @ git+https://github.com/chodzkos/gui-kit@v0.4.3",
 ]
 
 [project.optional-dependencies]
@@ -45,7 +45,7 @@ gui = [
     # dokłada PySide6. Dolny pułap 6.8 wymagany przez styleHints().colorScheme()
     # (Qt 6.5+); górny luźny, by projekt instalował się też na nowszym Pythonie.
     "PySide6>=6.8,<7",
-    "chodzkos-gui-kit[qt] @ git+https://github.com/chodzkos/gui-kit@v0.4.1",
+    "chodzkos-gui-kit[qt] @ git+https://github.com/chodzkos/gui-kit@v0.4.3",
 ]
 stats = [
     # Wykrywanie języka treści w statystykach; opcjonalne — bez niego język bierzemy
