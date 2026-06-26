@@ -1,14 +1,16 @@
 """Wielokrotnego użycia widgety Qt (PySide6) dla GUI EpubForge.
 
-``PathEntry`` i ``FileList`` pochodzą z chodzkos-gui-kit (warstwa ``qt/widgets``);
-re-eksportujemy je tutaj, by reszta GUI importowała widgety z jednego miejsca.
-Polskie etykiety i licznik (formy mnogie) wstrzykujemy przez :func:`path_entry_texts`,
-:func:`file_list_texts` i :func:`file_list_count_label` — kit jest i18n-agnostyczny.
+``PathEntry``, ``FileList`` i ``LogView`` pochodzą z chodzkos-gui-kit (warstwa
+``qt/widgets``); re-eksportujemy je tutaj, by reszta GUI importowała widgety z
+jednego miejsca. Polskie etykiety i licznik (formy mnogie) wstrzykujemy przez
+:func:`path_entry_texts`, :func:`file_list_texts` i :func:`file_list_count_label`
+— kit jest i18n-agnostyczny (``LogView`` nie ma etykiet, więc bez helpera).
 """
 
 from chodzkos_gui_kit.qt.widgets import (
     FileList,
     FileListTexts,
+    LogView,
     PathEntry,
     PathEntryTexts,
 )
@@ -18,7 +20,6 @@ from epubforge.gui.widgets.code_editor import CodeEditor
 from epubforge.gui.widgets.css_inspector import CssInspector
 from epubforge.gui.widgets.html_preview import HtmlPreview
 from epubforge.gui.widgets.image_preview import ImagePreview
-from epubforge.gui.widgets.log_view import LogView
 from epubforge.gui.widgets.section import Section
 from epubforge.i18n import _, ngettext
 

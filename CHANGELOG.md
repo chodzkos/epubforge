@@ -8,8 +8,10 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Changed
-- **`PathEntry` pochodzi teraz z chodzkos-gui-kit** (`qt/widgets`, pin `v0.4.1`) — lokalny `gui/widgets/path_entry.py` usunięty. Zachowanie bez zmian (tryby dir/file/save, `remember_key`, `path_changed`, `get()/set()`); polskie etykiety dialogów wstrzykiwane przez `path_entry_texts()` (`PathEntryTexts` z `_()`), bo kit jest i18n-agnostyczny. `epubforge.gui.widgets` re-eksportuje kitowy widget, więc importy w zakładkach bez zmian.
-- **`FileList` pochodzi teraz z chodzkos-gui-kit** (`qt/widgets`, pin `v0.4.1`) — lokalny `gui/widgets/file_list.py` usunięty. Zachowanie bez zmian (toolbar, D&D z rekursją folderów, `files_changed`/`selection_changed`, `confirm`, `extensions`); polskie etykiety przez `file_list_texts()` oraz licznik z formami mnogimi przez wstrzykiwany `file_list_count_label` (`ngettext`), bo kit jest i18n-agnostyczny. Re-eksport z `epubforge.gui.widgets`.
+- **Wspólne widgety GUI pochodzą teraz z chodzkos-gui-kit** (`qt/widgets`, pin `v0.4.3`) — lokalne `gui/widgets/{path_entry,file_list,log_view}.py` usunięte, re-eksport z `epubforge.gui.widgets` (importy w zakładkach bez zmian):
+  - **`PathEntry`**: zachowanie bez zmian (tryby dir/file/save, `remember_key`, `path_changed`, `get()/set()`); polskie etykiety przez `path_entry_texts()` (`PathEntryTexts` z `_()`).
+  - **`FileList`**: zachowanie bez zmian (toolbar, D&D z rekursją folderów, sygnały, `confirm`, `extensions`); polskie etykiety przez `file_list_texts()` i licznik z formami mnogimi przez `file_list_count_label` (`ngettext`).
+  - **`LogView`**: `append_line(text, level)`/`set_theme`/`clear` identyczne. **Zyskuje** re-render historii przy zmianie motywu — `set_theme()` przemalowuje teraz CAŁY log (wcześniej tylko nowe linie), więc po przełączeniu motywu w locie wcześniejsze wpisy też dostają kolory nowej palety.
 
 ## [2.0.0] - 2026-06-22
 
