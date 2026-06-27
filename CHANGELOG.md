@@ -7,6 +7,9 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 
 ## [Unreleased]
 
+### Added
+- **Okno pomocy offline** (kitowy `HelpWindow` z `chodzkos-gui-kit`, pin `v0.5.0`) — dostęp przyciskiem **„Pomoc"** w panelu **O programie** (zastąpił link „Pomoc (README)"; „GitHub" zostaje linkiem online). Zakładki per funkcja, odwzorowujące zakładki GUI: Metadane (Dublin Core), Konwerter (formaty wejściowe, silnik Auto/Pandoc/Calibre), Fixer (hyphenacja pyphen + CSS Fixer), Eksport Kindle (KFX/MOBI/AZW3, silniki), Edytor, Walidacja (EpubCheck 5.x + wymóg Javy ≥ 11), Spis treści, Statystyki oraz przegląd narzędzi zewnętrznych. Treść opisuje stan STABILNY; stan zmienny (czy Java/EpubCheck/Calibre wykryte) delegowany do dolnego paska statusu narzędzi. Kolory przez `palette(...)` (czytelne w obu motywach, re-render przy zmianie motywu robi kit dla wszystkich zakładek).
+
 ### Changed
 - **Wspólne widgety GUI pochodzą teraz z chodzkos-gui-kit** (`qt/widgets`, pin `v0.4.3`) — lokalne `gui/widgets/{path_entry,file_list,log_view}.py` usunięte, re-eksport z `epubforge.gui.widgets` (importy w zakładkach bez zmian):
   - **`PathEntry`**: zachowanie bez zmian (tryby dir/file/save, `remember_key`, `path_changed`, `get()/set()`); polskie etykiety przez `path_entry_texts()` (`PathEntryTexts` z `_()`).
