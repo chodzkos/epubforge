@@ -7,17 +7,18 @@ import sys
 import webbrowser
 from pathlib import Path
 
+from chodzkos_gui_kit.qt.widgets import HelpWindow
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
 
 from epubforge import __version__
+from epubforge.gui.help_window import HELP_TITLE, help_tabs
 from epubforge.i18n import _
 
 logger = logging.getLogger(__name__)
 
 GITHUB_URL = "https://github.com/chodzkos/epubforge"
-HELP_URL = "https://github.com/chodzkos/epubforge#readme"
 
 
 def _asset_path(name: str) -> Path:
@@ -66,7 +67,11 @@ class AboutPanel(QWidget):
         layout.addWidget(description)
 
         layout.addWidget(self._build_link("GitHub", GITHUB_URL))
-        layout.addWidget(self._build_link(_("Pomoc (README)"), HELP_URL))
+
+        help_button = QPushButton(_("Pomoc"))
+        help_button.setToolTip(_("Otwórz pomoc offline (zakładki per funkcja)"))
+        help_button.clicked.connect(self._open_help)
+        layout.addWidget(help_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
         license_label = QLabel(_("Licencja: MIT"))
         license_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -100,3 +105,7 @@ class AboutPanel(QWidget):
             webbrowser.open(url)
         except OSError as exc:
             logger.warning("Nie udało się otworzyć %s: %s", url, exc)
+
+    def _open_help(self) -> None:
+        """Otwiera offline okno pomocy (kitowy ``HelpWindow`` + zakładki EpubForge)."""
+        HelpWindow(self, title=HELP_TITLE, tabs=help_tabs()).exec()
