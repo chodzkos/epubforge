@@ -567,6 +567,54 @@ def _cache_is_fresh(config: Config, max_age: timedelta) -> bool:
     return datetime.now(timezone.utc) - detected_at < max_age
 
 
+# Detektory bez argumentów (java/epubcheck przyjmują override) — do re-sondowania
+# pojedynczego narzędzia po nazwie, gdy cache trzyma dla niego available:false.
+_NO_ARG_DETECTORS = frozenset(
+    {
+        "pandoc",
+        "calibre_ebook_convert",
+        "calibre_viewer",
+        "calibre_editor",
+        "sigil",
+        "kindle_previewer",
+        "kindlegen",
+    }
+)
+
+
+def _redetect_tool(
+    name: str, *, jar_override: Path | None, java_override: Path | None
+) -> Tool | None:
+    """Ponawia detekcję jednego narzędzia po nazwie (None, gdy nazwa nieznana)."""
+    if name == "java":
+        return Tools.java(java_override)
+    if name == "epubcheck":
+        return Tools.epubcheck(jar_override)
+    if name in _NO_ARG_DETECTORS:
+        tool: Tool = getattr(Tools, name)()
+        return tool
+    return None
+
+
+def _save_detection(
+    path: Path,
+    config: Config,
+    tools: dict[str, Tool],
+    jar_override: Path | None,
+    java_override: Path | None,
+) -> None:
+    """Utrwala wynik detekcji: narzędzia + override'y ścieżek + status KFX + timestamp."""
+    config["tools"] = {name: _tool_to_dict(tool) for name, tool in tools.items()}
+    # Zachowaj ręcznie wskazane ścieżki między detekcjami (cache jest nadpisywany).
+    if jar_override is not None:
+        config["tools"][_EPUBCHECK_JAR_KEY] = str(jar_override)
+    if java_override is not None:
+        config["tools"][_JAVA_EXE_KEY] = str(java_override)
+    config["kfx_plugin"] = Tools.calibre_kfx_plugin()
+    config["last_detected"] = datetime.now(timezone.utc).isoformat()
+    save_config(path, config)
+
+
 def detect_with_cache(
     config_path: Path | None = None,
     *,
@@ -606,20 +654,25 @@ def detect_with_cache(
             for name, value in cached_tools.items()
             if isinstance(value, dict)
         }
+        # Negatywów NIE serwujemy z cache (do 7 dni) — to maskowało narzędzia
+        # zainstalowane po pierwszym starcie. Re-sondujemy je na żywo (shutil.which
+        # jest tani); pozytywy zostają z cache. Flip negatyw→pozytyw zapisuje config.
+        refreshed = False
+        for name, tool in list(tools.items()):
+            if tool.available:
+                continue
+            fresh = _redetect_tool(name, jar_override=jar_override, java_override=java_override)
+            if fresh is not None and fresh.available:
+                tools[name] = fresh
+                refreshed = True
         _apply_overrides(tools, overrides)
+        if refreshed:
+            _save_detection(path, config, tools, jar_override, java_override)
         return tools
 
     tools = Tools.detect_all(epubcheck_jar=jar_override, java_path=java_override)
     _apply_overrides(tools, overrides)
-    config["tools"] = {name: _tool_to_dict(tool) for name, tool in tools.items()}
-    # Zachowaj ręcznie wskazane ścieżki między detekcjami (cache jest nadpisywany).
-    if jar_override is not None:
-        config["tools"][_EPUBCHECK_JAR_KEY] = str(jar_override)
-    if java_override is not None:
-        config["tools"][_JAVA_EXE_KEY] = str(java_override)
-    config["kfx_plugin"] = Tools.calibre_kfx_plugin()
-    config["last_detected"] = datetime.now(timezone.utc).isoformat()
-    save_config(path, config)
+    _save_detection(path, config, tools, jar_override, java_override)
     return tools
 
 
