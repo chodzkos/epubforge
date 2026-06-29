@@ -301,6 +301,69 @@ def test_detect_with_cache_stale_redetects(tmp_path: Path, no_tools: None) -> No
     assert refreshed["last_detected"] != config["last_detected"]
 
 
+def test_fresh_cache_reprobes_unavailable_tool(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Świeży cache z available:false → re-sonduje na żywo (nie serwuje negatywu)."""
+    cfg = tmp_path / "config.json"
+    # 1. Pierwsza detekcja: nic niewykryte → cache all-negative, świeży timestamp.
+    monkeypatch.setattr(detection, "_find_executable", lambda names, dirs: None)
+    monkeypatch.setattr(
+        detection, "_detect_java", lambda override=None: Tool("java", None, "", False)
+    )
+    monkeypatch.setattr(
+        detection, "_detect_epubcheck", lambda override=None: Tool("epubcheck", None, "", False)
+    )
+    monkeypatch.setattr(Tools, "calibre_kfx_plugin", staticmethod(lambda: False))
+    detect_with_cache(cfg, force=True)
+    assert load_config(cfg)["tools"]["pandoc"]["available"] is False
+
+    # 2. Użytkownik instaluje pandoc PO pierwszym starcie — re-sondaż ma go znaleźć.
+    pandoc = tmp_path / "pandoc"
+    monkeypatch.setattr(
+        detection,
+        "_find_executable",
+        lambda names, dirs: pandoc if any("pandoc" in n for n in names) else None,
+    )
+    monkeypatch.setattr(detection, "_get_version", lambda path: "pandoc 3.7")
+
+    # 3. Cache świeży, BEZ force → pandoc mimo to re-sondowany na żywo i utrwalony.
+    tools = detect_with_cache(cfg)
+    assert tools["pandoc"].available is True
+    assert tools["pandoc"].path == pandoc
+    assert load_config(cfg)["tools"]["pandoc"]["available"] is True
+
+
+def test_fresh_cache_keeps_positives_without_reprobe(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Świeży cache, wszystko available:true → pozytywy czytane z cache, ZERO re-sondowania."""
+    cfg = tmp_path / "config.json"
+    found = tmp_path / "bin"
+    monkeypatch.setattr(detection, "_find_executable", lambda names, dirs: found)
+    monkeypatch.setattr(detection, "_get_version", lambda path: "v1")
+    monkeypatch.setattr(
+        detection, "_detect_java", lambda override=None: Tool("java", found, "17", True)
+    )
+    monkeypatch.setattr(
+        detection, "_detect_epubcheck", lambda override=None: Tool("epubcheck", found, "5", True)
+    )
+    monkeypatch.setattr(Tools, "calibre_kfx_plugin", staticmethod(lambda: False))
+    detect_with_cache(cfg, force=True)
+
+    # Każde dotknięcie detektora teraz rzuca — dowód, że pozytywów NIE re-sondujemy.
+    def fail(*args: object, **kwargs: object) -> object:
+        raise AssertionError("pozytywy nie powinny być re-sondowane przy świeżym cache")
+
+    monkeypatch.setattr(detection, "_find_executable", fail)
+    monkeypatch.setattr(detection, "_detect_java", fail)
+    monkeypatch.setattr(detection, "_detect_epubcheck", fail)
+    monkeypatch.setattr(Tools, "detect_all", staticmethod(fail))
+
+    tools = detect_with_cache(cfg)
+    assert all(tool.available for tool in tools.values())
+
+
 def test_manual_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Ręczny override ścieżki z config jest stosowany."""
     monkeypatch.setattr(detection.shutil, "which", lambda _name: None)
