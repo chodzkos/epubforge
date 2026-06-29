@@ -155,21 +155,21 @@ with Epub("book.epub") as ebook:
     meta.title = "Nowy tytuł"
     meta.creators = ["Jan Kowalski", "Anna Nowak"]
     ebook.metadata = meta
-    
+
     # Naprawa CSS
     fix_css(ebook, CssFixOptions(
         remove_colors=True,
         replace_justify="left",
         inject_book_margin_px=20
     ))
-    
+
     # Hyphenacja
     hyphenate(ebook, HyphenationOptions(language="pl"))
 
     # Preset CSS
     from epubforge.fixers import apply_preset, get_preset
     apply_preset(ebook, get_preset("reader-friendly"), mode="append")
-    
+
     ebook.save()  # zapisuje + tworzy backup
 ```
 

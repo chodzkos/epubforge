@@ -19,8 +19,8 @@ Po zmergowaniu PR — gałąź zostaje usunięta automatycznie (`gh pr merge --d
 
 ## 🎯 Etap 0 — Fundament (Foundation)
 
-**Gałąź:** `feature/stage-0-foundation`  
-**Czas:** ~30 min  
+**Gałąź:** `feature/stage-0-foundation`
+**Czas:** ~30 min
 **Cel:** Działająca struktura projektu, CI/CD, pierwszy zielony build.
 
 ### Pliki do utworzenia/sprawdzenia
@@ -49,8 +49,8 @@ gh pr merge --squash --delete-branch
 
 ## 📦 Etap 1 — Core: klasa Epub
 
-**Gałąź:** `feature/stage-1-core-epub`  
-**Czas:** ~2 godziny  
+**Gałąź:** `feature/stage-1-core-epub`
+**Czas:** ~2 godziny
 **Cel:** Klasa `Epub` do otwierania, edycji i zapisu plików EPUB.
 
 ### Co powstanie
@@ -66,14 +66,14 @@ class Epub:
     def close(self) -> None: ...
     def __enter__(self) -> "Epub": ...
     def __exit__(self, *args) -> None: ...
-    
+
     @property
     def opf_path(self) -> str: ...        # odczytany z META-INF/container.xml
     @property
     def manifest(self) -> list[ManifestItem]: ...
     @property
     def spine(self) -> list[str]: ...
-    
+
     def read_file(self, internal_path: str) -> bytes: ...
     def write_file(self, internal_path: str, data: bytes) -> None: ...
     def list_files(self) -> list[str]: ...
@@ -145,8 +145,8 @@ Dzięki temu w pamięci trzymamy tylko zmodyfikowane pliki, nie cały EPUB — p
 
 ## 🏷️ Etap 2 — Core: Metadane Dublin Core
 
-**Gałąź:** `feature/stage-2-metadata`  
-**Czas:** ~1.5 godziny  
+**Gałąź:** `feature/stage-2-metadata`
+**Czas:** ~1.5 godziny
 **Cel:** Odczyt i zapis metadanych EPUB (Dublin Core).
 
 ### Co powstanie
@@ -166,7 +166,7 @@ class Metadata:
     date: str = ""              # ISO 8601
     description: str = ""
     subjects: list[str] = field(default_factory=list)
-    
+
     @classmethod
     def from_opf(cls, opf_xml: bytes) -> "Metadata": ...
     def to_opf(self, existing_opf: bytes) -> bytes: ...
@@ -200,8 +200,8 @@ Zachowaj deklarację XML i kodowanie UTF-8 przy zapisie (polskie znaki!).
 
 ## 🔍 Etap 3 — Core: Wykrywanie narzędzi
 
-**Gałąź:** `feature/stage-3-detection`  
-**Czas:** ~1 godzina  
+**Gałąź:** `feature/stage-3-detection`
+**Czas:** ~1 godzina
 **Cel:** Funkcje do auto-detekcji Pandoc, Calibre, Sigil, KP3, wtyczki KFX.
 
 ### Co powstanie
@@ -244,8 +244,8 @@ class Tools:
 
 ## 🔄 Etap 4 — Konwerter → EPUB
 
-**Gałąź:** `feature/stage-4-converter`  
-**Czas:** ~2 godziny  
+**Gałąź:** `feature/stage-4-converter`
+**Czas:** ~2 godziny
 **Cel:** Konwersja TXT/DOCX/HTML/MD/ODT/RTF → EPUB.
 
 ### Co powstanie
@@ -288,8 +288,8 @@ def to_epub(
 
 ## ✂️ Etap 5 — Dzielenie wyrazów (Hyphenation)
 
-**Gałąź:** `feature/stage-5-hyphenation`  
-**Czas:** ~1.5 godziny  
+**Gałąź:** `feature/stage-5-hyphenation`
+**Czas:** ~1.5 godziny
 **Cel:** Wstawianie soft-hyphens (`\u00ad`) w tekście EPUB.
 
 ### Co powstanie
@@ -342,8 +342,8 @@ GUI MUSI pokazać ostrzeżenie przy wyborze `soft-hyphen`: *„Ta metoda działa
 
 ## 🎨 Etap 6 — CSS Fixer
 
-**Gałąź:** `feature/stage-6-css-fixer`  
-**Czas:** ~2 godziny  
+**Gałąź:** `feature/stage-6-css-fixer`
+**Czas:** ~2 godziny
 **Cel:** Czyszczenie i normalizacja CSS w plikach EPUB.
 
 ### Co powstanie
@@ -396,16 +396,16 @@ Zachowuj nieznane reguły (`@supports`, `calc()`, zmienne) bez zmian — modyfik
 
 ## 🏷️ Stage gate v0.5.0
 
-**Tag:** `git tag v0.5.0`  
-**Co działa:** Biblioteka + CLI (`epubforge fix`, `epubforge convert`, `epubforge meta`).  
+**Tag:** `git tag v0.5.0`
+**Co działa:** Biblioteka + CLI (`epubforge fix`, `epubforge convert`, `epubforge meta`).
 **Co nie działa:** GUI, KFX.
 
 ---
 
 ## 📚 Etap 7 — Konwerter EPUB → KFX
 
-**Gałąź:** `feature/stage-7-kfx`  
-**Czas:** ~2 godziny  
+**Gałąź:** `feature/stage-7-kfx`
+**Czas:** ~2 godziny
 **Cel:** Konwersja EPUB → KFX z dwoma silnikami.
 
 ### Co powstanie
@@ -418,7 +418,7 @@ Zachowuj nieznane reguły (`@supports`, `calc()`, zmienne) bez zmian — modyfik
 class KfxOptions:
     engine: Literal["calibre", "kindle-previewer", "auto"] = "calibre"  # Calibre = główny
     fix_epub_first: bool = True   # uruchom CSS fixer przed konwersją
-    
+
 def to_kfx(
     source: Path,
     target_dir: Path,
@@ -440,8 +440,8 @@ def to_kfx(
 
 ## 🖥️ Etap 8 — GUI: Framework i widgety
 
-**Gałąź:** `feature/stage-8-gui-framework`  
-**Czas:** ~3 godziny  
+**Gałąź:** `feature/stage-8-gui-framework`
+**Czas:** ~3 godziny
 **Cel:** Główna klasa App, system motywów, podstawowe widgety.
 
 ### Co powstanie
@@ -468,8 +468,8 @@ Zobacz `REUSABLE_CODE.md` sekcja **Widgets** — gotowe klasy do skopiowania.
 
 ## 📑 Etap 9 — GUI: Zakładka Metadane
 
-**Gałąź:** `feature/stage-9-gui-metadata`  
-**Czas:** ~2 godziny  
+**Gałąź:** `feature/stage-9-gui-metadata`
+**Czas:** ~2 godziny
 **Cel:** Zakładka do podglądu i edycji metadanych Dublin Core.
 
 ### Co powstanie
@@ -487,7 +487,7 @@ Zobacz `REUSABLE_CODE.md` sekcja **Widgets** — gotowe klasy do skopiowania.
 
 ## 🔄 Etap 10 — GUI: Zakładka Konwerter
 
-**Gałąź:** `feature/stage-10-gui-converter`  
+**Gałąź:** `feature/stage-10-gui-converter`
 **Czas:** ~1.5 godziny
 
 - Lista plików wejściowych
@@ -500,7 +500,7 @@ Zobacz `REUSABLE_CODE.md` sekcja **Widgets** — gotowe klasy do skopiowania.
 
 ## ✂️ Etap 11 — GUI: Zakładka Fixer
 
-**Gałąź:** `feature/stage-11-gui-fixer`  
+**Gałąź:** `feature/stage-11-gui-fixer`
 **Czas:** ~1.5 godziny
 
 - Hyphenacja (język z dropdown)
@@ -511,7 +511,7 @@ Zobacz `REUSABLE_CODE.md` sekcja **Widgets** — gotowe klasy do skopiowania.
 
 ## 📚 Etap 12 — GUI: Zakładka KFX
 
-**Gałąź:** `feature/stage-12-gui-kfx`  
+**Gałąź:** `feature/stage-12-gui-kfx`
 **Czas:** ~1 godzina
 
 - Wybór silnika (Calibre — domyślnie, KP3 — experimental z ostrzeżeniem)
@@ -522,8 +522,8 @@ Zobacz `REUSABLE_CODE.md` sekcja **Widgets** — gotowe klasy do skopiowania.
 
 ## 🏗️ Etap 13 — Build pipeline
 
-**Gałąź:** `feature/stage-13-build`  
-**Czas:** ~1 godzina  
+**Gałąź:** `feature/stage-13-build`
+**Czas:** ~1 godzina
 **Cel:** PyInstaller `.spec` (portable + onedir), ikona, instalator Inno Setup, GitHub Actions Release.
 
 ### Co powstanie
@@ -567,7 +567,7 @@ datas += [(tkdnd_dir, 'tkinterdnd2/tkdnd')]
 
 ## 📖 Etap 14 — Dokumentacja i Release v1.0
 
-**Gałąź:** `feature/stage-14-docs`  
+**Gałąź:** `feature/stage-14-docs`
 **Czas:** ~2 godziny
 
 - Screenshots w README

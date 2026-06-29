@@ -2085,4 +2085,3 @@ msgstr "Available tools: "
 #: src/epubforge/cli/doctor.py
 msgid "Nie wykryto żadnych narzędzi."
 msgstr "No tools detected."
-

@@ -8,8 +8,8 @@ Ten plik daje Claude Code wskazówki do pracy nad projektem. **Czytaj go na pocz
 
 **EpubForge** — modułowa biblioteka i aplikacja Python (GUI + CLI) do pracy z plikami EPUB. Cross-platform, licencja MIT.
 
-Repo: `github.com/chodzkos/epubforge`  
-Branch główny: `main`  
+Repo: `github.com/chodzkos/epubforge`
+Branch główny: `main`
 Licencja: MIT
 
 ### Cele projektu
@@ -180,7 +180,7 @@ for kfx_file in temp_outdir.rglob("*.kfx"):
 **Rozwiązanie:** automatic fallback do Calibre ebook-convert gdy source.suffix == ".pdf"
 
 ### 5. KFX engine selection
-**WAŻNE:** Główny silnik to **Calibre + wtyczka KFX Output** (sprawdzony, mniej wrażliwy na formatowanie).  
+**WAŻNE:** Główny silnik to **Calibre + wtyczka KFX Output** (sprawdzony, mniej wrażliwy na formatowanie).
 Kindle Previewer 3 jest **EXPERIMENTAL** — wrażliwy na nieidealne formatowanie EPUB. Zawsze oznaczaj jako "experimental" w UI.
 
 ### 6. Qt w testach na Linux CI (headless)
@@ -353,17 +353,17 @@ epubforge-gui                   # GUI (po instalacji)
 
 ## Anti-patterns — czego NIE robić
 
-❌ Globalne zmienne mutowalne  
-❌ `from epubforge.core.epub import *` (wildcard imports)  
-❌ Funkcje > 50 linii (rozbij na mniejsze)  
-❌ Pliki > 500 linii (podziel na moduły)  
-❌ `except Exception:` bez specyficznego typu  
-❌ `print()` w kodzie biblioteki (użyj `logging`)  
-❌ Hardcoded ścieżki absolutne  
-❌ Subprocess bez timeout  
-❌ ZIP operations bez context managera  
-❌ Mock everything (testy integracyjne też są ważne)  
-❌ Commit bez wcześniejszego `pytest`  
+❌ Globalne zmienne mutowalne
+❌ `from epubforge.core.epub import *` (wildcard imports)
+❌ Funkcje > 50 linii (rozbij na mniejsze)
+❌ Pliki > 500 linii (podziel na moduły)
+❌ `except Exception:` bez specyficznego typu
+❌ `print()` w kodzie biblioteki (użyj `logging`)
+❌ Hardcoded ścieżki absolutne
+❌ Subprocess bez timeout
+❌ ZIP operations bez context managera
+❌ Mock everything (testy integracyjne też są ważne)
+❌ Commit bez wcześniejszego `pytest`
 ❌ Push bez zgody użytkownika
 
 ---
