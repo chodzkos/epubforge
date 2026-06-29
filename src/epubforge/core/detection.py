@@ -377,7 +377,12 @@ class Tools:
 
     @staticmethod
     def calibre_viewer() -> Tool:
-        """Wykrywa ``ebook-viewer`` (podgląd EPUB w Calibre)."""
+        """Wykrywa ``ebook-viewer`` (podgląd EPUB w Calibre).
+
+        Wersji NIE ustalamy — to narzędzie GUI, którego ``--version`` pod headless
+        (np. WSL) wypluwa szum (``libEGL warning...``) lądujący w polu wersji.
+        Wersja Calibre i tak pochodzi z ``ebook-convert`` (ten sam pakiet).
+        """
         return _make_tool(
             "calibre_viewer",
             _exe_names("ebook-viewer"),
@@ -387,11 +392,17 @@ class Tools:
                 Path("/opt/calibre"),
                 Path("/Applications/calibre.app/Contents/MacOS"),
             ],
+            detect_version=False,
         )
 
     @staticmethod
     def calibre_editor() -> Tool:
-        """Wykrywa ``ebook-edit`` (edytor EPUB wbudowany w Calibre)."""
+        """Wykrywa ``ebook-edit`` (edytor EPUB wbudowany w Calibre).
+
+        Wersji NIE ustalamy — to narzędzie GUI, którego ``--version`` pod headless
+        (np. WSL) wypluwa szum (``libEGL warning...``) lądujący w polu wersji.
+        Wersja Calibre i tak pochodzi z ``ebook-convert`` (ten sam pakiet).
+        """
         return _make_tool(
             "calibre_editor",
             _exe_names("ebook-edit"),
@@ -401,6 +412,7 @@ class Tools:
                 Path("/opt/calibre"),
                 Path("/Applications/calibre.app/Contents/MacOS"),
             ],
+            detect_version=False,
         )
 
     @staticmethod
