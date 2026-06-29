@@ -317,7 +317,7 @@ Wykonaj:
    - Górny pasek: tytuł + przełącznik motywu
    - Wczytuje config.json przy starcie, zapisuje przy zamknięciu
 4. theme.py:
-   - DARK = {"bg": "#1e2028", "bg2": "#252830", ...} 
+   - DARK = {"bg": "#1e2028", "bg2": "#252830", ...}
    - LIGHT = {"bg": "#ffffff", "bg2": "#f5f5f5", ...}
    - apply_theme(root, theme_dict) - rekurencyjnie po wszystkich widgetach
 5. Dodaj entry point GUI w pyproject.toml (UWAGA: sekcja [project.gui-scripts], NIE [project.scripts] — gui-scripts ukrywa konsolę na Windows):

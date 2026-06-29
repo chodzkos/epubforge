@@ -2045,4 +2045,3 @@ msgstr "HTML (*.html)"
 #: src/epubforge/gui/tabs/stats.py:204
 msgid "Otwarto raport w przeglądarce"
 msgstr "Otwarto raport w przeglądarce"
-

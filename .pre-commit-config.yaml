@@ -1,10 +1,9 @@
-# Konfiguracja pre-commit hooks
-# Instalacja: pip install pre-commit && pre-commit install
-# Ręczne uruchomienie: pre-commit run --all-files
-
+# Hooki NARZĘDZIOWE (ruff/ruff-format/mypy) wołają `uv run` — wymaga `uv` na PATH.
+# uv run używa tego samego środowiska co kanoniczne bramki (gui-kit z gita, Qt, aktualne wersje),
+# więc mypy sprawdza CAŁY src/ (w tym GUI), zamiast izolowanego środowiska z pinami.
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -15,21 +14,26 @@ repos:
       - id: check-merge-conflict
       - id: mixed-line-ending
         args: ['--fix=lf']
-
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.10
+  - repo: local
     hooks:
-      # Linter (z auto-fix)
       - id: ruff
-        args: [--fix]
-      # Formatter
+        name: ruff (linter)
+        entry: uv run ruff check --fix .
+        language: system
+        types: [python]
+        pass_filenames: false
+        require_serial: true
       - id: ruff-format
-
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.10.0
-    hooks:
+        name: ruff (formatter)
+        entry: uv run ruff format .
+        language: system
+        types: [python]
+        pass_filenames: false
+        require_serial: true
       - id: mypy
-        files: ^src/epubforge/
-        additional_dependencies:
-          - lxml-stubs
-        args: [--strict]
+        name: mypy (type check)
+        entry: uv run mypy src/
+        language: system
+        types: [python]
+        pass_filenames: false
+        require_serial: true

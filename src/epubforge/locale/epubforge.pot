@@ -2000,4 +2000,3 @@ msgstr ""
 #: src/epubforge/validators/epubcheck.py:223
 msgid "Raport EpubCheck ma nieoczekiwany format."
 msgstr ""
-
