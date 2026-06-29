@@ -32,6 +32,8 @@ dependencies = [
     "lxml>=5.0",
     "pyphen>=0.15",
     "tinycss2>=1.3",
+    # Raport CLI `doctor`/`info` — tabele i kolory (warstwa prezentacji, nie core).
+    "rich>=13.7",
     # Lokalizacja configu wg konwencji systemu (GUI_STANDARD §8) — core, bez Qt.
     "platformdirs>=4.0",
     # Wspólny rdzeń GUI (paleta + config) — warstwa 0 kitu, czysty Python bez Qt;

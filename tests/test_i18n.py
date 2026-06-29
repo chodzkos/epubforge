@@ -93,11 +93,14 @@ def test_cli_uses_language_from_config(
 ) -> None:
     """CLI inicjuje gettext z configu przed budową parsera i komunikatów."""
     monkeypatch.setattr("epubforge.cli.main.load_config", lambda _path: {"language": "en"})
+    # `info` sonduje na żywo — izolujemy od realnego środowiska pustą detekcją.
+    monkeypatch.setattr("epubforge.cli.doctor.detect_with_cache", lambda *a, **k: {})
 
     assert main(["info"]) == 0
 
     captured = capsys.readouterr()
-    assert "Detected tools: (TODO - stage 3)" in captured.out
+    # Komunikat jest tłumaczony — w trybie en oczekujemy angielskiej wersji.
+    assert "No tools detected." in captured.out
 
 
 @pytest.mark.gui
