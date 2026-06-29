@@ -108,7 +108,11 @@ def test_tool_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_calibre_editor_available_via_path(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Calibre Editor obecny w PATH → available z wersją."""
+    """Calibre Editor obecny w PATH → available, ale BEZ wersji (narzędzie GUI).
+
+    ``--version`` pod headless wypluwa szum (libEGL), więc go nie uruchamiamy —
+    wersja Calibre i tak jest z ``ebook-convert``.
+    """
     which_calls: list[str] = []
 
     def fake_which(name: str) -> str | None:
@@ -117,12 +121,15 @@ def test_calibre_editor_available_via_path(monkeypatch: pytest.MonkeyPatch) -> N
             return "/usr/bin/ebook-edit"
         return None
 
+    def fail(path: Path) -> str:
+        raise AssertionError("--version nie powinno być wywołane dla narzędzia GUI")
+
     monkeypatch.setattr("epubforge.core.detection.shutil.which", fake_which)
-    monkeypatch.setattr(detection, "_get_version", lambda path: "ebook-edit 7.0")
+    monkeypatch.setattr(detection, "_get_version", fail)
     tool = Tools.calibre_editor()
     assert tool.available is True
     assert tool.path == Path("/usr/bin/ebook-edit")
-    assert tool.version == "ebook-edit 7.0"
+    assert tool.version == ""
     assert any(name in {"ebook-edit", "ebook-edit.exe"} for name in which_calls)
 
 
