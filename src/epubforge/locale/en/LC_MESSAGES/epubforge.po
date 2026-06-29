@@ -2038,3 +2038,51 @@ msgstr "HTML (*.html)"
 msgid "Otwarto raport w przeglądarce"
 msgstr "Report opened in the browser"
 
+#: src/epubforge/cli/doctor.py
+msgid "Diagnozuj środowisko — pełny raport wykrytych narzędzi (na żywo)"
+msgstr "Diagnose the environment — full report of detected tools (live)"
+
+#: src/epubforge/cli/doctor.py
+msgid "dostępny"
+msgstr "available"
+
+#: src/epubforge/cli/doctor.py
+msgid "ℹ️ niedostępne na tej platformie (Windows/macOS)"
+msgstr "ℹ️ not available on this platform (Windows/macOS)"
+
+#: src/epubforge/cli/doctor.py
+msgid "System"
+msgstr "System"
+
+#: src/epubforge/cli/doctor.py
+msgid "Element"
+msgstr "Item"
+
+#: src/epubforge/cli/doctor.py
+msgid "Wartość"
+msgstr "Value"
+
+#: src/epubforge/cli/doctor.py
+msgid "Narzędzia"
+msgstr "Tools"
+
+#: src/epubforge/cli/doctor.py
+msgid "Narzędzie"
+msgstr "Tool"
+
+#: src/epubforge/cli/doctor.py
+msgid "Status"
+msgstr "Status"
+
+#: src/epubforge/cli/doctor.py
+msgid "Ścieżka"
+msgstr "Path"
+
+#: src/epubforge/cli/doctor.py
+msgid "Dostępne narzędzia: "
+msgstr "Available tools: "
+
+#: src/epubforge/cli/doctor.py
+msgid "Nie wykryto żadnych narzędzi."
+msgstr "No tools detected."
+

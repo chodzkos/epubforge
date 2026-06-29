@@ -8,7 +8,19 @@ from collections.abc import Callable
 from typing import cast
 
 from epubforge import __version__
-from epubforge.cli import check, convert, fix, hyphenate, kfx, meta, mobi, presets, stats, toc
+from epubforge.cli import (
+    check,
+    convert,
+    doctor,
+    fix,
+    hyphenate,
+    kfx,
+    meta,
+    mobi,
+    presets,
+    stats,
+    toc,
+)
 from epubforge.core import default_config_path, load_config
 from epubforge.i18n import _, init_i18n
 
@@ -38,6 +50,7 @@ def main(argv: list[str] | None = None) -> int:
     subparsers = parser.add_subparsers(dest="command", help=_("Dostępne komendy"))
     subparsers.add_parser("info", help=_("Wyświetl informacje o wersji i wykrytych narzędziach"))
     check.add_parser(subparsers)
+    doctor.add_parser(subparsers)
     convert.add_parser(subparsers)
     fix.add_parser(subparsers)
     hyphenate.add_parser(subparsers)
@@ -55,9 +68,7 @@ def main(argv: list[str] | None = None) -> int:
         return handler(args)
 
     if args.command == "info":
-        print(f"EpubForge {__version__}")
-        print(_("Wykryte narzędzia: (TODO - etap 3)"))
-        return 0
+        return doctor.run_info()
 
     parser.print_help()
     return 0
