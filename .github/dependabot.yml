@@ -1,0 +1,24 @@
+# Dependabot — automatyczne PR-y z aktualizacjami zależności (supply-chain).
+# Projekt używa pip + hatchling (pyproject.toml), więc ekosystem to `pip`
+# (nie `uv` — brak uv.lock). Drugi tor pilnuje wersji akcji przypiętych po SHA
+# w .github/workflows/*: Dependabot podbija SHA i aktualizuje komentarz wersji.
+version: 2
+updates:
+  # Zależności Pythona z pyproject.toml. Git-referencje (chodzkos-gui-kit @ SHA)
+  # Dependabot pomija — te pilnujemy ręcznie/przez pin po SHA.
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps)"
+
+  # Akcje GitHub przypięte po SHA w workflowach — podbijanie SHA + komentarza.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(ci)"
