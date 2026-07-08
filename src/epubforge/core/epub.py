@@ -85,8 +85,14 @@ def _write_epub(source: Path, target: Path, modified: dict[str, bytes], deleted:
                 continue
             data = modified.get(item.filename)
             if data is None:
-                data = zin.read(item.filename)
-            zout.writestr(item.filename, data, compress_type=zipfile.ZIP_DEFLATED)
+                # Niezmieniony wpis — zachowaj oryginalne metadane (compress_type,
+                # date_time, external_attr). Przekazanie ZipInfo do writestr honoruje
+                # jego compress_type, więc wpisy STORED (np. już skompresowane obrazy)
+                # nie są rekompresowane, a atrybuty nie są resetowane.
+                zout.writestr(item, zin.read(item.filename))
+            else:
+                # Zmodyfikowany wpis — nowa treść, domyślna kompresja DEFLATED.
+                zout.writestr(item.filename, data, compress_type=zipfile.ZIP_DEFLATED)
             written.add(item.filename)
         # 3. Pliki dodane przez write_file, których nie ma jeszcze w źródle.
         for name, data in modified.items():
