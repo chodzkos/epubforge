@@ -25,14 +25,22 @@ Utwardzenie:
 
 from __future__ import annotations
 
+from typing import cast
+
 from lxml import etree
 
 
-def hardened_parser() -> etree.XMLParser:
+def hardened_parser(*, recover: bool = False) -> etree.XMLParser:
     """Buduje parser lxml odporny na XXE i rozwijanie encji.
 
     Zwraca świeżą instancję przy każdym wywołaniu — parsery lxml nie są
     bezpieczne do współdzielenia między wątkami, więc nie trzymamy globalu.
+
+    Args:
+        recover: gdy ``True``, parser odzyskuje drobne nieścisłości składniowe
+            (przydatne dla „brudnych" dokumentów XHTML z EPUB-ów). Utwardzenie
+            (encje/DTD/sieć) pozostaje bez zmian — ``recover`` dotyczy wyłącznie
+            odzyskiwania po błędach składni, nie osłabia ochrony XXE.
 
     Returns:
         Skonfigurowany, utwardzony :class:`lxml.etree.XMLParser`.
@@ -42,6 +50,7 @@ def hardened_parser() -> etree.XMLParser:
         no_network=True,
         load_dtd=False,
         dtd_validation=False,
+        recover=recover,
     )
 
 
@@ -58,3 +67,42 @@ def parse_untrusted(data: bytes) -> etree._Element:
         lxml.etree.XMLSyntaxError: gdy dokument jest niepoprawny składniowo.
     """
     return etree.fromstring(data, parser=hardened_parser())
+
+
+def parse_untrusted_document(data: bytes) -> tuple[etree._Element, str]:
+    """Parsuje niezaufany dokument XHTML/HTML (tryb recover) i zwraca DOCTYPE.
+
+    Przeznaczone dla treści dokumentów EPUB, które w praktyce bywają niepoprawne
+    składniowo — stąd ``recover=True`` (utwardzenie bez zmian). Zwraca też DOCTYPE,
+    by serializacja mogła go zachować (``tostring`` gubi doctype bez jawnego
+    argumentu — patrz :func:`serialize_document`).
+
+    Args:
+        data: surowe bajty dokumentu XHTML/HTML.
+
+    Returns:
+        Krotka ``(element_główny, doctype)``; ``doctype`` jest pustym łańcuchem,
+        gdy dokument go nie miał.
+
+    Raises:
+        ValueError: gdy dokument jest pusty lub nieparsowalny nawet w trybie recover.
+    """
+    root = cast(
+        "etree._Element | None",
+        etree.fromstring(data, parser=hardened_parser(recover=True)),
+    )
+    if root is None:
+        raise ValueError("Pusty lub nieparsowalny dokument XML.")
+    doctype = getattr(root.getroottree().docinfo, "doctype", "") or ""
+    return root, doctype
+
+
+def serialize_document(root: etree._Element, doctype: str = "") -> bytes:
+    """Serializuje element do bajtów z deklaracją XML i (opcjonalnym) DOCTYPE.
+
+    Wzorzec z ``toc/_xml.serialize_xml`` — jawny ``doctype`` jest konieczny, bo
+    ``etree.tostring`` gubi DOCTYPE bez tego argumentu.
+    """
+    if doctype:
+        return etree.tostring(root, xml_declaration=True, encoding="utf-8", doctype=doctype)
+    return etree.tostring(root, xml_declaration=True, encoding="utf-8")

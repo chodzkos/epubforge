@@ -31,8 +31,11 @@ from epubforge.fixers import (
     CssFixOptions,
     HyphenationOptions,
     PresetError,
+    TypographyOptions,
+    TypographyReport,
     apply_preset,
     fix_css,
+    fix_typography,
     get_preset,
     hyphenate,
     import_user_preset,
@@ -120,6 +123,7 @@ class FixerTab(QWidget):
         options.addWidget(self._build_css_section(), stretch=1)
         layout.addLayout(options)
 
+        layout.addWidget(self._build_typography_section())
         layout.addWidget(self._build_preset_section())
         self._build_log(layout)
         self._build_actions(layout)
@@ -218,6 +222,65 @@ class FixerTab(QWidget):
         margin.addWidget(QLabel("px"))
         margin.addStretch(1)
         section.content_layout().addLayout(margin)
+        section.content_layout().addStretch(1)
+        return section
+
+    def _build_typography_section(self) -> Section:
+        """Buduje sekcję fixera typografii (cudzysłowy, pauzy, twarde spacje)."""
+        section = Section(_("Typografia"))
+
+        self.typo_enabled = QCheckBox(_("Włącz"))
+        self.typo_enabled.setChecked(False)
+        self.typo_enabled.setToolTip(_("Popraw mikrotypografię tekstu w wybranych EPUB"))
+        section.add_widget(self.typo_enabled)
+
+        form = QFormLayout()
+        section.content_layout().addLayout(form)
+        self.typo_lang_box = QComboBox()
+        self.typo_lang_box.addItems(["pl", "en", "de"])
+        self.typo_lang_box.setCurrentText("pl")
+        self.typo_lang_box.setToolTip(
+            _("Język dobiera znaki cudzysłowów i reguły językowe (sieroty w pl)")
+        )
+        form.addRow(_("Język"), self.typo_lang_box)
+
+        rules = QHBoxLayout()
+        left = QVBoxLayout()
+        self.typo_quotes = self._add_check_to(
+            left,
+            _("Cudzysłowy"),
+            checked=True,
+            tooltip=_("Proste cudzysłowy → pary typograficzne wg języka"),
+        )
+        self.typo_dashes = self._add_check_to(
+            left,
+            _("Pauzy"),
+            checked=True,
+            tooltip=_("Dywiz w dialogach/wtrąceniach → pauza; łączniki w słowach bez zmian"),
+        )
+        self.typo_ellipsis = self._add_check_to(
+            left,
+            _("Wielokropek"),
+            checked=True,
+            tooltip=_("Trzy kropki → znak wielokropka (…)"),
+        )
+        right = QVBoxLayout()
+        self.typo_nbsp_letters = self._add_check_to(
+            right,
+            _("Twarde spacje (sieroty)"),
+            checked=True,
+            tooltip=_("pl: twarda spacja po samotnych spójnikach a/i/o/u/w/z"),
+        )
+        self.typo_nbsp_numbers = self._add_check_to(
+            right,
+            _("Twarde spacje (liczby)"),
+            checked=False,
+            tooltip=_("Twarda spacja między liczbą a jednostką (np. 10 km) — ostrożnie"),
+        )
+        right.addStretch(1)
+        rules.addLayout(left, 1)
+        rules.addLayout(right, 1)
+        section.content_layout().addLayout(rules)
         section.content_layout().addStretch(1)
         return section
 
@@ -349,6 +412,16 @@ class FixerTab(QWidget):
         section.add_widget(check)
         return check
 
+    def _add_check_to(
+        self, layout: QVBoxLayout, text: str, *, checked: bool, tooltip: str
+    ) -> QCheckBox:
+        """Dodaje checkbox bezpośrednio do podanego layoutu."""
+        check = QCheckBox(text)
+        check.setChecked(checked)
+        check.setToolTip(tooltip)
+        layout.addWidget(check)
+        return check
+
     def _wrap(self, layout: QVBoxLayout) -> QWidget:
         """Owija layout w widget (do osadzenia w QFormLayout)."""
         widget = QWidget()
@@ -382,6 +455,19 @@ class FixerTab(QWidget):
             language=self.hyphen_lang_box.currentText(),
             method=cast(HyphenationMethod, self._hyphen_method()),
             skip_headers=self.hyphen_skip_headers.isChecked(),
+        )
+
+    def _build_typography_options(self) -> TypographyOptions | None:
+        """Składa opcje fixera typografii z aktualnego stanu UI."""
+        if not self.typo_enabled.isChecked():
+            return None
+        return TypographyOptions(
+            language=self.typo_lang_box.currentText(),
+            fix_quotes=self.typo_quotes.isChecked(),
+            fix_dashes=self.typo_dashes.isChecked(),
+            fix_ellipsis=self.typo_ellipsis.isChecked(),
+            nbsp_single_letters=self.typo_nbsp_letters.isChecked(),
+            nbsp_numbers_units=self.typo_nbsp_numbers.isChecked(),
         )
 
     def _build_css_options(self) -> CssFixOptions:
@@ -420,6 +506,7 @@ class FixerTab(QWidget):
         self._worker = Worker(
             _run_fix_worker,
             files,
+            self._build_typography_options(),
             self._build_hyphen_options(),
             self._build_css_options(),
             self._preset_choice(),
@@ -492,6 +579,7 @@ def _run_fix_worker(
     emit_line: EmitLine,
     emit_progress: EmitProgress,
     files: list[Path],
+    typo_options: TypographyOptions | None,
     hyphen_options: HyphenationOptions | None,
     css_options: CssFixOptions,
     preset_choice: tuple[str, str] | None,
@@ -508,6 +596,9 @@ def _run_fix_worker(
         emit_line(f"→ {path.name}", "cmd")
         try:
             with Epub(path) as epub:
+                if typo_options is not None:
+                    emit_line(_("Typografia..."), "info")
+                    emit_line(_typo_summary(fix_typography(epub, typo_options)), "info")
                 if hyphen_options is not None:
                     emit_line(_("Hyphenation..."), "info")
                     hyphenate(epub, hyphen_options)
@@ -525,6 +616,25 @@ def _run_fix_worker(
         emit_line(_("OK: {path}").format(path=last_fixed), "ok")
         succeeded += 1
     return succeeded, total, last_fixed
+
+
+def _typo_summary(report: TypographyReport) -> str:
+    """Buduje zlokalizowane podsumowanie podmian typograficznych do logu."""
+    if report.total_changes == 0:
+        return _("Typografia: bez zmian")
+    labels = {
+        "fix_quotes": _("cudzysłowy"),
+        "fix_dashes": _("pauzy"),
+        "fix_ellipsis": _("wielokropki"),
+        "nbsp_single_letters": _("sieroty"),
+        "nbsp_numbers_units": _("liczby/jednostki"),
+    }
+    detail = ", ".join(
+        f"{labels[rule]}: {count}" for rule, count in report.totals().items() if count
+    )
+    return _("Typografia: {total} podmian ({detail})").format(
+        total=report.total_changes, detail=detail
+    )
 
 
 def _preset_mode_tooltip(value: str) -> str:
