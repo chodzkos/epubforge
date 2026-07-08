@@ -137,6 +137,21 @@ def test_write_file_adds_new_entry(epub_path: Path) -> None:
         assert epub.read_file("OEBPS/text/chapter2.xhtml") == b"<html>nowy</html>"
 
 
+def test_pending_changes_returns_snapshot(epub_path: Path) -> None:
+    """pending_changes zwraca kopię bufora bez ujawniania struktur Epub."""
+    new_html = b"<html><body><p>Zmieniono</p></body></html>"
+    with Epub(epub_path) as epub:
+        epub.write_file("OEBPS/text/chapter1.xhtml", new_html)
+        epub.delete_file("OEBPS/nav.xhtml")
+
+        pending = epub.pending_changes()
+        assert pending.modified == {"OEBPS/text/chapter1.xhtml": new_html}
+        assert pending.deleted == frozenset({"OEBPS/nav.xhtml"})
+
+        pending.modified["OEBPS/text/chapter1.xhtml"] = b"zewnetrzna mutacja"
+        assert epub.read_file("OEBPS/text/chapter1.xhtml") == new_html
+
+
 def test_delete_file_removes_entry_on_save(epub_path: Path) -> None:
     """delete_file usuwa wpis z listy i z zapisanego archiwum."""
     with Epub(epub_path) as epub:

@@ -59,6 +59,18 @@ class ManifestItem:
     properties: str | None = None
 
 
+@dataclass(frozen=True)
+class PendingChanges:
+    """Migawka niezapisanych zmian w buforze :class:`Epub`.
+
+    ``modified`` jest kopią słownika zmian, a ``deleted`` niemutowalnym zbiorem
+    ścieżek, więc wywołujący nie dostaje referencji do wewnętrznych struktur.
+    """
+
+    modified: dict[str, bytes]
+    deleted: frozenset[str]
+
+
 def _write_epub(source: Path, target: Path, modified: dict[str, bytes], deleted: set[str]) -> None:
     """Zapisuje EPUB kopiując niezmienione wpisy strumieniowo ze źródła.
 
@@ -300,6 +312,11 @@ class Epub:
             if name not in names:
                 names.append(name)
         return names
+
+    def pending_changes(self) -> PendingChanges:
+        """Zwraca kopię bufora niezapisanych zmian."""
+        self._ensure_open()
+        return PendingChanges(modified=dict(self._modified), deleted=frozenset(self._deleted))
 
     # ── Zapis i backup ───────────────────────────────────────────────────────
 
