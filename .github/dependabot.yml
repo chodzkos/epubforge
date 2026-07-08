@@ -13,6 +13,11 @@ updates:
     open-pull-requests-limit: 10
     commit-message:
       prefix: "chore(deps)"
+    groups:
+      # Narzędzia deweloperskie (pytest, ruff, mypy, pre-commit, pdoc, …) w jednym
+      # zbiorczym PR zamiast osobnego na każdy pakiet — mniej szumu w review.
+      dev-dependencies:
+        dependency-type: "development"
 
   # Akcje GitHub przypięte po SHA w workflowach — podbijanie SHA + komentarza.
   - package-ecosystem: "github-actions"
