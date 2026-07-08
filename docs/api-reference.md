@@ -101,6 +101,35 @@ with Epub("book.epub") as ebook:
 
 ---
 
+## Fixer — typografia
+
+```python
+from epubforge import Epub
+from epubforge.fixers import TypographyOptions, fix_typography
+
+with Epub("book.epub") as ebook:
+    report = fix_typography(ebook, TypographyOptions(
+        language="pl",              # pl / en / de — dobiera znaki cudzysłowów
+        fix_quotes=True,            # proste " ' → pary typograficzne wg języka
+        fix_dashes=True,            # pauza w dialogach/wtrąceniach (łączniki w słowach bez zmian)
+        fix_ellipsis=True,          # ... → …
+        nbsp_single_letters=True,   # pl: twarda spacja po sierotach a/i/o/u/w/z
+        nbsp_numbers_units=False,   # 10 km, XX w. → twarda spacja (domyślnie OFF)
+    ))
+    ebook.save()
+
+# TypographyReport: liczba podmian per reguła, per plik i sumarycznie
+print(report.total_changes)          # łączna liczba podmian
+print(report.changed_files)          # lista ścieżek zmienionych plików
+print(report.totals())               # {"fix_quotes": 12, "fix_dashes": 4, ...}
+```
+
+Reguły są idempotentne — drugi przebieg nie wprowadza zmian. Parser jest utwardzony
+(ochrona XXE), serializacja zachowuje DOCTYPE i deklarację XML, a `code`/`pre`,
+atrybuty i komentarze pozostają nietknięte.
+
+---
+
 ## Wykrywanie narzędzi
 
 ```python
