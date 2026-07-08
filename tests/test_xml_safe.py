@@ -49,8 +49,26 @@ def _opf(title_inner: str, doctype: str = "") -> bytes:
 
 
 def _external_entity_dtd(secret_path: Path) -> str:
-    """DTD z encją zewnętrzną ``SYSTEM file://`` wskazującą na lokalny plik."""
-    return f'<!DOCTYPE package [ <!ENTITY xxe SYSTEM "file://{secret_path}"> ]>\n'
+    """DTD z encją zewnętrzną ``SYSTEM file://`` wskazującą na lokalny plik.
+
+    Używa :meth:`Path.as_uri`, by URI był poprawny na każdej platformie
+    (``file:///tmp/...`` na POSIX, ``file:///C:/...`` na Windows — surowa ścieżka
+    Windows z backslashami i literą dysku nie jest poprawnym URI).
+    """
+    return f'<!DOCTYPE package [ <!ENTITY xxe SYSTEM "{secret_path.as_uri()}"> ]>\n'
+
+
+def _title_from_opf_safe(opf_bytes: bytes) -> str:
+    """Tytuł z ``from_opf`` albo ``""`` gdy parser odrzucił encję zewnętrzną.
+
+    Oba wyniki są bezpieczne: encja nierozwinięta (pusty tytuł) LUB odrzucenie
+    referencji do encji zewnętrznej (``XMLSyntaxError``). W żadnym z nich sekret
+    nie jest odczytany — a właśnie to weryfikujemy.
+    """
+    try:
+        return Metadata.from_opf(opf_bytes).title
+    except etree.XMLSyntaxError:
+        return ""
 
 
 # ── Poprawne pliki: brak regresji ────────────────────────────────────────────
@@ -94,9 +112,9 @@ def test_external_file_entity_not_read_via_from_opf(tmp_path: Path) -> None:
     secret = tmp_path / "secret.txt"
     secret.write_text(SENTINEL, encoding="utf-8")
 
-    meta = Metadata.from_opf(_opf("&xxe;", _external_entity_dtd(secret)))
+    title = _title_from_opf_safe(_opf("&xxe;", _external_entity_dtd(secret)))
 
-    assert SENTINEL not in meta.title
+    assert SENTINEL not in title
 
 
 def test_external_file_entity_not_read_via_epub(tmp_path: Path) -> None:
@@ -119,9 +137,8 @@ def test_external_file_entity_not_read_via_epub(tmp_path: Path) -> None:
     with Epub(epub_path) as epub:
         # Parsowanie manifestu/spine (epub.py) nie może wisieć ani czytać sekretu.
         assert epub.manifest[0].id == "c1"
-        raw_opf = epub.read_file(epub.opf_path)
-        meta = Metadata.from_opf(raw_opf)
-    assert SENTINEL not in meta.title
+        title = _title_from_opf_safe(epub.read_file(epub.opf_path))
+    assert SENTINEL not in title
 
 
 # ── Zachowanie błędów ─────────────────────────────────────────────────────────
