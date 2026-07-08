@@ -16,6 +16,8 @@ from dataclasses import dataclass, field
 
 from lxml import etree
 
+from epubforge.core._xml_safe import parse_untrusted
+
 # Przestrzenie nazw wg specyfikacji OPF/Dublin Core.
 DC_NS = "http://purl.org/dc/elements/1.1/"
 OPF_NS = "http://www.idpf.org/2007/opf"
@@ -151,7 +153,7 @@ class Metadata:
             Wypełniona instancja :class:`Metadata`. Brakujące pola pozostają
             puste (``language`` domyślnie ``"en"`` tylko gdy nieobecny).
         """
-        root = etree.fromstring(opf_xml)
+        root = parse_untrusted(opf_xml)
         language = _first_text(root, "language")
         series, series_index = _read_series(root)
         return cls(
@@ -181,7 +183,7 @@ class Metadata:
         Returns:
             Nowa zawartość OPF jako bajty UTF-8, z deklaracją XML.
         """
-        root = etree.fromstring(existing_opf)
+        root = parse_untrusted(existing_opf)
         metadata_el = root.find(f"{{{OPF_NS}}}metadata")
         if metadata_el is None:
             metadata_el = etree.SubElement(root, f"{{{OPF_NS}}}metadata")

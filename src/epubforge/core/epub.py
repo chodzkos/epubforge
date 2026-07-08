@@ -17,12 +17,14 @@ import logging
 import os
 import posixpath
 import shutil
-import xml.etree.ElementTree as ET
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from types import TracebackType
 
+from lxml import etree
+
+from epubforge.core._xml_safe import parse_untrusted
 from epubforge.core.exceptions import (
     EpubNotOpenError,
     InvalidEpubError,
@@ -101,8 +103,8 @@ def _parse_opf_path(container_xml: bytes) -> str:
             ``<rootfile full-path=...>``.
     """
     try:
-        root = ET.fromstring(container_xml)
-    except ET.ParseError as exc:
+        root = parse_untrusted(container_xml)
+    except etree.XMLSyntaxError as exc:
         raise OpfNotFoundError(f"Niepoprawny {_CONTAINER_PATH}: {exc}") from exc
     rootfile = root.find(f"{{{_CONTAINER_NS}}}rootfiles/{{{_CONTAINER_NS}}}rootfile")
     full_path = rootfile.get("full-path") if rootfile is not None else None
@@ -358,8 +360,8 @@ class Epub:
     def _parse_opf(self) -> None:
         """Parsuje plik OPF i wypełnia cache manifestu oraz spine."""
         try:
-            root = ET.fromstring(self.read_file(self.opf_path))
-        except ET.ParseError as exc:
+            root = parse_untrusted(self.read_file(self.opf_path))
+        except etree.XMLSyntaxError as exc:
             raise OpfNotFoundError(f"Niepoprawny plik OPF ({self.opf_path}): {exc}") from exc
 
         manifest: list[ManifestItem] = []
