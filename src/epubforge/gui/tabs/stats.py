@@ -27,6 +27,10 @@ from epubforge.gui.workers import EmitLine, EmitProgress, Worker
 from epubforge.i18n import _
 from epubforge.stats import BookStats, StatsOptions, compute_stats, render_report_html
 
+# Prefiks plików tymczasowych podglądu raportu — losowy sufiks dokłada
+# NamedTemporaryFile (mkstemp), po nim sprzątamy poprzednie podglądy.
+_REPORT_PREFIX = "epubforge-stats-"
+
 
 def _langdetect_available() -> bool:
     """Czy zainstalowano opcjonalny ``langdetect`` (extra ``[stats]``)."""
@@ -35,6 +39,21 @@ def _langdetect_available() -> bool:
     except ImportError:
         return False
     return True
+
+
+def _cleanup_old_reports() -> None:
+    """Usuwa wcześniejsze pliki podglądu raportu z katalogu tymczasowego.
+
+    Best-effort: pomija wpisy, których nie da się usunąć (np. cudze pliki w
+    ``/tmp`` z bitem lepkości). Wołane PRZED utworzeniem nowego raportu, więc
+    nigdy nie dotyka bieżącego pliku. ``unlink`` usuwa sam wpis/symlink (nie
+    podąża do celu), więc jest bezpieczne we współdzielonym ``/tmp``.
+    """
+    for old in Path(tempfile.gettempdir()).glob(f"{_REPORT_PREFIX}*.html"):
+        try:
+            old.unlink()
+        except OSError:
+            continue
 
 
 class StatsTab(QWidget):
@@ -196,11 +215,27 @@ class StatsTab(QWidget):
         self._set_status(_("Zapisano raport: {name}").format(name=Path(path).name))
 
     def _open_report(self) -> None:
-        """Zapisuje raport do pliku tymczasowego i otwiera w przeglądarce."""
+        """Zapisuje raport do pliku tymczasowego i otwiera w przeglądarce.
+
+        Plik dostaje losową nazwę i uprawnienia ``0600`` (mkstemp w
+        :class:`NamedTemporaryFile`), więc we współdzielonym ``/tmp`` nie ma
+        wektora podmiany/symlink — stała ``epubforge-stats.html`` była podatna.
+        Poprzednie podglądy tej aplikacji sprzątamy PRZED utworzeniem nowego
+        pliku, więc bieżący nigdy nie jest usuwany, zanim przeglądarka go otworzy.
+        """
         if self._stats is None:
             return
-        tmp = Path(tempfile.gettempdir()) / "epubforge-stats.html"
-        tmp.write_text(render_report_html(self._stats, __version__), encoding="utf-8")
+        _cleanup_old_reports()
+        html = render_report_html(self._stats, __version__)
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            prefix=_REPORT_PREFIX,
+            suffix=".html",
+            delete=False,
+            encoding="utf-8",
+        ) as handle:
+            handle.write(html)
+            tmp = Path(handle.name)
         webbrowser.open(tmp.as_uri())
         self._set_status(_("Otwarto raport w przeglądarce"))
 
