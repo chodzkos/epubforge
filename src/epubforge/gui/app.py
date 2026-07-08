@@ -481,7 +481,7 @@ def _install_excepthook(config_path: Path) -> None:
     sys.excepthook = handle
 
 
-def main() -> None:
+def main() -> None:  # pragma: no cover - entry point + pętla zdarzeń Qt (app.exec)
     """Entry point ``epubforge-gui``."""
     app = QApplication(sys.argv)
     app.setApplicationName("EpubForge")

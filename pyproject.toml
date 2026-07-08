@@ -179,7 +179,6 @@ markers = [
 [tool.coverage.run]
 source = ["src/epubforge"]
 branch = true
-omit = ["*/gui/*"]
 
 [tool.coverage.report]
 exclude_lines = [
