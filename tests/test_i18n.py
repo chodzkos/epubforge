@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import builtins
 import io
+import locale
 import os
 from pathlib import Path
 from typing import Any
@@ -21,7 +22,7 @@ from epubforge.cli.main import main
 from epubforge.core import Tool
 from epubforge.core.config import ConfigStore
 from epubforge.gui.app import MainWindow
-from epubforge.i18n import _, detect_system_language, init_i18n, ngettext
+from epubforge.i18n import _DEFAULT_LANGUAGE, _, detect_system_language, init_i18n, ngettext
 
 LOCALE_DIR = Path(__file__).resolve().parents[1] / "src" / "epubforge" / "locale"
 DOMAIN = "epubforge"
@@ -86,6 +87,48 @@ def test_detect_system_language_works_without_pyside6(monkeypatch: pytest.Monkey
     monkeypatch.setattr(builtins, "__import__", fake_import)
     monkeypatch.setattr("epubforge.i18n.locale.getlocale", lambda: ("Polish_Poland", "1250"))
     assert detect_system_language() == "pl"
+
+
+def _no_pyside6(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Wymusza ścieżkę `except ImportError` (fallback na locale systemowy)."""
+    real_import = builtins.__import__
+
+    def fake_import(name: str, *args: Any, **kwargs: Any) -> Any:
+        if name.startswith("PySide6"):
+            raise ImportError("PySide6 intentionally unavailable")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+
+
+def test_detect_system_language_survives_getlocale_valueerror(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """getlocale() rzucający ValueError nie wywraca detekcji — fallback na domyślny.
+
+    Regresja: wcześniej getlocale() był w bloku `except ImportError`, więc jego
+    ValueError omijał sąsiedni `except Exception` i wywracał init_i18n na starcie.
+    """
+
+    def _boom() -> tuple[str | None, str | None]:
+        raise ValueError("unknown locale")
+
+    _no_pyside6(monkeypatch)
+    monkeypatch.setattr("epubforge.i18n.locale.getlocale", _boom)
+
+    assert detect_system_language() == _DEFAULT_LANGUAGE
+
+
+def test_detect_system_language_survives_locale_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """locale.Error z getlocale() też jest łapany (pełna krotka wyjątków)."""
+
+    def _boom() -> tuple[str | None, str | None]:
+        raise locale.Error("locale config broken")
+
+    _no_pyside6(monkeypatch)
+    monkeypatch.setattr("epubforge.i18n.locale.getlocale", _boom)
+
+    assert detect_system_language() == _DEFAULT_LANGUAGE
 
 
 def test_cli_uses_language_from_config(
