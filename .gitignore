@@ -78,9 +78,9 @@ config.json
 error.txt
 output/
 dist-exe/
-# Projekt jest pip-owy (CI: pip install -e); uv.lock ignorujemy, dopóki nie
-# przejdziemy świadomie na uv (wtedy: dodać [tool.uv] i wersjonować lock).
-uv.lock
+# uv.lock jest WERSJONOWANY (REL-3) — źródło reprodukowalnych buildów. CI
+# instaluje z niego przez `uv sync --frozen`; `pip install -e` nadal działa dla
+# lokalnego dev-workflow. NIE ignorujemy locka.
 
 # GUI testing
 *.tcl
