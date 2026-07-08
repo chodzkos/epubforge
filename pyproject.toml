@@ -14,7 +14,7 @@ authors = [
 ]
 keywords = ["epub", "ebook", "kindle", "kfx", "hyphenation", "metadata"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: End Users/Desktop",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
