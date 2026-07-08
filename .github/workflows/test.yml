@@ -68,9 +68,12 @@ jobs:
     - name: Test with pytest (offscreen Qt — wszystkie platformy)
       # PySide6 renderuje bezgłowo przez platformę 'offscreen' — bez xvfb i bez
       # wyłączania testów GUI na Windows/macOS.
+      # Pokrycie liczone na CAŁYM kodzie (GUI włącznie — patrz brak omit w
+      # [tool.coverage.run]). `--cov-fail-under=82` blokuje regres pokrycia
+      # (zmierzone 85% na Linuksie; margines na wariancję między platformami).
       env:
         QT_QPA_PLATFORM: offscreen
-      run: uv run pytest --cov=src/epubforge --cov-report=xml -m "not integration"
+      run: uv run pytest --cov=src/epubforge --cov-report=xml --cov-fail-under=82 -m "not integration"
 
     - name: Upload coverage (Linux + Python 3.12 only)
       if: runner.os == 'Linux' && matrix.python-version == '3.12'
