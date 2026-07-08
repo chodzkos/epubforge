@@ -110,6 +110,12 @@ epubforge toc book.epub --repair --dry-run
 
 # Naprawa EPUB
 epubforge fix book.epub --remove-colors --replace-justify
+epubforge fix a.epub b.epub c.epub --remove-colors --jobs 3
+epubforge fix book.epub --preset reader-friendly --dry-run
+
+# Typografia
+epubforge typo book.epub --lang pl
+epubforge typo book.epub --lang pl --dry-run --diff-full
 
 # Presety CSS (gotowe szablony stylów)
 epubforge presets list                              # lista presetów
@@ -118,6 +124,7 @@ epubforge fix book.epub --preset dark-oled --preset-mode replace  # zastąp istn
 
 # Hyphenacja
 epubforge hyphenate book.epub --lang pl --skip-headers
+epubforge hyphenate *.epub --method css --jobs 4 --dry-run
 
 # Edycja metadanych
 epubforge meta book.epub --title "Nowy tytuł" --author "Jan Kowalski"
@@ -128,6 +135,14 @@ epubforge stats book.epub --report stats.html --top 50
 # Konwersja do KFX
 epubforge kfx book.epub --engine calibre
 ```
+
+### Batch i dry-run w CLI
+
+`fix`, `hyphenate` i `typo` przyjmują wiele plików naraz oraz `--jobs N` do pracy
+równoległej. `--dry-run` wykonuje fixery w pamięci i pokazuje unified diff dla
+plików tekstowych (domyślnie skrócony; `--diff-full` pokazuje całość), a dla
+binarnych wpisów tylko deltę rozmiaru. Presety CSS są aplikowane przez
+`fix --preset`, więc korzystają z tego samego batcha i dry-runu.
 
 ### Presety CSS
 
