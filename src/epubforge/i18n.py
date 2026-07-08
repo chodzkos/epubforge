@@ -60,8 +60,15 @@ def detect_system_language() -> str:
 
         candidate = QLocale.system().name()
     except ImportError:
-        locale_name, _encoding = locale.getlocale()
-        candidate = locale_name or ""
+        # Brak PySide6 → fallback na locale systemowy. getlocale() bywa zawodny
+        # (ValueError/locale.Error przy nietypowej konfiguracji), więc łapiemy go
+        # osobno — inaczej wyjątek z tego handlera ominąłby `except Exception`
+        # poniżej i wywrócił init_i18n na starcie.
+        try:
+            locale_name, _encoding = locale.getlocale()
+            candidate = locale_name or ""
+        except (ValueError, locale.Error):
+            candidate = ""
     except Exception:
         candidate = ""
     return _normalize_language(candidate)
