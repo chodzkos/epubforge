@@ -238,3 +238,52 @@ def test_open_and_close_idempotent(epub_path: Path) -> None:
     assert epub.opf_path == "OEBPS/content.opf"
     epub.close()
     epub.close()  # bezpieczne na zamkniętym
+
+
+def test_roundtrip_preserves_stored_entry_compression(tmp_path: Path) -> None:
+    """Round-trip (open→save) zachowuje ZIP_STORED i date_time niezmienionego wpisu.
+
+    Regresja: _write_epub rekompresował WSZYSTKIE wpisy do DEFLATED i gubił
+    compress_type/date_time — np. już skompresowane obrazy trzymane celowo jako
+    STORED. mimetype ma nadal być pierwszy i STORED (OCF).
+    """
+    container = (
+        b'<?xml version="1.0"?>'
+        b'<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">'
+        b'<rootfiles><rootfile full-path="OEBPS/content.opf" '
+        b'media-type="application/oebps-package+xml"/></rootfiles></container>'
+    )
+    opf = (
+        b'<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" '
+        b'version="3.0"><manifest/><spine/></package>'
+    )
+    # Sekundy parzyste — ZIP przechowuje czas z 2-sekundową rozdzielczością.
+    stored_dt = (2020, 1, 2, 3, 4, 6)
+    img_info = zipfile.ZipInfo("OEBPS/img.bin", date_time=stored_dt)
+    img_info.compress_type = zipfile.ZIP_STORED
+
+    src = tmp_path / "book.epub"
+    with zipfile.ZipFile(src, "w") as zf:
+        zf.writestr("mimetype", b"application/epub+zip", zipfile.ZIP_STORED)
+        zf.writestr("META-INF/container.xml", container, zipfile.ZIP_DEFLATED)
+        zf.writestr("OEBPS/content.opf", opf, zipfile.ZIP_DEFLATED)
+        zf.writestr(img_info, b"already-compressed-payload")  # STORED wg img_info
+
+    dst = tmp_path / "out.epub"
+    with Epub(src) as epub:
+        epub.save(dst)
+
+    with zipfile.ZipFile(dst) as zf:
+        infos = zf.infolist()
+        by_name = {info.filename: info for info in infos}
+        # OCF: mimetype pierwszy i bez kompresji.
+        assert infos[0].filename == "mimetype"
+        assert infos[0].compress_type == zipfile.ZIP_STORED
+        # Niezmieniony wpis STORED zachowuje tryb kompresji i date_time.
+        img = by_name["OEBPS/img.bin"]
+        assert img.compress_type == zipfile.ZIP_STORED
+        assert img.date_time == stored_dt
+        # Zwykły wpis DEFLATED pozostaje skompresowany.
+        assert by_name["OEBPS/content.opf"].compress_type == zipfile.ZIP_DEFLATED
+        # Treść nienaruszona.
+        assert zf.read("OEBPS/img.bin") == b"already-compressed-payload"
