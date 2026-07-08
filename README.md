@@ -51,7 +51,7 @@
 - **🔎 Inspektor CSS** — lista reguł arkusza z podglądem na żywo i edycją reguły (podgląd przybliżony)
 - **✅ Walidacja EpubCheck** — raport błędów/ostrzeżeń EPUB; dwuklik błędu skacze do linii w edytorze (wymaga Javy + epubcheck.jar)
 - **📑 Spis treści** — generowanie z nagłówków (nav.xhtml + toc.ncx), edytor drzewa z drag&drop, wykrywanie i naprawa martwych wpisów
-- **📊 Statystyki** — słowa, szac. strony, czas czytania, język i top-słowa + samowystarczalny raport HTML (wykrywanie języka: `pip install epubforge[stats]`)
+- **📊 Statystyki** — słowa, szac. strony, czas czytania, język i top-słowa + samowystarczalny raport HTML (wykrywanie języka: `pip install ".[stats]"`)
 - **🏷️ Metadata** — pełna edycja Dublin Core + seria/tom (Calibre i EPUB 3)
 - **🔍 Auto-detekcja** — Pandoc, Calibre, Sigil, Kindle Previewer, kindlegen
 
@@ -59,10 +59,9 @@
 
 ## 🚀 Quick Start
 
-### Z PyPI (po publikacji na PyPI)
-```bash
-pip install epubforge
-```
+> **Uwaga:** EpubForge nie jest jeszcze publikowany na PyPI (zależy m.in. od
+> `chodzkos-gui-kit` z gita), więc `pip install epubforge` na razie **nie
+> działa**. Instaluj ze źródeł albo pobierz build dla Windows (niżej).
 
 ### Ze źródeł
 ```bash
@@ -220,17 +219,6 @@ python build/compile_locales.py
 
 ---
 
-## 📸 Zrzuty ekranu
-
-<!-- TODO: dodać zrzuty ekranu GUI (motyw jasny i ciemny). -->
-> _Zrzuty ekranu zostaną dodane._
-
-| Motyw jasny | Motyw ciemny |
-|---|---|
-| _(placeholder)_ | _(placeholder)_ |
-
----
-
 ## 📚 Dokumentacja
 
 - [Przewodnik użytkownika](docs/user-guide.md) — instalacja, GUI, CLI krok po kroku
@@ -276,7 +264,7 @@ python build/compile_locales.py
   - [Sigil](https://sigil-ebook.com) — edytor EPUB
   - [Kindle Previewer 3](https://www.amazon.com/gp/feature.html?ie=UTF8&docId=1000765261) — KFX (experimental)
   - [Temurin JRE 17+](https://adoptium.net/) + [EpubCheck 5.x](https://github.com/w3c/epubcheck/releases) — walidacja EPUB (`epubforge check` / zakładka **Walidacja**); rozpakuj `epubcheck.jar` do `<config>/epubcheck/epubcheck.jar` lub wskaż go w GUI
-  - `pip install epubforge[stats]` — wykrywanie języka w statystykach (langdetect); bez tego język brany jest z metadanych
+  - `pip install ".[stats]"` — wykrywanie języka w statystykach (langdetect); bez tego język brany jest z metadanych
 
 ### Do developmentu
 - Python 3.10+
