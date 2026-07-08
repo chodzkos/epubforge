@@ -7,6 +7,7 @@ prawdziwych binariów.
 from __future__ import annotations
 
 import importlib
+import shutil
 from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
@@ -19,6 +20,8 @@ from epubforge.core.detection import Tool
 from epubforge.core.exceptions import ConversionError, ConverterNotFoundError
 
 mobi_converter = importlib.import_module("epubforge.converters.to_mobi")
+
+FIXTURE = Path(__file__).parent / "fixtures" / "sample.epub"
 
 
 def _tool(name: str, path: str) -> Tool:
@@ -201,6 +204,34 @@ def test_kindlegen_required_when_missing(tmp_path: Path, monkeypatch: pytest.Mon
             tmp_path / "b.mobi",
             MobiOptions(engine="kindlegen", fix_epub_first=False),
         )
+
+
+def test_fix_epub_first_does_not_mutate_source(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """fix_epub_first pracuje na kopii — źródło nietknięte i bez ``.bak`` obok."""
+    source = tmp_path / "book.epub"
+    shutil.copy2(FIXTURE, source)
+    original = source.read_bytes()
+
+    calls: list[tuple[list[str], dict[str, object]]] = []
+    monkeypatch.setattr(
+        mobi_converter.Tools,
+        "calibre_ebook_convert",
+        staticmethod(lambda: _tool("calibre_ebook_convert", "/bin/ebook-convert")),
+    )
+    monkeypatch.setattr(mobi_converter.subprocess, "run", _fake_run(calls))
+
+    target = tmp_path / "out" / "book.mobi"
+    to_mobi(source, target, MobiOptions(engine="calibre", fix_epub_first=True))
+
+    # Wejściowy plik użytkownika nietknięty i bez backupu obok niego.
+    assert source.read_bytes() == original
+    assert not (tmp_path / "book.epub.bak").exists()
+    # Konwersja dostała ścieżkę kopii (w katalogu tymczasowym), nie oryginału.
+    convert_source = Path(calls[0][0][1])
+    assert convert_source != source
+    assert convert_source.name == "book.epub"
 
 
 def test_cli_mobi_invokes_converter(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -7,10 +7,12 @@ bardziej wrażliwy na formatowanie EPUB.
 
 from __future__ import annotations
 
+import contextlib
 import shutil
 import subprocess
 import sys
 import tempfile
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -38,6 +40,8 @@ class KfxOptions:
         engine: ``auto`` wybiera Calibre, jeśli wykryto wtyczkę KFX Output;
             w przeciwnym razie używa eksperymentalnego Kindle Previewer 3.
         fix_epub_first: czy przed konwersją uruchomić podstawowy CSS fixer.
+            Fixer działa na KOPII źródła w katalogu tymczasowym, więc wejściowy
+            plik EPUB użytkownika NIE jest modyfikowany (i nie powstaje ``.bak``).
     """
 
     engine: KfxEngine = "auto"
@@ -61,26 +65,44 @@ def to_kfx(
         ConversionError: gdy subprocess zwróci błąd lub KP3 nie utworzy pliku KFX.
     """
     actual_options = options if options is not None else KfxOptions()
+    source = Path(source)
     target_dir = Path(target_dir)
     target_dir.mkdir(parents=True, exist_ok=True)
     target = target_dir / f"{source.stem}.kfx"
 
-    if actual_options.fix_epub_first:
-        _fix_epub(source)
+    with contextlib.ExitStack() as stack:
+        conv_source = source
+        if actual_options.fix_epub_first:
+            conv_source = stack.enter_context(_fix_epub(source))
 
-    engine, tool = _resolve_engine(actual_options.engine)
-    if engine == "calibre":
-        log = _convert_with_calibre(tool, source, target)
-    else:
-        log = _convert_with_kindle_previewer(tool, source, target)
+        engine, tool = _resolve_engine(actual_options.engine)
+        if engine == "calibre":
+            log = _convert_with_calibre(tool, conv_source, target)
+        else:
+            log = _convert_with_kindle_previewer(tool, conv_source, target)
     return ConversionResult(success=True, output_path=target, log=log, engine=engine)
 
 
-def _fix_epub(source: Path) -> None:
-    """Uruchamia podstawowy CSS fixer przed konwersją."""
-    with Epub(source) as epub:
-        fix_css(epub, CssFixOptions())
-        epub.save()
+@contextlib.contextmanager
+def _fix_epub(source: Path) -> Iterator[Path]:
+    """Uruchamia CSS fixer na KOPII źródła i udostępnia ją do konwersji.
+
+    CSS fixer utrwala zmiany przez :meth:`Epub.save`, które bez argumentu
+    NADPISUJE otwarty plik i tworzy obok kopię ``.bak``. Dlatego kopiujemy EPUB
+    do katalogu tymczasowego i poprawiamy kopię — wejściowy plik użytkownika
+    pozostaje nietknięty. Katalog tymczasowy (wraz z ``.bak`` kopii) jest usuwany
+    po wyjściu z kontekstu, czyli już po zakończeniu konwersji.
+
+    Yields:
+        Ścieżka do poprawionej kopii EPUB, której należy użyć jako źródła konwersji.
+    """
+    with tempfile.TemporaryDirectory(prefix="epubforge-fix-") as tmp:
+        copy = Path(tmp) / source.name
+        shutil.copy2(source, copy)
+        with Epub(copy) as epub:
+            fix_css(epub, CssFixOptions())
+            epub.save()
+        yield copy
 
 
 def _resolve_engine(engine: KfxEngine) -> tuple[Literal["calibre", "kindle-previewer"], Tool]:
