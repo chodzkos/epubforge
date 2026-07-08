@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import posixpath
-import xml.etree.ElementTree as ET
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,8 +10,10 @@ from typing import Any, Literal, cast
 from urllib.parse import unquote, urldefrag
 
 import tinycss2
+from lxml import etree
 
 from epubforge.core import Epub, ManifestItem
+from epubforge.core._xml_safe import parse_untrusted
 
 JustifyMode = Literal["keep", "left"]
 
@@ -205,7 +206,7 @@ def _font_files(epub: Epub) -> list[str]:
 
 def _remove_font_manifest_items(epub: Epub) -> None:
     """Usuwa z OPF wpisy manifestu prowadzące do plików fontów."""
-    root = ET.fromstring(epub.read_file(epub.opf_path))
+    root = parse_untrusted(epub.read_file(epub.opf_path))
     manifest = root.find(f"{{{_OPF_NS}}}manifest")
     if manifest is None:
         return
@@ -219,7 +220,7 @@ def _remove_font_manifest_items(epub: Epub) -> None:
             manifest.remove(item)
             changed = True
     if changed:
-        epub.write_file(epub.opf_path, ET.tostring(root, encoding="utf-8", xml_declaration=True))
+        epub.write_file(epub.opf_path, etree.tostring(root, encoding="utf-8", xml_declaration=True))
 
 
 def _href_suffix(href: str) -> str:
