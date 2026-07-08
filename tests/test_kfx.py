@@ -7,6 +7,7 @@ w CI.
 from __future__ import annotations
 
 import importlib
+import shutil
 from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
@@ -20,6 +21,8 @@ from epubforge.core.detection import Tool
 from epubforge.core.exceptions import ConversionError, ConverterNotFoundError
 
 kfx_converter = importlib.import_module("epubforge.converters.to_kfx")
+
+FIXTURE = Path(__file__).parent / "fixtures" / "sample.epub"
 
 
 def _tool(name: str, path: str) -> Tool:
@@ -238,10 +241,42 @@ def test_fix_epub_first_runs_before_conversion(
     )
     monkeypatch.setattr(kfx_converter.subprocess, "run", fake_run)
 
+    # _fix_epub kopiuje źródło do katalogu tymczasowego (praca na kopii), więc
+    # plik musi istnieć; FakeEpub i tak nie czyta jego zawartości.
     source = tmp_path / "book.epub"
+    source.write_bytes(b"epub")
     to_kfx(source, tmp_path, KfxOptions(engine="calibre", fix_epub_first=True))
 
+    # Kopia zachowuje nazwę pliku, więc kolejność zdarzeń pozostaje ta sama.
     assert events == ["open", "fix:book.epub:CssFixOptions", "save", "close", "convert"]
+
+
+def test_fix_epub_first_does_not_mutate_source(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """fix_epub_first pracuje na kopii — źródło nietknięte i bez ``.bak`` obok."""
+    source = tmp_path / "book.epub"
+    shutil.copy2(FIXTURE, source)
+    original = source.read_bytes()
+
+    calls: list[tuple[list[str], dict[str, object]]] = []
+    monkeypatch.setattr(kfx_converter.Tools, "calibre_kfx_plugin", staticmethod(lambda: True))
+    monkeypatch.setattr(
+        kfx_converter.Tools,
+        "calibre_ebook_convert",
+        staticmethod(lambda: _tool("calibre_ebook_convert", "/bin/ebook-convert")),
+    )
+    monkeypatch.setattr(kfx_converter.subprocess, "run", _fake_run(calls))
+
+    to_kfx(source, tmp_path / "out", KfxOptions(engine="calibre", fix_epub_first=True))
+
+    # Wejściowy plik użytkownika nietknięty i bez backupu obok niego.
+    assert source.read_bytes() == original
+    assert not (tmp_path / "book.epub.bak").exists()
+    # Konwersja dostała ścieżkę kopii (w katalogu tymczasowym), nie oryginału.
+    convert_source = Path(calls[0][0][1])
+    assert convert_source != source
+    assert convert_source.name == "book.epub"
 
 
 def test_cli_kfx_subcommand(
