@@ -45,6 +45,7 @@
 - **🔄 Konwersja** TXT / DOCX / HTML / MD / ODT / RTF / PDF → EPUB
 - **📚 Eksport Kindle** — EPUB → KFX / MOBI / AZW3 (Calibre zalecane; KP3/kindlegen opcjonalnie)
 - **✂️ Hyphenation** — dzielenie wyrazów dla 50+ języków
+- **🇵🇱 Typografia** — cudzysłowy typograficzne (pl/en/de), pauzy w dialogach, wielokropek, twarde spacje po sierotach
 - **🎨 CSS Fixer** — czyszczenie kolorów, fontów, justify, marginesy
 - **🎨 Presety CSS** — wbudowane szablony stylów + import własnych (dołącz / zastąp)
 - **📝 Edytor wewnętrzny** — przegląd i szybka edycja plików w EPUB z podświetlaniem XML/CSS, przybliżony podgląd HTML (Kod ⇄ Podgląd) + handoff do Sigil/Calibre
@@ -111,6 +112,11 @@ epubforge toc book.epub --repair --dry-run
 # Naprawa EPUB
 epubforge fix book.epub --remove-colors --replace-justify
 
+# Typografia (cudzysłowy, pauzy, wielokropek, twarde spacje)
+epubforge typo book.epub --lang pl                   # pełna typografia PL
+epubforge typo book.epub --lang en --no-nbsp-letters # wariant EN bez sierot
+epubforge typo book.epub --nbsp-numbers              # dołóż twarde spacje przy liczbach (10 km)
+
 # Presety CSS (gotowe szablony stylów)
 epubforge presets list                              # lista presetów
 epubforge fix book.epub --preset reader-friendly    # dołącz preset
@@ -148,7 +154,10 @@ Własne presety dodasz przez `Importuj własny…` w GUI (zakładka **Fixer**) �
 
 ```python
 from epubforge import Epub
-from epubforge.fixers import fix_css, hyphenate, CssFixOptions, HyphenationOptions
+from epubforge.fixers import (
+    fix_css, hyphenate, fix_typography,
+    CssFixOptions, HyphenationOptions, TypographyOptions,
+)
 
 with Epub("book.epub") as ebook:
     # Edycja metadanych
@@ -166,6 +175,10 @@ with Epub("book.epub") as ebook:
 
     # Hyphenacja
     hyphenate(ebook, HyphenationOptions(language="pl"))
+
+    # Typografia (raport: liczba podmian per reguła i plik)
+    report = fix_typography(ebook, TypographyOptions(language="pl"))
+    print(report.total_changes)
 
     # Preset CSS
     from epubforge.fixers import apply_preset, get_preset

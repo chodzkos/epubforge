@@ -6,6 +6,12 @@ Lista funkcji do rozważenia **po** zakończeniu wersji 1.0. Każda funkcja moż
 
 ## 🚀 Priorytet wysoki
 
+### F0. Fixer typografii polskiej ✅ zrealizowane
+- Cudzysłowy typograficzne dobierane językiem (pl/en/de), pauzy w dialogach i wtrąceniach,
+  wielokropek `…`, twarde spacje po polskich sierotach (a/i/o/u/w/z) i opcjonalnie przy liczbach
+- Biblioteka (`fix_typography`), CLI (`epubforge typo`) i sekcja **Typografia** w zakładce Fixer
+- → wydane w v2.1 (Etap 16), zob. `docs/ROADMAP-epubforge-v3.md`
+
 ### F1. Wielojęzyczność interfejsu (i18n)
 - Zewnętrzne pliki `.po` / `.mo` (gettext) dla PL/EN/DE
 - Auto-detekcja języka systemu

@@ -64,8 +64,11 @@ motywu, „O programie") i zakładki robocze:
   potwierdzenia (konwersja eksperymentalna). Formaty Kindle (MOBI/AZW3/AZW/PRC)
   wymuszają silnik Calibre; pliki zabezpieczone **DRM** są odrzucane ostrzeżeniem
   — EpubForge nie usuwa zabezpieczeń.
-- **Fixer** — hyphenacja (język, metoda soft-hyphen/CSS) i normalizacja CSS
-  (usuń kolory/fonty, reset, justify→lewo, margines). Sekcja **Preset CSS** dołącza
+- **Fixer** — hyphenacja (język, metoda soft-hyphen/CSS), **Typografia** i normalizacja CSS
+  (usuń kolory/fonty, reset, justify→lewo, margines). Sekcja **Typografia** poprawia
+  mikrotypografię tekstu: cudzysłowy typograficzne dobierane językiem (dropdown pl/en/de),
+  pauzy w dialogach i wtrąceniach, wielokropek `…` oraz twarde spacje po polskich sierotach
+  (a/i/o/u/w/z); opcjonalnie twarde spacje przy liczbach z jednostką. Sekcja **Preset CSS** dołącza
   gotowy szablon stylów (Dołącz/Zastąp), z możliwością **Importuj własny…** (plik
   `.css` trafia do katalogu presetów). Naprawa działa **w miejscu**.
 - **Eksport Kindle** — wybierz format (KFX / MOBI / AZW3) i silnik, opcjonalnie napraw
@@ -135,6 +138,11 @@ epubforge toc book.epub --repair --dry-run
 # Naprawa EPUB (hyphenacja + CSS)
 epubforge fix book.epub --remove-colors --replace-justify
 epubforge hyphenate book.epub --lang pl --method soft-hyphen --skip-headers
+
+# Typografia (cudzysłowy, pauzy, wielokropek, twarde spacje)
+epubforge typo book.epub --lang pl                 # pełna typografia PL
+epubforge typo book.epub --lang de --no-nbsp-letters   # cudzysłowy DE, bez sierot
+epubforge typo book.epub --no-dashes --nbsp-numbers    # bez pauz, ale twarde spacje przy liczbach
 
 # Presety CSS — gotowe szablony stylów
 epubforge presets list                            # lista dostępnych presetów
