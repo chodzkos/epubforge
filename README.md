@@ -12,7 +12,9 @@
 
 ## ✅ Status projektu
 
-> **Wersja 1.0 — wszystkie funkcje z [ROADMAP.md](ROADMAP.md) ukończone.**
+> **Wersja 2.0.0 — wszystkie funkcje z [ROADMAP.md](ROADMAP.md) ukończone.**
+> (2.0 = migracja GUI na PySide6 + wydzielenie wspólnego rdzenia do
+> [chodzkos-gui-kit](https://github.com/chodzkos/gui-kit); pełna historia w [CHANGELOG.md](CHANGELOG.md)).
 
 | Funkcja | Status |
 |---|---|
@@ -57,7 +59,7 @@
 
 ## 🚀 Quick Start
 
-### Z PyPI (po wydaniu v1.0)
+### Z PyPI (po publikacji na PyPI)
 ```bash
 pip install epubforge
 ```
