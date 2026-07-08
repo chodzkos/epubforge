@@ -20,6 +20,7 @@ from epubforge.cli import (
     presets,
     stats,
     toc,
+    typo,
 )
 from epubforge.core import default_config_path, load_config
 from epubforge.i18n import _, init_i18n
@@ -60,6 +61,7 @@ def main(argv: list[str] | None = None) -> int:
     presets.add_parser(subparsers)
     stats.add_parser(subparsers)
     toc.add_parser(subparsers)
+    typo.add_parser(subparsers)
 
     args = parser.parse_args(argv)
 

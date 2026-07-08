@@ -9,7 +9,7 @@ import pytest
 from pytestqt.qtbot import QtBot
 
 from epubforge.core import Tool
-from epubforge.fixers import CssFixOptions, HyphenationOptions
+from epubforge.fixers import CssFixOptions, HyphenationOptions, TypographyOptions
 from epubforge.gui.tabs import fixer as fixer_module
 from epubforge.gui.tabs.fixer import FixerTab, _run_fix_worker
 
@@ -102,8 +102,9 @@ def test_fixer_run_starts_worker(
     fn, args, _kwargs = fake_worker.captured[-1]  # type: ignore[attr-defined]
     assert fn is _run_fix_worker
     assert args[0] == [book]
-    assert isinstance(args[1], (HyphenationOptions, type(None)))
-    assert isinstance(args[2], CssFixOptions)
+    assert isinstance(args[1], (TypographyOptions, type(None)))
+    assert isinstance(args[2], (HyphenationOptions, type(None)))
+    assert isinstance(args[3], CssFixOptions)
 
 
 def test_fixer_preview_uses_calibre_viewer(
@@ -155,6 +156,7 @@ def test_run_fix_worker_calls_fixers(tmp_path: Path, monkeypatch: pytest.MonkeyP
         lambda text, level: None,
         lambda current, total_: None,
         [fixed],
+        None,
         HyphenationOptions(),
         CssFixOptions(),
         None,

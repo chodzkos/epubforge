@@ -137,6 +137,10 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101"]  # asserts dozwolone w testach
+# Fixer typografii operuje na „dwuznacznych" znakach (typograficzne cudzysłowy,
+# pauzy, twarda spacja) — to jego domena, więc RUF001/002/003 tu nie mają sensu.
+"src/epubforge/fixers/typography.py" = ["RUF001", "RUF002", "RUF003"]
+"tests/test_typography.py" = ["RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.format]
 quote-style = "double"
