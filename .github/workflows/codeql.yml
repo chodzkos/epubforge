@@ -1,0 +1,43 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Cotygodniowy skan (poniedziałek) — łapie podatności w kodzie/wzorcach, które
+    # ujawniły się między pushami (nowe reguły CodeQL). Off-minute, by nie kumulować
+    # startów z innymi repozytoriami.
+    - cron: '27 4 * * 1'
+
+# CodeQL zapisuje wyniki do zakładki Security (Code scanning) — stąd
+# security-events: write; reszta uprawnień tylko-do-odczytu.
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+# Nowy push na tę samą gałąź anuluje wcześniejszy skan (spójnie z test.yml).
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze Python
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@e5d2f324924c57b6cabef9bdd7a1c85d62a89be2  # v3.37.0
+      with:
+        languages: python
+
+    # Python jest interpretowany — CodeQL ekstrahuje kod bez kroku budowania.
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@e5d2f324924c57b6cabef9bdd7a1c85d62a89be2  # v3.37.0
+      with:
+        category: "/language:python"
