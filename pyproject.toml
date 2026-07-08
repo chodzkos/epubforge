@@ -103,6 +103,15 @@ packages = ["src/epubforge"]
 "src/epubforge/fixers/presets" = "epubforge/fixers/presets"
 "src/epubforge/stats_stopwords" = "epubforge/stats_stopwords"
 
+# ── uv (reprodukowalne buildy, REL-3) ───────────────────────────────────────────
+# `uv.lock` (wersjonowany) jest źródłem prawdy o wersjach: przypina wszystkie
+# zależności — w tym git-referencję chodzkos-gui-kit (po commicie) i transitive
+# z hashami. CI instaluje z locka przez `uv sync --frozen`, więc artefakty (.exe)
+# i testy powstają z tych samych wersji. `pip install -e ".[dev,gui]"` nadal działa
+# dla lokalnego dev-workflow (lock jest addytywny, pip go ignoruje).
+[tool.uv]
+required-version = ">=0.8"
+
 # ── Ruff (linter + formatter) ──────────────────────────────────────────────────
 [tool.ruff]
 line-length = 100
