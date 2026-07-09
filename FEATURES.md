@@ -33,11 +33,16 @@ Lista funkcji do rozważenia **po** zakończeniu wersji 1.0. Każda funkcja moż
 - **Estymacja:** 12-16 godzin
 - → zaplanowane, zob. ROADMAP_FEATURES_v1.1.md
 
-### F4. Batch processing z presetami
-- Zapisywanie zestawów ustawień jako "preset" (np. "Mój standard PL")
-- Aplikacja preset do wielu plików naraz
-- Zapamiętane w `config.json`
-- **Estymacja:** 4 godziny
+### F4. Batch processing i receptury TOML ✅ zrealizowane
+- Batch w CLI dla `fix`, `hyphenate`, `typo`: wiele plików, deduplikacja, `--jobs N`
+  i `--dry-run` z unified diffem
+- Receptury TOML (`epubforge run`) jako zapisany pipeline: fixery na jednym otwartym
+  EPUB-ie, jeden zapis, potem opcjonalny eksport do MOBI/KFX
+- Wbudowane receptury `kindle-pl` i `czytnik-epub`; własne pliki w
+  `config_dir()/recipes/*.toml` przykrywają wbudowane po nazwie
+- GUI: dialog „Uruchom recepturę…” w zakładce Fixer, z dropdownem receptur,
+  FileList i logiem Workera
+- → wydane w v2.1 (Etapy 17-18), zob. `docs/ROADMAP-epubforge-v3.md`
 
 ### F5. Linux i macOS .deb/.dmg
 - GitHub Actions matrix: windows + ubuntu + macos

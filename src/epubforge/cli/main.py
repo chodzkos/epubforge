@@ -19,6 +19,7 @@ from epubforge.cli import (
     meta,
     mobi,
     presets,
+    run,
     stats,
     toc,
     typo,
@@ -63,6 +64,7 @@ def main(argv: list[str] | None = None) -> int:
     meta.add_parser(subparsers)
     mobi.add_parser(subparsers)
     presets.add_parser(subparsers)
+    run.add_parser(subparsers)
     stats.add_parser(subparsers)
     toc.add_parser(subparsers)
     typo.add_parser(subparsers)

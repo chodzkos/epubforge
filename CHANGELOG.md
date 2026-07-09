@@ -8,6 +8,15 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Added
+- **Receptury TOML (pipeline)** — nowy moduł `epubforge.recipes` z jawnym
+  rejestrem kroków (`fix_css`, `typography`, `hyphenate`, `apply_preset`,
+  `to_mobi`, `to_kfx`), walidacją nieznanych operacji/opcji i wbudowanymi
+  recepturami `kindle-pl` oraz `czytnik-epub`. Kroki fixerów działają na jednym
+  otwartym EPUB-ie i zapisują plik raz; kroki eksportu pracują na zapisanym pliku
+  bez mutowania wejścia. CLI dostało `epubforge run <nazwa|ścieżka.toml> pliki...`
+  z `--jobs`, `--out-dir`, `--list` i `--dry-run` (dry-run obejmuje fazę fixerów,
+  eksport jest pomijany z adnotacją). GUI dostało dialog **„Uruchom recepturę…”**
+  w zakładce Fixer: dropdown receptur, FileList i log Workera.
 - **Batch i dry-run w CLI fixerów** — `fix`, `hyphenate` i `typo` przyjmują teraz
   wiele plików naraz, deduplikują wejście z zachowaniem kolejności i obsługują
   `--jobs N` przez `ProcessPoolExecutor` z tabelą wyników per plik. Dodano

@@ -36,6 +36,7 @@ dependencies = [
     "rich>=13.7",
     # Lokalizacja configu wg konwencji systemu (GUI_STANDARD §8) — core, bez Qt.
     "platformdirs>=4.0",
+    "tomli>=2.0; python_version<'3.11'",
     # Wspólny rdzeń GUI (paleta + config) — warstwa 0 kitu, czysty Python bez Qt;
     # core/CLI używają chodzkos_gui_kit.config i .palette. Tor Qt dokłada extra [qt].
     # Pin po pełnym SHA commitu taga (supply-chain): tag mutowalny, SHA nie. v0.5.0.
@@ -101,6 +102,7 @@ packages = ["src/epubforge"]
 [tool.hatch.build.targets.wheel.force-include]
 "src/epubforge/locale" = "epubforge/locale"
 "src/epubforge/fixers/presets" = "epubforge/fixers/presets"
+"src/epubforge/recipes_builtin" = "epubforge/recipes_builtin"
 "src/epubforge/stats_stopwords" = "epubforge/stats_stopwords"
 
 # ── uv (reprodukowalne buildy, REL-3) ───────────────────────────────────────────
@@ -159,6 +161,7 @@ module = [
     "pyphen",
     "tinycss2",
     "langdetect",
+    "tomli",
 ]
 ignore_missing_imports = true
 
