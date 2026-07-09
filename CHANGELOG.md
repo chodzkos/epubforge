@@ -8,6 +8,19 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Added
+- **Optymalizacja obrazów** (Etap 20 roadmapy v3) — nowy fixer
+  `epubforge.fixers.optimize_images` (`ImageFixOptions`, `ImageReport`) odchudzający
+  EPUB-y pod czytniki e-ink: skalowanie do zadanego dłuższego boku, rekompresja
+  JPEG/PNG, opcjonalna skala szarości i usuwanie EXIF/ICC. Format pliku nigdy się
+  nie zmienia (jpg→jpg, png→png), zapis następuje tylko gdy wynik jest mniejszy
+  (idempotentność), okładka jest rozpoznawana (EPUB 3 `properties="cover-image"` /
+  EPUB 2 `<meta name="cover">`) i domyślnie pomijana, PNG z alfą zachowuje
+  przezroczystość, paleta zostaje paletą, a SVG jest pomijane. Pillow importowane
+  leniwie przez nowy extra `[images]` — brak biblioteki daje czytelny komunikat.
+  - CLI: `epubforge fix --optimize-images [--max-px N] [--jpeg-quality Q] [--grayscale]`
+    (działa z batch `--jobs` i `--dry-run` — pliki binarne pokazują deltę rozmiaru).
+  - GUI: sekcja **Obrazy** w zakładce **Fixer** z podsumowaniem „zaoszczędzono X MB (-Y%)".
+  - Receptury: nowy krok `optimize_images` w rejestrze operacji.
 - **Anulowanie i postęp długich operacji** (Etap 19 roadmapy v3) — zakładki
   **Konwerter**, **Eksport Kindle** i **Walidacja** dostały przycisk **Anuluj**
   oraz pasek postępu. Konwersje Calibre pokazują realny procent (parsowanie linii

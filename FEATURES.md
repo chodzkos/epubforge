@@ -77,12 +77,11 @@ Lista funkcji do rozważenia **po** zakończeniu wersji 1.0. Każda funkcja moż
 - **Estymacja:** 6-8 godzin
 - → zaplanowane, zob. ROADMAP_FEATURES_v1.1.md
 
-### F9. Automatyczna optymalizacja obrazów
-- Kompresja JPEG/PNG w EPUB
-- Konwersja do WebP (z fallbackiem)
-- Resize dla mobile screens
-- Wybór jakości
-- **Estymacja:** 4-6 godzin
+### F9. Automatyczna optymalizacja obrazów ✅ zrealizowane
+- Kompresja JPEG/PNG w EPUB, skalowanie dłuższego boku, skala szarości (e-ink)
+- Format zachowany (bez WebP), okładka pomijana, EXIF/ICC usuwane
+- Biblioteka (`optimize_images`), CLI (`fix --optimize-images`) i sekcja **Obrazy** w Fixerze
+- → wydane w v2.2 (Etap 20), zob. `docs/ROADMAP-epubforge-v3.md`
 
 ### F10. Spis treści generator
 - Auto-generacja TOC z nagłówków h1-h6

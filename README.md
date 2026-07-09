@@ -48,6 +48,7 @@
 - **🧩 Receptury TOML** — zapisane pipeline'y `fix_css → typography → hyphenate → export` dla CLI i GUI
 - **✂️ Hyphenation** — dzielenie wyrazów dla 50+ języków
 - **🇵🇱 Typografia** — cudzysłowy typograficzne (pl/en/de), pauzy w dialogach, wielokropek, twarde spacje po sierotach
+- **🖼️ Optymalizacja obrazów** — skalowanie, rekompresja JPEG/PNG i skala szarości pod e-ink (`pip install ".[images]"`)
 - **🎨 CSS Fixer** — czyszczenie kolorów, fontów, justify, marginesy
 - **🎨 Presety CSS** — wbudowane szablony stylów + import własnych (dołącz / zastąp)
 - **📝 Edytor wewnętrzny** — przegląd i szybka edycja plików w EPUB z podświetlaniem XML/CSS, przybliżony podgląd HTML (Kod ⇄ Podgląd) + handoff do Sigil/Calibre
@@ -116,6 +117,10 @@ epubforge fix book.epub --remove-colors --replace-justify
 epubforge fix a.epub b.epub c.epub --remove-colors --jobs 3
 epubforge fix book.epub --preset reader-friendly --dry-run
 
+# Optymalizacja obrazów (odchudza EPUB pod e-ink; wymaga ".[images]")
+epubforge fix book.epub --optimize-images
+epubforge fix book.epub --optimize-images --max-px 1000 --jpeg-quality 70 --grayscale
+
 # Typografia
 epubforge typo book.epub --lang pl
 epubforge typo book.epub --lang pl --dry-run --diff-full
@@ -167,8 +172,9 @@ na zapisanym pliku. Wbudowane receptury:
 - `kindle-pl` — CSS fixer, typografia PL, hyphenacja PL, eksport do MOBI.
 - `czytnik-epub` — CSS fixer, typografia PL i preset `reader-friendly`.
 
-Własne receptury trzymaj w `config_dir()/recipes/*.toml`; receptura użytkownika
-o tej samej nazwie przykrywa wbudowaną.
+Dostępne kroki fixerów: `fix_css`, `typography`, `hyphenate`, `optimize_images`,
+`apply_preset`; kroki eksportu: `to_mobi`, `to_kfx`. Własne receptury trzymaj w
+`config_dir()/recipes/*.toml`; receptura użytkownika o tej samej nazwie przykrywa wbudowaną.
 
 ```toml
 name = "kindle-pl"
@@ -217,8 +223,8 @@ Własne presety dodasz przez `Importuj własny…` w GUI (zakładka **Fixer**) �
 ```python
 from epubforge import Epub
 from epubforge.fixers import (
-    fix_css, hyphenate, fix_typography,
-    CssFixOptions, HyphenationOptions, TypographyOptions,
+    fix_css, hyphenate, fix_typography, optimize_images,
+    CssFixOptions, HyphenationOptions, TypographyOptions, ImageFixOptions,
 )
 
 with Epub("book.epub") as ebook:
@@ -241,6 +247,10 @@ with Epub("book.epub") as ebook:
     # Typografia (raport: liczba podmian per reguła i plik)
     report = fix_typography(ebook, TypographyOptions(language="pl"))
     print(report.total_changes)
+
+    # Optymalizacja obrazów (wymaga ".[images]"; raport oszczędności)
+    images = optimize_images(ebook, ImageFixOptions(max_px=1200, jpeg_quality=75))
+    print(images.saved_bytes, images.saved_percent)
 
     # Preset CSS
     from epubforge.fixers import apply_preset, get_preset

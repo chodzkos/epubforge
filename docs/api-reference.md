@@ -101,6 +101,32 @@ with Epub("book.epub") as ebook:
 
 ---
 
+## Fixer — optymalizacja obrazów
+
+```python
+from epubforge import Epub
+from epubforge.fixers import ImageFixOptions, optimize_images  # wymaga epubforge[images]
+
+with Epub("book.epub") as ebook:
+    report = optimize_images(ebook, ImageFixOptions(
+        max_px=1200,            # dłuższy bok; None = bez skalowania
+        jpeg_quality=75,
+        grayscale=False,        # pod e-ink
+        strip_metadata=True,    # EXIF/ICC out
+        skip_cover=True,        # okładkę zostaw w pełnej jakości
+    ))
+    ebook.save()
+
+print(report.saved_bytes, report.saved_percent)   # np. 1048576, 63.2
+print(report.changed_files)                        # ścieżki zmniejszonych obrazów
+```
+
+Format pliku nigdy się nie zmienia (jpg→jpg, png→png), a zapis następuje tylko gdy
+wynik jest mniejszy — drugi przebieg nie wprowadza zmian. Brak Pillow zgłasza
+`ImageOptimizationError` z instrukcją instalacji.
+
+---
+
 ## Fixer — typografia
 
 ```python
