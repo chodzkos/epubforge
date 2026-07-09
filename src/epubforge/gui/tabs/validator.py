@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QHBoxLayout,
     QLabel,
+    QProgressBar,
     QPushButton,
     QStackedWidget,
     QTreeWidget,
@@ -38,7 +39,7 @@ from epubforge.gui.widgets import (
     file_list_texts,
     make_scrollable,
 )
-from epubforge.gui.workers import EmitLine, EmitProgress, Worker
+from epubforge.gui.workers import EmitLine, EmitProgress, ShouldCancel, Worker
 from epubforge.i18n import _, ngettext
 from epubforge.validators import Severity, ValidationMessage, ValidationReport, run_epubcheck
 
@@ -119,7 +120,17 @@ class ValidatorTab(QWidget):
         self.check_button.setToolTip(_("Uruchom EpubCheck na zaznaczonym pliku"))
         self.check_button.clicked.connect(self._run_check)
         toolbar.addWidget(self.check_button)
-        toolbar.addStretch(1)
+        self.cancel_button = QPushButton(_("Anuluj"))
+        self.cancel_button.setToolTip(_("Przerywa trwającą walidację (kończy proces Javy)"))
+        self.cancel_button.setEnabled(False)
+        self.cancel_button.clicked.connect(self._cancel)
+        toolbar.addWidget(self.cancel_button)
+        # Pasek postępu: EpubCheck nie raportuje procentów, więc w trakcie pracy
+        # pokazujemy tryb nieokreślony (range 0,0 = „busy").
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 1)
+        self.progress_bar.setValue(0)
+        toolbar.addWidget(self.progress_bar, stretch=1)
         self.export_button = QPushButton(_("Eksport…"))
         self.export_button.setToolTip(_("Zapisz raport jako JSON lub HTML"))
         self.export_button.clicked.connect(self._export_report)
@@ -198,6 +209,7 @@ class ValidatorTab(QWidget):
             self._tools_ready() and self.file_list.current_path() is not None and not self._running
         )
         self.check_button.setEnabled(can_check)
+        self.cancel_button.setEnabled(self._running)
         self.export_button.setEnabled(self._report is not None and not self._running)
 
     def _help_html(self) -> str:
@@ -258,16 +270,32 @@ class ValidatorTab(QWidget):
         assert jar is not None and jar.path is not None
 
         self._running = True
+        self._set_busy(True)
         self._refresh_actions()
         self.status_label.setText(_("Walidacja: {name}…").format(name=epub_path.name))
         self._worker = Worker(_run_check_worker, epub_path, java.path, jar.path)
         self._worker.done.connect(self._on_done)
         self._worker.failed.connect(self._on_failed)
+        self._worker.cancelled.connect(self._on_cancelled)
         self._worker.start()
+
+    def _cancel(self) -> None:
+        """Zgłasza anulowanie trwającej walidacji (ubija proces Javy)."""
+        if self._worker is not None and self._running:
+            self.cancel_button.setEnabled(False)
+            self.status_label.setText(_("Anulowanie…"))
+            self._worker.cancel()
+
+    def _set_busy(self, busy: bool) -> None:
+        """Włącza/wyłącza nieokreślony pasek postępu (EpubCheck nie zna procentów)."""
+        self.progress_bar.setRange(0, 0 if busy else 1)
+        if not busy:
+            self.progress_bar.setValue(0)
 
     def _on_done(self, result: object) -> None:
         """Odbiera raport z wątku i wypełnia drzewo."""
         self._running = False
+        self._set_busy(False)
         self._report = cast(ValidationReport, result)
         self._populate_tree()
         self._update_summary()
@@ -279,9 +307,17 @@ class ValidatorTab(QWidget):
         )
         self._refresh_actions()
 
+    def _on_cancelled(self) -> None:
+        """Obsługuje anulowanie walidacji przez użytkownika."""
+        self._running = False
+        self._set_busy(False)
+        self.status_label.setText(_("Anulowano"))
+        self._refresh_actions()
+
     def _on_failed(self, message: str) -> None:
         """Obsługuje błąd techniczny walidacji (timeout, brak JSON itp.)."""
         self._running = False
+        self._set_busy(False)
         self.status_label.setText(_("Walidacja nieudana: {error}").format(error=message))
         self._refresh_actions()
 
@@ -428,13 +464,15 @@ def _location_text(message: ValidationMessage) -> str:
 def _run_check_worker(
     _emit_line: EmitLine,
     _emit_progress: EmitProgress,
+    should_cancel: ShouldCancel,
     epub_path: Path,
     java_path: Path,
     jar_path: Path,
 ) -> ValidationReport:
-    """Uruchamia EpubCheck w wątku roboczym.
+    """Uruchamia EpubCheck w wątku roboczym z możliwością anulowania.
 
     Błędy techniczne (:class:`ValidationError`) propagują się — :class:`Worker`
-    zamienia je na sygnał ``failed`` obsługiwany na pasku statusu.
+    zamienia je na sygnał ``failed`` (albo ``cancelled``, gdy zażądano anulowania)
+    obsługiwany na pasku statusu.
     """
-    return run_epubcheck(epub_path, java_path, jar_path)
+    return run_epubcheck(epub_path, java_path, jar_path, should_cancel=should_cancel)

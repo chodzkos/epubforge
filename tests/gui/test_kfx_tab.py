@@ -127,40 +127,56 @@ def test_kfx_empty_output_passes_none(
 
 
 def test_run_kfx_worker_calls_to_kfx(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Funkcja robocza woła to_kfx dla każdego pliku i liczy sukcesy."""
+    """Funkcja robocza woła strumieniowy to_kfx dla każdego pliku i liczy sukcesy."""
     calls: list[tuple[Path, Path, KfxOptions]] = []
 
-    def fake_to_kfx(source: Path, target_dir: Path, options: KfxOptions) -> ConversionResult:
+    def fake_to_kfx_streaming(
+        source: Path,
+        target_dir: Path,
+        options: KfxOptions,
+        *,
+        on_line: object,
+        on_progress: object = None,
+        should_cancel: object = None,
+    ) -> ConversionResult:
         calls.append((source, target_dir, options))
-        return ConversionResult(True, target_dir / f"{source.stem}.kfx", "done", "calibre")
+        return ConversionResult(True, target_dir / f"{source.stem}.kfx", "", "calibre")
 
-    monkeypatch.setattr(kfx_module, "to_kfx", fake_to_kfx)
+    monkeypatch.setattr(kfx_module, "to_kfx_streaming", fake_to_kfx_streaming)
     book = tmp_path / "book.epub"
     output = tmp_path / "out"
     options = KfxOptions(engine="calibre", fix_epub_first=True)
 
     succeeded, total = _run_kfx_worker(
-        lambda text, level: None, lambda c, t: None, [book], output, options
+        lambda text, level: None, lambda c, t: None, lambda: False, [book], output, options
     )
     assert (succeeded, total) == (1, 1)
     assert calls == [(book, output, options)]
 
 
 def test_run_mobi_worker_calls_to_mobi(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Funkcja robocza MOBI woła to_mobi z celem o właściwym rozszerzeniu."""
+    """Funkcja robocza MOBI woła strumieniowy to_mobi z celem o właściwym rozszerzeniu."""
     calls: list[tuple[Path, Path, MobiOptions]] = []
 
-    def fake_to_mobi(source: Path, target: Path, options: MobiOptions) -> ConversionResult:
+    def fake_to_mobi_streaming(
+        source: Path,
+        target: Path,
+        options: MobiOptions,
+        *,
+        on_line: object,
+        on_progress: object = None,
+        should_cancel: object = None,
+    ) -> ConversionResult:
         calls.append((source, target, options))
-        return ConversionResult(True, target, "done", "calibre")
+        return ConversionResult(True, target, "", "calibre")
 
-    monkeypatch.setattr(kfx_module, "to_mobi", fake_to_mobi)
+    monkeypatch.setattr(kfx_module, "to_mobi_streaming", fake_to_mobi_streaming)
     book = tmp_path / "book.epub"
     output = tmp_path / "out"
     options = MobiOptions(fmt="azw3", engine="calibre", fix_epub_first=True)
 
     succeeded, total = _run_mobi_worker(
-        lambda text, level: None, lambda c, t: None, [book], output, options
+        lambda text, level: None, lambda c, t: None, lambda: False, [book], output, options
     )
     assert (succeeded, total) == (1, 1)
     source, target, opts = calls[0]

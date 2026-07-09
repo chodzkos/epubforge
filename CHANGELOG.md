@@ -8,6 +8,26 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Added
+- **Anulowanie i postęp długich operacji** (Etap 19 roadmapy v3) — zakładki
+  **Konwerter**, **Eksport Kindle** i **Walidacja** dostały przycisk **Anuluj**
+  oraz pasek postępu. Konwersje Calibre pokazują realny procent (parsowanie linii
+  „NN%"), a anulowanie kończy proces silnika (`terminate` → 3 s karencji → `kill`)
+  i zostawia wpis „Anulowano" w logu. Walidacja EpubCheck pokazuje pasek
+  nieokreślony i również daje się przerwać (ubija proces Javy).
+  - Nowy, czysty moduł `epubforge.core.streaming` — `run_subprocess_streaming(...)
+    -> ProcessResult` (kooperacyjne anulowanie sprawdzane także „w ciszy", twardy
+    `timeout`, parser postępu Calibre). `gui.workers` re-eksportuje te symbole, więc
+    konwertery korzystają z nich bez łamania zasady zależności (`core` nie importuje
+    `gui`).
+  - `Worker` (GUI) zyskał `cancel()`, `is_cancelled` i sygnał `cancelled` (anulowanie
+    NIE jest raportowane jako `failed`; **nigdy** nie wołamy `QThread.terminate()`).
+    Trzeci hook `should_cancel` jest przekazywany callable'owi opcjonalnie —
+    wykrywany przez introspekcję sygnatury, więc dotychczasowe workery przyjmujące
+    dwa hooki działają bez zmian.
+  - Strumieniowe warianty konwerterów: `to_epub_streaming`, `to_mobi_streaming`,
+    `to_kfx_streaming` (log na żywo, postęp, anulowanie); `ConversionResult` zyskał
+    pole `cancelled`. `run_epubcheck(..., should_cancel=...)` ma wariant przerywalny.
+    Faza zapisu EPUB (`Epub.save`: tmp → `os.replace`) pozostaje nieprzerywalna.
 - **Receptury TOML (pipeline)** — nowy moduł `epubforge.recipes` z jawnym
   rejestrem kroków (`fix_css`, `typography`, `hyphenate`, `apply_preset`,
   `to_mobi`, `to_kfx`), walidacją nieznanych operacji/opcji i wbudowanymi

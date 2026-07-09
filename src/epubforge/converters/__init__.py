@@ -7,9 +7,10 @@ from epubforge.converters.to_epub import (
     ConversionResult,
     ConvertOptions,
     to_epub,
+    to_epub_streaming,
 )
-from epubforge.converters.to_kfx import KfxOptions, to_kfx
-from epubforge.converters.to_mobi import MobiOptions, to_mobi
+from epubforge.converters.to_kfx import KfxOptions, to_kfx, to_kfx_streaming
+from epubforge.converters.to_mobi import MobiOptions, to_mobi, to_mobi_streaming
 from epubforge.core.exceptions import ConversionError, ConverterNotFoundError
 
 __all__ = [
@@ -23,6 +24,9 @@ __all__ = [
     "MobiOptions",
     "has_kindle_drm",
     "to_epub",
+    "to_epub_streaming",
     "to_kfx",
+    "to_kfx_streaming",
     "to_mobi",
+    "to_mobi_streaming",
 ]

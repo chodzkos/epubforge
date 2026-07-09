@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMessageBox,
+    QProgressBar,
     QPushButton,
     QRadioButton,
     QSplitter,
@@ -26,7 +27,7 @@ from epubforge.converters import (
     SUPPORTED_INPUT_EXTENSIONS,
     ConvertOptions,
     has_kindle_drm,
-    to_epub,
+    to_epub_streaming,
 )
 from epubforge.converters.to_epub import Engine
 from epubforge.core import Metadata
@@ -43,7 +44,7 @@ from epubforge.gui.widgets import (
     make_scrollable,
     path_entry_texts,
 )
-from epubforge.gui.workers import EmitLine, EmitProgress, Worker
+from epubforge.gui.workers import EmitLine, EmitProgress, ShouldCancel, Worker
 from epubforge.i18n import _
 
 # Najczęstsze kody języków dla dropdownu (kolejność = priorytet wyświetlania).
@@ -85,8 +86,14 @@ class ConverterTab(QWidget):
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 2)
 
+        status_row = QHBoxLayout()
         self.status_label = QLabel(_("Dodaj pliki wejściowe"))
-        outer.addWidget(self.status_label)
+        status_row.addWidget(self.status_label)
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setValue(0)
+        status_row.addWidget(self.progress_bar, stretch=1)
+        outer.addLayout(status_row)
         outer.addStretch(1)
 
         root = QVBoxLayout()
@@ -166,6 +173,7 @@ class ConverterTab(QWidget):
         )
         form.addRow(_("Folder wyjściowy"), self.output_entry)
 
+        actions = QHBoxLayout()
         self.convert_button = QPushButton(_("Konwertuj"))
         self.convert_button.setToolTip(
             _(
@@ -174,7 +182,13 @@ class ConverterTab(QWidget):
             )
         )
         self.convert_button.clicked.connect(self._convert)
-        section.content_layout().addWidget(self.convert_button)
+        actions.addWidget(self.convert_button)
+        self.cancel_button = QPushButton(_("Anuluj"))
+        self.cancel_button.setToolTip(_("Przerywa trwającą konwersję (kończy proces silnika)"))
+        self.cancel_button.setEnabled(False)
+        self.cancel_button.clicked.connect(self._cancel)
+        actions.addWidget(self.cancel_button)
+        section.content_layout().addLayout(actions)
 
     def _build_engine_row(self) -> QWidget:
         """Buduje wiersz radiobuttonów wyboru silnika konwersji."""
@@ -273,7 +287,9 @@ class ConverterTab(QWidget):
 
         self._converting = True
         self.convert_button.setEnabled(False)
+        self.cancel_button.setEnabled(True)
         self.log_view.clear()
+        self.progress_bar.setValue(0)
         self._set_status(_("Konwertowanie..."))
 
         remember_output_dir(self.config_data, output)
@@ -283,21 +299,47 @@ class ConverterTab(QWidget):
 
         self._worker = Worker(_run_conversion, files, output_dir, options, engine)
         self._worker.line.connect(self.log_view.append_line)
+        self._worker.progress.connect(self._on_progress)
         self._worker.done.connect(self._finish_conversion)
         self._worker.failed.connect(self._on_failed)
+        self._worker.cancelled.connect(self._on_cancelled)
         self._worker.start()
+
+    def _cancel(self) -> None:
+        """Zgłasza anulowanie trwającej konwersji (kooperacyjne)."""
+        if self._worker is not None and self._converting:
+            self.cancel_button.setEnabled(False)
+            self._set_status(_("Anulowanie…"))
+            self._worker.cancel()
+
+    def _on_progress(self, current: int, total: int) -> None:
+        """Aktualizuje pasek postępu (procent silnika: current/total)."""
+        self.progress_bar.setRange(0, total)
+        self.progress_bar.setValue(current)
+
+    def _reset_after_run(self) -> None:
+        """Przywraca stan przycisków po zakończeniu/przerwaniu pracy."""
+        self._converting = False
+        self.convert_button.setEnabled(True)
+        self.cancel_button.setEnabled(False)
 
     def _finish_conversion(self, result: object) -> None:
         """Aktualizuje UI po zakończeniu konwersji (wątek główny)."""
         succeeded, total = cast(tuple[int, int], result)
-        self._converting = False
-        self.convert_button.setEnabled(True)
+        self._reset_after_run()
+        self.progress_bar.setValue(self.progress_bar.maximum())
         self._set_status(_("Zakończono: {done}/{total} OK").format(done=succeeded, total=total))
+
+    def _on_cancelled(self) -> None:
+        """Obsługuje anulowanie konwersji przez użytkownika."""
+        self._reset_after_run()
+        self.progress_bar.setValue(0)
+        self.log_view.append_line(_("Anulowano"), "warn")
+        self._set_status(_("Anulowano"))
 
     def _on_failed(self, message: str) -> None:
         """Obsługuje nieoczekiwany błąd wątku konwersji."""
-        self._converting = False
-        self.convert_button.setEnabled(True)
+        self._reset_after_run()
         self.log_view.append_line(_("BŁĄD: {message}").format(message=message), "err")
         self._set_status(_("Konwersja przerwana błędem"))
 
@@ -308,28 +350,40 @@ class ConverterTab(QWidget):
 
 def _run_conversion(
     emit_line: EmitLine,
-    _emit_progress: EmitProgress,
+    emit_progress: EmitProgress,
+    should_cancel: ShouldCancel,
     files: list[Path],
     output_dir: Path | None,
     options: ConvertOptions,
     engine: Engine,
 ) -> tuple[int, int]:
-    """Konwertuje pliki po kolei (wątek roboczy) i streamuje log.
+    """Konwertuje pliki po kolei (wątek roboczy), streamuje log i postęp.
 
     Gdy ``output_dir`` jest ``None`` (puste pole), każdy plik trafia obok źródła.
-    Zwraca krotkę ``(udane, łącznie)``.
+    Zwraca krotkę ``(udane, łącznie)``; przerywa pętlę na żądanie ``should_cancel``.
     """
     succeeded = 0
     for source in files:
+        if should_cancel():
+            break
         target = resolve_output_dir(output_dir, source) / f"{source.stem}.epub"
         emit_line(f"→ {source.name} → {target.name}", "cmd")
+        emit_progress(0, 100)
         try:
-            result = to_epub(source, target, options, engine)
+            result = to_epub_streaming(
+                source,
+                target,
+                options,
+                engine,
+                on_line=emit_line,
+                on_progress=emit_progress,
+                should_cancel=should_cancel,
+            )
         except (ConverterNotFoundError, ConversionError) as exc:
             emit_line(_("BŁĄD: {error}").format(error=exc), "err")
             continue
-        if result.log:
-            emit_line(result.log, "info")
+        if result.cancelled:
+            break
         emit_line(_("OK [{engine}]: {name}").format(engine=result.engine, name=target.name), "ok")
         succeeded += 1
     return succeeded, len(files)

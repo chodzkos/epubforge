@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from epubforge.core.exceptions import ValidationError
+from epubforge.core.streaming import CancelCheck, run_subprocess_streaming
 from epubforge.i18n import _
 
 # Flaga ukrywająca okno konsoli na Windows (pułapka #7).
@@ -151,6 +152,7 @@ def run_epubcheck(
     jar: Path,
     *,
     timeout: int = _DEFAULT_TIMEOUT,
+    should_cancel: CancelCheck | None = None,
 ) -> ValidationReport:
     """Uruchamia EpubCheck na pliku EPUB i zwraca sparsowany raport.
 
@@ -159,44 +161,30 @@ def run_epubcheck(
         java: ścieżka do pliku wykonywalnego ``java``.
         jar: ścieżka do ``epubcheck.jar``.
         timeout: maksymalny czas walidacji w sekundach.
+        should_cancel: opcjonalny predykat anulowania. Gdy podany, walidacja biegnie
+            strumieniowo (proces da się ubić); ``None`` = klasyczny ``subprocess.run``
+            (ścieżka CLI/testów, bez zmian zachowania).
 
     Returns:
         :class:`ValidationReport`; ``valid`` odzwierciedla kod wyjścia EpubChecka
         (0 = poprawny). Niepoprawny EPUB to NIE wyjątek.
 
     Raises:
-        ValidationError: timeout, brak raportu JSON lub niepoprawny JSON
-            (z dołączonym fragmentem ``stderr`` procesu).
+        ValidationError: timeout, anulowanie, brak raportu JSON lub niepoprawny JSON.
     """
     with tempfile.TemporaryDirectory(prefix="epubforge-check-") as tmp_dir:
         report_path = Path(tmp_dir) / "report.json"
         # Argumenty listą — bezpieczne dla polskich znaków w ścieżkach (pułapka #3).
         cmd = [str(java), "-jar", str(jar), str(epub_path), "--json", str(report_path)]
         started = time.monotonic()
-        try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=timeout,
-                creationflags=_NO_WINDOW,
-                check=False,
-            )
-        except subprocess.TimeoutExpired as exc:
-            raise ValidationError(
-                _("EpubCheck przekroczył limit czasu ({timeout}s).").format(timeout=timeout)
-            ) from exc
-        except OSError as exc:
-            raise ValidationError(
-                _("Nie udało się uruchomić EpubCheck: {error}").format(error=exc)
-            ) from exc
-
+        if should_cancel is not None:
+            returncode, stderr = _run_cancellable(cmd, timeout, should_cancel)
+        else:
+            returncode, stderr = _run_blocking(cmd, timeout)
         duration = time.monotonic() - started
-        data = _load_report_json(report_path, result.stderr)
+        data = _load_report_json(report_path, stderr)
 
-    report = parse_report(data, epub_path, valid=result.returncode == 0)
+    report = parse_report(data, epub_path, valid=returncode == 0)
     return ValidationReport(
         epub_path=report.epub_path,
         valid=report.valid,
@@ -204,6 +192,54 @@ def run_epubcheck(
         messages=report.messages,
         duration_s=round(duration, 3),
     )
+
+
+def _run_blocking(cmd: list[str], timeout: int) -> tuple[int, str]:
+    """Uruchamia EpubCheck synchronicznie (``subprocess.run``); zwraca ``(kod, stderr)``."""
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+            creationflags=_NO_WINDOW,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise ValidationError(
+            _("EpubCheck przekroczył limit czasu ({timeout}s).").format(timeout=timeout)
+        ) from exc
+    except OSError as exc:
+        raise ValidationError(
+            _("Nie udało się uruchomić EpubCheck: {error}").format(error=exc)
+        ) from exc
+    return result.returncode, result.stderr
+
+
+def _run_cancellable(cmd: list[str], timeout: int, should_cancel: CancelCheck) -> tuple[int, str]:
+    """Uruchamia EpubCheck strumieniowo z możliwością anulowania; zwraca ``(kod, stderr)``.
+
+    Log EpubChecka trafia (przez ``stderr`` scalony ze ``stdout``) do bufora, który
+    zwracamy jako drugi element — służy jako kontekst błędu, tak jak w wariancie
+    synchronicznym.
+    """
+    captured: list[str] = []
+    result = run_subprocess_streaming(
+        cmd,
+        lambda text, _level: captured.append(text),
+        should_cancel=should_cancel,
+        timeout=timeout,
+    )
+    stderr = "\n".join(captured)
+    if result.cancelled:
+        raise ValidationError(_("Walidację anulowano."))
+    if result.timed_out:
+        raise ValidationError(
+            _("EpubCheck przekroczył limit czasu ({timeout}s).").format(timeout=timeout)
+        )
+    return result.returncode, stderr
 
 
 def _load_report_json(report_path: Path, stderr: str) -> dict[str, Any]:

@@ -21,10 +21,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from epubforge.converters._streaming import ProgressSink, run_command_streaming
 from epubforge.converters.to_epub import ConversionResult
 from epubforge.core import Epub
 from epubforge.core.detection import Tool, Tools
 from epubforge.core.exceptions import ConversionError, ConverterNotFoundError
+from epubforge.core.streaming import CancelCheck, LineSink
 from epubforge.fixers import CssFixOptions, fix_css
 
 MobiFormat = Literal["mobi", "azw3"]
@@ -90,6 +92,70 @@ def to_mobi(
         else:
             log = _convert_with_kindlegen(tool, conv_source, target)
     return ConversionResult(success=True, output_path=target, log=log, engine=engine)
+
+
+def to_mobi_streaming(
+    source: Path,
+    target: Path,
+    options: MobiOptions | None = None,
+    *,
+    on_line: LineSink,
+    on_progress: ProgressSink | None = None,
+    should_cancel: CancelCheck | None = None,
+) -> ConversionResult:
+    """Strumieniowy wariant :func:`to_mobi` — log na żywo, postęp i anulowanie."""
+    actual_options = options if options is not None else MobiOptions()
+    source = Path(source)
+    target = Path(target)
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    with contextlib.ExitStack() as stack:
+        conv_source = source
+        if actual_options.fix_epub_first:
+            # NIEPRZERYWALNE: fix_epub robi Epub.save (tmp → os.replace); nie
+            # sprawdzamy tu should_cancel, by nie zostawić pliku w połowie zapisu.
+            conv_source = stack.enter_context(_fix_epub(source))
+
+        engine, tool = _resolve_engine(actual_options.engine)
+        if tool.path is None:
+            raise ConverterNotFoundError(f"Silnik {engine} nie ma ustawionej ścieżki.")
+        if engine == "calibre":
+            command = [str(tool.path), str(conv_source), str(target)]
+            result = run_command_streaming(command, on_line, on_progress, should_cancel)
+            if result.cancelled:
+                return ConversionResult(
+                    success=False, output_path=target, log="", engine=engine, cancelled=True
+                )
+            if result.returncode != 0:
+                raise ConversionError(
+                    f"Konwersja do {target.suffix.lstrip('.')} przez calibre nie powiodła się "
+                    f"(kod wyjścia {result.returncode})."
+                )
+            return ConversionResult(success=True, output_path=target, log="", engine=engine)
+
+        # kindlegen: strumieniujemy log, a wynik przenosimy po zakończeniu.
+        out_name = target.name
+        command = [str(tool.path), str(conv_source), "-o", out_name]
+        result = run_command_streaming(command, on_line, on_progress, should_cancel)
+        if result.cancelled:
+            return ConversionResult(
+                success=False, output_path=target, log="", engine=engine, cancelled=True
+            )
+        _move_kindlegen_output(conv_source, out_name, target)
+        on_line(_KINDLEGEN_NOTE, "warn")
+        return ConversionResult(success=True, output_path=target, log="", engine=engine)
+
+
+def _move_kindlegen_output(source: Path, out_name: str, target: Path) -> None:
+    """Przenosi plik utworzony przez kindlegen obok źródła do celu (sekcja atomowa)."""
+    produced = source.parent / out_name
+    if not produced.is_file():
+        found = sorted(source.parent.rglob(out_name))
+        if not found:
+            raise ConversionError(f"kindlegen nie utworzył pliku {out_name}.")
+        produced = found[0]
+    if produced.resolve() != target.resolve():
+        shutil.move(str(produced), str(target))
 
 
 @contextlib.contextmanager
