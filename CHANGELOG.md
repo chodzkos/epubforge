@@ -8,6 +8,13 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Added
+- **Batch i dry-run w CLI fixerów** — `fix`, `hyphenate` i `typo` przyjmują teraz
+  wiele plików naraz, deduplikują wejście z zachowaniem kolejności i obsługują
+  `--jobs N` przez `ProcessPoolExecutor` z tabelą wyników per plik. Dodano
+  `--dry-run` z unified diffem zmian tekstowych (limit 40 linii na plik,
+  `--diff-full` pokazuje całość) oraz deltą rozmiaru dla wpisów binarnych.
+  Presety CSS pozostają aplikowane przez `fix --preset`, więc korzystają z tego
+  samego batcha i dry-runu.
 - **Fixer typografii polskiej** (`epubforge.fixers.typography` — `fix_typography`, `TypographyOptions`, `TypographyReport`) — poprawa mikrotypografii tekstu w EPUB, funkcja-wyróżnik (Etap 16 roadmapy v3). Reguły (każda za osobną flagą): cudzysłowy typograficzne dobierane językiem (pl `„…"`, en `"…"`, de `„…"`), pauzy w dialogach i wtrąceniach (łączniki wewnątrz słów jak *biało-czerwony* bez zmian), wielokropek `...` → `…`, twarde spacje po polskich sierotach (a/i/o/u/w/z) oraz opcjonalnie między liczbą a jednostką (`10 km` — domyślnie OFF). Parsowanie utwardzonym parserem (ochrona XXE), serializacja zachowuje DOCTYPE i deklarację XML; `code`/`pre`, atrybuty i komentarze nietknięte; parowanie cudzysłowów niesione przez granice tagów inline (`<em>`); reguły idempotentne (drugi przebieg = 0 podmian). `TypographyReport` podaje liczbę podmian per reguła, per plik i sumarycznie.
 - **CLI `epubforge typo`** — `epubforge typo book.epub --lang pl` z flagami `--no-quotes/--no-dashes/--no-ellipsis/--no-nbsp-letters` oraz `--nbsp-numbers`; raport podmian per reguła.
 - **Sekcja „Typografia" w zakładce Fixer** (GUI) — checkboxy reguł + dropdown języka (pl/en/de), uruchamiana przez `Worker` jak pozostałe fixery, liczby podmian trafiają do logu.

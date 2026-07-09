@@ -135,9 +135,12 @@ epubforge toc book.epub --show
 epubforge toc book.epub --generate --max-level 3 --output out.epub
 epubforge toc book.epub --repair --dry-run
 
-# Naprawa EPUB (hyphenacja + CSS)
+# Naprawa EPUB (CSS, hyphenacja, typografia)
 epubforge fix book.epub --remove-colors --replace-justify
+epubforge fix a.epub b.epub c.epub --remove-colors --jobs 3
 epubforge hyphenate book.epub --lang pl --method soft-hyphen --skip-headers
+epubforge hyphenate *.epub --method css --jobs 4 --dry-run
+epubforge typo book.epub --lang pl --dry-run
 
 # Typografia (cudzysłowy, pauzy, wielokropek, twarde spacje)
 epubforge typo book.epub --lang pl                 # pełna typografia PL
@@ -161,6 +164,17 @@ epubforge stats book.epub --report stats.html --top 50
 epubforge kfx book.epub --engine calibre
 epubforge mobi book.epub --format azw3 --engine calibre
 ```
+
+`fix`, `hyphenate` i `typo` obsługują listę plików oraz `--jobs N`, co pozwala
+przetwarzać kilka EPUB-ów równolegle. Lista wejściowa jest deduplikowana z
+zachowaniem kolejności, a wynik kończy się tabelą per plik i kodem wyjścia `1`,
+jeśli choć jeden plik się nie udał.
+
+`--dry-run` w tych trzech komendach nie zapisuje EPUB-a na dysku. Zamiast tego
+pokazuje unified diff dla plików tekstowych (`.xhtml`, `.css`, `.opf`, `.ncx`,
+`.svg` itd.; domyślnie do 40 linii na plik) albo nazwę pliku binarnego z deltą
+rozmiaru. `--diff-full` znosi limit diffu. Presety CSS pozostają częścią
+`fix --preset`, więc batch i dry-run działają tam przez komendę `fix`.
 
 Każda komenda ma `--help` z pełną listą opcji.
 

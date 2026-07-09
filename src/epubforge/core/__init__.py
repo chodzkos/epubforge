@@ -9,7 +9,7 @@ from epubforge.core.config import (
     save_config,
 )
 from epubforge.core.detection import Tool, Tools, detect_with_cache
-from epubforge.core.epub import Epub, ManifestItem
+from epubforge.core.epub import Epub, ManifestItem, PendingChanges
 from epubforge.core.exceptions import (
     ConversionError,
     ConverterNotFoundError,
@@ -33,6 +33,7 @@ __all__ = [
     "ManifestItem",
     "Metadata",
     "OpfNotFoundError",
+    "PendingChanges",
     "Tool",
     "Tools",
     "ValidationError",

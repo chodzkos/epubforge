@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import multiprocessing
 import sys
 from collections.abc import Callable
 from typing import cast
@@ -35,6 +36,9 @@ def main(argv: list[str] | None = None) -> int:
     Returns:
         Kod wyjścia procesu (0 = OK).
     """
+    # PyInstaller/Windows: ProcessPoolExecutor w komendach batchowych wymaga
+    # freeze_support(), zanim uruchomimy parser i ewentualnie zespawnujemy workery.
+    multiprocessing.freeze_support()
     config = load_config(default_config_path())
     init_i18n(str(config.get("language", "auto")))
 
