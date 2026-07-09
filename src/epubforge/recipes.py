@@ -19,12 +19,14 @@ from epubforge.core.config import config_dir
 from epubforge.fixers import (
     CssFixOptions,
     HyphenationOptions,
+    ImageFixOptions,
     TypographyOptions,
     apply_preset,
     fix_css,
     fix_typography,
     get_preset,
     hyphenate,
+    optimize_images,
 )
 from epubforge.i18n import _
 
@@ -98,6 +100,7 @@ STEP_REGISTRY: dict[str, StepSpec] = {
     "fix_css": StepSpec("fixer", fix_css, CssFixOptions),
     "typography": StepSpec("fixer", fix_typography, TypographyOptions),
     "hyphenate": StepSpec("fixer", hyphenate, HyphenationOptions),
+    "optimize_images": StepSpec("fixer", optimize_images, ImageFixOptions),
     "apply_preset": StepSpec("fixer", _apply_preset_step, PresetOptions),
     "to_mobi": StepSpec("export", _export_mobi_step, MobiOptions),
     "to_kfx": StepSpec("export", _export_kfx_step, KfxOptions),

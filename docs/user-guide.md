@@ -65,13 +65,16 @@ motywu, „O programie") i zakładki robocze:
   wymuszają silnik Calibre; pliki zabezpieczone **DRM** są odrzucane ostrzeżeniem
   — EpubForge nie usuwa zabezpieczeń. Podczas pracy pasek postępu pokazuje procent
   z Calibre, a przycisk **Anuluj** przerywa konwersję (kończy proces silnika).
-- **Fixer** — hyphenacja (język, metoda soft-hyphen/CSS), **Typografia** i normalizacja CSS
-  (usuń kolory/fonty, reset, justify→lewo, margines). Sekcja **Typografia** poprawia
-  mikrotypografię tekstu: cudzysłowy typograficzne dobierane językiem (dropdown pl/en/de),
-  pauzy w dialogach i wtrąceniach, wielokropek `…` oraz twarde spacje po polskich sierotach
-  (a/i/o/u/w/z); opcjonalnie twarde spacje przy liczbach z jednostką. Sekcja **Preset CSS** dołącza
-  gotowy szablon stylów (Dołącz/Zastąp), z możliwością **Importuj własny…** (plik
-  `.css` trafia do katalogu presetów). Naprawa działa **w miejscu**.
+- **Fixer** — hyphenacja (język, metoda soft-hyphen/CSS), **Typografia**, **Obrazy**
+  i normalizacja CSS (usuń kolory/fonty, reset, justify→lewo, margines). Sekcja
+  **Typografia** poprawia mikrotypografię tekstu: cudzysłowy typograficzne dobierane
+  językiem (dropdown pl/en/de), pauzy w dialogach i wtrąceniach, wielokropek `…` oraz
+  twarde spacje po polskich sierotach (a/i/o/u/w/z); opcjonalnie twarde spacje przy
+  liczbach z jednostką. Sekcja **Obrazy** odchudza EPUB pod e-ink: skalowanie do
+  zadanego dłuższego boku, rekompresja JPEG/PNG, skala szarości i pominięcie okładki;
+  w logu pojawia się „zaoszczędzono X MB (-Y%)" (wymaga `pip install epubforge[images]`).
+  Sekcja **Preset CSS** dołącza gotowy szablon stylów (Dołącz/Zastąp), z możliwością
+  **Importuj własny…** (plik `.css` trafia do katalogu presetów). Naprawa działa **w miejscu**.
 - **Eksport Kindle** — wybierz format (KFX / MOBI / AZW3) i silnik, opcjonalnie napraw
   EPUB przed konwersją, wskaż folder wyjściowy. Pasek postępu i przycisk **Anuluj**
   działają tak samo jak w Konwerterze (anulowanie kończy proces silnika).
@@ -145,6 +148,7 @@ epubforge fix a.epub b.epub c.epub --remove-colors --jobs 3
 epubforge hyphenate book.epub --lang pl --method soft-hyphen --skip-headers
 epubforge hyphenate *.epub --method css --jobs 4 --dry-run
 epubforge typo book.epub --lang pl --dry-run
+epubforge fix book.epub --optimize-images --max-px 1200 --jpeg-quality 75  # wymaga [images]
 
 # Typografia (cudzysłowy, pauzy, wielokropek, twarde spacje)
 epubforge typo book.epub --lang pl                 # pełna typografia PL

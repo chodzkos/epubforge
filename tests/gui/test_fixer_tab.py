@@ -160,6 +160,7 @@ def test_run_fix_worker_calls_fixers(tmp_path: Path, monkeypatch: pytest.MonkeyP
         HyphenationOptions(),
         CssFixOptions(),
         None,
+        None,
     )
 
     assert (succeeded, total) == (1, 1)

@@ -57,6 +57,11 @@ stats = [
     # z metadanych EPUB-a (fallback).
     "langdetect>=1.0.9",
 ]
+images = [
+    # Optymalizacja obrazów (skalowanie/rekompresja); importowane leniwie —
+    # bez tego extra fixer obrazów zgłasza czytelny błąd instalacji.
+    "Pillow>=10.0",
+]
 dev = [
     "babel>=2.14",
     "pytest>=8.0",
@@ -162,6 +167,8 @@ module = [
     "tinycss2",
     "langdetect",
     "tomli",
+    "PIL",
+    "PIL.*",
 ]
 ignore_missing_imports = true
 

@@ -30,6 +30,8 @@ from epubforge.core import Epub, Tool, Tools
 from epubforge.fixers import (
     CssFixOptions,
     HyphenationOptions,
+    ImageFixOptions,
+    ImageReport,
     PresetError,
     TypographyOptions,
     TypographyReport,
@@ -40,6 +42,7 @@ from epubforge.fixers import (
     hyphenate,
     import_user_preset,
     list_presets,
+    optimize_images,
 )
 from epubforge.fixers.hyphenator import HyphenationMethod
 from epubforge.gui.widgets import (
@@ -263,6 +266,7 @@ class FixerTab(QWidget):
         layout.addLayout(options)
 
         layout.addWidget(self._build_typography_section())
+        layout.addWidget(self._build_images_section())
         layout.addWidget(self._build_preset_section())
         self._build_log(layout)
         self._build_actions(layout)
@@ -421,6 +425,39 @@ class FixerTab(QWidget):
         rules.addLayout(right, 1)
         section.content_layout().addLayout(rules)
         section.content_layout().addStretch(1)
+        return section
+
+    def _build_images_section(self) -> Section:
+        """Buduje sekcję optymalizacji obrazów (skalowanie, rekompresja, e-ink)."""
+        section = Section(_("Obrazy"))
+
+        self.images_enabled = QCheckBox(_("Włącz"))
+        self.images_enabled.setChecked(False)
+        self.images_enabled.setToolTip(
+            _("Optymalizuj obrazy JPEG/PNG w EPUB (wymaga dodatku epubforge[images])")
+        )
+        section.add_widget(self.images_enabled)
+
+        form = QFormLayout()
+        section.content_layout().addLayout(form)
+        self.images_max_px = QSpinBox()
+        self.images_max_px.setRange(0, 10000)
+        self.images_max_px.setValue(1200)
+        self.images_max_px.setToolTip(_("Maksymalny dłuższy bok w px (0 = bez skalowania)"))
+        form.addRow(_("Maks. bok (px)"), self.images_max_px)
+        self.images_jpeg_quality = QSpinBox()
+        self.images_jpeg_quality.setRange(1, 95)
+        self.images_jpeg_quality.setValue(75)
+        self.images_jpeg_quality.setToolTip(_("Jakość zapisu JPEG (1-95)"))
+        form.addRow(_("Jakość JPEG"), self.images_jpeg_quality)
+
+        self.images_grayscale = QCheckBox(_("Skala szarości (e-ink)"))
+        self.images_grayscale.setToolTip(_("Konwertuj obrazy do skali szarości"))
+        section.add_widget(self.images_grayscale)
+        self.images_skip_cover = QCheckBox(_("Pomiń okładkę"))
+        self.images_skip_cover.setChecked(True)
+        self.images_skip_cover.setToolTip(_("Zostaw okładkę w pełnej jakości"))
+        section.add_widget(self.images_skip_cover)
         return section
 
     def _build_preset_section(self) -> Section:
@@ -615,6 +652,18 @@ class FixerTab(QWidget):
             nbsp_numbers_units=self.typo_nbsp_numbers.isChecked(),
         )
 
+    def _build_image_options(self) -> ImageFixOptions | None:
+        """Składa opcje optymalizacji obrazów z aktualnego stanu UI."""
+        if not self.images_enabled.isChecked():
+            return None
+        max_px = self.images_max_px.value()
+        return ImageFixOptions(
+            max_px=max_px if max_px > 0 else None,
+            jpeg_quality=self.images_jpeg_quality.value(),
+            grayscale=self.images_grayscale.isChecked(),
+            skip_cover=self.images_skip_cover.isChecked(),
+        )
+
     def _build_css_options(self) -> CssFixOptions:
         """Składa opcje CSS fixer z aktualnego stanu UI."""
         return CssFixOptions(
@@ -655,6 +704,7 @@ class FixerTab(QWidget):
             self._build_typography_options(),
             self._build_hyphen_options(),
             self._build_css_options(),
+            self._build_image_options(),
             self._preset_choice(),
         )
         self._worker.line.connect(self.log_view.append_line)
@@ -737,6 +787,7 @@ def _run_fix_worker(
     typo_options: TypographyOptions | None,
     hyphen_options: HyphenationOptions | None,
     css_options: CssFixOptions,
+    image_options: ImageFixOptions | None,
     preset_choice: tuple[str, str] | None,
 ) -> tuple[int, int, Path | None]:
     """Naprawia pliki po kolei w wątku roboczym.
@@ -759,6 +810,9 @@ def _run_fix_worker(
                     hyphenate(epub, hyphen_options)
                 emit_line(_("CSS Fixer..."), "info")
                 fix_css(epub, css_options)
+                if image_options is not None:
+                    emit_line(_("Obrazy..."), "info")
+                    emit_line(_image_summary(optimize_images(epub, image_options)), "info")
                 if preset_choice is not None:
                     preset_id, preset_mode = preset_choice
                     emit_line(_("Preset CSS: {name}").format(name=preset_id), "info")
@@ -801,6 +855,16 @@ def _run_recipe_worker(
         emit_line(_("OK: {path}").format(path=path), "ok")
         succeeded += 1
     return succeeded, total
+
+
+def _image_summary(report: ImageReport) -> str:
+    """Buduje zlokalizowane podsumowanie optymalizacji obrazów do logu."""
+    if not report.changed_files:
+        return _("Obrazy: bez zmian")
+    saved_mb = report.saved_bytes / (1024 * 1024)
+    return _("Obrazy: zaoszczędzono {mb:.2f} MB (-{pct}%) w {count} plikach").format(
+        mb=saved_mb, pct=report.saved_percent, count=len(report.changed_files)
+    )
 
 
 def _typo_summary(report: TypographyReport) -> str:
