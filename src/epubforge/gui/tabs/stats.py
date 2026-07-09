@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
 from epubforge import __version__
 from epubforge.core import Epub
 from epubforge.core.config import Config
-from epubforge.gui.widgets import PathEntry, Section, path_entry_texts
+from epubforge.gui.widgets import PathEntry, Section, make_scrollable, path_entry_texts
 from epubforge.gui.workers import EmitLine, EmitProgress, Worker
 from epubforge.i18n import _
 from epubforge.stats import BookStats, StatsOptions, compute_stats, render_report_html
@@ -72,7 +72,8 @@ class StatsTab(QWidget):
     # ── Budowa UI ─────────────────────────────────────────────────────────────
 
     def _build_ui(self) -> None:
-        outer = QVBoxLayout(self)
+        content = QWidget()
+        outer = QVBoxLayout(content)
         outer.setContentsMargins(12, 12, 12, 12)
 
         row = QHBoxLayout()
@@ -103,6 +104,12 @@ class StatsTab(QWidget):
 
         self.status_label = QLabel(_("Wskaż plik EPUB i kliknij „Oblicz”."))
         outer.addWidget(self.status_label)
+        outer.addStretch(1)
+
+        root = QVBoxLayout()
+        root.setContentsMargins(0, 0, 0, 0)
+        root.addWidget(make_scrollable(content))
+        self.setLayout(root)
 
     def _build_cards(self) -> QWidget:
         """Buduje rząd kart liczbowych (słowa / strony / czas / język)."""

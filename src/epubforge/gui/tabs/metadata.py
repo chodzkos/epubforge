@@ -28,6 +28,7 @@ from epubforge.gui.widgets import (
     Section,
     file_list_count_label,
     file_list_texts,
+    make_scrollable,
     path_entry_texts,
 )
 from epubforge.i18n import _, ngettext
@@ -59,7 +60,8 @@ class MetadataTab(QWidget):
 
     def _build_layout(self) -> None:
         """Buduje dwukolumnowy układ zakładki."""
-        outer = QVBoxLayout(self)
+        content = QWidget()
+        outer = QVBoxLayout(content)
         outer.setContentsMargins(12, 12, 12, 12)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -76,6 +78,12 @@ class MetadataTab(QWidget):
 
         self.status_label = QLabel(_("Wybierz plik EPUB"))
         outer.addWidget(self.status_label)
+        outer.addStretch(1)
+
+        root = QVBoxLayout()
+        root.setContentsMargins(0, 0, 0, 0)
+        root.addWidget(make_scrollable(content))
+        self.setLayout(root)
 
     def _build_file_browser(self, parent: QWidget) -> None:
         """Buduje panel wyboru folderu i listy EPUB."""
@@ -180,7 +188,7 @@ class MetadataTab(QWidget):
         edit.setToolTip(tooltip)
         edit.setTabChangesFocus(True)
         line_height = edit.fontMetrics().lineSpacing()
-        edit.setFixedHeight(line_height * height + 12)
+        edit.setMinimumHeight(line_height * height + 12)
         return edit
 
     # ── Logika ────────────────────────────────────────────────────────────────

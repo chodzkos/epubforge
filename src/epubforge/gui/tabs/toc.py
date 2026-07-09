@@ -32,7 +32,7 @@ from PySide6.QtWidgets import (
 )
 
 from epubforge.core import ConfigStore, Epub
-from epubforge.gui.widgets import PathEntry, path_entry_texts
+from epubforge.gui.widgets import PathEntry, make_scrollable, path_entry_texts
 from epubforge.i18n import _, ngettext
 from epubforge.toc import (
     MoveMode,
@@ -111,7 +111,8 @@ class TocTab(QWidget):
     # ── Budowa UI ─────────────────────────────────────────────────────────────
 
     def _build_ui(self) -> None:
-        outer = QVBoxLayout(self)
+        content = QWidget()
+        outer = QVBoxLayout(content)
         outer.setContentsMargins(12, 12, 12, 12)
 
         self.path_entry = PathEntry(
@@ -135,6 +136,12 @@ class TocTab(QWidget):
 
         self.status_label = QLabel(_("Wskaż plik EPUB, aby wczytać spis treści."))
         outer.addWidget(self.status_label)
+        outer.addStretch(1)
+
+        root = QVBoxLayout()
+        root.setContentsMargins(0, 0, 0, 0)
+        root.addWidget(make_scrollable(content))
+        self.setLayout(root)
 
     def _build_toolbar(self) -> QHBoxLayout:
         bar = QHBoxLayout()

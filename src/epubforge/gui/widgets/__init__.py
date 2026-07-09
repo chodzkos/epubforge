@@ -20,6 +20,7 @@ from epubforge.gui.widgets.code_editor import CodeEditor
 from epubforge.gui.widgets.css_inspector import CssInspector
 from epubforge.gui.widgets.html_preview import HtmlPreview
 from epubforge.gui.widgets.image_preview import ImagePreview
+from epubforge.gui.widgets.scroll import make_scrollable
 from epubforge.gui.widgets.section import Section
 from epubforge.i18n import _, ngettext
 
@@ -37,6 +38,7 @@ __all__ = [
     "Section",
     "file_list_count_label",
     "file_list_texts",
+    "make_scrollable",
     "path_entry_texts",
 ]
 
