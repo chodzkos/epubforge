@@ -101,6 +101,36 @@ with Epub("book.epub") as ebook:
 
 ---
 
+## Szukaj i zamień
+
+```python
+from epubforge import Epub
+from epubforge.core.search import search_epub, replace_in_epub, SearchPatternError
+
+with Epub("book.epub") as ebook:
+    # Szukanie (literal/regex, wielkość liter, całe słowa, zakres plików)
+    hits = search_epub(
+        ebook, "kot",
+        regex=False, case_sensitive=False, whole_words=True,
+        paths=None,           # None = wszystkie pliki tekstowe
+    )
+    for hit in hits[:3]:
+        print(hit.internal_path, hit.line, hit.column, hit.preview)
+
+    # Zamiana — pisze do BUFORA; utrwalasz przez ebook.save()
+    report = replace_in_epub(ebook, "kot", "pies")
+    print(report.total, report.changed_files)
+    print(report.skipped)     # [(ścieżka, powód)] dla plików nie-UTF-8
+
+    ebook.save()
+```
+
+Wzorzec błędny/pusty/zbyt długi zgłasza `SearchPatternError`. ``whole_words`` używa
+``\b`` z ``re.UNICODE`` (poprawne dla polskich znaków). Pliki ze znakami zastępczymi
+``�`` są pomijane przy zamianie (nie przy szukaniu).
+
+---
+
 ## Fixer — optymalizacja obrazów
 
 ```python

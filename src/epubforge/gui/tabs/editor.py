@@ -42,6 +42,7 @@ from epubforge.gui.tabs.editor_preview import (
     EditorPreviewMixin,
 )
 from epubforge.gui.widgets.code_editor import CodeEditor
+from epubforge.gui.widgets.search_panel import SearchReplacePanel
 from epubforge.i18n import _
 
 logger = logging.getLogger(__name__)
@@ -118,6 +119,9 @@ class EditorTab(EditorPreviewMixin, QWidget):
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 3)
 
+        self.search_panel = SearchReplacePanel(self)
+        outer.addWidget(self.search_panel)
+
     def _build_toolbar(self) -> QHBoxLayout:
         toolbar = QHBoxLayout()
         self.open_button = QPushButton(_("Otwórz EPUB…"))
@@ -153,6 +157,60 @@ class EditorTab(EditorPreviewMixin, QWidget):
         save = QShortcut(QKeySequence.StandardKey.Save, self)
         save.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
         save.activated.connect(self._save_current)
+        search = QShortcut(QKeySequence("Ctrl+Shift+F"), self)
+        search.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        search.activated.connect(self._toggle_search_panel)
+
+    def _toggle_search_panel(self) -> None:
+        """Pokazuje/ukrywa panel Szukaj/Zamień (Ctrl+Shift+F)."""
+        self.search_panel.toggle()
+
+    # ── Kontrakt panelu Szukaj/Zamień (SearchHost) ────────────────────────────
+
+    def search_epub_instance(self) -> Epub | None:
+        """Zwraca otwarty EPUB dla panelu Szukaj/Zamień."""
+        return self._epub
+
+    def current_internal_path(self) -> str | None:
+        """Zwraca ścieżkę aktualnie wyświetlanego pliku."""
+        return self._current
+
+    def flush_current_editor(self) -> None:
+        """Zapisuje niezapisane zmiany bieżącego pliku do bufora EPUB (sync _dirty).
+
+        Bez walidacji XML i bez pytań — to cichy sync przed „Zamień wszystkie",
+        żeby zamiana działała na treści widocznej w edytorze (pułapka Etapu 21).
+        """
+        if self._epub is None or self._current is None or self.code_editor.read_only:
+            return
+        if not self.code_editor.is_modified():
+            return
+        text = self.code_editor.get_text()
+        self._epub.write_file(self._current, text.encode("utf-8"))
+        self._dirty[self._current] = text
+        self.code_editor.editor.document().setModified(False)
+
+    def jump_to_hit(self, internal_path: str, line: int, column: int) -> None:
+        """Otwiera plik w edytorze i ustawia kursor na trafieniu (reuse skoku)."""
+        self._select_path(internal_path)
+        if self.stack.currentIndex() == _PAGE_EDITOR:
+            self.code_editor.goto_position(line, column)
+
+    def mark_replaced(self, paths: list[str]) -> None:
+        """Oznacza pliki zmienione przez „Zamień wszystkie" i odświeża widok.
+
+        ``replace_in_epub`` pisze prosto do bufora EPUB, z pominięciem ``_dirty``
+        zakładki — uzupełniamy je, by „Zapisz EPUB" i znaczniki „*" działały.
+        """
+        if self._epub is None:
+            return
+        for internal in paths:
+            text, _replaced = ef.decode_text(self._epub.read_file(internal))
+            self._dirty[internal] = text
+        if self._current in paths:
+            self._show_file(self._current)
+        self._update_tree_markers()
+        self._refresh_actions()
 
     # ── Otwieranie EPUB ─────────────────────────────────────────────────────--
 

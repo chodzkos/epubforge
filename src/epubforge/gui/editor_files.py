@@ -8,7 +8,31 @@ from __future__ import annotations
 
 import posixpath
 from typing import Literal
-from urllib.parse import unquote, urldefrag
+
+# Czyste helpery tekstowe mieszkają w ``core`` (bez Qt) i są tu re-eksportowane,
+# by istniejące importy ``from epubforge.gui.editor_files import ...`` działały.
+from epubforge.core.textutil import (
+    decode_text,
+    line_col_to_offset,
+    offset_to_line_col,
+    resolve_internal_path,
+)
+
+__all__ = [
+    "GROUP_ORDER",
+    "PROFILE_CSS",
+    "PROFILE_XML",
+    "Profile",
+    "classify",
+    "decode_text",
+    "is_editable",
+    "is_html",
+    "is_image",
+    "line_col_to_offset",
+    "offset_to_line_col",
+    "profile_for",
+    "resolve_internal_path",
+]
 
 # Profil podświetlania składni edytora.
 Profile = Literal["xml", "css"]
@@ -101,39 +125,6 @@ def is_html(internal_path: str, media_type: str | None = None) -> bool:
     suffix = _suffix(internal_path)
     mt = (media_type or "").lower()
     return mt in {"text/html", "application/xhtml+xml"} or suffix in {".xhtml", ".html", ".htm"}
-
-
-def resolve_internal_path(href: str, opf_dir: str) -> str:
-    """Rozwiązuje ``href`` manifestu (względem katalogu OPF) do ścieżki w archiwum."""
-    path = unquote(urldefrag(href)[0])
-    if path.startswith("/"):
-        return posixpath.normpath(path.lstrip("/"))
-    return (
-        posixpath.normpath(posixpath.join(opf_dir, path)) if opf_dir else posixpath.normpath(path)
-    )
-
-
-def decode_text(data: bytes) -> tuple[str, bool]:
-    """Dekoduje bajty jako UTF-8 z podmianą; zwraca ``(tekst, czy_były_zastępcze)``."""
-    text = data.decode("utf-8", errors="replace")
-    return text, "�" in text
-
-
-def offset_to_line_col(text: str, offset: int) -> tuple[int, int]:
-    """Zamienia pozycję znakową na ``(linia, kolumna)`` — obie liczone od 1."""
-    clamped = max(0, min(offset, len(text)))
-    prefix = text[:clamped]
-    line = prefix.count("\n") + 1
-    col = clamped - (prefix.rfind("\n") + 1) + 1
-    return line, col
-
-
-def line_col_to_offset(text: str, line: int, col: int) -> int:
-    """Zamienia ``(linia, kolumna)`` (od 1) na pozycję znakową (clamp do długości)."""
-    lines = text.split("\n")
-    target = max(1, min(line, len(lines)))
-    offset = sum(len(lines[i]) + 1 for i in range(target - 1))
-    return min(offset + max(0, col - 1), len(text))
 
 
 def _suffix(internal_path: str) -> str:

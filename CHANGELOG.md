@@ -8,6 +8,21 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Added
+- **Szukaj i zamień w całym EPUB** (Etap 21 roadmapy v3) — nowy moduł
+  `epubforge.core.search` (`search_epub`, `replace_in_epub`, `SearchHit`,
+  `ReplaceReport`) oraz panel **Szukaj/Zamień** w zakładce **Edytor**
+  (skrót **Ctrl+Shift+F**). Przeszukuje pliki tekstowe (XHTML/HTML/XML/OPF/NCX/SVG/
+  CSS/TXT) z opcjami: regex, wielkość liter, całe słowa (`\b` z `re.UNICODE` —
+  działa dla polskich znaków) oraz zakres (bieżący plik / cały EPUB). Wyniki
+  zgrupowane po pliku, dwuklik otwiera plik w edytorze na trafieniu. „Zamień
+  wszystkie" pisze **wyłącznie do bufora** (utrwala „Zapisz EPUB"), a przed
+  zamianą synchronizuje niezapisane zmiany bieżącego pliku. Pliki ze znakami
+  nie-UTF-8 (`�`) są pomijane przy zamianie (zwracane w `report.skipped`);
+  błędny/pusty/zbyt długi wzorzec → czytelny `SearchPatternError`. Wyszukiwanie
+  całego EPUB biegnie w wątku roboczym z anulowaniem (Etap 19).
+  - Czyste helpery tekstowe (`decode_text`, `offset_to_line_col`,
+    `line_col_to_offset`, `resolve_internal_path`) przeniesione do
+    `epubforge.core.textutil`; `gui.editor_files` je re-eksportuje (bez zmian API).
 - **Optymalizacja obrazów** (Etap 20 roadmapy v3) — nowy fixer
   `epubforge.fixers.optimize_images` (`ImageFixOptions`, `ImageReport`) odchudzający
   EPUB-y pod czytniki e-ink: skalowanie do zadanego dłuższego boku, rekompresja
