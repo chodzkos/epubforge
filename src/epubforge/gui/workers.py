@@ -2,24 +2,45 @@
 
 ŻELAZNA ZASADA (GUI_STANDARD §4): kod w :meth:`Worker.run` **nigdy** nie dotyka
 widgetów — komunikuje się z GUI wyłącznie przez sygnały (połączenie kolejkowane).
+
+Prymityw strumieniowania (:func:`run_subprocess_streaming`, :class:`ProcessResult`,
+:func:`level_for_line`) mieszka w :mod:`epubforge.core.streaming` (warstwa czysta,
+bez Qt) i jest tu re-eksportowany dla zgodności — konwertery używają go wprost,
+nie importując z ``gui``.
 """
 
 from __future__ import annotations
 
-import subprocess
-import sys
+import inspect
+import threading
 from collections.abc import Callable
 from typing import Any
 
 from PySide6.QtCore import QThread, Signal
 
-CREATE_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
+from epubforge.core.streaming import (
+    CREATE_NO_WINDOW,
+    LogLevel,
+    ProcessResult,
+    level_for_line,
+    run_subprocess_streaming,
+)
 
-# Poziom linii logu: "ok" (zielony), "warn" (bursztyn), "err" (czerwony),
-# "cmd" (wyciszona komenda), "info" (drugorzędny — domyślny).
-LogLevel = str
+__all__ = [
+    "CREATE_NO_WINDOW",
+    "EmitLine",
+    "EmitProgress",
+    "LogLevel",
+    "ProcessResult",
+    "ShouldCancel",
+    "Worker",
+    "level_for_line",
+    "run_subprocess_streaming",
+]
+
 EmitLine = Callable[[str, LogLevel], None]
 EmitProgress = Callable[[int, int], None]
+ShouldCancel = Callable[[], bool]
 
 
 class Worker(QThread):
@@ -29,11 +50,25 @@ class Worker(QThread):
     strumieniowania logu oraz ``emit_progress(current, total)`` do raportowania
     postępu; dalej idą argumenty przekazane do konstruktora.
 
+    **Anulowanie (opt-in).** Callable, które chce wspierać anulowanie, deklaruje
+    jako TRZECI parametr pozycyjny ``should_cancel: Callable[[], bool]`` (zaraz po
+    ``emit_line`` i ``emit_progress``). :class:`Worker` wykrywa go przez
+    introspekcję sygnatury (nazwa ``should_cancel`` w parametrach) i tylko wtedy
+    dokłada ten hook — stare callable przyjmujące dwa hooki działają bez zmian.
+    Wybrano introspekcję zamiast osobnej flagi konstruktora, bo zachowuje jedną
+    ścieżkę wywołania i nie wymusza zmiany żadnego istniejącego workera.
+
+    Anulowanie jest **kooperacyjne**: :meth:`cancel` ustawia zdarzenie, a callable
+    sam kończy pracę, gdy ``should_cancel()`` zwróci ``True`` (zwykle przez
+    :func:`run_subprocess_streaming`, który ubija proces potomny). NIGDY nie
+    wołamy ``QThread.terminate()``.
+
     Sygnały:
         line: pojedyncza linia logu ``(text, level)``.
-        progress: postęp batcha ``(current, total)``.
+        progress: postęp ``(current, total)``.
         done: praca zakończona sukcesem; niesie zwrócony obiekt.
-        failed: praca rzuciła wyjątek; niesie komunikat błędu.
+        failed: praca rzuciła wyjątek (i NIE była anulowana); niesie komunikat.
+        cancelled: praca przerwana na żądanie użytkownika (bez argumentów).
 
     Uwaga: ``QThread`` ma własny sygnał ``finished`` (bez argumentów), dlatego
     sygnał wyniku nazywa się :attr:`done`.
@@ -43,6 +78,7 @@ class Worker(QThread):
     progress = Signal(int, int)
     done = Signal(object)
     failed = Signal(str)
+    cancelled = Signal()
 
     def __init__(
         self,
@@ -54,64 +90,53 @@ class Worker(QThread):
         self._fn = fn
         self._args = args
         self._kwargs = kwargs
+        self._cancel_event = threading.Event()
+        self._accepts_cancel = _accepts_should_cancel(fn)
+
+    def cancel(self) -> None:
+        """Zgłasza żądanie przerwania (kooperacyjne — nie ubija wątku)."""
+        self._cancel_event.set()
+
+    @property
+    def is_cancelled(self) -> bool:
+        """Czy zażądano anulowania tej pracy."""
+        return self._cancel_event.is_set()
 
     def run(self) -> None:
+        hooks: list[Any] = [self._emit_line, self._emit_progress]
+        if self._accepts_cancel:
+            hooks.append(self._should_cancel)
         try:
-            result = self._fn(self._emit_line, self._emit_progress, *self._args, **self._kwargs)
+            result = self._fn(*hooks, *self._args, **self._kwargs)
         except Exception as exc:
-            self.failed.emit(str(exc))
+            # Anulowanie objawia się często wyjątkiem (ubity proces, brak wyniku).
+            # Gdy zażądano anulowania, raportujemy je jako cancelled, nie failed.
+            if self.is_cancelled:
+                self.cancelled.emit()
+            else:
+                self.failed.emit(str(exc))
             return
-        self.done.emit(result)
+        if self.is_cancelled:
+            self.cancelled.emit()
+        else:
+            self.done.emit(result)
 
     def _emit_line(self, text: str, level: LogLevel = "info") -> None:
         """Emituje linię logu do GUI (połączenie kolejkowane między wątkami)."""
         self.line.emit(text, level)
 
     def _emit_progress(self, current: int, total: int) -> None:
-        """Emituje postęp batcha do GUI (połączenie kolejkowane między wątkami)."""
+        """Emituje postęp do GUI (połączenie kolejkowane między wątkami)."""
         self.progress.emit(current, total)
 
-
-def level_for_line(line: str) -> LogLevel:
-    """Dobiera poziom kolorystyczny do treści linii logu."""
-    lower = line.lower()
-    if "error" in lower or "błąd" in lower or "failed" in lower:
-        return "err"
-    if "warn" in lower or "warning" in lower:
-        return "warn"
-    if "ok" in lower or "success" in lower:
-        return "ok"
-    return "info"
+    def _should_cancel(self) -> bool:
+        """Hook przekazywany callable'owi: czy użytkownik zażądał anulowania."""
+        return self._cancel_event.is_set()
 
 
-def run_subprocess_streaming(
-    cmd: list[str],
-    on_line: EmitLine,
-    cwd: str | None = None,
-) -> int:
-    """Uruchamia subprocess i streamuje połączone stdout/stderr przez ``on_line``.
-
-    Args:
-        cmd: komenda do uruchomienia.
-        on_line: callback ``(text, level)`` — zwykle ``Worker._emit_line``.
-        cwd: katalog roboczy procesu.
-
-    Returns:
-        Kod wyjścia procesu.
-    """
-    proc = subprocess.Popen(
-        cmd,
-        cwd=cwd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        bufsize=1,
-        creationflags=CREATE_NO_WINDOW,
-    )
-    if proc.stdout is not None:
-        for line in proc.stdout:
-            stripped = line.rstrip("\n")
-            on_line(stripped, level_for_line(stripped))
-    return proc.wait()
+def _accepts_should_cancel(fn: Callable[..., Any]) -> bool:
+    """Czy callable deklaruje parametr ``should_cancel`` (opt-in na anulowanie)."""
+    try:
+        return "should_cancel" in inspect.signature(fn).parameters
+    except (TypeError, ValueError):
+        return False

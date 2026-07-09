@@ -56,8 +56,12 @@ def fake_worker() -> type:
             self.progress = _Signal()
             self.done = _Signal()
             self.failed = _Signal()
+            self.cancelled = _Signal()
 
         def start(self) -> None:
+            return None
+
+        def cancel(self) -> None:
             return None
 
     return FakeWorker

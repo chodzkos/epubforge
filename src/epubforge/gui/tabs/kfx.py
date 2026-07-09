@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from epubforge.converters import KfxOptions, MobiOptions, to_kfx, to_mobi
+from epubforge.converters import KfxOptions, MobiOptions, to_kfx_streaming, to_mobi_streaming
 from epubforge.converters.to_kfx import KfxEngine
 from epubforge.converters.to_mobi import MobiEngine, MobiFormat
 from epubforge.core import Tool
@@ -37,7 +37,7 @@ from epubforge.gui.widgets import (
     make_scrollable,
     path_entry_texts,
 )
-from epubforge.gui.workers import EmitLine, EmitProgress, Worker
+from epubforge.gui.workers import EmitLine, EmitProgress, ShouldCancel, Worker
 from epubforge.i18n import _, ngettext
 
 logger = logging.getLogger(__name__)
@@ -250,6 +250,11 @@ class KfxTab(QWidget):
         """Buduje przycisk konwersji."""
         actions = QHBoxLayout()
         actions.addStretch(1)
+        self.cancel_button = QPushButton(_("Anuluj"))
+        self.cancel_button.setToolTip(_("Przerywa trwający eksport (kończy proces silnika)"))
+        self.cancel_button.setEnabled(False)
+        self.cancel_button.clicked.connect(self._cancel)
+        actions.addWidget(self.cancel_button)
         self.convert_button = QPushButton(_("Konwertuj"))
         self.convert_button.setToolTip(
             _(
@@ -350,8 +355,9 @@ class KfxTab(QWidget):
 
         self._running = True
         self.convert_button.setEnabled(False)
+        self.cancel_button.setEnabled(True)
         self.log_view.clear()
-        self.progress_bar.setRange(0, len(files))
+        self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(0)
         self._set_status(_("Konwersja trwa..."))
 
@@ -365,24 +371,44 @@ class KfxTab(QWidget):
         self._worker.progress.connect(self._on_progress)
         self._worker.done.connect(self._finish_conversion)
         self._worker.failed.connect(self._on_failed)
+        self._worker.cancelled.connect(self._on_cancelled)
         self._worker.start()
 
+    def _cancel(self) -> None:
+        """Zgłasza anulowanie trwającego eksportu (kooperacyjne)."""
+        if self._worker is not None and self._running:
+            self.cancel_button.setEnabled(False)
+            self._set_status(_("Anulowanie…"))
+            self._worker.cancel()
+
     def _on_progress(self, current: int, total: int) -> None:
-        """Aktualizuje pasek postępu i status."""
+        """Aktualizuje pasek postępu (procent silnika: current/total)."""
+        self.progress_bar.setRange(0, total)
         self.progress_bar.setValue(current)
-        self._set_status(_("Konwersja {current}/{total}").format(current=current, total=total))
+
+    def _reset_after_run(self) -> None:
+        """Przywraca stan przycisków po zakończeniu/przerwaniu pracy."""
+        self._running = False
+        self.convert_button.setEnabled(bool(self.file_list.files()))
+        self.cancel_button.setEnabled(False)
 
     def _finish_conversion(self, result: object) -> None:
         """Aktualizuje UI po zakończeniu konwersji."""
         succeeded, total = cast(tuple[int, int], result)
-        self._running = False
-        self.convert_button.setEnabled(bool(self.file_list.files()))
+        self._reset_after_run()
+        self.progress_bar.setValue(self.progress_bar.maximum())
         self._set_status(_("Zakończono: {done}/{total} OK").format(done=succeeded, total=total))
+
+    def _on_cancelled(self) -> None:
+        """Obsługuje anulowanie eksportu przez użytkownika."""
+        self._reset_after_run()
+        self.progress_bar.setValue(0)
+        self.log_view.append_line(_("Anulowano"), "warn")
+        self._set_status(_("Anulowano"))
 
     def _on_failed(self, message: str) -> None:
         """Obsługuje nieoczekiwany błąd wątku konwersji."""
-        self._running = False
-        self.convert_button.setEnabled(bool(self.file_list.files()))
+        self._reset_after_run()
         self.log_view.append_line(_("BŁĄD: {message}").format(message=message), "err")
         self._set_status(_("Konwersja przerwana błędem"))
 
@@ -394,6 +420,7 @@ class KfxTab(QWidget):
 def _run_kfx_worker(
     emit_line: EmitLine,
     emit_progress: EmitProgress,
+    should_cancel: ShouldCancel,
     files: list[Path],
     target_dir: Path | None,
     options: KfxOptions,
@@ -401,30 +428,38 @@ def _run_kfx_worker(
     """Konwertuje pliki do KFX po kolei. Zwraca ``(udane, łącznie)``."""
     succeeded = 0
     total = len(files)
-    for index, source in enumerate(files, start=1):
+    for source in files:
+        if should_cancel():
+            break
         emit_line(f"→ {source.name}", "cmd")
+        emit_progress(0, 100)
         try:
-            result = to_kfx(source, resolve_output_dir(target_dir, source), options)
+            result = to_kfx_streaming(
+                source,
+                resolve_output_dir(target_dir, source),
+                options,
+                on_line=emit_line,
+                on_progress=emit_progress,
+                should_cancel=should_cancel,
+            )
         except Exception as exc:
             logger.exception("Błąd konwersji KFX: %s", source)
             emit_line(_("BŁĄD: {error}").format(error=exc), "err")
-        else:
-            if result.log:
-                emit_line(result.log, "info")
-            emit_line(
-                _("OK [{engine}]: {name}").format(
-                    engine=result.engine, name=result.output_path.name
-                ),
-                "ok",
-            )
-            succeeded += 1
-        emit_progress(index, total)
+            continue
+        if result.cancelled:
+            break
+        emit_line(
+            _("OK [{engine}]: {name}").format(engine=result.engine, name=result.output_path.name),
+            "ok",
+        )
+        succeeded += 1
     return succeeded, total
 
 
 def _run_mobi_worker(
     emit_line: EmitLine,
     emit_progress: EmitProgress,
+    should_cancel: ShouldCancel,
     files: list[Path],
     target_dir: Path | None,
     options: MobiOptions,
@@ -432,25 +467,32 @@ def _run_mobi_worker(
     """Konwertuje pliki do MOBI/AZW3 po kolei. Zwraca ``(udane, łącznie)``."""
     succeeded = 0
     total = len(files)
-    for index, source in enumerate(files, start=1):
+    for source in files:
+        if should_cancel():
+            break
         emit_line(f"→ {source.name}", "cmd")
+        emit_progress(0, 100)
         target = resolve_output_dir(target_dir, source) / f"{source.stem}.{options.fmt}"
         try:
-            result = to_mobi(source, target, options)
+            result = to_mobi_streaming(
+                source,
+                target,
+                options,
+                on_line=emit_line,
+                on_progress=emit_progress,
+                should_cancel=should_cancel,
+            )
         except Exception as exc:
             logger.exception("Błąd konwersji MOBI/AZW3: %s", source)
             emit_line(_("BŁĄD: {error}").format(error=exc), "err")
-        else:
-            if result.log:
-                emit_line(result.log, "info")
-            emit_line(
-                _("OK [{engine}]: {name}").format(
-                    engine=result.engine, name=result.output_path.name
-                ),
-                "ok",
-            )
-            succeeded += 1
-        emit_progress(index, total)
+            continue
+        if result.cancelled:
+            break
+        emit_line(
+            _("OK [{engine}]: {name}").format(engine=result.engine, name=result.output_path.name),
+            "ok",
+        )
+        succeeded += 1
     return succeeded, total
 
 

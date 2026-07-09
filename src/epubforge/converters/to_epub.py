@@ -13,10 +13,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from epubforge.converters._streaming import ProgressSink, run_command_streaming
 from epubforge.converters.kindle_drm import has_kindle_drm
 from epubforge.core.detection import Tool, Tools
 from epubforge.core.exceptions import ConversionError, ConverterNotFoundError
 from epubforge.core.metadata import Metadata
+from epubforge.core.streaming import CancelCheck, LineSink
 from epubforge.i18n import _
 
 EpubVersion = Literal["epub2", "epub3"]
@@ -79,19 +81,22 @@ class ConvertOptions:
 
 @dataclass(frozen=True)
 class ConversionResult:
-    """Wynik udanej konwersji.
+    """Wynik konwersji.
 
     Attributes:
-        success: zawsze ``True`` dla udanej konwersji; błędy są wyjątkami.
-        output_path: ścieżka do utworzonego EPUB-a.
+        success: ``True`` dla udanej konwersji; błędy techniczne są wyjątkami,
+            ale anulowanie (``cancelled=True``) zwraca ``success=False``.
+        output_path: ścieżka do utworzonego EPUB-a (przy anulowaniu może nie istnieć).
         log: połączone stdout/stderr procesu.
         engine: faktycznie użyty silnik (``pandoc`` albo ``calibre``).
+        cancelled: ``True`` gdy konwersję przerwano na żądanie użytkownika.
     """
 
     success: bool
     output_path: Path
     log: str
     engine: str
+    cancelled: bool = False
 
 
 def to_epub(
@@ -123,6 +128,46 @@ def to_epub(
     command = _build_command(actual_engine, tool, source, target, actual_options)
     log = _run_converter(command, actual_engine)
     return ConversionResult(success=True, output_path=target, log=log, engine=actual_engine)
+
+
+def to_epub_streaming(
+    source: Path,
+    target: Path,
+    options: ConvertOptions | None = None,
+    engine: Engine = "auto",
+    *,
+    on_line: LineSink,
+    on_progress: ProgressSink | None = None,
+    should_cancel: CancelCheck | None = None,
+) -> ConversionResult:
+    """Strumieniowy wariant :func:`to_epub` — log na żywo, postęp i anulowanie.
+
+    Buduje tę samą komendę co :func:`to_epub`, ale uruchamia ją strumieniowo:
+    linie logu idą do ``on_line`` na bieżąco, procenty Calibre do ``on_progress``,
+    a ``should_cancel`` pozwala przerwać proces potomny.
+
+    Returns:
+        :class:`ConversionResult`; przy anulowaniu ``success=False`` i
+        ``cancelled=True`` (plik docelowy może nie powstać).
+    """
+    actual_options = options if options is not None else ConvertOptions()
+    if source.suffix.lower() in KINDLE_INPUT_EXTENSIONS and has_kindle_drm(source):
+        raise _drm_error()
+    actual_engine, tool = _resolve_engine(source, engine)
+    command = _build_command(actual_engine, tool, source, target, actual_options)
+
+    result = run_command_streaming(command, on_line, on_progress, should_cancel)
+    if result.cancelled:
+        return ConversionResult(
+            success=False, output_path=target, log="", engine=actual_engine, cancelled=True
+        )
+    if result.returncode != 0:
+        raise ConversionError(
+            _("Konwersja przez {engine} nie powiodła się (kod wyjścia {code}).").format(
+                engine=actual_engine, code=result.returncode
+            )
+        )
+    return ConversionResult(success=True, output_path=target, log="", engine=actual_engine)
 
 
 def _resolve_engine(source: Path, engine: Engine) -> tuple[Literal["pandoc", "calibre"], Tool]:

@@ -116,20 +116,24 @@ def test_converter_convert_remembers_output(
 def test_run_conversion_worker_calls_to_epub(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Funkcja robocza woła to_epub dla każdego pliku i liczy sukcesy."""
+    """Funkcja robocza woła strumieniowy to_epub dla każdego pliku i liczy sukcesy."""
     calls: list[tuple[Path, Path, ConvertOptions, str]] = []
 
-    def fake_to_epub(
+    def fake_to_epub_streaming(
         source: Path,
         target: Path,
         options: ConvertOptions | None = None,
         engine: str = "auto",
+        *,
+        on_line: object,
+        on_progress: object = None,
+        should_cancel: object = None,
     ) -> ConversionResult:
         assert options is not None
         calls.append((source, target, options, engine))
-        return ConversionResult(success=True, output_path=target, log="gotowe", engine="pandoc")
+        return ConversionResult(success=True, output_path=target, log="", engine="pandoc")
 
-    monkeypatch.setattr(converter_module, "to_epub", fake_to_epub)
+    monkeypatch.setattr(converter_module, "to_epub_streaming", fake_to_epub_streaming)
     lines, _progress = _emit_sink()
     src = tmp_path / "in.txt"
     options = ConvertOptions()
@@ -137,6 +141,7 @@ def test_run_conversion_worker_calls_to_epub(
     succeeded, total = _run_conversion(
         lambda text, level: lines.append((text, level)),
         lambda current, total_: None,
+        lambda: False,
         [src],
         tmp_path,
         options,
@@ -156,20 +161,56 @@ def test_run_conversion_none_output_uses_source_dir(
     """Brak katalogu (None) → konwersja zapisuje obok pliku źródłowego."""
     targets: list[Path] = []
 
-    def fake_to_epub(
+    def fake_to_epub_streaming(
         source: Path,
         target: Path,
         options: ConvertOptions | None = None,
         engine: str = "auto",
+        *,
+        on_line: object,
+        on_progress: object = None,
+        should_cancel: object = None,
     ) -> ConversionResult:
         targets.append(target)
         return ConversionResult(success=True, output_path=target, log="", engine="pandoc")
 
-    monkeypatch.setattr(converter_module, "to_epub", fake_to_epub)
+    monkeypatch.setattr(converter_module, "to_epub_streaming", fake_to_epub_streaming)
     src = tmp_path / "sub" / "book.txt"
     src.parent.mkdir()
 
     _run_conversion(
-        lambda text, level: None, lambda c, t: None, [src], None, ConvertOptions(), "auto"
+        lambda text, level: None,
+        lambda c, t: None,
+        lambda: False,
+        [src],
+        None,
+        ConvertOptions(),
+        "auto",
     )
     assert targets == [src.parent / "book.epub"]
+
+
+def test_run_conversion_stops_on_cancel(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """should_cancel=True przerywa pętlę przed konwersją kolejnych plików."""
+    calls: list[Path] = []
+
+    def fake_to_epub_streaming(
+        source: Path, target: Path, *a: object, **k: object
+    ) -> ConversionResult:
+        calls.append(source)
+        return ConversionResult(success=True, output_path=target, log="", engine="pandoc")
+
+    monkeypatch.setattr(converter_module, "to_epub_streaming", fake_to_epub_streaming)
+    src = tmp_path / "in.txt"
+
+    succeeded, total = _run_conversion(
+        lambda text, level: None,
+        lambda c, t: None,
+        lambda: True,  # od razu anulowane
+        [src],
+        tmp_path,
+        ConvertOptions(),
+        "auto",
+    )
+    assert calls == []
+    assert (succeeded, total) == (0, 1)

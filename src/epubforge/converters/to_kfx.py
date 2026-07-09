@@ -17,10 +17,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from epubforge.converters._streaming import ProgressSink, run_command_streaming
 from epubforge.converters.to_epub import ConversionResult
 from epubforge.core import Epub
 from epubforge.core.detection import Tool, Tools
 from epubforge.core.exceptions import ConversionError, ConverterNotFoundError
+from epubforge.core.streaming import CancelCheck, LineSink
 from epubforge.fixers import CssFixOptions, fix_css
 
 KfxEngine = Literal["calibre", "kindle-previewer", "auto"]
@@ -81,6 +83,63 @@ def to_kfx(
         else:
             log = _convert_with_kindle_previewer(tool, conv_source, target)
     return ConversionResult(success=True, output_path=target, log=log, engine=engine)
+
+
+def to_kfx_streaming(
+    source: Path,
+    target_dir: Path,
+    options: KfxOptions | None = None,
+    *,
+    on_line: LineSink,
+    on_progress: ProgressSink | None = None,
+    should_cancel: CancelCheck | None = None,
+) -> ConversionResult:
+    """Strumieniowy wariant :func:`to_kfx` — log na żywo, postęp i anulowanie."""
+    actual_options = options if options is not None else KfxOptions()
+    source = Path(source)
+    target_dir = Path(target_dir)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target = target_dir / f"{source.stem}.kfx"
+
+    with contextlib.ExitStack() as stack:
+        conv_source = source
+        if actual_options.fix_epub_first:
+            # NIEPRZERYWALNE: fix_epub robi Epub.save (tmp → os.replace); nie
+            # sprawdzamy tu should_cancel, by nie zostawić pliku w połowie zapisu.
+            conv_source = stack.enter_context(_fix_epub(source))
+
+        engine, tool = _resolve_engine(actual_options.engine)
+        if tool.path is None:
+            raise ConverterNotFoundError(f"Silnik {engine} nie ma ustawionej ścieżki.")
+        if engine == "calibre":
+            command = [str(tool.path), str(conv_source), str(target)]
+            result = run_command_streaming(command, on_line, on_progress, should_cancel)
+            if result.cancelled:
+                return ConversionResult(
+                    success=False, output_path=target, log="", engine=engine, cancelled=True
+                )
+            if result.returncode != 0:
+                raise ConversionError(
+                    f"Konwersja do KFX przez calibre nie powiodła się "
+                    f"(kod wyjścia {result.returncode})."
+                )
+            return ConversionResult(success=True, output_path=target, log="", engine=engine)
+
+        # Kindle Previewer 3: pisze do własnego katalogu tymczasowego; log strumieniujemy.
+        with tempfile.TemporaryDirectory(prefix="epubforge-kp3-") as temp:
+            tempdir = Path(temp)
+            command = [str(tool.path), "-convert", str(conv_source), "-outdir", str(tempdir)]
+            result = run_command_streaming(command, on_line, on_progress, should_cancel)
+            if result.cancelled:
+                return ConversionResult(
+                    success=False, output_path=target, log="", engine=engine, cancelled=True
+                )
+            found = sorted(tempdir.rglob("*.kfx"))
+            if not found:
+                raise ConversionError("Kindle Previewer 3 nie utworzył pliku KFX.")
+            shutil.move(str(found[0]), target)
+        on_line(_KP3_WARNING, "warn")
+        return ConversionResult(success=True, output_path=target, log="", engine=engine)
 
 
 @contextlib.contextmanager

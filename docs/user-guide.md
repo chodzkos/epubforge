@@ -63,7 +63,8 @@ motywu, „O programie") i zakładki robocze:
   (Auto / Pandoc / Calibre) i folder wyjściowy, kliknij **Konwertuj**. PDF wymaga
   potwierdzenia (konwersja eksperymentalna). Formaty Kindle (MOBI/AZW3/AZW/PRC)
   wymuszają silnik Calibre; pliki zabezpieczone **DRM** są odrzucane ostrzeżeniem
-  — EpubForge nie usuwa zabezpieczeń.
+  — EpubForge nie usuwa zabezpieczeń. Podczas pracy pasek postępu pokazuje procent
+  z Calibre, a przycisk **Anuluj** przerywa konwersję (kończy proces silnika).
 - **Fixer** — hyphenacja (język, metoda soft-hyphen/CSS), **Typografia** i normalizacja CSS
   (usuń kolory/fonty, reset, justify→lewo, margines). Sekcja **Typografia** poprawia
   mikrotypografię tekstu: cudzysłowy typograficzne dobierane językiem (dropdown pl/en/de),
@@ -72,7 +73,8 @@ motywu, „O programie") i zakładki robocze:
   gotowy szablon stylów (Dołącz/Zastąp), z możliwością **Importuj własny…** (plik
   `.css` trafia do katalogu presetów). Naprawa działa **w miejscu**.
 - **Eksport Kindle** — wybierz format (KFX / MOBI / AZW3) i silnik, opcjonalnie napraw
-  EPUB przed konwersją, wskaż folder wyjściowy.
+  EPUB przed konwersją, wskaż folder wyjściowy. Pasek postępu i przycisk **Anuluj**
+  działają tak samo jak w Konwerterze (anulowanie kończy proces silnika).
 - **Edytor** — otwórz EPUB, przeglądaj pliki w drzewie (Tekst/Style/Obrazy/Fonty/Inne),
   edytuj HTML/CSS z podświetlaniem i wyszukiwarką (Ctrl+F). Edycja jest domyślnie
   wyłączona — włącz **Tryb edycji**. Zapis pliku: Ctrl+S (XHTML/OPF jest walidowany);
@@ -97,6 +99,8 @@ motywu, „O programie") i zakładki robocze:
   EpubCheck i pokazuje raport (poziom, kod, plik:linia, komunikat) z paskiem podsumowania
   i filtrami błędy/ostrzeżenia/informacje. **Dwuklik** błędu z lokalizacją otwiera plik
   w zakładce Edytor na właściwej linii. **Eksport…** zapisuje raport jako JSON lub HTML.
+  W trakcie walidacji pasek postępu pracuje w trybie nieokreślonym, a przycisk
+  **Anuluj** przerywa sprawdzanie (kończy proces Javy).
   Gdy brak Javy/`epubcheck.jar`, zakładka pokazuje instrukcję i przycisk **Wskaż epubcheck.jar…**.
 - **Spis treści** — wskaż EPUB, a EpubForge wczyta jego spis (nav.xhtml lub toc.ncx).
   **Generuj** buduje spis z nagłówków `h1..hN` (poziom ustawia **Poziom:**), **Napraw**
