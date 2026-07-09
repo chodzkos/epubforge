@@ -12,9 +12,11 @@
 
 ## ✅ Status projektu
 
-> **Wersja 2.0.0 — wszystkie funkcje z [ROADMAP.md](ROADMAP.md) ukończone.**
-> (2.0 = migracja GUI na PySide6 + wydzielenie wspólnego rdzenia do
-> [chodzkos-gui-kit](https://github.com/chodzkos/gui-kit); pełna historia w [CHANGELOG.md](CHANGELOG.md)).
+> **Wersja 2.2.0 — brama v2.2 (Etapy 19–21 roadmapy v3) domknięta.**
+> (2.0 = migracja GUI na PySide6 + wydzielenie rdzenia do
+> [chodzkos-gui-kit](https://github.com/chodzkos/gui-kit); 2.1–2.2 = typografia PL,
+> batch/dry-run, receptury, anulowanie/postęp, optymalizacja obrazów, szukaj/zamień;
+> pełna historia w [CHANGELOG.md](CHANGELOG.md)).
 
 | Funkcja | Status |
 |---|---|
@@ -23,14 +25,19 @@
 | Wykrywanie narzędzi | ✅ |
 | Konwersja → EPUB | ✅ |
 | Hyphenacja | ✅ |
+| Typografia PL (cudzysłowy, pauzy, sieroty) | ✅ |
 | CSS Fixer | ✅ |
 | Presety CSS (wbudowane + własne) | ✅ |
+| Optymalizacja obrazów (skalowanie/rekompresja) | ✅ |
 | Edytor wewnętrzny EPUB (podgląd + edycja) | ✅ |
+| Szukaj/Zamień w całym EPUB | ✅ |
 | Walidacja EpubCheck (klikalne błędy) | ✅ |
 | Spis treści (generator + edytor drzewa) | ✅ |
 | Statystyki książki (raport HTML) | ✅ |
 | KFX / MOBI / AZW3 | ✅ |
 | Receptury TOML (pipeline) | ✅ |
+| Batch CLI + `--dry-run` | ✅ |
+| Anulowanie i postęp długich operacji | ✅ |
 | GUI (motyw jasny/ciemny) | ✅ |
 | Build: portable `.exe` + instalator | ✅ |
 
