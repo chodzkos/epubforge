@@ -49,6 +49,7 @@ from epubforge.gui.widgets import (
     Section,
     file_list_count_label,
     file_list_texts,
+    make_scrollable,
 )
 from epubforge.gui.workers import CREATE_NO_WINDOW, EmitLine, EmitProgress, Worker
 from epubforge.i18n import _, ngettext
@@ -81,7 +82,8 @@ class FixerTab(QWidget):
 
     def _build_layout(self) -> None:
         """Buduje dwukolumnowy układ: pliki po lewej, opcje po prawej."""
-        outer = QVBoxLayout(self)
+        content = QWidget()
+        outer = QVBoxLayout(content)
         outer.setContentsMargins(12, 12, 12, 12)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -98,6 +100,12 @@ class FixerTab(QWidget):
 
         self.status_label = QLabel(_("Dodaj pliki EPUB"))
         outer.addWidget(self.status_label)
+        outer.addStretch(1)
+
+        root = QVBoxLayout()
+        root.setContentsMargins(0, 0, 0, 0)
+        root.addWidget(make_scrollable(content))
+        self.setLayout(root)
 
     def _build_file_list(self, parent: QWidget) -> None:
         """Buduje listę plików EPUB."""

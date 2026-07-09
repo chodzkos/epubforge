@@ -40,6 +40,7 @@ from epubforge.gui.widgets import (
     Section,
     file_list_count_label,
     file_list_texts,
+    make_scrollable,
     path_entry_texts,
 )
 from epubforge.gui.workers import EmitLine, EmitProgress, Worker
@@ -68,7 +69,8 @@ class ConverterTab(QWidget):
 
     def _build_layout(self) -> None:
         """Buduje dwukolumnowy układ: pliki po lewej, opcje po prawej."""
-        outer = QVBoxLayout(self)
+        content = QWidget()
+        outer = QVBoxLayout(content)
         outer.setContentsMargins(12, 12, 12, 12)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -85,6 +87,12 @@ class ConverterTab(QWidget):
 
         self.status_label = QLabel(_("Dodaj pliki wejściowe"))
         outer.addWidget(self.status_label)
+        outer.addStretch(1)
+
+        root = QVBoxLayout()
+        root.setContentsMargins(0, 0, 0, 0)
+        root.addWidget(make_scrollable(content))
+        self.setLayout(root)
 
     def _build_file_list(self, parent: QWidget) -> None:
         """Buduje listę plików wejściowych z potwierdzeniem PDF."""

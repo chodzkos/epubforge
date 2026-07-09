@@ -27,6 +27,13 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
   - **`FileList`**: zachowanie bez zmian (toolbar, D&D z rekursją folderów, sygnały, `confirm`, `extensions`); polskie etykiety przez `file_list_texts()` i licznik z formami mnogimi przez `file_list_count_label` (`ngettext`).
   - **`LogView`**: `append_line(text, level)`/`set_theme`/`clear` identyczne. **Zyskuje** re-render historii przy zmianie motywu — `set_theme()` przemalowuje teraz CAŁY log (wcześniej tylko nowe linie), więc po przełączeniu motywu w locie wcześniejsze wpisy też dostają kolory nowej palety.
 
+### Fixed
+- **Zakładki GUI nie nakładają sekcji przy małym oknie** — pionowe zakładki
+  (`Fixer`, `Metadane`, `Konwerter`, `Eksport Kindle`, `Walidacja`, `Spis treści`,
+  `Statystyki`) używają teraz bezramkowego `QScrollArea` z pionowym przewijaniem.
+  Minimalny rozmiar głównego okna zostaje `760×520`; przepełnienie rozwiązuje
+  scroll, nie sztuczne powiększanie okna.
+
 ## [2.0.0] - 2026-06-22
 
 ### Fixed

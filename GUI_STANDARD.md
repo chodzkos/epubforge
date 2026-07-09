@@ -4,11 +4,12 @@
 > Punkt odniesienia dla wszystkich aplikacji i dla Claude Code.
 > Dwa tory technologiczne, wspólne zasady wyglądu i zachowania.
 
-**Ostatnia rewizja:** 2026-06-14 · **Wersja:** 2.7
+**Ostatnia rewizja:** 2026-07-09 · **Wersja:** 2.8
 *(wersje 2.0–2.7 powstały w jednej sesji przeglądowej 2026-06-14; przyszłe edycje datować per zmiana)*
 
 | Wersja | Zmiany |
 |---|---|
+| 2.8 | Zakładki o pionowym układzie sekcji zawsze w `QScrollArea` przez `make_scrollable`; zawartość może przerosnąć minimalne okno i wtedy przewija się pionowo zamiast nakładać sekcje. Wymóg `widgetResizable(True)`, brak poziomego scrolla, `addStretch()` na końcu layoutu treści. |
 | 2.7 | sekcja Ikonografia rozszerzona: zestaw Lucide (ISC) / Tabler (MIT) kopiowany do repo; mechanizm przebarwialnych SVG `get_icon()` z podmianą currentColor wg palety + cache + clear na theme_changed (powód: NIE statyczne PNG); ICON_MAP; zasada „nazwa→tooltip+setText"; audyt tooltipów. Komponent IconProvider w §7 (z IcoForge feat/icon-system) |
 | 2.6 | KOREKTA fallbacku toolbara: prawdziwa przyczyna pustych przycisków to przeciekający app-QSS `QToolButton{padding/border}` przycinający przypięty ~22px przycisk — NIE brak ikon. Fix: per-widget QSS zdejmujący padding/border (wyższa specyficzność) + standardIcon gdy pusta; PORZUCONO wymuszanie etykiet (nie mieszczą się w 22px). Test geometryczny size vs sizeHint (działa offscreen) |
 | 2.5 | KOREKTA reguły belki: DWM ustawiany BEZWARUNKOWO = motyw app przy każdym apply() (atrybut DWM jest stanowy — „nic nie rób przy zgodności" zostawiało starą wartość → belka zamrożona; usterka po F-C); nota o timingu labelingu toolbara (po setOption, przed exec) |
@@ -389,6 +390,9 @@ Gdzie co się znajduje — żeby każda aplikacja była rozpoznawalna.
 ### Zakładki funkcji (Notebook / QTabWidget)
 - TYLKO dla funkcji roboczych (np. Metadane, Konwerter, Fixer)
 - nie mieszać z meta-funkcjami (motyw, about)
+- Zakładki o pionowym układzie sekcji zawsze w `QScrollArea` (`make_scrollable`):
+  zawartość może przerosnąć minimalny rozmiar okna — wtedy scroll, nigdy
+  nakładanie. `addStretch()` na końcu layoutu treści.
 
 ### Panel dolny / status
 - pasek statusu z wykrytymi narzędziami / stanem
