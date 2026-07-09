@@ -215,6 +215,20 @@ class CodeEditor(QWidget):
         self.editor.setTextCursor(cursor)
         self.editor.centerCursor()
 
+    def goto_position(self, line: int, column: int) -> None:
+        """Ustawia kursor na (linia, kolumna) — obie 1-based — i centruje widok."""
+        block = self.editor.document().findBlockByNumber(max(0, line - 1))
+        if not block.isValid():
+            return
+        cursor = QTextCursor(block)
+        cursor.movePosition(
+            QTextCursor.MoveOperation.Right,
+            QTextCursor.MoveMode.MoveAnchor,
+            max(0, column - 1),
+        )
+        self.editor.setTextCursor(cursor)
+        self.editor.centerCursor()
+
     @property
     def read_only(self) -> bool:
         """Czy edytor jest tylko do odczytu."""

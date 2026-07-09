@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EpubForge 1.0.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-07-09 11:23+0000\n"
+"POT-Creation-Date: 2026-07-09 20:51+0000\n"
 "PO-Revision-Date: 2026-06-12 13:30+0200\n"
 "Last-Translator: EpubForge translators <noreply@example.com>\n"
 "Language: en\n"
@@ -822,6 +822,7 @@ msgid "O programie"
 msgstr "About"
 
 #: src/epubforge/gui/app.py:79 src/epubforge/gui/tabs/fixer.py:125
+#: src/epubforge/gui/widgets/search_panel.py:123
 msgid "Zamknij"
 msgstr "Close"
 
@@ -887,8 +888,8 @@ msgstr "The language change will take effect after restarting the application."
 msgid "Język: {language}"
 msgstr "Language: {language}"
 
-#: src/epubforge/gui/app.py:389 src/epubforge/gui/tabs/editor.py:401
-#: src/epubforge/gui/tabs/editor.py:417
+#: src/epubforge/gui/app.py:389 src/epubforge/gui/tabs/editor.py:459
+#: src/epubforge/gui/tabs/editor.py:475
 msgid "Niezapisane zmiany"
 msgstr "Unsaved changes"
 
@@ -971,7 +972,7 @@ msgstr "Author"
 msgid "Kod języka treści, np. pl, en, de"
 msgstr "Content language code, e.g. pl, en, de"
 
-#: src/epubforge/gui/tabs/converter.py:152 src/epubforge/gui/tabs/editor.py:57
+#: src/epubforge/gui/tabs/converter.py:152 src/epubforge/gui/tabs/editor.py:58
 #: src/epubforge/gui/tabs/fixer.py:432
 msgid "Obrazy"
 msgstr "Images"
@@ -1018,6 +1019,7 @@ msgstr ""
 
 #: src/epubforge/gui/tabs/converter.py:186 src/epubforge/gui/tabs/kfx.py:253
 #: src/epubforge/gui/tabs/validator.py:123
+#: src/epubforge/gui/widgets/search_panel.py:118
 msgid "Anuluj"
 msgstr "Cancel"
 
@@ -1078,6 +1080,7 @@ msgstr "Finished: {done}/{total} OK"
 #: src/epubforge/gui/tabs/converter.py:337
 #: src/epubforge/gui/tabs/converter.py:338 src/epubforge/gui/tabs/kfx.py:406
 #: src/epubforge/gui/tabs/kfx.py:407 src/epubforge/gui/tabs/validator.py:314
+#: src/epubforge/gui/widgets/search_panel.py:235
 msgid "Anulowano"
 msgstr "Cancelled"
 
@@ -1117,68 +1120,68 @@ msgstr "Force Calibre ebook-convert (also supports PDF/MOBI/FB2)"
 msgid "Auto: PDF → Calibre, pozostałe → Pandoc (fallback Calibre)"
 msgstr "Auto: PDF → Calibre, others → Pandoc (fallback Calibre)"
 
-#: src/epubforge/gui/tabs/editor.py:55
+#: src/epubforge/gui/tabs/editor.py:56
 msgid "Tekst"
 msgstr "Text"
 
-#: src/epubforge/gui/tabs/editor.py:56
+#: src/epubforge/gui/tabs/editor.py:57
 msgid "Style"
 msgstr "Styles"
 
-#: src/epubforge/gui/tabs/editor.py:58
+#: src/epubforge/gui/tabs/editor.py:59
 msgid "Fonty"
 msgstr "Fonts"
 
-#: src/epubforge/gui/tabs/editor.py:59
+#: src/epubforge/gui/tabs/editor.py:60
 msgid "Inne"
 msgstr "Other"
 
-#: src/epubforge/gui/tabs/editor.py:123
+#: src/epubforge/gui/tabs/editor.py:127
 msgid "Otwórz EPUB…"
 msgstr "Open EPUB…"
 
-#: src/epubforge/gui/tabs/editor.py:124
+#: src/epubforge/gui/tabs/editor.py:128
 msgid "Otwórz plik EPUB do podglądu i edycji"
 msgstr "Open an EPUB file to view and edit"
 
-#: src/epubforge/gui/tabs/editor.py:128
+#: src/epubforge/gui/tabs/editor.py:132
 msgid "Nie otwarto pliku"
 msgstr "No file opened"
 
-#: src/epubforge/gui/tabs/editor.py:132
+#: src/epubforge/gui/tabs/editor.py:136
 msgid "Włącz edycję (domyślnie tylko do odczytu)"
 msgstr "Enable editing (read-only by default)"
 
-#: src/epubforge/gui/tabs/editor.py:138
+#: src/epubforge/gui/tabs/editor.py:142
 msgid "Inspektor CSS"
 msgstr "CSS inspector"
 
-#: src/epubforge/gui/tabs/editor.py:139
+#: src/epubforge/gui/tabs/editor.py:143
 msgid "Pokaż panel reguł CSS z podglądem na żywo"
 msgstr "Show the CSS rules panel with live preview"
 
-#: src/epubforge/gui/tabs/editor.py:146
+#: src/epubforge/gui/tabs/editor.py:150
 msgid "Zapisz EPUB"
 msgstr "Save EPUB"
 
-#: src/epubforge/gui/tabs/editor.py:147
+#: src/epubforge/gui/tabs/editor.py:151
 msgid "Zapisuje zmiany do pliku EPUB (kopia .bak)"
 msgstr "Saves changes to the EPUB file (.bak backup)"
 
-#: src/epubforge/gui/tabs/editor.py:161
+#: src/epubforge/gui/tabs/editor.py:219
 msgid "Otwórz EPUB"
 msgstr "Open EPUB"
 
-#: src/epubforge/gui/tabs/editor.py:161
+#: src/epubforge/gui/tabs/editor.py:219
 msgid "Pliki EPUB (*.epub)"
 msgstr "EPUB files (*.epub)"
 
-#: src/epubforge/gui/tabs/editor.py:174 src/epubforge/gui/tabs/editor.py:388
+#: src/epubforge/gui/tabs/editor.py:232 src/epubforge/gui/tabs/editor.py:446
 #: src/epubforge/gui/tabs/validator.py:420
 msgid "Błąd"
 msgstr "Error"
 
-#: src/epubforge/gui/tabs/editor.py:174
+#: src/epubforge/gui/tabs/editor.py:232
 #, python-brace-format
 msgid ""
 "Nie udało się otworzyć EPUB:\n"
@@ -1187,31 +1190,31 @@ msgstr ""
 "Could not open EPUB:\n"
 "{e}"
 
-#: src/epubforge/gui/tabs/editor.py:305
+#: src/epubforge/gui/tabs/editor.py:363
 msgid "Plik zawiera znaki nie-UTF-8 — edycja zablokowana."
 msgstr "File contains non-UTF-8 characters — editing disabled."
 
-#: src/epubforge/gui/tabs/editor.py:329
+#: src/epubforge/gui/tabs/editor.py:387
 msgid "Tryb: edycja"
 msgstr "Mode: editing"
 
-#: src/epubforge/gui/tabs/editor.py:329
+#: src/epubforge/gui/tabs/editor.py:387
 msgid "Tryb: tylko podgląd"
 msgstr "Mode: preview only"
 
-#: src/epubforge/gui/tabs/editor.py:331
+#: src/epubforge/gui/tabs/editor.py:389
 msgid "● Edycja"
 msgstr "● Editing"
 
-#: src/epubforge/gui/tabs/editor.py:334
+#: src/epubforge/gui/tabs/editor.py:392
 msgid "● Tylko podgląd"
 msgstr "● Preview only"
 
-#: src/epubforge/gui/tabs/editor.py:373
+#: src/epubforge/gui/tabs/editor.py:431
 msgid "Niepoprawny XML"
 msgstr "Invalid XML"
 
-#: src/epubforge/gui/tabs/editor.py:374
+#: src/epubforge/gui/tabs/editor.py:432
 #, python-brace-format
 msgid ""
 "Plik nie jest poprawnym XML:\n"
@@ -1224,7 +1227,7 @@ msgstr ""
 "\n"
 "Save anyway?"
 
-#: src/epubforge/gui/tabs/editor.py:388
+#: src/epubforge/gui/tabs/editor.py:446
 #, python-brace-format
 msgid ""
 "Nie udało się zapisać EPUB:\n"
@@ -1233,16 +1236,16 @@ msgstr ""
 "Could not save EPUB:\n"
 "{e}"
 
-#: src/epubforge/gui/tabs/editor.py:402
+#: src/epubforge/gui/tabs/editor.py:460
 #, python-brace-format
 msgid "Plik „{name}” ma niezapisane zmiany."
 msgstr "File “{name}” has unsaved changes."
 
-#: src/epubforge/gui/tabs/editor.py:418
+#: src/epubforge/gui/tabs/editor.py:476
 msgid "EPUB ma niezapisane zmiany. Zapisać przed zamknięciem?"
 msgstr "The EPUB has unsaved changes. Save before closing?"
 
-#: src/epubforge/gui/tabs/editor.py:478
+#: src/epubforge/gui/tabs/editor.py:536
 #, python-brace-format
 msgid ""
 "{name}\n"
@@ -1255,7 +1258,7 @@ msgstr ""
 "Type: {mtype}\n"
 "Size: {size} B"
 
-#: src/epubforge/gui/tabs/editor.py:479
+#: src/epubforge/gui/tabs/editor.py:537
 msgid "nieznany"
 msgstr "unknown"
 
@@ -2490,12 +2493,13 @@ msgid "Otwórz w przeglądarce: {url}"
 msgstr "Open in browser: {url}"
 
 #: src/epubforge/gui/widgets/code_editor.py:156
-#: src/epubforge/gui/widgets/code_editor.py:341
+#: src/epubforge/gui/widgets/code_editor.py:355
 #, python-brace-format
 msgid "Wiersz {line}, kolumna {col}"
 msgstr "Line {line}, column {col}"
 
 #: src/epubforge/gui/widgets/code_editor.py:165
+#: src/epubforge/gui/widgets/search_panel.py:80
 msgid "Szukaj…"
 msgstr "Search…"
 
@@ -2574,6 +2578,83 @@ msgstr "No preview"
 #: src/epubforge/gui/widgets/image_preview.py:42
 msgid "Nie udało się wczytać obrazu"
 msgstr "Could not load image"
+
+#: src/epubforge/gui/widgets/search_panel.py:84
+msgid "Zamień na…"
+msgstr "Replace with…"
+
+#: src/epubforge/gui/widgets/search_panel.py:89
+msgid "Regex"
+msgstr "Regex"
+
+#: src/epubforge/gui/widgets/search_panel.py:90
+msgid "Traktuj frazę jako wyrażenie regularne"
+msgstr "Treat the query as a regular expression"
+
+#: src/epubforge/gui/widgets/search_panel.py:92
+msgid "Aa"
+msgstr "Aa"
+
+#: src/epubforge/gui/widgets/search_panel.py:93
+msgid "Rozróżniaj wielkość liter"
+msgstr "Match case"
+
+#: src/epubforge/gui/widgets/search_panel.py:95
+msgid "Całe słowa"
+msgstr "Whole words"
+
+#: src/epubforge/gui/widgets/search_panel.py:96
+msgid "Dopasuj tylko całe słowa"
+msgstr "Match whole words only"
+
+#: src/epubforge/gui/widgets/search_panel.py:100
+msgid "Bieżący plik"
+msgstr "Current file"
+
+#: src/epubforge/gui/widgets/search_panel.py:101
+msgid "Cały EPUB"
+msgstr "Whole EPUB"
+
+#: src/epubforge/gui/widgets/search_panel.py:112
+msgid "Szukaj"
+msgstr "Search"
+
+#: src/epubforge/gui/widgets/search_panel.py:115
+msgid "Zamień wszystkie"
+msgstr "Replace all"
+
+#: src/epubforge/gui/widgets/search_panel.py:174
+msgid "Otwórz najpierw plik EPUB."
+msgstr "Open an EPUB first."
+
+#: src/epubforge/gui/widgets/search_panel.py:177
+msgid "Podaj frazę do wyszukania."
+msgstr "Enter a search query."
+
+#: src/epubforge/gui/widgets/search_panel.py:208
+msgid "Szukam…"
+msgstr "Searching…"
+
+#: src/epubforge/gui/widgets/search_panel.py:261
+#, python-brace-format
+msgid "Znaleziono {n} trafienie"
+msgid_plural "Znaleziono {n} trafień"
+msgstr[0] "Found {n} match"
+msgstr[1] "Found {n} matches"
+
+#: src/epubforge/gui/widgets/search_panel.py:280
+msgid "Otwórz EPUB i podaj frazę."
+msgstr "Open an EPUB and enter a query."
+
+#: src/epubforge/gui/widgets/search_panel.py:306
+#, python-brace-format
+msgid "Zamieniono {total} w {files} plikach"
+msgstr "Replaced {total} in {files} files"
+
+#: src/epubforge/gui/widgets/search_panel.py:308
+#, python-brace-format
+msgid " · pominięto {n} (nie-UTF-8)"
+msgstr " · skipped {n} (non-UTF-8)"
 
 #: src/epubforge/validators/epubcheck.py:212
 #: src/epubforge/validators/epubcheck.py:240

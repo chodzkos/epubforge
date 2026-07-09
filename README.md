@@ -52,6 +52,7 @@
 - **🎨 CSS Fixer** — czyszczenie kolorów, fontów, justify, marginesy
 - **🎨 Presety CSS** — wbudowane szablony stylów + import własnych (dołącz / zastąp)
 - **📝 Edytor wewnętrzny** — przegląd i szybka edycja plików w EPUB z podświetlaniem XML/CSS, przybliżony podgląd HTML (Kod ⇄ Podgląd) + handoff do Sigil/Calibre
+- **🔎 Szukaj/Zamień w całym EPUB** — panel w Edytorze (Ctrl+Shift+F): regex, wielkość liter, całe słowa, zakres plik/EPUB; klikalne wyniki i „Zamień wszystkie"
 - **🔎 Inspektor CSS** — lista reguł arkusza z podglądem na żywo i edycją reguły (podgląd przybliżony)
 - **✅ Walidacja EpubCheck** — raport błędów/ostrzeżeń EPUB; dwuklik błędu skacze do linii w edytorze (wymaga Javy + epubcheck.jar)
 - **📑 Spis treści** — generowanie z nagłówków (nav.xhtml + toc.ncx), edytor drzewa z drag&drop, wykrywanie i naprawa martwych wpisów
@@ -255,6 +256,13 @@ with Epub("book.epub") as ebook:
     # Preset CSS
     from epubforge.fixers import apply_preset, get_preset
     apply_preset(ebook, get_preset("reader-friendly"), mode="append")
+
+    # Szukaj i zamień (zamiana trafia do bufora — utrwala ebook.save())
+    from epubforge.core.search import search_epub, replace_in_epub
+    hits = search_epub(ebook, r"kot\w*", regex=True, whole_words=True)
+    print(len(hits), hits[0].internal_path, hits[0].line)
+    result = replace_in_epub(ebook, "kot", "pies")
+    print(result.total, result.changed_files, result.skipped)
 
     ebook.save()  # zapisuje + tworzy backup
 ```
