@@ -53,10 +53,141 @@ from epubforge.gui.widgets import (
 )
 from epubforge.gui.workers import CREATE_NO_WINDOW, EmitLine, EmitProgress, Worker
 from epubforge.i18n import _, ngettext
+from epubforge.recipes import Recipe, RecipeError, discover_recipes, run_recipe
 
 logger = logging.getLogger(__name__)
 
 _LANGUAGES = ["pl", "en", "en_US", "en_GB", "de", "fr", "es", "it", "cs", "uk"]
+
+
+class RecipeDialog(QDialog):
+    """Dialog uruchamiania receptur na wybranych plikach EPUB."""
+
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        *,
+        initial_files: list[Path] | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle(_("Uruchom recepturę"))
+        self.resize(760, 560)
+        self._running = False
+        self._worker: Worker | None = None
+        self._recipes: dict[str, Recipe] = {}
+        self._discover_error: str | None = None
+        try:
+            recipes = discover_recipes()
+        except RecipeError as exc:
+            recipes = []
+            self._discover_error = str(exc)
+        self._recipes = {recipe.name: recipe for recipe in recipes}
+        self._build_layout(initial_files or [])
+        self._refresh_buttons()
+
+    def _build_layout(self, initial_files: list[Path]) -> None:
+        layout = QVBoxLayout(self)
+
+        form = QFormLayout()
+        self.recipe_box = QComboBox()
+        for recipe in self._recipes.values():
+            label = f"{recipe.name} — {recipe.description}" if recipe.description else recipe.name
+            self.recipe_box.addItem(label, recipe.name)
+        self.recipe_box.currentIndexChanged.connect(self._refresh_buttons)
+        form.addRow(_("Receptura"), self.recipe_box)
+        layout.addLayout(form)
+
+        files_section = Section(_("Pliki EPUB"))
+        self.recipe_file_list = FileList(
+            extensions={".epub"},
+            texts=file_list_texts(),
+            count_label=file_list_count_label,
+        )
+        self.recipe_file_list.files_changed.connect(self._on_files_changed)
+        if initial_files:
+            self.recipe_file_list.add_files(initial_files)
+        files_section.add_widget(self.recipe_file_list)
+        layout.addWidget(files_section, stretch=1)
+
+        log_section = Section(_("Log"))
+        self.recipe_log = LogView()
+        log_section.add_widget(self.recipe_log)
+        layout.addWidget(log_section, stretch=1)
+
+        actions = QHBoxLayout()
+        self.run_recipe_button = QPushButton(_("Uruchom"))
+        self.run_recipe_button.clicked.connect(self._run_recipe)
+        actions.addWidget(self.run_recipe_button)
+        actions.addStretch(1)
+        self.close_button = QPushButton(_("Zamknij"))
+        self.close_button.clicked.connect(self.accept)
+        actions.addWidget(self.close_button)
+        layout.addLayout(actions)
+
+        if self._discover_error is not None:
+            self.recipe_log.append_line(
+                _("BŁĄD: {message}").format(message=self._discover_error),
+                "err",
+            )
+
+    def _on_files_changed(self, _files: list[Path]) -> None:
+        self._refresh_buttons()
+
+    def _current_recipe(self) -> Recipe | None:
+        name = self.recipe_box.currentData()
+        if not name:
+            return None
+        return self._recipes.get(str(name))
+
+    def _refresh_buttons(self) -> None:
+        can_run = (
+            not self._running
+            and self._current_recipe() is not None
+            and bool(self.recipe_file_list.files())
+        )
+        self.run_recipe_button.setEnabled(can_run)
+        self.close_button.setEnabled(not self._running)
+        self.recipe_box.setEnabled(not self._running)
+        self.recipe_file_list.setEnabled(not self._running)
+
+    def _run_recipe(self) -> None:
+        if self._running:
+            return
+        recipe = self._current_recipe()
+        files = self.recipe_file_list.files()
+        if recipe is None or not files:
+            return
+
+        self._running = True
+        self.recipe_log.clear()
+        self._refresh_buttons()
+        self._worker = Worker(_run_recipe_worker, recipe, files)
+        self._worker.line.connect(self.recipe_log.append_line)
+        self._worker.progress.connect(self._on_progress)
+        self._worker.done.connect(self._finish_recipe)
+        self._worker.failed.connect(self._on_failed)
+        self._worker.start()
+
+    def _on_progress(self, current: int, total: int) -> None:
+        self.setWindowTitle(
+            _("Uruchom recepturę ({current}/{total})").format(current=current, total=total)
+        )
+
+    def _finish_recipe(self, result: object) -> None:
+        succeeded, total = cast(tuple[int, int], result)
+        self._running = False
+        self.setWindowTitle(_("Uruchom recepturę"))
+        self.recipe_log.append_line(
+            _("Zakończono: {done}/{total} OK").format(done=succeeded, total=total),
+            "ok" if succeeded == total else "warn",
+        )
+        self._refresh_buttons()
+
+    def _on_failed(self, message: str) -> None:
+        self._running = False
+        self.setWindowTitle(_("Uruchom recepturę"))
+        self.recipe_log.append_line(_("BŁĄD: {message}").format(message=message), "err")
+        self._refresh_buttons()
 
 
 class FixerTab(QWidget):
@@ -404,6 +535,11 @@ class FixerTab(QWidget):
         self.fix_button.setEnabled(False)
         self.fix_button.clicked.connect(self._run_fix)
         actions.addWidget(self.fix_button)
+
+        self.recipe_button = QPushButton(_("Uruchom recepturę…"))
+        self.recipe_button.setToolTip(_("Uruchamia zapisany pipeline fixerów i eksportu."))
+        self.recipe_button.clicked.connect(self._open_recipe_dialog)
+        actions.addWidget(self.recipe_button)
         actions.addStretch(1)
 
         self.preview_button = QPushButton(_("Podgląd w Calibre Viewer"))
@@ -442,6 +578,7 @@ class FixerTab(QWidget):
         """Aktualizuje stan przycisków po zmianie listy plików."""
         self.last_fixed_file = None
         self.fix_button.setEnabled(bool(files) and not self._running)
+        self.recipe_button.setEnabled(not self._running)
         self._refresh_preview_button()
         count = len(files)
         self._set_status(ngettext("Wybrano {n} plik", "Wybrano {n} plików", count).format(n=count))
@@ -507,6 +644,7 @@ class FixerTab(QWidget):
         self._running = True
         self.last_fixed_file = None
         self.fix_button.setEnabled(False)
+        self.recipe_button.setEnabled(False)
         self.preview_button.setEnabled(False)
         self.log_view.clear()
         self._set_status(_("Naprawianie..."))
@@ -535,6 +673,7 @@ class FixerTab(QWidget):
         self._running = False
         self.last_fixed_file = last_fixed
         self.fix_button.setEnabled(bool(self.file_list.files()))
+        self.recipe_button.setEnabled(True)
         self._refresh_preview_button()
         self._set_status(_("Zakończono: {done}/{total} OK").format(done=succeeded, total=total))
 
@@ -542,6 +681,7 @@ class FixerTab(QWidget):
         """Obsługuje nieoczekiwany błąd wątku naprawy."""
         self._running = False
         self.fix_button.setEnabled(bool(self.file_list.files()))
+        self.recipe_button.setEnabled(True)
         self.log_view.append_line(_("BŁĄD: {message}").format(message=message), "err")
         self._set_status(_("Naprawa przerwana błędem"))
 
@@ -577,6 +717,13 @@ class FixerTab(QWidget):
         self.log_view.append_line(
             _("Uruchomiono podgląd: {name}").format(name=self.last_fixed_file.name), "info"
         )
+
+    def _open_recipe_dialog(self) -> None:
+        """Otwiera dialog receptur, startowo z plikami z zakładki Fixer."""
+        if self._running:
+            return
+        dialog = RecipeDialog(self, initial_files=self.file_list.files())
+        dialog.exec()
 
     def _set_status(self, text: str) -> None:
         """Ustawia tekst paska statusu zakładki."""
@@ -624,6 +771,36 @@ def _run_fix_worker(
         emit_line(_("OK: {path}").format(path=last_fixed), "ok")
         succeeded += 1
     return succeeded, total, last_fixed
+
+
+def _run_recipe_worker(
+    emit_line: EmitLine,
+    emit_progress: EmitProgress,
+    recipe: Recipe,
+    files: list[Path],
+) -> tuple[int, int]:
+    """Uruchamia recepturę na plikach po kolei w wątku roboczym."""
+    succeeded = 0
+    total = len(files)
+    for index, path in enumerate(files, start=1):
+        emit_progress(index, total)
+        emit_line(f"→ {path.name}", "cmd")
+        try:
+            outputs = run_recipe(recipe, path, path.parent, lambda line: emit_line(line, "info"))
+        except Exception as exc:
+            logger.exception("Nie udało się uruchomić receptury %s dla %s", recipe.name, path)
+            emit_line(_("BŁĄD: {error}").format(error=exc), "err")
+            continue
+        if outputs:
+            emit_line(
+                _("Wyniki eksportu: {paths}").format(
+                    paths=", ".join(str(output) for output in outputs)
+                ),
+                "ok",
+            )
+        emit_line(_("OK: {path}").format(path=path), "ok")
+        succeeded += 1
+    return succeeded, total
 
 
 def _typo_summary(report: TypographyReport) -> str:

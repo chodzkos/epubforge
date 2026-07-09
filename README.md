@@ -30,6 +30,7 @@
 | Spis treści (generator + edytor drzewa) | ✅ |
 | Statystyki książki (raport HTML) | ✅ |
 | KFX / MOBI / AZW3 | ✅ |
+| Receptury TOML (pipeline) | ✅ |
 | GUI (motyw jasny/ciemny) | ✅ |
 | Build: portable `.exe` + instalator | ✅ |
 
@@ -44,6 +45,7 @@
 - **🖥️ GUI** — desktopowa aplikacja z motywem jasnym i ciemnym
 - **🔄 Konwersja** TXT / DOCX / HTML / MD / ODT / RTF / PDF → EPUB
 - **📚 Eksport Kindle** — EPUB → KFX / MOBI / AZW3 (Calibre zalecane; KP3/kindlegen opcjonalnie)
+- **🧩 Receptury TOML** — zapisane pipeline'y `fix_css → typography → hyphenate → export` dla CLI i GUI
 - **✂️ Hyphenation** — dzielenie wyrazów dla 50+ języków
 - **🇵🇱 Typografia** — cudzysłowy typograficzne (pl/en/de), pauzy w dialogach, wielokropek, twarde spacje po sierotach
 - **🎨 CSS Fixer** — czyszczenie kolorów, fontów, justify, marginesy
@@ -132,6 +134,12 @@ epubforge fix book.epub --preset dark-oled --preset-mode replace  # zastąp istn
 epubforge hyphenate book.epub --lang pl --skip-headers
 epubforge hyphenate *.epub --method css --jobs 4 --dry-run
 
+# Receptury TOML (pipeline fixerów + opcjonalny eksport)
+epubforge run --list
+epubforge run kindle-pl book.epub --out-dir dist
+epubforge run czytnik-epub a.epub b.epub --jobs 2
+epubforge run moja-receptura.toml book.epub --dry-run --diff-full
+
 # Edycja metadanych
 epubforge meta book.epub --title "Nowy tytuł" --author "Jan Kowalski"
 
@@ -149,6 +157,45 @@ równoległej. `--dry-run` wykonuje fixery w pamięci i pokazuje unified diff dl
 plików tekstowych (domyślnie skrócony; `--diff-full` pokazuje całość), a dla
 binarnych wpisów tylko deltę rozmiaru. Presety CSS są aplikowane przez
 `fix --preset`, więc korzystają z tego samego batcha i dry-runu.
+
+### Receptury TOML
+
+Receptura łączy kilka kroków w jeden pipeline. Kroki fixerów działają na jednym
+otwartym EPUB-ie i zapisują plik raz na końcu, a kroki eksportu pracują dopiero
+na zapisanym pliku. Wbudowane receptury:
+
+- `kindle-pl` — CSS fixer, typografia PL, hyphenacja PL, eksport do MOBI.
+- `czytnik-epub` — CSS fixer, typografia PL i preset `reader-friendly`.
+
+Własne receptury trzymaj w `config_dir()/recipes/*.toml`; receptura użytkownika
+o tej samej nazwie przykrywa wbudowaną.
+
+```toml
+name = "kindle-pl"
+description = "Przygotowanie polskiego EPUB-a pod Kindle (MOBI)"
+
+[[steps]]
+op = "fix_css"
+[steps.options]
+remove_colors = true
+replace_justify = "left"
+
+[[steps]]
+op = "typography"
+[steps.options]
+language = "pl"
+
+[[steps]]
+op = "hyphenate"
+[steps.options]
+language = "pl"
+
+[[steps]]
+op = "to_mobi"
+[steps.options]
+fmt = "mobi"
+fix_epub_first = false
+```
 
 ### Presety CSS
 

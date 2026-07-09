@@ -1,0 +1,19 @@
+name = "czytnik-epub"
+description = "Czytelny EPUB z poprawiona typografia i presetem reader-friendly"
+
+[[steps]]
+op = "fix_css"
+[steps.options]
+remove_colors = true
+replace_justify = "left"
+
+[[steps]]
+op = "typography"
+[steps.options]
+language = "pl"
+
+[[steps]]
+op = "apply_preset"
+[steps.options]
+preset = "reader-friendly"
+mode = "append"

@@ -1,0 +1,24 @@
+name = "kindle-pl"
+description = "Przygotowanie polskiego EPUB-a pod Kindle (MOBI)"
+
+[[steps]]
+op = "fix_css"
+[steps.options]
+remove_colors = true
+replace_justify = "left"
+
+[[steps]]
+op = "typography"
+[steps.options]
+language = "pl"
+
+[[steps]]
+op = "hyphenate"
+[steps.options]
+language = "pl"
+
+[[steps]]
+op = "to_mobi"
+[steps.options]
+fmt = "mobi"
+fix_epub_first = false
