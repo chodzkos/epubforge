@@ -7,6 +7,12 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-07-09
+
+Brama wydaniowa v2.2 (Etapy 19–21 roadmapy v3): anulowanie i postęp długich
+operacji, optymalizacja obrazów oraz szukaj/zamień w całym EPUB. Zawiera też
+wcześniejsze funkcje z [Unreleased] (typografia PL, batch/dry-run, receptury TOML).
+
 ### Added
 - **Szukaj i zamień w całym EPUB** (Etap 21 roadmapy v3) — nowy moduł
   `epubforge.core.search` (`search_epub`, `replace_in_epub`, `SearchHit`,
