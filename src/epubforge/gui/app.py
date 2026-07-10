@@ -420,6 +420,7 @@ def _format_tools_status(tools: dict[str, Tool]) -> str:
         "kindle_previewer": "KP3",
         "java": "Java",
         "epubcheck": "EpubCheck",
+        "ace": "Ace",
     }
     parts: list[str] = []
     for key, label in labels.items():

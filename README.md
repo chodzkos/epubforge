@@ -63,11 +63,12 @@
 - **🔎 Szukaj/Zamień w całym EPUB** — panel w Edytorze (Ctrl+Shift+F): regex, wielkość liter, całe słowa, zakres plik/EPUB; klikalne wyniki i „Zamień wszystkie"
 - **🔎 Inspektor CSS** — lista reguł arkusza z podglądem na żywo i edycją reguły (podgląd przybliżony)
 - **✅ Walidacja EpubCheck** — raport błędów/ostrzeżeń EPUB; dwuklik błędu skacze do linii w edytorze (wymaga Javy + epubcheck.jar)
+- **♿ Audyt dostępności (DAISY Ace)** — raport naruszeń WCAG/EPUB Accessibility w tej samej tabeli co EpubCheck; dwuklik wpisu skacze do pliku. CLI `epubforge a11y` + przycisk „Sprawdź dostępność (Ace)" w zakładce Walidacja (wymaga `npm install -g @daisy/ace`)
 - **⬆️ Upgrade EPUB 2 → 3** — modernizacja pakietu: nav.xhtml ze spisu NCX, landmarks z guide, `dcterms:modified`; NCX zostaje (opcja `--drop-ncx`). Dokumentów treści nie rusza. CLI `epubforge upgrade` + przycisk w zakładce Fixer
 - **📑 Spis treści** — generowanie z nagłówków (nav.xhtml + toc.ncx), edytor drzewa z drag&drop, wykrywanie i naprawa martwych wpisów
 - **📊 Statystyki** — słowa, szac. strony, czas czytania, język i top-słowa + samowystarczalny raport HTML (wykrywanie języka: `pip install ".[stats]"`)
 - **🏷️ Metadata** — pełna edycja Dublin Core + seria/tom (Calibre i EPUB 3)
-- **🔍 Auto-detekcja** — Pandoc, pdf2md, Calibre, Sigil, Kindle Previewer, kindlegen
+- **🔍 Auto-detekcja** — Pandoc, pdf2md, DAISY Ace, Calibre, Sigil, Kindle Previewer, kindlegen
 
 ---
 
@@ -122,6 +123,11 @@ epubforge upgrade book.epub --drop-ncx -o out.epub
 epubforge check book.epub                            # raport + kod wyjścia 0/1/2
 epubforge check book.epub --json report.json         # pełny raport do pliku
 epubforge check book.epub --min-severity warning     # tylko ostrzeżenia i błędy
+
+# Audyt dostępności DAISY Ace (wymaga: npm install -g @daisy/ace)
+epubforge a11y book.epub                              # raport + kod wyjścia 0/1/2
+epubforge a11y book.epub --json report.json          # pełny raport do pliku
+epubforge a11y book.epub --min-severity warning      # tylko ostrzeżenia i błędy
 
 # Spis treści (generowanie z nagłówków, naprawa martwych wpisów)
 epubforge toc book.epub --show
@@ -380,6 +386,7 @@ python build/compile_locales.py
   - [Sigil](https://sigil-ebook.com) — edytor EPUB
   - [Kindle Previewer 3](https://www.amazon.com/gp/feature.html?ie=UTF8&docId=1000765261) — KFX (experimental)
   - [Temurin JRE 17+](https://adoptium.net/) + [EpubCheck 5.x](https://github.com/w3c/epubcheck/releases) — walidacja EPUB (`epubforge check` / zakładka **Walidacja**); rozpakuj `epubcheck.jar` do `<config>/epubcheck/epubcheck.jar` lub wskaż go w GUI
+  - [DAISY Ace](https://daisy.github.io/ace/) (`npm install -g @daisy/ace`, wymaga Node.js) — audyt dostępności EPUB (`epubforge a11y` / przycisk w zakładce **Walidacja**)
   - `pip install ".[stats]"` — wykrywanie języka w statystykach (langdetect); bez tego język brany jest z metadanych
   - `pip install ".[fonts]"` — subsetting fontów (fonttools + brotli); bez tego opcja „Przytnij fonty" zgłasza czytelny błąd, a pliki WOFF2 są pomijane
 

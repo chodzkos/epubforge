@@ -10,6 +10,7 @@ from typing import cast
 
 from epubforge import __version__
 from epubforge.cli import (
+    a11y,
     check,
     convert,
     doctor,
@@ -57,6 +58,7 @@ def main(argv: list[str] | None = None) -> int:
     subparsers = parser.add_subparsers(dest="command", help=_("Dostępne komendy"))
     subparsers.add_parser("info", help=_("Wyświetl informacje o wersji i wykrytych narzędziach"))
     check.add_parser(subparsers)
+    a11y.add_parser(subparsers)
     doctor.add_parser(subparsers)
     convert.add_parser(subparsers)
     fix.add_parser(subparsers)

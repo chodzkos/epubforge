@@ -1,0 +1,109 @@
+{
+  "@type": "earl:report",
+  "dct:title": "Ace Report",
+  "dct:date": "2026-06-14T12:00:00Z",
+  "dct:hasVersion": "1.3.2",
+  "earl:testSubject": {
+    "url": ".",
+    "dct:title": "Książka z naruszeniami"
+  },
+  "assertions": [
+    {
+      "@type": "earl:assertion",
+      "earl:assertedBy": "aceCore",
+      "earl:testSubject": {
+        "url": "EPUB/text/chapter01.xhtml",
+        "dct:title": "Rozdział 1"
+      },
+      "assertions": [
+        {
+          "@type": "earl:assertion",
+          "earl:test": {
+            "@type": "earl:TestCriterion",
+            "dct:title": "image-alt",
+            "dct:description": "Ensures <img> elements have alternate text",
+            "earl:impact": "critical",
+            "help": {
+              "url": "https://daisy.github.io/ace/rules/axe/image-alt",
+              "title": "image-alt"
+            }
+          },
+          "earl:result": {
+            "@type": "earl:TestResult",
+            "earl:outcome": "fail",
+            "dct:description": "Fix any of the following: Element does not have an alt attribute",
+            "html": "<img src=\"cover.jpg\">"
+          }
+        },
+        {
+          "@type": "earl:assertion",
+          "earl:test": {
+            "@type": "earl:TestCriterion",
+            "dct:title": "color-contrast",
+            "dct:description": "Ensures the contrast between foreground and background",
+            "earl:impact": "serious"
+          },
+          "earl:result": {
+            "@type": "earl:TestResult",
+            "earl:outcome": "fail",
+            "dct:description": "Element has insufficient color contrast of 2.5:1",
+            "location": "EPUB/text/chapter01.xhtml#h1"
+          }
+        }
+      ]
+    },
+    {
+      "@type": "earl:assertion",
+      "earl:assertedBy": "aceCore",
+      "earl:testSubject": {
+        "url": "EPUB/text/chapter02.xhtml",
+        "dct:title": "Rozdział 2"
+      },
+      "assertions": [
+        {
+          "@type": "earl:assertion",
+          "earl:test": {
+            "@type": "earl:TestCriterion",
+            "dct:title": "epub-type-has-matching-role",
+            "dct:description": "Ensures epub:type attributes have a matching ARIA role",
+            "earl:impact": "moderate"
+          },
+          "earl:result": {
+            "@type": "earl:TestResult",
+            "earl:outcome": "fail",
+            "dct:description": "Add a matching ARIA role to the element"
+          }
+        },
+        {
+          "@type": "earl:assertion",
+          "earl:test": {
+            "@type": "earl:TestCriterion",
+            "dct:title": "landmark-unique",
+            "dct:description": "Landmarks should have a unique role or label",
+            "earl:impact": "minor"
+          },
+          "earl:result": {
+            "@type": "earl:TestResult",
+            "earl:outcome": "fail",
+            "dct:description": "Ensure landmarks are unique"
+          }
+        },
+        {
+          "@type": "earl:assertion",
+          "earl:test": {
+            "@type": "earl:TestCriterion",
+            "dct:title": "passing-check",
+            "earl:impact": "minor"
+          },
+          "earl:result": {
+            "@type": "earl:TestResult",
+            "earl:outcome": "pass"
+          }
+        }
+      ]
+    }
+  ],
+  "earl:result": {
+    "earl:outcome": "fail"
+  }
+}
