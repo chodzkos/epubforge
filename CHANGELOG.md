@@ -7,6 +7,22 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 
 ## [Unreleased]
 
+### Added
+- **Integracja pdf2md** (Etap 22 roadmapy v3) — nowy silnik konwersji PDF → EPUB
+  przez [pdf2md](https://github.com/chodzkos/pdf2md): PDF → Markdown (z wyciąganiem
+  obrazów) → Pandoc EPUB (z `--resource-path`, obrazy osadzone w książce). Cały
+  materiał pośredni żyje w katalogu tymczasowym (`epubforge.converters.pdf2md`).
+  - `engine="pdf2md"` w `to_epub`/`to_epub_streaming` (tylko PDF) oraz w CLI
+    `epubforge convert --engine pdf2md`. Tryb `auto` dla PDF wybiera pdf2md, gdy
+    jest wykryty, a w przeciwnym razie **bez zmian** wraca do Calibre.
+  - Detekcja `pdf2md` (CLI) i `pdf2md-gui` (handoff) w `core.detection`
+    (`Tools.pdf2md`, `Tools.pdf2md_gui`), z wersją z `pdf2md --version`; status
+    „pdf2md" na pasku narzędzi.
+  - GUI Konwerter: przy dodaniu PDF (gdy wykryto pdf2md) dialog wyboru silnika
+    „pdf2md (zalecane)" / „Calibre (eksperymentalne)" z zapamiętaniem wyboru
+    (`config["pdf_engine"]`); radio **pdf2md** oraz przycisk **Otwórz w pdf2md**
+    (handoff do `pdf2md-gui`) aktywne, gdy na liście jest PDF.
+
 ## [2.2.0] - 2026-07-09
 
 Brama wydaniowa v2.2 (Etapy 19–21 roadmapy v3): anulowanie i postęp długich

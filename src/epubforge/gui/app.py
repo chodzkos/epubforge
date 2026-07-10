@@ -207,7 +207,7 @@ class MainWindow(QMainWindow):
         """Buduje notebook z zakładkami roboczymi (bez meta-zakładek)."""
         self.tabs = QTabWidget()
         self.metadata_tab = MetadataTab(tools=self.tools)
-        self.converter_tab = ConverterTab(config=self.config_data)
+        self.converter_tab = ConverterTab(config=self.config_data, tools=self.tools)
         self.fixer_tab = FixerTab(tools=self.tools)
         self.kfx_tab = KfxTab(tools=self.tools, config=self.config_data)
         self.editor_tab = EditorTab(tools=self.tools)
@@ -412,6 +412,7 @@ def _format_tools_status(tools: dict[str, Tool]) -> str:
     """Buduje zwięzły opis statusu wykrytych narzędzi."""
     labels = {
         "pandoc": "Pandoc",
+        "pdf2md": "pdf2md",
         "calibre_ebook_convert": "Calibre",
         "calibre_viewer": "Viewer",
         "calibre_editor": "Editor",

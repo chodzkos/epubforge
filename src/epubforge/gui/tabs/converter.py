@@ -30,9 +30,11 @@ from epubforge.converters import (
     to_epub_streaming,
 )
 from epubforge.converters.to_epub import Engine
-from epubforge.core import Metadata
+from epubforge.core import Metadata, Tool
 from epubforge.core.config import Config
+from epubforge.core.detection import Tools
 from epubforge.core.exceptions import ConversionError, ConverterNotFoundError
+from epubforge.gui.external_tools import ToolUnavailableError, launch_tool
 from epubforge.gui.output import remember_output_dir, remembered_output_dir, resolve_output_dir
 from epubforge.gui.widgets import (
     FileList,
@@ -54,9 +56,16 @@ _LANGUAGES = ["pl", "en", "de", "fr", "es", "it", "ru", "cs", "uk", "nl", "pt"]
 class ConverterTab(QWidget):
     """Zakładka konwersji TXT/DOCX/HTML/MD/PDF… → EPUB."""
 
-    def __init__(self, parent: QWidget | None = None, *, config: Config | None = None) -> None:
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        *,
+        config: Config | None = None,
+        tools: dict[str, Tool] | None = None,
+    ) -> None:
         super().__init__(parent)
         self.config_data: Config = config if config is not None else {}
+        self.tools: dict[str, Tool] = tools if tools is not None else _detect_tools()
         self._converting = False
         self._worker: Worker | None = None
 
@@ -188,6 +197,13 @@ class ConverterTab(QWidget):
         self.cancel_button.setEnabled(False)
         self.cancel_button.clicked.connect(self._cancel)
         actions.addWidget(self.cancel_button)
+        self.pdf2md_button = QPushButton(_("Otwórz w pdf2md"))
+        self.pdf2md_button.setToolTip(_("Otwiera wybrany PDF w aplikacji pdf2md (GUI)"))
+        self.pdf2md_button.clicked.connect(self._open_in_pdf2md)
+        # Handoff widoczny tylko, gdy wykryto pdf2md-gui; aktywny gdy jest PDF na liście.
+        self.pdf2md_button.setVisible(self._pdf2md_gui_available())
+        self.pdf2md_button.setEnabled(False)
+        actions.addWidget(self.pdf2md_button)
         section.content_layout().addLayout(actions)
 
     def _build_engine_row(self) -> QWidget:
@@ -197,17 +213,36 @@ class ConverterTab(QWidget):
         row.setContentsMargins(0, 0, 0, 0)
         self.engine_group = QButtonGroup(self)
         self._engine_radios: dict[str, QRadioButton] = {}
-        for value, label in (("auto", "Auto"), ("pandoc", "Pandoc"), ("calibre", "Calibre")):
+        radios = (
+            ("auto", "Auto"),
+            ("pandoc", "Pandoc"),
+            ("calibre", "Calibre"),
+            ("pdf2md", "pdf2md"),
+        )
+        for value, label in radios:
             radio = QRadioButton(label)
             radio.setToolTip(_engine_tooltip(value))
             radio.setProperty("engine", value)
             if value == "auto":
                 radio.setChecked(True)
+            # pdf2md działa tylko dla PDF — włączany dynamicznie po dodaniu PDF-a.
+            if value == "pdf2md":
+                radio.setEnabled(False)
             self.engine_group.addButton(radio)
             self._engine_radios[value] = radio
             row.addWidget(radio)
         row.addStretch(1)
         return widget
+
+    def _pdf2md_available(self) -> bool:
+        """Czy wykryto CLI ``pdf2md`` (silnik konwersji PDF)."""
+        tool = self.tools.get("pdf2md")
+        return tool is not None and tool.available
+
+    def _pdf2md_gui_available(self) -> bool:
+        """Czy wykryto ``pdf2md-gui`` (handoff „Otwórz w pdf2md")."""
+        tool = self.tools.get("pdf2md_gui")
+        return tool is not None and tool.available
 
     def _build_log(self, layout: QVBoxLayout) -> None:
         """Buduje pole logu konwersji."""
@@ -219,10 +254,11 @@ class ConverterTab(QWidget):
     # ── Logika ────────────────────────────────────────────────────────────────
 
     def _on_files_changed(self, files: list[Path]) -> None:
-        """Podpowiada katalog wyjściowy i blokuje silnik na Calibre dla plików Kindle."""
+        """Podpowiada katalog wyjściowy i dostraja dostępność silników do plików."""
         if files and not self.output_entry.get().strip():
             self.output_entry.set(str(files[0].parent))
         self._apply_kindle_engine_lock(files)
+        self._apply_pdf_engine_state(files)
 
     def _apply_kindle_engine_lock(self, files: list[Path]) -> None:
         """Dla plików Kindle wymusza silnik Calibre (Auto/Pandoc zablokowane)."""
@@ -233,8 +269,18 @@ class ConverterTab(QWidget):
         self._engine_radios["auto"].setEnabled(not has_kindle)
         self._engine_radios["pandoc"].setEnabled(not has_kindle)
 
+    def _apply_pdf_engine_state(self, files: list[Path]) -> None:
+        """Włącza silnik i handoff pdf2md tylko, gdy na liście jest PDF i wykryto pdf2md."""
+        has_pdf = any(path.suffix.lower() == ".pdf" for path in files)
+        radio = self._engine_radios["pdf2md"]
+        radio.setEnabled(has_pdf and self._pdf2md_available())
+        if not radio.isEnabled() and radio.isChecked():
+            self._engine_radios["auto"].setChecked(True)
+        self.pdf2md_button.setVisible(self._pdf2md_gui_available())
+        self.pdf2md_button.setEnabled(has_pdf and self._pdf2md_gui_available())
+
     def _confirm_file(self, path: Path) -> bool:
-        """Odrzuca pliki Kindle z DRM (ostrzeżenie); PDF wymaga potwierdzenia."""
+        """Odrzuca pliki Kindle z DRM (ostrzeżenie); PDF wymaga wyboru silnika."""
         suffix = path.suffix.lower()
         if suffix in KINDLE_INPUT_EXTENSIONS and has_kindle_drm(path):
             QMessageBox.warning(
@@ -248,6 +294,8 @@ class ConverterTab(QWidget):
             return False
         if suffix != ".pdf":
             return True
+        if self._pdf2md_available():
+            return self._choose_pdf_engine()
         answer = QMessageBox.question(
             self,
             _("Konwersja PDF → EPUB"),
@@ -258,6 +306,60 @@ class ConverterTab(QWidget):
             ),
         )
         return answer == QMessageBox.StandardButton.Yes
+
+    def _choose_pdf_engine(self) -> bool:
+        """Pyta o silnik PDF (pdf2md zalecany / Calibre eksperymentalny), zapamiętuje wybór."""
+        box = QMessageBox(self)
+        box.setWindowTitle(_("Konwersja PDF → EPUB"))
+        box.setText(_("Wybierz silnik konwersji PDF → EPUB:"))
+        box.setInformativeText(
+            _(
+                "pdf2md (zalecane) wydobywa czystszy tekst i osadza obrazy. "
+                "Calibre jest eksperymentalny — sztywne marginesy i łamanie akapitów."
+            )
+        )
+        pdf2md_button = box.addButton(_("pdf2md (zalecane)"), QMessageBox.ButtonRole.AcceptRole)
+        calibre_button = box.addButton(
+            _("Calibre (eksperymentalne)"), QMessageBox.ButtonRole.AcceptRole
+        )
+        box.addButton(QMessageBox.StandardButton.Cancel)
+        remembered = self.config_data.get("pdf_engine")
+        box.setDefaultButton(calibre_button if remembered == "calibre" else pdf2md_button)
+        box.exec()
+
+        clicked = box.clickedButton()
+        if clicked not in (pdf2md_button, calibre_button):
+            return False
+        engine = "pdf2md" if clicked is pdf2md_button else "calibre"
+        self.config_data["pdf_engine"] = engine
+        self._engine_radios[engine].setChecked(True)
+        return True
+
+    def _first_pdf(self) -> Path | None:
+        """Zwraca pierwszy plik PDF z listy wejściowej (lub ``None``)."""
+        files: list[Path] = self.file_list.files()
+        for path in files:
+            if path.suffix.lower() == ".pdf":
+                return path
+        return None
+
+    def _open_in_pdf2md(self) -> None:
+        """Otwiera wybrany PDF w aplikacji pdf2md-gui (handoff)."""
+        pdf = self._first_pdf()
+        if pdf is None:
+            self._set_status(_("Brak pliku PDF do otwarcia w pdf2md"))
+            return
+        try:
+            launch_tool(self.tools.get("pdf2md_gui"), pdf)
+        except ToolUnavailableError:
+            self._set_status(_("Nie wykryto pdf2md"))
+        except OSError as exc:
+            self._set_status(_("Nie udało się uruchomić pdf2md: {error}").format(error=exc))
+            QMessageBox.critical(
+                self,
+                _("pdf2md"),
+                _("Nie udało się uruchomić programu:\n{error}").format(error=exc),
+            )
 
     def _selected_engine(self) -> Engine:
         """Zwraca aktualnie wybrany silnik konwersji."""
@@ -395,4 +497,11 @@ def _engine_tooltip(value: str) -> str:
         return _("Wymusza Pandoc (TXT/MD/DOCX/HTML/ODT/RTF)")
     if value == "calibre":
         return _("Wymusza Calibre ebook-convert (obsługuje też PDF/MOBI/FB2)")
-    return _("Auto: PDF → Calibre, pozostałe → Pandoc (fallback Calibre)")
+    if value == "pdf2md":
+        return _("Tylko PDF: pdf2md → Markdown → Pandoc EPUB (osadza obrazy)")
+    return _("Auto: PDF → pdf2md (fallback Calibre), pozostałe → Pandoc (fallback Calibre)")
+
+
+def _detect_tools() -> dict[str, Tool]:
+    """Wykrywa narzędzia używane przez zakładkę konwertera (silnik i handoff pdf2md)."""
+    return {"pdf2md": Tools.pdf2md(), "pdf2md_gui": Tools.pdf2md_gui()}
