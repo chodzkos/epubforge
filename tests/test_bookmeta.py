@@ -13,9 +13,11 @@ from typing import Any
 
 import pytest
 
-from epubforge.bookmeta import _http, validate_isbn
+from epubforge.bookmeta import _http, extract_isbn_from_epub, validate_isbn
 from epubforge.bookmeta._lang import to_iso639_1
+from epubforge.bookmeta.isbn import _find_isbn_in_text
 from epubforge.bookmeta.model import BookRecord
+from epubforge.core import ManifestItem
 
 # ── Walidacja ISBN ──────────────────────────────────────────────────────────────
 
@@ -186,3 +188,57 @@ def test_is_empty() -> None:
     assert BookRecord(source="bn").is_empty()  # samo źródło to nie dane
     assert not BookRecord(title="X").is_empty()
     assert not BookRecord(page_count=1).is_empty()
+
+
+# ── Ekstrakcja ISBN z EPUB ───────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("ISBN 978-83-8069-285-5", "9788380692855"),
+        ("na stronie redakcyjnej: ISBN: 0-306-40615-2 druk", "0306406152"),
+        ("numer 9788380692855 w treści", "9788380692855"),
+        ("brak numeru książki", None),
+        ("ISBN 978-83-8069-285-0 (zła suma)", None),  # zła suma kontrolna → odrzucony
+    ],
+)
+def test_find_isbn_in_text(text: str, expected: str | None) -> None:
+    """_find_isbn_in_text zwraca pierwszy poprawny ISBN (suma kontrolna) lub None."""
+    assert _find_isbn_in_text(text) == expected
+
+
+class _FakeEpub:
+    """Atrapa Epub: manifest/spine/opf_dir/read_file dla extract_isbn_from_epub."""
+
+    def __init__(self, docs: dict[str, bytes]) -> None:
+        self._docs = docs
+        self.manifest = [
+            ManifestItem(id="d1", href="text/redakcyjna.xhtml", media_type="application/xhtml+xml"),
+            ManifestItem(id="d2", href="text/rozdzial.xhtml", media_type="application/xhtml+xml"),
+        ]
+        self.spine = ["d1", "d2"]
+
+    def opf_dir(self) -> str:
+        return "OEBPS"
+
+    def read_file(self, path: str) -> bytes:
+        return self._docs[path]
+
+
+def test_extract_isbn_from_epub_finds_in_front_matter() -> None:
+    """ISBN ze strony redakcyjnej (pierwszy dokument spine) jest znajdowany."""
+    epub = _FakeEpub(
+        {
+            "OEBPS/text/redakcyjna.xhtml": b"<html>ISBN 978-83-8069-285-5</html>",
+            "OEBPS/text/rozdzial.xhtml": b"<html>tresc</html>",
+        }
+    )
+    assert extract_isbn_from_epub(epub) == "9788380692855"  # type: ignore[arg-type]
+
+
+def test_extract_isbn_from_epub_missing_returns_none() -> None:
+    """Brak ISBN w przejrzanych dokumentach → None (odczyt defensywny)."""
+    epub = _FakeEpub({"OEBPS/text/redakcyjna.xhtml": b"<html>bez numeru</html>"})
+    # d2 celowo nieobecny w docs → KeyError pominięty, nie przerywa
+    assert extract_isbn_from_epub(epub) is None  # type: ignore[arg-type]

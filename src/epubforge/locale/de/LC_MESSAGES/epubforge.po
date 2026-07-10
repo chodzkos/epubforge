@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EpubForge 1.0.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-07-10 17:41+0000\n"
+"POT-Creation-Date: 2026-07-10 19:29+0000\n"
 "PO-Revision-Date: 2026-06-12 13:30+0200\n"
 "Last-Translator: EpubForge translators <noreply@example.com>\n"
 "Language: de\n"
@@ -613,7 +613,7 @@ msgstr "ID"
 msgid "Nazwa"
 msgstr "Name"
 
-#: src/epubforge/cli/presets.py:24 src/epubforge/gui/metadata_fetch.py:42
+#: src/epubforge/cli/presets.py:24 src/epubforge/gui/metadata_fetch.py:53
 #: src/epubforge/gui/tabs/metadata.py:150
 msgid "Opis"
 msgstr "Beschreibung"
@@ -970,9 +970,9 @@ msgstr "Design: Automatisch / Hell / Dunkel"
 msgid "Język interfejsu"
 msgstr "Sprache der Oberfläche"
 
-#: src/epubforge/gui/app.py:219 src/epubforge/gui/tabs/metadata.py:245
-#: src/epubforge/gui/tabs/metadata.py:267
-#: src/epubforge/gui/tabs/metadata.py:433
+#: src/epubforge/gui/app.py:219 src/epubforge/gui/tabs/metadata.py:247
+#: src/epubforge/gui/tabs/metadata.py:269
+#: src/epubforge/gui/tabs/metadata.py:435
 msgid "Metadane"
 msgstr "Metadaten"
 
@@ -1009,7 +1009,7 @@ msgstr "Statistik"
 msgid "Motyw: {theme}"
 msgstr "Design: {theme}"
 
-#: src/epubforge/gui/app.py:261 src/epubforge/gui/metadata_fetch.py:40
+#: src/epubforge/gui/app.py:261 src/epubforge/gui/metadata_fetch.py:51
 #: src/epubforge/gui/tabs/converter.py:157 src/epubforge/gui/tabs/fixer.py:297
 #: src/epubforge/gui/tabs/fixer.py:407 src/epubforge/gui/tabs/metadata.py:136
 #: src/epubforge/gui/tabs/stats.py:122
@@ -1075,78 +1075,114 @@ msgstr ""
 "Ein unerwarteter Fehler ist aufgetreten:\n"
 "{error}"
 
-#: src/epubforge/gui/metadata_fetch.py:37
+#: src/epubforge/gui/metadata_fetch.py:48
+#: src/epubforge/gui/metadata_fetch.py:172
 #: src/epubforge/gui/tabs/converter.py:147
 #: src/epubforge/gui/tabs/metadata.py:128 src/epubforge/gui/tabs/stats.py:146
 #: src/epubforge/gui/tabs/toc.py:74
 msgid "Tytuł"
 msgstr "Titel"
 
-#: src/epubforge/gui/metadata_fetch.py:38
+#: src/epubforge/gui/metadata_fetch.py:49
 #: src/epubforge/gui/tabs/metadata.py:138
 msgid "Wydawca"
 msgstr "Verlag"
 
-#: src/epubforge/gui/metadata_fetch.py:39
+#: src/epubforge/gui/metadata_fetch.py:50
 #: src/epubforge/gui/tabs/metadata.py:140
 msgid "Data"
 msgstr "Datum"
 
-#: src/epubforge/gui/metadata_fetch.py:41
+#: src/epubforge/gui/metadata_fetch.py:52
 #: src/epubforge/gui/tabs/metadata.py:129
 msgid "Cykl"
 msgstr "Reihe"
 
-#: src/epubforge/gui/metadata_fetch.py:94
+#: src/epubforge/gui/metadata_fetch.py:117
 msgid "Pobierz metadane"
 msgstr "Metadaten abrufen"
 
-#: src/epubforge/gui/metadata_fetch.py:107
+#: src/epubforge/gui/metadata_fetch.py:130
 msgid "ISBN książki (10 lub 13 cyfr)"
 msgstr "Buch-ISBN (10 oder 13 Ziffern)"
 
-#: src/epubforge/gui/metadata_fetch.py:110
+#: src/epubforge/gui/metadata_fetch.py:133
 #: src/epubforge/gui/widgets/search_panel.py:112
 msgid "Szukaj"
 msgstr "Suchen"
 
-#: src/epubforge/gui/metadata_fetch.py:115
+#: src/epubforge/gui/metadata_fetch.py:140
 msgid "Podaj ISBN i naciśnij „Szukaj"
 msgstr "ISBN eingeben und „Suchen“ drücken"
 
-#: src/epubforge/gui/metadata_fetch.py:149
+#: src/epubforge/gui/metadata_fetch.py:146
+msgid "Dwuklik pobiera pełne metadane wybranej książki"
+msgstr "Doppelklick lädt die vollständigen Metadaten des gewählten Buchs"
+
+#: src/epubforge/gui/metadata_fetch.py:176
+#: src/epubforge/gui/tabs/converter.py:151
+msgid "Autor"
+msgstr "Autor"
+
+#: src/epubforge/gui/metadata_fetch.py:178
+msgid "Szukaj wg tytułu"
+msgstr "Nach Titel suchen"
+
+#: src/epubforge/gui/metadata_fetch.py:180
+msgid "Wyszukuje kandydatów w LubimyCzytac (gdy nie masz ISBN)"
+msgstr "Sucht Kandidaten bei LubimyCzytac (wenn keine ISBN vorliegt)"
+
+#: src/epubforge/gui/metadata_fetch.py:200
 msgid "Podaj ISBN"
 msgstr "ISBN eingeben"
 
-#: src/epubforge/gui/metadata_fetch.py:154
+#: src/epubforge/gui/metadata_fetch.py:206
+#: src/epubforge/gui/metadata_fetch.py:258
 #: src/epubforge/gui/widgets/search_panel.py:208
 msgid "Szukam…"
 msgstr "Suche läuft…"
 
-#: src/epubforge/gui/metadata_fetch.py:167
+#: src/epubforge/gui/metadata_fetch.py:219
 msgid "Nie znaleziono metadanych dla tego ISBN (albo brak połączenia)"
 msgstr "Keine Metadaten für diese ISBN gefunden (oder keine Verbindung)"
 
-#: src/epubforge/gui/metadata_fetch.py:173
+#: src/epubforge/gui/metadata_fetch.py:225
 #, python-brace-format
 msgid "Znaleziono metadane (źródło: {source}). Zaznacz pola do nadpisania."
 msgstr "Metadaten gefunden (Quelle: {source}). Felder zum Überschreiben wählen."
 
-#: src/epubforge/gui/metadata_fetch.py:183
+#: src/epubforge/gui/metadata_fetch.py:235
 #, python-brace-format
 msgid "Błąd pobierania: {error}"
 msgstr "Abruffehler: {error}"
 
-#: src/epubforge/gui/metadata_fetch.py:222
+#: src/epubforge/gui/metadata_fetch.py:250
+msgid "Podaj tytuł do wyszukania"
+msgstr "Titel für die Suche eingeben"
+
+#: src/epubforge/gui/metadata_fetch.py:271
+msgid "Nie znaleziono książek dla tego tytułu/autora"
+msgstr "Keine Bücher für diesen Titel/Autor gefunden"
+
+#: src/epubforge/gui/metadata_fetch.py:280
+#, python-brace-format
+msgid "Znaleziono {n} kandydatów — dwuklik wybiera i pobiera pełne dane"
+msgstr "{n} Kandidaten gefunden – Doppelklick wählt aus und lädt die vollständigen Daten"
+
+#: src/epubforge/gui/metadata_fetch.py:295
+msgid "Pobieram metadane wybranej książki…"
+msgstr "Metadaten des gewählten Buchs werden geladen…"
+
+#: src/epubforge/gui/metadata_fetch.py:339
 #, python-brace-format
 msgid "Liczba stron: {count} (zapis do OPF, tylko EPUB 3)"
 msgstr "Seitenzahl: {count} (in OPF gespeichert, nur EPUB 3)"
 
-#: src/epubforge/gui/metadata_fetch.py:231
+#: src/epubforge/gui/metadata_fetch.py:348
 msgid "Deskryptory (dopisz do tematów):"
 msgstr "Deskriptoren (zu Themen hinzufügen):"
 
-#: src/epubforge/gui/metadata_fetch.py:240
+#: src/epubforge/gui/metadata_fetch.py:357
 msgid "Ten temat jest już przypisany"
 msgstr "Dieses Thema ist bereits zugewiesen"
 
@@ -1169,10 +1205,6 @@ msgstr "Buchtitel im Ausgabe-EPUB (optional)"
 #: src/epubforge/gui/tabs/converter.py:150
 msgid "Autor; zalecany format: Nazwisko, Imię (opcjonalny)"
 msgstr "Autor; empfohlenes Format: Nachname, Vorname (optional)"
-
-#: src/epubforge/gui/tabs/converter.py:151
-msgid "Autor"
-msgstr "Autor"
 
 #: src/epubforge/gui/tabs/converter.py:156
 msgid "Kod języka treści, np. pl, en, de"
@@ -1311,7 +1343,7 @@ msgid "pdf2md"
 msgstr "pdf2md"
 
 #: src/epubforge/gui/tabs/converter.py:361
-#: src/epubforge/gui/tabs/metadata.py:365
+#: src/epubforge/gui/tabs/metadata.py:367
 #, python-brace-format
 msgid ""
 "Nie udało się uruchomić programu:\n"
@@ -1548,15 +1580,15 @@ msgid "Najpierw otwórz EPUB"
 msgstr "Zuerst ein EPUB öffnen"
 
 #: src/epubforge/gui/tabs/editor_preview.py:218
-#: src/epubforge/gui/tabs/metadata.py:357
-#: src/epubforge/gui/tabs/metadata.py:378
+#: src/epubforge/gui/tabs/metadata.py:359
+#: src/epubforge/gui/tabs/metadata.py:380
 #: src/epubforge/gui/widgets/html_preview.py:174
 #, python-brace-format
 msgid "Nie wykryto {tool}"
 msgstr "{tool} nicht erkannt"
 
 #: src/epubforge/gui/tabs/editor_preview.py:221
-#: src/epubforge/gui/tabs/metadata.py:360
+#: src/epubforge/gui/tabs/metadata.py:362
 #, python-brace-format
 msgid "Nie udało się uruchomić {tool}: {error}"
 msgstr "{tool} konnte nicht gestartet werden: {error}"
@@ -2212,7 +2244,7 @@ msgstr ""
 "nicht mehr entwickelt. Es erzeugt weiterhin gültige MOBI-Dateien, "
 "empfohlen ist aber Calibre ebook-convert."
 
-#: src/epubforge/gui/tabs/metadata.py:84 src/epubforge/gui/tabs/metadata.py:352
+#: src/epubforge/gui/tabs/metadata.py:84 src/epubforge/gui/tabs/metadata.py:354
 msgid "Wybierz plik EPUB"
 msgstr "EPUB-Datei wählen"
 
@@ -2292,29 +2324,31 @@ msgstr "Speichert Metadaten im ausgewählten EPUB"
 msgid "Pobierz metadane…"
 msgstr "Metadaten abrufen…"
 
-#: src/epubforge/gui/tabs/metadata.py:177
+#: src/epubforge/gui/tabs/metadata.py:178
 msgid ""
 "Pobiera metadane po ISBN z Biblioteki Narodowej / Open Library / Google "
 "Books"
-msgstr "Ruft Metadaten per ISBN von der Polnischen Nationalbibliothek / Open Library / Google Books ab"
+msgstr ""
+"Ruft Metadaten per ISBN von der Polnischen Nationalbibliothek / Open "
+"Library / Google Books ab"
 
-#: src/epubforge/gui/tabs/metadata.py:211
+#: src/epubforge/gui/tabs/metadata.py:213
 msgid "Wybrany folder nie istnieje"
 msgstr "Der ausgewählte Ordner existiert nicht"
 
-#: src/epubforge/gui/tabs/metadata.py:219
+#: src/epubforge/gui/tabs/metadata.py:221
 #, python-brace-format
 msgid "Wczytano {n} plik EPUB"
 msgid_plural "Wczytano {n} plików EPUB"
 msgstr[0] "{n} EPUB-Datei geladen"
 msgstr[1] "{n} EPUB-Dateien geladen"
 
-#: src/epubforge/gui/tabs/metadata.py:242
+#: src/epubforge/gui/tabs/metadata.py:244
 #, python-brace-format
 msgid "Nie udało się wczytać metadanych: {error}"
 msgstr "Metadaten konnten nicht geladen werden: {error}"
 
-#: src/epubforge/gui/tabs/metadata.py:246
+#: src/epubforge/gui/tabs/metadata.py:248
 #, python-brace-format
 msgid ""
 "Nie udało się wczytać metadanych:\n"
@@ -2323,21 +2357,21 @@ msgstr ""
 "Metadaten konnten nicht geladen werden:\n"
 "{error}"
 
-#: src/epubforge/gui/tabs/metadata.py:253
+#: src/epubforge/gui/tabs/metadata.py:255
 #, python-brace-format
 msgid "Wczytano metadane: {name}"
 msgstr "Metadaten geladen: {name}"
 
-#: src/epubforge/gui/tabs/metadata.py:258
+#: src/epubforge/gui/tabs/metadata.py:260
 msgid "Wybierz plik EPUB przed zapisem"
 msgstr "Vor dem Speichern eine EPUB-Datei wählen"
 
-#: src/epubforge/gui/tabs/metadata.py:264
+#: src/epubforge/gui/tabs/metadata.py:266
 #, python-brace-format
 msgid "Nie udało się zapisać metadanych: {error}"
 msgstr "Metadaten konnten nicht gespeichert werden: {error}"
 
-#: src/epubforge/gui/tabs/metadata.py:268
+#: src/epubforge/gui/tabs/metadata.py:270
 #, python-brace-format
 msgid ""
 "Nie udało się zapisać metadanych:\n"
@@ -2346,25 +2380,25 @@ msgstr ""
 "Metadaten konnten nicht gespeichert werden:\n"
 "{error}"
 
-#: src/epubforge/gui/tabs/metadata.py:275
+#: src/epubforge/gui/tabs/metadata.py:277
 #, python-brace-format
 msgid "Zapisano metadane: {name} (liczbę stron pominięto — to EPUB 2)"
 msgstr "Metadaten gespeichert: {name} (Seitenzahl übersprungen – EPUB 2)"
 
-#: src/epubforge/gui/tabs/metadata.py:280
+#: src/epubforge/gui/tabs/metadata.py:282
 #, python-brace-format
 msgid "Zapisano metadane: {name}"
 msgstr "Metadaten gespeichert: {name}"
 
-#: src/epubforge/gui/tabs/metadata.py:338
+#: src/epubforge/gui/tabs/metadata.py:340
 msgid "Naniesiono pobrane metadane — sprawdź i zapisz"
 msgstr "Abgerufene Metadaten übernommen – prüfen und speichern"
 
-#: src/epubforge/gui/tabs/metadata.py:430
+#: src/epubforge/gui/tabs/metadata.py:432
 msgid "Tom nr nie jest liczbą; zapisano pozostałe metadane"
 msgstr "Bandnummer ist keine Zahl; übrige Metadaten wurden gespeichert"
 
-#: src/epubforge/gui/tabs/metadata.py:434
+#: src/epubforge/gui/tabs/metadata.py:436
 msgid ""
 "Pole „Tom nr” musi być liczbą, np. 2 albo 1.5. Ta wartość nie zostanie "
 "zmieniona."

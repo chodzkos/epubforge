@@ -23,6 +23,7 @@
 | Klasa `Epub` (odczyt/zapis) | ✅ |
 | Metadane Dublin Core (+ seria/tom) | ✅ |
 | Pobieranie metadanych po ISBN (BN / Open Library / Google Books) | ✅ |
+| Pobieranie metadanych z LubimyCzytac + wyszukiwanie bez ISBN (tytuł/autor) | ✅ |
 | Wykrywanie narzędzi | ✅ |
 | Konwersja → EPUB | ✅ |
 | Hyphenacja | ✅ |
@@ -68,7 +69,7 @@
 - **⬆️ Upgrade EPUB 2 → 3** — modernizacja pakietu: nav.xhtml ze spisu NCX, landmarks z guide, `dcterms:modified`; NCX zostaje (opcja `--drop-ncx`). Dokumentów treści nie rusza. CLI `epubforge upgrade` + przycisk w zakładce Fixer
 - **📑 Spis treści** — generowanie z nagłówków (nav.xhtml + toc.ncx), edytor drzewa z drag&drop, wykrywanie i naprawa martwych wpisów
 - **📊 Statystyki** — słowa, szac. strony, czas czytania, język i top-słowa + samowystarczalny raport HTML (wykrywanie języka: `pip install ".[stats]"`)
-- **🏷️ Metadata** — pełna edycja Dublin Core + seria/tom (Calibre i EPUB 3); przycisk **Pobierz metadane…** wciąga po ISBN wydawcę, rok, liczbę stron i deskryptory przedmiotowe z Biblioteki Narodowej → Open Library → Google Books (wybór pól do nadpisania, nigdy ciche)
+- **🏷️ Metadata** — pełna edycja Dublin Core + seria/tom (Calibre i EPUB 3); przycisk **Pobierz metadane…** wciąga po ISBN wydawcę, rok, liczbę stron i deskryptory przedmiotowe z Biblioteki Narodowej → LubimyCzytac → Open Library → Google Books (wybór pól do nadpisania, nigdy ciche). Bez ISBN — wyszukiwanie po **tytule/autorze** w LubimyCzytac z listą kandydatów (opisy, cykle, kategorie; cache + rate limiter dla grzecznościowego scrapingu)
 - **🔍 Auto-detekcja** — Pandoc, pdf2md, DAISY Ace, Calibre, Sigil, Kindle Previewer, kindlegen
 
 ---

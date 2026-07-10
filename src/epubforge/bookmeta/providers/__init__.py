@@ -3,11 +3,13 @@
 from epubforge.bookmeta.providers.base import Provider
 from epubforge.bookmeta.providers.bn import BNProvider
 from epubforge.bookmeta.providers.googlebooks import GoogleBooksProvider
+from epubforge.bookmeta.providers.lubimyczytac import LubimyCzytacProvider
 from epubforge.bookmeta.providers.openlibrary import OpenLibraryProvider
 
 __all__ = [
     "BNProvider",
     "GoogleBooksProvider",
+    "LubimyCzytacProvider",
     "OpenLibraryProvider",
     "Provider",
 ]

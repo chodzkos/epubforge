@@ -1,10 +1,15 @@
-"""Dialog „Pobierz metadane…" — pobieranie i wybór metadanych po ISBN (Qt).
+"""Dialog „Pobierz metadane…" — pobieranie i wybór metadanych (Qt).
 
 Warstwa GUI nad :mod:`epubforge.bookmeta`: pobiera rekord w :class:`Worker` (nie
 blokuje UI), a następnie pokazuje podgląd z **checkboxami per pole**. Zasada:
 nigdy ciche nadpisanie — pola skalarne są domyślnie zaznaczone tylko wtedy, gdy
 odpowiadające pole formularza jest puste; deskryptory przedmiotowe BN to osobna
 lista, domyślnie **odznaczona**.
+
+Dwie ścieżki: po **ISBN** (łańcuch BN → LC → OL → GB) oraz — dla plików bez ISBN —
+po **tytule/autorze** (LubimyCzytac): wyszukiwarka zwraca listę kandydatów z oceną
+dopasowania; użytkownik wybiera, a dopiero wtedy pobierany jest pełny rekord. Poniżej
+progu pewności nic nie jest wybierane automatycznie.
 
 Dialog niczego nie zapisuje — zwraca :class:`FetchResult`, a zakładka metadanych
 sama nanosi wybór na formularz (i liczbę stron przy zapisie do OPF).
@@ -14,6 +19,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -21,16 +27,21 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QListWidget,
+    QListWidgetItem,
     QPushButton,
     QScrollArea,
     QVBoxLayout,
     QWidget,
 )
 
-from epubforge.bookmeta import BookRecord, chain
+from epubforge.bookmeta import BookRecord, Candidate, chain
 from epubforge.core import Metadata
 from epubforge.gui.workers import EmitLine, EmitProgress, Worker
 from epubforge.i18n import _
+
+# Rola danych elementu listy przechowująca obiekt Candidate.
+_CANDIDATE_ROLE = int(Qt.ItemDataRole.UserRole)
 
 # Pola skalarne oferowane w podglądzie: atrybut BookRecord/Metadata → etykieta.
 _SCALAR_FIELDS: tuple[tuple[str, str], ...] = (
@@ -61,8 +72,22 @@ class FetchResult:
 
 
 def _fetch_worker(emit_line: EmitLine, emit_progress: EmitProgress, isbn: str) -> BookRecord | None:
-    """Funkcja robocza wątku: odpytuje łańcuch providerów (bez dotykania GUI)."""
+    """Funkcja robocza wątku: odpytuje łańcuch providerów po ISBN (bez dotykania GUI)."""
     return chain.fetch_by_isbn(isbn)
+
+
+def _search_worker(
+    emit_line: EmitLine, emit_progress: EmitProgress, title: str, author: str
+) -> list[Candidate]:
+    """Funkcja robocza wątku: wyszukuje kandydatów po tytule/autorze (LC)."""
+    return chain.search_candidates(title, author)
+
+
+def _candidate_worker(
+    emit_line: EmitLine, emit_progress: EmitProgress, candidate: Candidate
+) -> BookRecord | None:
+    """Funkcja robocza wątku: pobiera pełny rekord wybranego kandydata."""
+    return chain.fetch_candidate(candidate)
 
 
 class FetchMetadataDialog(QDialog):
@@ -90,29 +115,39 @@ class FetchMetadataDialog(QDialog):
         self._subject_boxes: list[QCheckBox] = []
 
         self.setWindowTitle(_("Pobierz metadane"))
-        self.setMinimumWidth(460)
+        self.setMinimumWidth(480)
         self._build_layout(prefill_isbn)
 
     # ── Budowa UI ──────────────────────────────────────────────────────────────
 
     def _build_layout(self, prefill_isbn: str) -> None:
-        """Składa układ dialogu: pole ISBN, obszar wyników, przyciski."""
+        """Składa układ dialogu: wyszukiwanie (ISBN / tytuł+autor), wyniki, przyciski."""
         layout = QVBoxLayout(self)
 
-        search_row = QHBoxLayout()
-        search_row.addWidget(QLabel("ISBN:"))
+        isbn_row = QHBoxLayout()
+        isbn_row.addWidget(QLabel("ISBN:"))
         self.isbn_edit = QLineEdit(prefill_isbn)
         self.isbn_edit.setPlaceholderText(_("ISBN książki (10 lub 13 cyfr)"))
         self.isbn_edit.returnPressed.connect(self._start_fetch)
-        search_row.addWidget(self.isbn_edit, stretch=1)
+        isbn_row.addWidget(self.isbn_edit, stretch=1)
         self.search_button = QPushButton(_("Szukaj"))
         self.search_button.clicked.connect(self._start_fetch)
-        search_row.addWidget(self.search_button)
-        layout.addLayout(search_row)
+        isbn_row.addWidget(self.search_button)
+        layout.addLayout(isbn_row)
+
+        layout.addLayout(self._build_title_author_row())
 
         self.status_label = QLabel(_("Podaj ISBN i naciśnij „Szukaj"))
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
+
+        # Lista kandydatów (tryb bez ISBN) — ukryta, dopóki nie ma wyników.
+        self.candidates_list = QListWidget()
+        self.candidates_list.setToolTip(_("Dwuklik pobiera pełne metadane wybranej książki"))
+        self.candidates_list.itemDoubleClicked.connect(self._on_candidate_activated)
+        self.candidates_list.setMaximumHeight(150)
+        self.candidates_list.hide()
+        layout.addWidget(self.candidates_list)
 
         self._results_host = QWidget()
         self._results_layout = QVBoxLayout(self._results_host)
@@ -129,6 +164,24 @@ class FetchMetadataDialog(QDialog):
         self.button_box.rejected.connect(self.reject)
         self._ok_button().setEnabled(False)
         layout.addWidget(self.button_box)
+
+    def _build_title_author_row(self) -> QHBoxLayout:
+        """Buduje wiersz wyszukiwania po tytule i autorze (dla plików bez ISBN)."""
+        row = QHBoxLayout()
+        self.title_edit = QLineEdit(self._current.title)
+        self.title_edit.setPlaceholderText(_("Tytuł"))
+        row.addWidget(self.title_edit, stretch=2)
+        author = self._current.creators[0] if self._current.creators else ""
+        self.author_edit = QLineEdit(author)
+        self.author_edit.setPlaceholderText(_("Autor"))
+        row.addWidget(self.author_edit, stretch=2)
+        self.title_search_button = QPushButton(_("Szukaj wg tytułu"))
+        self.title_search_button.setToolTip(
+            _("Wyszukuje kandydatów w LubimyCzytac (gdy nie masz ISBN)")
+        )
+        self.title_search_button.clicked.connect(self._start_candidate_search)
+        row.addWidget(self.title_search_button)
+        return row
 
     def _ok_button(self) -> QPushButton:
         """Zwraca przycisk OK (włączany dopiero po udanym pobraniu)."""
@@ -147,8 +200,9 @@ class FetchMetadataDialog(QDialog):
             self.status_label.setText(_("Podaj ISBN"))
             return
         self._clear_results()
+        self.candidates_list.hide()
         self._ok_button().setEnabled(False)
-        self.search_button.setEnabled(False)
+        self._set_busy(True)
         self.status_label.setText(_("Szukam…"))
         worker = Worker(_fetch_worker, isbn)
         worker.done.connect(self._on_fetched)
@@ -159,7 +213,7 @@ class FetchMetadataDialog(QDialog):
     def _on_fetched(self, result: object) -> None:
         """Obsługuje wynik pobrania: buduje podgląd albo komunikat o braku."""
         self._worker = None
-        self.search_button.setEnabled(True)
+        self._set_busy(False)
         if not isinstance(result, BookRecord):
             self.status_label.setText(
                 _("Nie znaleziono metadanych dla tego ISBN (albo brak połączenia)")
@@ -177,8 +231,73 @@ class FetchMetadataDialog(QDialog):
     def _on_failed(self, message: str) -> None:
         """Awaria wątku (nieoczekiwana — łańcuch zwykle zwraca ``None``)."""
         self._worker = None
-        self.search_button.setEnabled(True)
+        self._set_busy(False)
         self.status_label.setText(_("Błąd pobierania: {error}").format(error=message))
+
+    def _set_busy(self, busy: bool) -> None:
+        """Blokuje/odblokowuje przyciski wyszukiwania na czas pracy wątku."""
+        self.search_button.setEnabled(not busy)
+        self.title_search_button.setEnabled(not busy)
+
+    # ── Wyszukiwanie po tytule/autorze (tryb bez ISBN) ───────────────────────────
+
+    def _start_candidate_search(self) -> None:
+        """Uruchamia wyszukiwanie kandydatów w LC po tytule i autorze."""
+        if self._worker is not None:
+            return
+        title = self.title_edit.text().strip()
+        if not title:
+            self.status_label.setText(_("Podaj tytuł do wyszukania"))
+            return
+        author = self.author_edit.text().strip()
+        self._clear_results()
+        self.candidates_list.clear()
+        self.candidates_list.hide()
+        self._ok_button().setEnabled(False)
+        self._set_busy(True)
+        self.status_label.setText(_("Szukam…"))
+        worker = Worker(_search_worker, title, author)
+        worker.done.connect(self._on_candidates)
+        worker.failed.connect(self._on_failed)
+        self._worker = worker
+        worker.start()
+
+    def _on_candidates(self, result: object) -> None:
+        """Wypełnia listę kandydatów wynikami wyszukiwania (bez auto-wyboru)."""
+        self._worker = None
+        self._set_busy(False)
+        candidates = result if isinstance(result, list) else []
+        if not candidates:
+            self.status_label.setText(_("Nie znaleziono książek dla tego tytułu/autora"))
+            return
+        self.candidates_list.clear()
+        for candidate in candidates:
+            item = QListWidgetItem(_candidate_label(candidate))
+            item.setData(_CANDIDATE_ROLE, candidate)
+            self.candidates_list.addItem(item)
+        self.candidates_list.show()
+        self.status_label.setText(
+            _("Znaleziono {n} kandydatów — dwuklik wybiera i pobiera pełne dane").format(
+                n=len(candidates)
+            )
+        )
+
+    def _on_candidate_activated(self, item: QListWidgetItem) -> None:
+        """Pobiera pełny rekord dla dwuklikniętego kandydata."""
+        if self._worker is not None:
+            return
+        candidate = item.data(_CANDIDATE_ROLE)
+        if not isinstance(candidate, Candidate):
+            return
+        self._clear_results()
+        self._ok_button().setEnabled(False)
+        self._set_busy(True)
+        self.status_label.setText(_("Pobieram metadane wybranej książki…"))
+        worker = Worker(_candidate_worker, candidate)
+        worker.done.connect(self._on_fetched)
+        worker.failed.connect(self._on_failed)
+        self._worker = worker
+        worker.start()
 
     # ── Podgląd wyników ──────────────────────────────────────────────────────────
 
@@ -282,3 +401,15 @@ def _shorten(text: str, limit: int = 60) -> str:
     """Skraca długą wartość do podglądu w checkboxie (pełna trafia do tooltipa)."""
     collapsed = " ".join(text.split())
     return collapsed if len(collapsed) <= limit else f"{collapsed[: limit - 1]}…"
+
+
+def _candidate_label(candidate: Candidate) -> str:
+    """Buduje etykietę kandydata na listę: tytuł — autorzy (rok) [dopasowanie]."""
+    authors = ", ".join(candidate.authors)
+    parts = [candidate.title]
+    if authors:
+        parts.append(f"— {authors}")
+    if candidate.year:
+        parts.append(f"({candidate.year})")
+    parts.append(f"· {round(candidate.score * 100)}%")
+    return " ".join(parts)
