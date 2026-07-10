@@ -249,6 +249,8 @@ class FetchMetadataDialog(QDialog):
         self._subject_boxes.clear()
         while self._results_layout.count():
             item = self._results_layout.takeAt(0)
+            if item is None:
+                continue
             widget = item.widget()
             if widget is not None:
                 widget.deleteLater()
