@@ -8,6 +8,28 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Added
+- **Taksonomia tagów PL + tagowanie AI** (Etap 29 roadmapy v3) — maks. 10 tagów po
+  polsku z kaskady trzech źródeł, AI **opt-in** (domyślnie lokalna Ollama).
+  - `src/epubforge/data/taxonomy_pl.toml` — ~45 kanonicznych tagów w czterech
+    kategoriach (`gatunek`/`epoka`/`miejsce`/`tematy`) + synonimy + mapowania
+    deskryptorów BN i kategorii LC/GB; plik użytkownika w katalogu configu ma
+    pierwszeństwo nad wbudowanym.
+  - `bookmeta/taxonomy.py` — `load_taxonomy`, `map_subjects` (surowe tematy →
+    kanoniczne tagi, dedup po synonimach, propozycje „poza taksonomią"), limit 10
+    z priorytetem gatunek → epoka/miejsce → tematy.
+  - `bookmeta/ai.py` — klient zgodny z **OpenAI Chat Completions** (stdlib `urllib`,
+    `temperature=0`); presety `ollama` (domyślny), `openai`, `anthropic`, `gemini`,
+    `deepseek`, `glm` (base_url/model edytowalne). Klucz API **wyłącznie ze zmiennej
+    środowiskowej** (w configu tylko jej nazwa). `http` dozwolone tylko dla
+    loopback/RFC1918; hosty publiczne wyłącznie `https`. Klasyfikacja gatunku/epoki/
+    miejsca/tematów **tylko z listy zamkniętej** taksonomii (walidacja + 1 retry),
+    postacie/organizacje otwarte.
+  - `bookmeta/tagging.py` — kaskada: (1) mapowanie taksonomii, (2) AI na opisie+TOC
+    gdy tagów < 3, (3) AI na próbce treści gdy brak opisu; polityki scalania
+    `keep`/`append` (domyślna)/`replace`, dedup z istniejącymi `dc:subject`.
+  - GUI: sekcja **Tagi** w zakładce Metadane — „Zaproponuj tagi" → lista propozycji
+    z checkboxami i źródłem (taksonomia/AI); ustawienia AI w osobnym dialogu.
+    Brak/awaria endpointu AI → czytelny komunikat, kaskada (1) działa bez AI.
 - **Provider LubimyCzytac + dopasowanie bez ISBN** (Etap 28 roadmapy v3) —
   rozszerzenie podpakietu `epubforge.bookmeta` o źródło z lubimyczytac.pl
   (scraper pisany **od zera**, bez nowych zależności) oraz wyszukiwanie po

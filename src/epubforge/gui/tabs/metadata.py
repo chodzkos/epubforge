@@ -21,9 +21,10 @@ from PySide6.QtWidgets import (
 )
 
 from epubforge.bookmeta import validate_isbn
-from epubforge.core import Epub, EpubError, Metadata, Tool, Tools, set_number_of_pages
+from epubforge.core import ConfigStore, Epub, EpubError, Metadata, Tool, Tools, set_number_of_pages
 from epubforge.gui.external_tools import ToolUnavailableError, launch_tool
 from epubforge.gui.metadata_fetch import FetchMetadataDialog, FetchResult
+from epubforge.gui.tags_panel import TagsPanel
 from epubforge.gui.widgets import (
     FileList,
     PathEntry,
@@ -50,9 +51,11 @@ class MetadataTab(QWidget):
         parent: QWidget | None = None,
         *,
         tools: dict[str, Tool] | None = None,
+        config: ConfigStore | None = None,
     ) -> None:
         super().__init__(parent)
         self.tools = tools if tools is not None else _detect_tools()
+        self._config = config
         self.current_path: Path | None = None
         self._loaded_metadata: Metadata | None = None
         # Liczba stron pobrana z sieci, do zapisania w OPF przy najbliższym „Zapisz"
@@ -150,6 +153,13 @@ class MetadataTab(QWidget):
         form.addRow(_("Opis"), self.description_edit)
 
         form_section.content_layout().addLayout(self._build_actions())
+
+        self.tags_panel = TagsPanel(
+            context_provider=self._tag_context,
+            tags_applier=self._append_subjects,
+            config=self._config,
+        )
+        form_section.content_layout().addWidget(self.tags_panel)
 
     def _build_series_row(self) -> QWidget:
         """Buduje wiersz z nazwą cyklu i numerem tomu."""
@@ -338,6 +348,12 @@ class MetadataTab(QWidget):
         if selection.page_count is not None:
             self._pending_page_count = selection.page_count
         self._set_status(_("Naniesiono pobrane metadane — sprawdź i zapisz"))
+
+    def _tag_context(self) -> tuple[list[str], str, Path | None]:
+        """Zwraca kontekst dla panelu Tagów: tematy, opis i ścieżkę bieżącego EPUB."""
+        subjects = _split_lines(self.subjects_edit.toPlainText())
+        description = self.description_edit.toPlainText().strip()
+        return subjects, description, self.current_path
 
     def _append_subjects(self, new_subjects: list[str]) -> None:
         """Dopisuje deskryptory do pola tematów, pomijając duplikaty."""

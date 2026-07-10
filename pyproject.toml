@@ -116,6 +116,7 @@ packages = ["src/epubforge"]
 "src/epubforge/fixers/presets" = "epubforge/fixers/presets"
 "src/epubforge/recipes_builtin" = "epubforge/recipes_builtin"
 "src/epubforge/stats_stopwords" = "epubforge/stats_stopwords"
+"src/epubforge/data" = "epubforge/data"
 
 # ── uv (reprodukowalne buildy, REL-3) ───────────────────────────────────────────
 # `uv.lock` (wersjonowany) jest źródłem prawdy o wersjach: przypina wszystkie

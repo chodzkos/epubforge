@@ -206,7 +206,7 @@ class MainWindow(QMainWindow):
     def _build_tabs(self, layout: QVBoxLayout) -> None:
         """Buduje notebook z zakładkami roboczymi (bez meta-zakładek)."""
         self.tabs = QTabWidget()
-        self.metadata_tab = MetadataTab(tools=self.tools)
+        self.metadata_tab = MetadataTab(tools=self.tools, config=self.config_data)
         self.converter_tab = ConverterTab(config=self.config_data, tools=self.tools)
         self.fixer_tab = FixerTab(tools=self.tools)
         self.kfx_tab = KfxTab(tools=self.tools, config=self.config_data)
