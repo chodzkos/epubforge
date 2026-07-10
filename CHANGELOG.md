@@ -7,6 +7,11 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-07-10
+
+Brama wydaniowa **v2.3** roadmapy v3 (Etapy 22–23): integracja pdf2md jako
+zalecanego silnika PDF → EPUB oraz modernizacja pakietu EPUB 2 → EPUB 3.
+
 ### Added
 - **Upgrade EPUB 2 → EPUB 3** (Etap 23 roadmapy v3) — nowy moduł
   `epubforge.converters.upgrade` (`upgrade_to_epub3`, `UpgradeReport`) modernizujący
