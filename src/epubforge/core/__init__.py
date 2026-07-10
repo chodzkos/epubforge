@@ -19,7 +19,7 @@ from epubforge.core.exceptions import (
     OpfNotFoundError,
     ValidationError,
 )
-from epubforge.core.metadata import Metadata, set_number_of_pages
+from epubforge.core.metadata import Metadata, get_number_of_pages, set_number_of_pages
 
 __all__ = [
     "Config",
@@ -40,6 +40,7 @@ __all__ = [
     "config_dir",
     "default_config_path",
     "detect_with_cache",
+    "get_number_of_pages",
     "load_config",
     "save_config",
     "set_number_of_pages",

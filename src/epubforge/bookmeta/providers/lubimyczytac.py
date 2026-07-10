@@ -141,6 +141,10 @@ class LubimyCzytacProvider:
         cache.set(self.name, url, html)
         return html
 
+    def cache_hits(self) -> int:
+        """Liczba trafień w cache tego providera (dla statystyki „z cache")."""
+        return self._ensure_cache().hits
+
     def _ensure_cache(self) -> MetadataCache:
         """Leniwie tworzy domyślny cache w katalogu configu (bez side-effectów przy imporcie)."""
         if self._cache is None:

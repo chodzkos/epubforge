@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EpubForge 1.0.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-07-10 20:58+0000\n"
+"POT-Creation-Date: 2026-07-10 21:30+0000\n"
 "PO-Revision-Date: 2026-06-12 13:30+0200\n"
 "Last-Translator: EpubForge translators <noreply@example.com>\n"
 "Language: pl\n"
@@ -49,7 +49,7 @@ msgstr ""
 msgid "Nieznana receptura {name}. Dozwolone: {allowed}"
 msgstr ""
 
-#: src/epubforge/cli/doctor.py:63 src/epubforge/gui/app.py:428
+#: src/epubforge/cli/doctor.py:64 src/epubforge/gui/app.py:429
 #: src/epubforge/recipes.py:190 src/epubforge/recipes.py:385
 msgid "brak"
 msgstr "brak"
@@ -161,7 +161,7 @@ msgstr "Błąd: {error}"
 msgid "Plik"
 msgstr "Pliki"
 
-#: src/epubforge/cli/_batch.py:129 src/epubforge/cli/doctor.py:81
+#: src/epubforge/cli/_batch.py:129 src/epubforge/cli/doctor.py:82
 msgid "Status"
 msgstr "Status"
 
@@ -304,49 +304,107 @@ msgstr "Silnik konwersji (domyślnie: auto; pdf2md tylko dla PDF)"
 msgid "Utworzono EPUB: {path}"
 msgstr "Utworzono EPUB: {path}"
 
-#: src/epubforge/cli/doctor.py:45
+#: src/epubforge/cli/doctor.py:46
 msgid "Diagnozuj środowisko — pełny raport wykrytych narzędzi (na żywo)"
 msgstr "Diagnozuj środowisko — pełny raport wykrytych narzędzi (na żywo)"
 
-#: src/epubforge/cli/doctor.py:60
+#: src/epubforge/cli/doctor.py:61
 msgid "dostępny"
 msgstr "dostępny"
 
-#: src/epubforge/cli/doctor.py:62
+#: src/epubforge/cli/doctor.py:63
 msgid "ℹ️ niedostępne na tej platformie (Windows/macOS)"
 msgstr "ℹ️ niedostępne na tej platformie (Windows/macOS)"
 
-#: src/epubforge/cli/doctor.py:72
+#: src/epubforge/cli/doctor.py:73
 msgid "System"
 msgstr "System"
 
-#: src/epubforge/cli/doctor.py:73
+#: src/epubforge/cli/doctor.py:74
 msgid "Element"
 msgstr "Element"
 
-#: src/epubforge/cli/doctor.py:74
+#: src/epubforge/cli/doctor.py:75
 msgid "Wartość"
 msgstr "Wartość"
 
-#: src/epubforge/cli/doctor.py:79
+#: src/epubforge/cli/doctor.py:80
 msgid "Narzędzia"
 msgstr "Narzędzia"
 
-#: src/epubforge/cli/doctor.py:80
+#: src/epubforge/cli/doctor.py:81
 msgid "Narzędzie"
 msgstr "Narzędzie"
 
-#: src/epubforge/cli/doctor.py:82
+#: src/epubforge/cli/doctor.py:83
 msgid "Ścieżka"
 msgstr "Ścieżka"
 
-#: src/epubforge/cli/doctor.py:99
+#: src/epubforge/cli/doctor.py:100
 msgid "Dostępne narzędzia: "
 msgstr "Dostępne narzędzia: "
 
-#: src/epubforge/cli/doctor.py:101
+#: src/epubforge/cli/doctor.py:102
 msgid "Nie wykryto żadnych narzędzi."
 msgstr "Nie wykryto żadnych narzędzi."
+
+#: src/epubforge/cli/enrich.py:39
+msgid "Hurtowe wzbogacanie metadanych (BN/LubimyCzytac/OpenLibrary/GBooks)"
+msgstr "Hurtowe wzbogacanie metadanych (BN/LubimyCzytac/OpenLibrary/GBooks)"
+
+#: src/epubforge/cli/enrich.py:41
+msgid "Pliki lub katalogi EPUB"
+msgstr "Pliki lub katalogi EPUB"
+
+#: src/epubforge/cli/enrich.py:44
+msgid ""
+"Pola do wzbogacenia po przecinku, np. tytuł,opis,wydawca (domyślnie: "
+"komplet)"
+msgstr "Pola do wzbogacenia po przecinku, np. tytuł,opis,wydawca (domyślnie: komplet)"
+
+#: src/epubforge/cli/enrich.py:46
+msgid "Uzupełnij tagi z taksonomii"
+msgstr "Uzupełnij tagi z taksonomii"
+
+#: src/epubforge/cli/enrich.py:50
+msgid "Polityka scalania (domyślnie: fill dla pól, append dla tagów)"
+msgstr "Polityka scalania (domyślnie: fill dla pól, append dla tagów)"
+
+#: src/epubforge/cli/enrich.py:53
+msgid "Pokaż plan zmian, nic nie zapisuj"
+msgstr "Pokaż plan zmian, nic nie zapisuj"
+
+#: src/epubforge/cli/enrich.py:56
+msgid "Zapisz raport do pliku (CSV lub JSON wg rozszerzenia)"
+msgstr "Zapisz raport do pliku (CSV lub JSON wg rozszerzenia)"
+
+#: src/epubforge/cli/enrich.py:62
+msgid "Wzbogać bibliotekę Calibre pod tą ścieżką (wymaga zamkniętego GUI Calibre)"
+msgstr "Wzbogać bibliotekę Calibre pod tą ścieżką (wymaga zamkniętego GUI Calibre)"
+
+#: src/epubforge/cli/enrich.py:82
+msgid "Podaj pliki/katalogi EPUB albo --calibre-library"
+msgstr "Podaj pliki/katalogi EPUB albo --calibre-library"
+
+#: src/epubforge/cli/enrich.py:91
+#, python-brace-format
+msgid "Błąd Calibre: {error}"
+msgstr "Błąd Calibre: {error}"
+
+#: src/epubforge/cli/enrich.py:97
+#, python-brace-format
+msgid "Raport zapisano: {path}"
+msgstr "Raport zapisano: {path}"
+
+#: src/epubforge/cli/enrich.py:118
+msgid "— PLAN (dry-run, nic nie zapisano) —"
+msgstr "— PLAN (dry-run, nic nie zapisano) —"
+
+#: src/epubforge/cli/enrich.py:152
+msgid ""
+"\n"
+"Przerywam po bieżącej książce…"
+msgstr "\nPrzerywam po bieżącej książce…"
 
 #: src/epubforge/cli/fix.py:45
 msgid "Normalizuj CSS w EPUB"
@@ -475,15 +533,15 @@ msgstr "Nie uruchamiaj CSS fixera przed konwersją"
 msgid "Utworzono KFX: {path}"
 msgstr "Utworzono KFX: {path}"
 
-#: src/epubforge/cli/main.py:50
+#: src/epubforge/cli/main.py:51
 msgid "Nowoczesny zestaw narzędzi do EPUB — walidacja, naprawa, konwersja."
 msgstr "Nowoczesny zestaw narzędzi do EPUB — walidacja, naprawa, konwersja."
 
-#: src/epubforge/cli/main.py:58
+#: src/epubforge/cli/main.py:59
 msgid "Dostępne komendy"
 msgstr "Dostępne komendy"
 
-#: src/epubforge/cli/main.py:59
+#: src/epubforge/cli/main.py:60
 msgid "Wyświetl informacje o wersji i wykrytych narzędziach"
 msgstr "Wyświetl informacje o wersji i wykrytych narzędziach"
 
@@ -911,6 +969,78 @@ msgstr "Pandoc nie obsługuje formatów Kindle (MOBI/AZW3/AZW/PRC) — użyj Cal
 msgid "Silnik pdf2md obsługuje wyłącznie pliki PDF."
 msgstr "Silnik pdf2md obsługuje wyłącznie pliki PDF."
 
+#: src/epubforge/enrich/calibre.py:117
+#, python-brace-format
+msgid ""
+"Nie udało się otworzyć biblioteki Calibre. Zamknij program Calibre "
+"(blokuje bazę) i spróbuj ponownie.\n"
+"Szczegóły: {details}"
+msgstr "Nie udało się otworzyć biblioteki Calibre. Zamknij program Calibre (blokuje bazę) i spróbuj ponownie.\nSzczegóły: {details}"
+
+#: src/epubforge/enrich/calibre.py:119
+msgid "nieznany błąd"
+msgstr "nieznany błąd"
+
+#: src/epubforge/enrich/calibre.py:130
+#, python-brace-format
+msgid "calibredb list zwrócił błąd: {details}"
+msgstr "calibredb list zwrócił błąd: {details}"
+
+#: src/epubforge/enrich/calibre.py:137
+#, python-brace-format
+msgid "Niepoprawna odpowiedź calibredb: {error}"
+msgstr "Niepoprawna odpowiedź calibredb: {error}"
+
+#: src/epubforge/enrich/calibre.py:151
+#, python-brace-format
+msgid "calibredb set_metadata (id={id}) zwrócił błąd: {details}"
+msgstr "calibredb set_metadata (id={id}) zwrócił błąd: {details}"
+
+#: src/epubforge/enrich/calibre.py:249
+#, python-brace-format
+msgid "Nie udało się uruchomić calibredb: {error}"
+msgstr "Nie udało się uruchomić calibredb: {error}"
+
+#: src/epubforge/enrich/calibre.py:258
+msgid "Nie wykryto calibredb. Zainstaluj Calibre i upewnij się, że jest w PATH."
+msgstr "Nie wykryto calibredb. Zainstaluj Calibre i upewnij się, że jest w PATH."
+
+#: src/epubforge/enrich/report.py:57
+#, python-brace-format
+msgid ""
+"Podsumowanie: {total} książek — znalezione: {found}, nieznalezione: "
+"{not_found}, z cache: {cache}, zmienione: {changed}, błędy: {errors}"
+msgstr "Podsumowanie: {total} książek — znalezione: {found}, nieznalezione: {not_found}, z cache: {cache}, zmienione: {changed}, błędy: {errors}"
+
+#: src/epubforge/enrich/report.py:72
+#, python-brace-format
+msgid "{id}: BŁĄD — {error}"
+msgstr "{id}: BŁĄD — {error}"
+
+#: src/epubforge/enrich/report.py:74
+#, python-brace-format
+msgid "{id}: brak dopasowania"
+msgstr "{id}: brak dopasowania"
+
+#: src/epubforge/enrich/report.py:75
+msgid "do zmiany"
+msgstr "do zmiany"
+
+#: src/epubforge/enrich/report.py:75
+msgid "zmienione"
+msgstr "zmienione"
+
+#: src/epubforge/enrich/report.py:76 src/epubforge/enrich/report.py:77
+msgid "(nic)"
+msgstr "(nic)"
+
+#: src/epubforge/enrich/report.py:79
+#, python-brace-format
+msgid ""
+"{id}: dopasowanie {match} ({source}); {verb}: {changed}; pominięte: "
+"{skipped}"
+msgstr "{id}: dopasowanie {match} ({source}); {verb}: {changed}; pominięte: {skipped}"
+
 #: src/epubforge/fixers/fonts.py:150
 msgid "nie udało się odczytać fontu"
 msgstr "nie udało się odczytać fontu"
@@ -1025,39 +1155,39 @@ msgstr "Niezapisane zmiany"
 msgid "Są niezapisane zmiany. Zamknąć mimo to?"
 msgstr "Są niezapisane zmiany. Zamknąć mimo to?"
 
-#: src/epubforge/gui/app.py:436
+#: src/epubforge/gui/app.py:437
 msgid "Automatyczny"
 msgstr "Automatyczny"
 
-#: src/epubforge/gui/app.py:437 src/epubforge/gui/app.py:445
+#: src/epubforge/gui/app.py:438 src/epubforge/gui/app.py:446
 msgid "Jasny"
 msgstr "Jasny"
 
-#: src/epubforge/gui/app.py:438 src/epubforge/gui/app.py:447
+#: src/epubforge/gui/app.py:439 src/epubforge/gui/app.py:448
 msgid "Ciemny"
 msgstr "Ciemny"
 
-#: src/epubforge/gui/app.py:448 src/epubforge/gui/app.py:459
+#: src/epubforge/gui/app.py:449 src/epubforge/gui/app.py:460
 msgid "Auto"
 msgstr "Auto"
 
-#: src/epubforge/gui/app.py:454
+#: src/epubforge/gui/app.py:455
 msgid "Polski"
 msgstr "Polski"
 
-#: src/epubforge/gui/app.py:456
+#: src/epubforge/gui/app.py:457
 msgid "English"
 msgstr "English"
 
-#: src/epubforge/gui/app.py:458
+#: src/epubforge/gui/app.py:459
 msgid "Deutsch"
 msgstr "Deutsch"
 
-#: src/epubforge/gui/app.py:479
+#: src/epubforge/gui/app.py:480
 msgid "Błąd krytyczny"
 msgstr "Błąd krytyczny"
 
-#: src/epubforge/gui/app.py:480
+#: src/epubforge/gui/app.py:481
 #, python-brace-format
 msgid ""
 "Wystąpił nieoczekiwany błąd:\n"
@@ -1206,7 +1336,6 @@ msgid "Analizuję…"
 msgstr "Analizuję…"
 
 #: src/epubforge/gui/tags_panel.py:153
-#, python-brace-format
 msgid "Nie udało się zaproponować tagów"
 msgstr "Nie udało się zaproponować tagów"
 
@@ -1265,7 +1394,9 @@ msgstr "Zmienna z kluczem"
 msgid ""
 "Klucz API czytany jest wyłącznie ze zmiennej środowiskowej o podanej "
 "nazwie. Domyślnie: lokalna Ollama (bez klucza)."
-msgstr "Klucz API czytany jest wyłącznie ze zmiennej środowiskowej o podanej nazwie. Domyślnie: lokalna Ollama (bez klucza)."
+msgstr ""
+"Klucz API czytany jest wyłącznie ze zmiennej środowiskowej o podanej "
+"nazwie. Domyślnie: lokalna Ollama (bez klucza)."
 
 #: src/epubforge/gui/tabs/converter.py:99
 msgid "Dodaj pliki wejściowe"

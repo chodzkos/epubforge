@@ -14,6 +14,7 @@ from epubforge.cli import (
     check,
     convert,
     doctor,
+    enrich,
     fix,
     hyphenate,
     kfx,
@@ -61,6 +62,7 @@ def main(argv: list[str] | None = None) -> int:
     a11y.add_parser(subparsers)
     doctor.add_parser(subparsers)
     convert.add_parser(subparsers)
+    enrich.add_parser(subparsers)
     fix.add_parser(subparsers)
     hyphenate.add_parser(subparsers)
     kfx.add_parser(subparsers)

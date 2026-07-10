@@ -118,6 +118,29 @@ def _all_texts(root: etree._Element, tag: str) -> list[str]:
     return result
 
 
+def get_number_of_pages(existing_opf: bytes) -> int | None:
+    """Odczytuje liczbę stron (``schema:numberOfPages``) z OPF lub ``None``.
+
+    Args:
+        existing_opf: surowa zawartość pliku OPF.
+
+    Returns:
+        Liczba stron jako ``int`` albo ``None``, gdy właściwości nie ma lub jest
+        niepoprawna.
+    """
+    root = parse_untrusted(existing_opf)
+    metadata_el = root.find(f"{{{OPF_NS}}}metadata")
+    if metadata_el is None:
+        return None
+    for meta in metadata_el.findall(_opf("meta")):
+        if meta.get("property") == _NUMBER_OF_PAGES_PROPERTY and meta.text:
+            try:
+                return int(meta.text.strip())
+            except ValueError:
+                return None
+    return None
+
+
 def set_number_of_pages(existing_opf: bytes, count: int) -> bytes | None:
     """Wpisuje liczbę stron wydania papierowego do OPF jako meta schema.org.
 
