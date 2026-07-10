@@ -392,9 +392,7 @@ class ValidatorTab(QWidget):
         self._update_summary()
         verdict = _("POPRAWNY") if report.valid else _("NIEPOPRAWNY")
         self.status_label.setText(
-            _("Zakończono w {sec:.1f}s — {verdict}").format(
-                sec=report.duration_s, verdict=verdict
-            )
+            _("Zakończono w {sec:.1f}s — {verdict}").format(sec=report.duration_s, verdict=verdict)
         )
         self._refresh_actions()
 
@@ -467,7 +465,11 @@ class ValidatorTab(QWidget):
     def _on_item_double_clicked(self, item: QTreeWidgetItem, _column: int) -> None:
         """Dwuklik wiersza z lokalizacją otwiera plik w edytorze na danej linii."""
         location = item.data(0, _LOCATION_ROLE)
-        if not isinstance(location, tuple) or self._active_epub is None or self._main_window is None:
+        if (
+            not isinstance(location, tuple)
+            or self._active_epub is None
+            or self._main_window is None
+        ):
             return
         internal_path, line = location
         if internal_path:
@@ -503,8 +505,10 @@ class ValidatorTab(QWidget):
         target = Path(path)
         as_html = target.suffix.lower() == ".html"
         if self._ace_report is not None:
-            content = _ace_report_to_html(self._ace_report) if as_html else _ace_report_to_json(
-                self._ace_report
+            content = (
+                _ace_report_to_html(self._ace_report)
+                if as_html
+                else _ace_report_to_json(self._ace_report)
             )
         else:
             assert self._report is not None

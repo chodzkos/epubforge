@@ -145,7 +145,9 @@ def test_ace_accessible_verdict(qtbot: QtBot) -> None:
     assert tab.tree.topLevelItemCount() == 0
 
 
-def test_ace_export_json_and_html(qtbot: QtBot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_ace_export_json_and_html(
+    qtbot: QtBot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Eksport aktywnego raportu Ace zapisuje JSON i HTML z naruszeniami."""
     tab = ValidatorTab(tools=_ace_tools())
     qtbot.addWidget(tab)
@@ -185,7 +187,11 @@ def test_run_ace_worker_calls_run_ace(monkeypatch: pytest.MonkeyPatch, tmp_path:
     report = _ace_report()
     monkeypatch.setattr(validator_module, "run_ace", lambda *a, **k: report)
     result = validator_module._run_ace_worker(
-        lambda text, level: None, lambda cur, total: None, lambda: False, tmp_path / "b.epub", Path("ace")
+        lambda text, level: None,
+        lambda cur, total: None,
+        lambda: False,
+        tmp_path / "b.epub",
+        Path("ace"),
     )
     assert result is report
 

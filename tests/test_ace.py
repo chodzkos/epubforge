@@ -45,7 +45,12 @@ def test_parse_violations_rules_and_messages() -> None:
     """Reguły i treść naruszeń trafiają do AceMessage."""
     report = parse_ace_report(_load("report_violations.json"), Path("book.epub"))
     rules = {msg.rule for msg in report.messages}
-    assert {"image-alt", "color-contrast", "epub-type-has-matching-role", "landmark-unique"} == rules
+    assert {
+        "image-alt",
+        "color-contrast",
+        "epub-type-has-matching-role",
+        "landmark-unique",
+    } == rules
     image_alt = next(msg for msg in report.messages if msg.rule == "image-alt")
     assert "alt attribute" in image_alt.message
 
@@ -161,9 +166,7 @@ def test_run_ace_broken_json_raises(monkeypatch: pytest.MonkeyPatch, tmp_path: P
         run_ace(tmp_path / "b.epub", Path("ace"))
 
 
-def test_run_ace_missing_executable_raises(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_run_ace_missing_executable_raises(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Brak pliku wykonywalnego (OSError) → ValidationError."""
 
     def raise_oserror(cmd, **_kwargs):

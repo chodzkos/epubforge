@@ -244,9 +244,7 @@ def _run_blocking(cmd: list[str], timeout: int) -> str:
             _("Ace przekroczył limit czasu ({timeout}s).").format(timeout=timeout)
         ) from exc
     except OSError as exc:
-        raise ValidationError(
-            _("Nie udało się uruchomić Ace: {error}").format(error=exc)
-        ) from exc
+        raise ValidationError(_("Nie udało się uruchomić Ace: {error}").format(error=exc)) from exc
     return result.stderr
 
 
