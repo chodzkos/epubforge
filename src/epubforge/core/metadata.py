@@ -36,6 +36,10 @@ _SINGLE_FIELDS: tuple[tuple[str, str], ...] = (
 # Identyfikator kolekcji EPUB 3 (refines wskazuje na ten id).
 _COLLECTION_ID = "epubforge-series"
 
+# Właściwość OPF przechowująca liczbę stron wydania papierowego (schema.org).
+# Tylko EPUB 3 — składnia ``<meta property="...">`` nie istnieje w EPUB 2.
+_NUMBER_OF_PAGES_PROPERTY = "schema:numberOfPages"
+
 
 def _dc(tag: str) -> str:
     """Zwraca w pełni kwalifikowaną nazwę tagu Dublin Core (Clark notation)."""
@@ -112,6 +116,39 @@ def _all_texts(root: etree._Element, tag: str) -> list[str]:
         if el.text:
             result.append(el.text)
     return result
+
+
+def set_number_of_pages(existing_opf: bytes, count: int) -> bytes | None:
+    """Wpisuje liczbę stron wydania papierowego do OPF jako meta schema.org.
+
+    Zapis dotyczy **wyłącznie EPUB 3** — element ``<meta property="...">`` nie
+    istnieje w EPUB 2, więc dla starszych pakietów funkcja zwraca ``None`` (wywołujący
+    powinien pominąć zapis z notą). Istniejące wystąpienia właściwości są usuwane
+    przed dopisaniem nowego, więc operacja jest idempotentna.
+
+    Args:
+        existing_opf: surowa zawartość obecnego pliku OPF.
+        count: liczba stron do zapisania (wartości ``<= 0`` są ignorowane → ``None``).
+
+    Returns:
+        Nowa zawartość OPF jako bajty UTF-8 albo ``None`` (EPUB 2, brak sekcji
+        ``metadata`` lub niepoprawna liczba).
+    """
+    if count <= 0:
+        return None
+    root = parse_untrusted(existing_opf)
+    if not str(root.get("version", "")).startswith("3"):
+        return None
+    metadata_el = root.find(f"{{{OPF_NS}}}metadata")
+    if metadata_el is None:
+        return None
+    for meta in list(metadata_el.findall(_opf("meta"))):
+        if meta.get("property") == _NUMBER_OF_PAGES_PROPERTY:
+            metadata_el.remove(meta)
+    meta_el = etree.SubElement(metadata_el, _opf("meta"))
+    meta_el.set("property", _NUMBER_OF_PAGES_PROPERTY)
+    meta_el.text = str(count)
+    return etree.tostring(root, xml_declaration=True, encoding="utf-8")
 
 
 @dataclass

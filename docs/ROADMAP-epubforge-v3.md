@@ -450,10 +450,10 @@ def replace_in_epub(epub: Epub, query: str, replacement: str, *, ...) -> Replace
 - Deskryptory BN bywają liczne — checkboxy per deskryptor, domyślnie **odznaczone**.
 
 ### Kryteria akceptacji
-- [ ] Polski ISBN → rekord z BN (wydawca, rok, liczba stron, deskryptory); obcy ISBN → OL/GB
-- [ ] Zły ISBN (suma kontrolna) → walidacja lokalna, zero zapytań
-- [ ] Zatwierdzenie nadpisuje TYLKO zaznaczone pola; timeout/offline → czytelny status, GUI żyje
-- [ ] Testy bez sieci (mock), + 1 test integracyjny za markerem `integration`
+- [x] Polski ISBN → rekord z BN (wydawca, rok, liczba stron, deskryptory); obcy ISBN → OL/GB
+- [x] Zły ISBN (suma kontrolna) → walidacja lokalna, zero zapytań
+- [x] Zatwierdzenie nadpisuje TYLKO zaznaczone pola; timeout/offline → czytelny status, GUI żyje
+- [x] Testy bez sieci (mock), + 1 test integracyjny za markerem `integration`
 
 ---
 

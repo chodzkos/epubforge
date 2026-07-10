@@ -7,7 +7,7 @@ from pathlib import Path
 from lxml import etree
 
 from epubforge.cli.main import main
-from epubforge.core import Epub, Metadata
+from epubforge.core import Epub, Metadata, set_number_of_pages
 
 DC_NS = "http://purl.org/dc/elements/1.1/"
 OPF_NS = "http://www.idpf.org/2007/opf"
@@ -304,6 +304,46 @@ def test_series_write_keeps_other_metadata(opf_bytes: bytes) -> None:
     root = etree.fromstring(meta.to_opf(opf_bytes))
     assert root.find(f".//{{{OPF_NS}}}manifest") is not None
     assert root.find(f".//{{{OPF_NS}}}spine") is not None
+
+
+def test_set_number_of_pages_epub3(opf_bytes: bytes) -> None:
+    """EPUB 3: liczba stron zapisywana jako meta schema:numberOfPages."""
+    result = set_number_of_pages(opf_bytes, 330)
+    assert result is not None
+    root = etree.fromstring(result)
+    metas = root.findall(f".//{{{OPF_NS}}}meta")
+    pages = [m for m in metas if m.get("property") == "schema:numberOfPages"]
+    assert len(pages) == 1
+    assert pages[0].text == "330"
+
+
+def test_set_number_of_pages_idempotent(opf_bytes: bytes) -> None:
+    """Ponowny zapis nie mnoży wpisów — nadpisuje istniejący."""
+    once = set_number_of_pages(opf_bytes, 100)
+    assert once is not None
+    twice = set_number_of_pages(once, 200)
+    assert twice is not None
+    root = etree.fromstring(twice)
+    pages = [
+        m
+        for m in root.findall(f".//{{{OPF_NS}}}meta")
+        if m.get("property") == "schema:numberOfPages"
+    ]
+    assert len(pages) == 1
+    assert pages[0].text == "200"
+
+
+def test_set_number_of_pages_epub2_skipped(epub2_epub: Path) -> None:
+    """EPUB 2: brak składni meta property → zwraca None (zapis pominięty)."""
+    with Epub(epub2_epub) as epub:
+        opf = epub.read_file(epub.opf_path)
+    assert set_number_of_pages(opf, 330) is None
+
+
+def test_set_number_of_pages_invalid_count(opf_bytes: bytes) -> None:
+    """Niepoprawna liczba stron (<= 0) → None."""
+    assert set_number_of_pages(opf_bytes, 0) is None
+    assert set_number_of_pages(opf_bytes, -5) is None
 
 
 def test_cli_meta_sets_series(sample_epub: Path) -> None:

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EpubForge 1.0.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-07-10 12:32+0000\n"
+"POT-Creation-Date: 2026-07-10 17:41+0000\n"
 "PO-Revision-Date: 2026-06-12 13:30+0200\n"
 "Last-Translator: EpubForge translators <noreply@example.com>\n"
 "Language: pl\n"
@@ -610,7 +610,8 @@ msgstr "ID"
 msgid "Nazwa"
 msgstr "Nazwa"
 
-#: src/epubforge/cli/presets.py:24 src/epubforge/gui/tabs/metadata.py:145
+#: src/epubforge/cli/presets.py:24 src/epubforge/gui/metadata_fetch.py:42
+#: src/epubforge/gui/tabs/metadata.py:150
 msgid "Opis"
 msgstr "Opis"
 
@@ -960,9 +961,9 @@ msgstr "Motyw: Automatyczny / Jasny / Ciemny"
 msgid "Język interfejsu"
 msgstr "Język interfejsu"
 
-#: src/epubforge/gui/app.py:219 src/epubforge/gui/tabs/metadata.py:236
-#: src/epubforge/gui/tabs/metadata.py:258
-#: src/epubforge/gui/tabs/metadata.py:348
+#: src/epubforge/gui/app.py:219 src/epubforge/gui/tabs/metadata.py:245
+#: src/epubforge/gui/tabs/metadata.py:267
+#: src/epubforge/gui/tabs/metadata.py:433
 msgid "Metadane"
 msgstr "Metadane"
 
@@ -999,9 +1000,10 @@ msgstr "Statystyki"
 msgid "Motyw: {theme}"
 msgstr "Motyw: {theme}"
 
-#: src/epubforge/gui/app.py:261 src/epubforge/gui/tabs/converter.py:157
-#: src/epubforge/gui/tabs/fixer.py:297 src/epubforge/gui/tabs/fixer.py:407
-#: src/epubforge/gui/tabs/metadata.py:131 src/epubforge/gui/tabs/stats.py:122
+#: src/epubforge/gui/app.py:261 src/epubforge/gui/metadata_fetch.py:40
+#: src/epubforge/gui/tabs/converter.py:157 src/epubforge/gui/tabs/fixer.py:297
+#: src/epubforge/gui/tabs/fixer.py:407 src/epubforge/gui/tabs/metadata.py:136
+#: src/epubforge/gui/tabs/stats.py:122
 msgid "Język"
 msgstr "Język"
 
@@ -1064,6 +1066,81 @@ msgstr ""
 "Wystąpił nieoczekiwany błąd:\n"
 "{error}"
 
+#: src/epubforge/gui/metadata_fetch.py:37
+#: src/epubforge/gui/tabs/converter.py:147
+#: src/epubforge/gui/tabs/metadata.py:128 src/epubforge/gui/tabs/stats.py:146
+#: src/epubforge/gui/tabs/toc.py:74
+msgid "Tytuł"
+msgstr "Tytuł"
+
+#: src/epubforge/gui/metadata_fetch.py:38
+#: src/epubforge/gui/tabs/metadata.py:138
+msgid "Wydawca"
+msgstr "Wydawca"
+
+#: src/epubforge/gui/metadata_fetch.py:39
+#: src/epubforge/gui/tabs/metadata.py:140
+msgid "Data"
+msgstr "Data"
+
+#: src/epubforge/gui/metadata_fetch.py:41
+#: src/epubforge/gui/tabs/metadata.py:129
+msgid "Cykl"
+msgstr "Cykl"
+
+#: src/epubforge/gui/metadata_fetch.py:94
+msgid "Pobierz metadane"
+msgstr "Pobierz metadane"
+
+#: src/epubforge/gui/metadata_fetch.py:107
+msgid "ISBN książki (10 lub 13 cyfr)"
+msgstr "ISBN książki (10 lub 13 cyfr)"
+
+#: src/epubforge/gui/metadata_fetch.py:110
+#: src/epubforge/gui/widgets/search_panel.py:112
+msgid "Szukaj"
+msgstr "Szukaj"
+
+#: src/epubforge/gui/metadata_fetch.py:115
+msgid "Podaj ISBN i naciśnij „Szukaj"
+msgstr "Podaj ISBN i naciśnij „Szukaj"
+
+#: src/epubforge/gui/metadata_fetch.py:149
+msgid "Podaj ISBN"
+msgstr "Podaj ISBN"
+
+#: src/epubforge/gui/metadata_fetch.py:154
+#: src/epubforge/gui/widgets/search_panel.py:208
+msgid "Szukam…"
+msgstr "Szukam…"
+
+#: src/epubforge/gui/metadata_fetch.py:167
+msgid "Nie znaleziono metadanych dla tego ISBN (albo brak połączenia)"
+msgstr "Nie znaleziono metadanych dla tego ISBN (albo brak połączenia)"
+
+#: src/epubforge/gui/metadata_fetch.py:173
+#, python-brace-format
+msgid "Znaleziono metadane (źródło: {source}). Zaznacz pola do nadpisania."
+msgstr "Znaleziono metadane (źródło: {source}). Zaznacz pola do nadpisania."
+
+#: src/epubforge/gui/metadata_fetch.py:183
+#, python-brace-format
+msgid "Błąd pobierania: {error}"
+msgstr "Błąd pobierania: {error}"
+
+#: src/epubforge/gui/metadata_fetch.py:222
+#, python-brace-format
+msgid "Liczba stron: {count} (zapis do OPF, tylko EPUB 3)"
+msgstr "Liczba stron: {count} (zapis do OPF, tylko EPUB 3)"
+
+#: src/epubforge/gui/metadata_fetch.py:231
+msgid "Deskryptory (dopisz do tematów):"
+msgstr "Deskryptory (dopisz do tematów):"
+
+#: src/epubforge/gui/metadata_fetch.py:240
+msgid "Ten temat jest już przypisany"
+msgstr "Ten temat jest już przypisany"
+
 #: src/epubforge/gui/tabs/converter.py:99
 msgid "Dodaj pliki wejściowe"
 msgstr "Dodaj pliki wejściowe"
@@ -1079,12 +1156,6 @@ msgstr "Opcje konwersji"
 #: src/epubforge/gui/tabs/converter.py:146
 msgid "Tytuł książki w wynikowym EPUB (opcjonalny)"
 msgstr "Tytuł książki w wynikowym EPUB (opcjonalny)"
-
-#: src/epubforge/gui/tabs/converter.py:147
-#: src/epubforge/gui/tabs/metadata.py:123 src/epubforge/gui/tabs/stats.py:146
-#: src/epubforge/gui/tabs/toc.py:74
-msgid "Tytuł"
-msgstr "Tytuł"
 
 #: src/epubforge/gui/tabs/converter.py:150
 msgid "Autor; zalecany format: Nazwisko, Imię (opcjonalny)"
@@ -1232,7 +1303,7 @@ msgid "pdf2md"
 msgstr "pdf2md"
 
 #: src/epubforge/gui/tabs/converter.py:361
-#: src/epubforge/gui/tabs/metadata.py:281
+#: src/epubforge/gui/tabs/metadata.py:365
 #, python-brace-format
 msgid ""
 "Nie udało się uruchomić programu:\n"
@@ -1262,7 +1333,7 @@ msgstr "Zakończono: {done}/{total} OK"
 
 #: src/epubforge/gui/tabs/converter.py:439
 #: src/epubforge/gui/tabs/converter.py:440 src/epubforge/gui/tabs/kfx.py:406
-#: src/epubforge/gui/tabs/kfx.py:407 src/epubforge/gui/tabs/validator.py:424
+#: src/epubforge/gui/tabs/kfx.py:407 src/epubforge/gui/tabs/validator.py:422
 #: src/epubforge/gui/widgets/search_panel.py:235
 msgid "Anulowano"
 msgstr "Anulowano"
@@ -1368,7 +1439,7 @@ msgid "Pliki EPUB (*.epub)"
 msgstr "Pliki EPUB (*.epub)"
 
 #: src/epubforge/gui/tabs/editor.py:232 src/epubforge/gui/tabs/editor.py:446
-#: src/epubforge/gui/tabs/validator.py:531
+#: src/epubforge/gui/tabs/validator.py:535
 msgid "Błąd"
 msgstr "Błąd"
 
@@ -1471,15 +1542,15 @@ msgid "Najpierw otwórz EPUB"
 msgstr "Najpierw otwórz EPUB"
 
 #: src/epubforge/gui/tabs/editor_preview.py:218
-#: src/epubforge/gui/tabs/metadata.py:273
-#: src/epubforge/gui/tabs/metadata.py:294
+#: src/epubforge/gui/tabs/metadata.py:357
+#: src/epubforge/gui/tabs/metadata.py:378
 #: src/epubforge/gui/widgets/html_preview.py:174
 #, python-brace-format
 msgid "Nie wykryto {tool}"
 msgstr "Nie wykryto {tool}"
 
 #: src/epubforge/gui/tabs/editor_preview.py:221
-#: src/epubforge/gui/tabs/metadata.py:276
+#: src/epubforge/gui/tabs/metadata.py:360
 #, python-brace-format
 msgid "Nie udało się uruchomić {tool}: {error}"
 msgstr "Nie udało się uruchomić {tool}: {error}"
@@ -1494,7 +1565,7 @@ msgid "Receptura"
 msgstr ""
 
 #: src/epubforge/gui/tabs/fixer.py:108 src/epubforge/gui/tabs/fixer.py:253
-#: src/epubforge/gui/tabs/kfx.py:101 src/epubforge/gui/tabs/metadata.py:92
+#: src/epubforge/gui/tabs/kfx.py:101 src/epubforge/gui/tabs/metadata.py:97
 #: src/epubforge/gui/tabs/stats.py:82 src/epubforge/gui/tabs/toc.py:120
 #: src/epubforge/gui/tabs/validator.py:136
 msgid "Pliki EPUB"
@@ -2117,99 +2188,97 @@ msgstr ""
 "nie jest już rozwijany. Nadal tworzy poprawne pliki MOBI, ale zalecanym, "
 "nowocześniejszym silnikiem jest Calibre ebook-convert."
 
-#: src/epubforge/gui/tabs/metadata.py:79 src/epubforge/gui/tabs/metadata.py:268
+#: src/epubforge/gui/tabs/metadata.py:84 src/epubforge/gui/tabs/metadata.py:352
 msgid "Wybierz plik EPUB"
 msgstr "Wybierz plik EPUB"
 
-#: src/epubforge/gui/tabs/metadata.py:96
+#: src/epubforge/gui/tabs/metadata.py:101
 msgid "Folder z plikami EPUB"
 msgstr "Folder z plikami EPUB"
 
-#: src/epubforge/gui/tabs/metadata.py:98
+#: src/epubforge/gui/tabs/metadata.py:103
 msgid "Folder z plikami EPUB do edycji metadanych"
 msgstr "Folder z plikami EPUB do edycji metadanych"
 
-#: src/epubforge/gui/tabs/metadata.py:115
+#: src/epubforge/gui/tabs/metadata.py:120
 msgid "Metadane Dublin Core"
 msgstr "Metadane Dublin Core"
 
-#: src/epubforge/gui/tabs/metadata.py:122
+#: src/epubforge/gui/tabs/metadata.py:127
 msgid "Tytuł książki (dc:title)"
 msgstr "Tytuł książki (dc:title)"
 
-#: src/epubforge/gui/tabs/metadata.py:124
-msgid "Cykl"
-msgstr "Cykl"
-
-#: src/epubforge/gui/tabs/metadata.py:126
+#: src/epubforge/gui/tabs/metadata.py:131
 msgid "Autorzy — jeden na linię; format: Nazwisko, Imię"
 msgstr "Autorzy — jeden na linię; format: Nazwisko, Imię"
 
-#: src/epubforge/gui/tabs/metadata.py:128
+#: src/epubforge/gui/tabs/metadata.py:133
 msgid "Autorzy"
 msgstr "Autorzy"
 
-#: src/epubforge/gui/tabs/metadata.py:129
+#: src/epubforge/gui/tabs/metadata.py:134
 msgid "Kod języka, np. pl, en (dc:language)"
 msgstr "Kod języka, np. pl, en (dc:language)"
 
-#: src/epubforge/gui/tabs/metadata.py:132
+#: src/epubforge/gui/tabs/metadata.py:137
 msgid "Wydawca (dc:publisher)"
 msgstr "Wydawca (dc:publisher)"
 
-#: src/epubforge/gui/tabs/metadata.py:133
-msgid "Wydawca"
-msgstr "Wydawca"
-
-#: src/epubforge/gui/tabs/metadata.py:134
+#: src/epubforge/gui/tabs/metadata.py:139
 msgid "Data publikacji w formacie ISO: RRRR-MM-DD"
 msgstr "Data publikacji w formacie ISO: RRRR-MM-DD"
 
-#: src/epubforge/gui/tabs/metadata.py:135
-msgid "Data"
-msgstr "Data"
-
-#: src/epubforge/gui/tabs/metadata.py:136
+#: src/epubforge/gui/tabs/metadata.py:141
 msgid "Identyfikator: ISBN lub UUID (dc:identifier)"
 msgstr "Identyfikator: ISBN lub UUID (dc:identifier)"
 
-#: src/epubforge/gui/tabs/metadata.py:139
+#: src/epubforge/gui/tabs/metadata.py:144
 msgid "Tematy/tagi — jeden na linię (dc:subject)"
 msgstr "Tematy/tagi — jeden na linię (dc:subject)"
 
-#: src/epubforge/gui/tabs/metadata.py:141
+#: src/epubforge/gui/tabs/metadata.py:146
 msgid "Tematy"
 msgstr "Tematy"
 
-#: src/epubforge/gui/tabs/metadata.py:143
+#: src/epubforge/gui/tabs/metadata.py:148
 msgid "Opis/streszczenie książki (dc:description)"
 msgstr "Opis/streszczenie książki (dc:description)"
 
-#: src/epubforge/gui/tabs/metadata.py:154
+#: src/epubforge/gui/tabs/metadata.py:159
 msgid "Nazwa cyklu/serii, np. Wiedźmin"
 msgstr "Nazwa cyklu/serii, np. Wiedźmin"
 
-#: src/epubforge/gui/tabs/metadata.py:156
+#: src/epubforge/gui/tabs/metadata.py:161
 msgid "Tom nr:"
 msgstr "Tom nr:"
 
-#: src/epubforge/gui/tabs/metadata.py:159
+#: src/epubforge/gui/tabs/metadata.py:164
 msgid "Numer tomu w cyklu, np. 2 (można 1.5)"
 msgstr "Numer tomu w cyklu, np. 2 (można 1.5)"
 
-#: src/epubforge/gui/tabs/metadata.py:167
+#: src/epubforge/gui/tabs/metadata.py:172
 msgid "Zapisz"
 msgstr "Zapisz"
 
-#: src/epubforge/gui/tabs/metadata.py:168
+#: src/epubforge/gui/tabs/metadata.py:173
 msgid "Zapisuje metadane do wybranego EPUB"
 msgstr "Zapisuje metadane do wybranego EPUB"
 
-#: src/epubforge/gui/tabs/metadata.py:202
+#: src/epubforge/gui/tabs/metadata.py:176
+msgid "Pobierz metadane…"
+msgstr "Pobierz metadane…"
+
+#: src/epubforge/gui/tabs/metadata.py:177
+msgid ""
+"Pobiera metadane po ISBN z Biblioteki Narodowej / Open Library / Google "
+"Books"
+msgstr "Pobiera metadane po ISBN z Biblioteki Narodowej / Open Library / Google Books"
+
+#: src/epubforge/gui/tabs/metadata.py:211
 msgid "Wybrany folder nie istnieje"
 msgstr "Wybrany folder nie istnieje"
 
-#: src/epubforge/gui/tabs/metadata.py:210
+#: src/epubforge/gui/tabs/metadata.py:219
 #, python-brace-format
 msgid "Wczytano {n} plik EPUB"
 msgid_plural "Wczytano {n} plików EPUB"
@@ -2217,12 +2286,12 @@ msgstr[0] "Wczytano {n} plik EPUB"
 msgstr[1] "Wczytano {n} pliki EPUB"
 msgstr[2] "Wczytano {n} plików EPUB"
 
-#: src/epubforge/gui/tabs/metadata.py:233
+#: src/epubforge/gui/tabs/metadata.py:242
 #, python-brace-format
 msgid "Nie udało się wczytać metadanych: {error}"
 msgstr "Nie udało się wczytać metadanych: {error}"
 
-#: src/epubforge/gui/tabs/metadata.py:237
+#: src/epubforge/gui/tabs/metadata.py:246
 #, python-brace-format
 msgid ""
 "Nie udało się wczytać metadanych:\n"
@@ -2231,21 +2300,21 @@ msgstr ""
 "Nie udało się wczytać metadanych:\n"
 "{error}"
 
-#: src/epubforge/gui/tabs/metadata.py:243
+#: src/epubforge/gui/tabs/metadata.py:253
 #, python-brace-format
 msgid "Wczytano metadane: {name}"
 msgstr "Wczytano metadane: {name}"
 
-#: src/epubforge/gui/tabs/metadata.py:248
+#: src/epubforge/gui/tabs/metadata.py:258
 msgid "Wybierz plik EPUB przed zapisem"
 msgstr "Wybierz plik EPUB przed zapisem"
 
-#: src/epubforge/gui/tabs/metadata.py:255
+#: src/epubforge/gui/tabs/metadata.py:264
 #, python-brace-format
 msgid "Nie udało się zapisać metadanych: {error}"
 msgstr "Nie udało się zapisać metadanych: {error}"
 
-#: src/epubforge/gui/tabs/metadata.py:259
+#: src/epubforge/gui/tabs/metadata.py:268
 #, python-brace-format
 msgid ""
 "Nie udało się zapisać metadanych:\n"
@@ -2254,16 +2323,25 @@ msgstr ""
 "Nie udało się zapisać metadanych:\n"
 "{error}"
 
-#: src/epubforge/gui/tabs/metadata.py:263
+#: src/epubforge/gui/tabs/metadata.py:275
+#, python-brace-format
+msgid "Zapisano metadane: {name} (liczbę stron pominięto — to EPUB 2)"
+msgstr "Zapisano metadane: {name} (liczbę stron pominięto — to EPUB 2)"
+
+#: src/epubforge/gui/tabs/metadata.py:280
 #, python-brace-format
 msgid "Zapisano metadane: {name}"
 msgstr "Zapisano metadane: {name}"
 
-#: src/epubforge/gui/tabs/metadata.py:345
+#: src/epubforge/gui/tabs/metadata.py:338
+msgid "Naniesiono pobrane metadane — sprawdź i zapisz"
+msgstr "Naniesiono pobrane metadane — sprawdź i zapisz"
+
+#: src/epubforge/gui/tabs/metadata.py:430
 msgid "Tom nr nie jest liczbą; zapisano pozostałe metadane"
 msgstr "Tom nr nie jest liczbą; zapisano pozostałe metadane"
 
-#: src/epubforge/gui/tabs/metadata.py:349
+#: src/epubforge/gui/tabs/metadata.py:434
 msgid ""
 "Pole „Tom nr” musi być liczbą, np. 2 albo 1.5. Ta wartość nie zostanie "
 "zmieniona."
@@ -2348,7 +2426,7 @@ msgstr "Eksport raportu HTML"
 msgid "HTML (*.html)"
 msgstr "HTML (*.html)"
 
-#: src/epubforge/gui/tabs/stats.py:222 src/epubforge/gui/tabs/validator.py:517
+#: src/epubforge/gui/tabs/stats.py:222 src/epubforge/gui/tabs/validator.py:521
 #, python-brace-format
 msgid "Zapisano raport: {name}"
 msgstr "Zapisano raport: {name}"
@@ -2457,7 +2535,7 @@ msgstr "Spis treści jest poprawny."
 msgid "Usunięto {n} wpisów."
 msgstr "Usunięto {n} wpisów."
 
-#: src/epubforge/gui/tabs/toc.py:377 src/epubforge/gui/tabs/validator.py:515
+#: src/epubforge/gui/tabs/toc.py:377 src/epubforge/gui/tabs/validator.py:519
 #, python-brace-format
 msgid "Nie udało się zapisać: {error}"
 msgstr "Nie udało się zapisać: {error}"
@@ -2624,25 +2702,25 @@ msgstr "NIEPOPRAWNY"
 msgid "Zakończono w {sec:.1f}s — {verdict}"
 msgstr "Zakończono w {sec:.1f}s — {verdict}"
 
-#: src/epubforge/gui/tabs/validator.py:412
+#: src/epubforge/gui/tabs/validator.py:410
 msgid "DOSTĘPNY"
 msgstr "DOSTĘPNY"
 
-#: src/epubforge/gui/tabs/validator.py:412
+#: src/epubforge/gui/tabs/validator.py:410
 msgid "NIEDOSTĘPNY"
 msgstr "NIEDOSTĘPNY"
 
-#: src/epubforge/gui/tabs/validator.py:414
+#: src/epubforge/gui/tabs/validator.py:412
 #, python-brace-format
 msgid "Audyt zakończono w {sec:.1f}s — {verdict}"
 msgstr "Audyt zakończono w {sec:.1f}s — {verdict}"
 
-#: src/epubforge/gui/tabs/validator.py:431
+#: src/epubforge/gui/tabs/validator.py:429
 #, python-brace-format
 msgid "Walidacja nieudana: {error}"
 msgstr "Walidacja nieudana: {error}"
 
-#: src/epubforge/gui/tabs/validator.py:485
+#: src/epubforge/gui/tabs/validator.py:487
 #, python-brace-format
 msgid "{n} błąd"
 msgid_plural "{n} błędów"
@@ -2650,7 +2728,7 @@ msgstr[0] "{n} błąd"
 msgstr[1] "{n} błędy"
 msgstr[2] "{n} błędów"
 
-#: src/epubforge/gui/tabs/validator.py:486
+#: src/epubforge/gui/tabs/validator.py:488
 #, python-brace-format
 msgid "{n} ostrzeżenie"
 msgid_plural "{n} ostrzeżeń"
@@ -2658,7 +2736,7 @@ msgstr[0] "{n} ostrzeżenie"
 msgstr[1] "{n} ostrzeżenia"
 msgstr[2] "{n} ostrzeżeń"
 
-#: src/epubforge/gui/tabs/validator.py:487
+#: src/epubforge/gui/tabs/validator.py:489
 #, python-brace-format
 msgid "{n} informacja"
 msgid_plural "{n} informacji"
@@ -2666,23 +2744,23 @@ msgstr[0] "{n} informacja"
 msgstr[1] "{n} informacje"
 msgstr[2] "{n} informacji"
 
-#: src/epubforge/gui/tabs/validator.py:499
+#: src/epubforge/gui/tabs/validator.py:501
 msgid "Eksport raportu"
 msgstr "Eksport raportu"
 
-#: src/epubforge/gui/tabs/validator.py:499
+#: src/epubforge/gui/tabs/validator.py:501
 msgid "JSON (*.json);;HTML (*.html)"
 msgstr "JSON (*.json);;HTML (*.html)"
 
-#: src/epubforge/gui/tabs/validator.py:530
+#: src/epubforge/gui/tabs/validator.py:534
 msgid "Krytyczny"
 msgstr "Krytyczny"
 
-#: src/epubforge/gui/tabs/validator.py:532
+#: src/epubforge/gui/tabs/validator.py:536
 msgid "Ostrzeżenie"
 msgstr "Ostrzeżenie"
 
-#: src/epubforge/gui/tabs/validator.py:533
+#: src/epubforge/gui/tabs/validator.py:537
 msgid "Informacja"
 msgstr "Informacja"
 
@@ -2906,10 +2984,6 @@ msgstr "Bieżący plik"
 msgid "Cały EPUB"
 msgstr "Cały EPUB"
 
-#: src/epubforge/gui/widgets/search_panel.py:112
-msgid "Szukaj"
-msgstr "Szukaj"
-
 #: src/epubforge/gui/widgets/search_panel.py:115
 msgid "Zamień wszystkie"
 msgstr "Zamień wszystkie"
@@ -2921,10 +2995,6 @@ msgstr "Otwórz najpierw plik EPUB."
 #: src/epubforge/gui/widgets/search_panel.py:177
 msgid "Podaj frazę do wyszukania."
 msgstr "Podaj frazę do wyszukania."
-
-#: src/epubforge/gui/widgets/search_panel.py:208
-msgid "Szukam…"
-msgstr "Szukam…"
 
 #: src/epubforge/gui/widgets/search_panel.py:261
 #, python-brace-format
@@ -2948,21 +3018,21 @@ msgstr "Zamieniono {total} w {files} plikach"
 msgid " · pominięto {n} (nie-UTF-8)"
 msgstr " · pominięto {n} (nie-UTF-8)"
 
-#: src/epubforge/validators/ace.py:244 src/epubforge/validators/ace.py:267
+#: src/epubforge/validators/ace.py:244 src/epubforge/validators/ace.py:265
 #, python-brace-format
 msgid "Ace przekroczył limit czasu ({timeout}s)."
 msgstr "Ace przekroczył limit czasu ({timeout}s)."
 
-#: src/epubforge/validators/ace.py:248
+#: src/epubforge/validators/ace.py:247
 #, python-brace-format
 msgid "Nie udało się uruchomić Ace: {error}"
 msgstr "Nie udało się uruchomić Ace: {error}"
 
-#: src/epubforge/validators/ace.py:264
+#: src/epubforge/validators/ace.py:262
 msgid "Audyt dostępności anulowano."
 msgstr "Audyt dostępności anulowano."
 
-#: src/epubforge/validators/ace.py:276
+#: src/epubforge/validators/ace.py:274
 #, python-brace-format
 msgid ""
 "Ace nie utworzył raportu JSON.\n"
@@ -2971,12 +3041,12 @@ msgstr ""
 "Ace nie utworzył raportu JSON.\n"
 "{stderr}"
 
-#: src/epubforge/validators/ace.py:283
+#: src/epubforge/validators/ace.py:281
 #, python-brace-format
 msgid "Nie udało się odczytać raportu Ace: {error}"
 msgstr "Nie udało się odczytać raportu Ace: {error}"
 
-#: src/epubforge/validators/ace.py:286
+#: src/epubforge/validators/ace.py:284
 msgid "Raport Ace ma nieoczekiwany format."
 msgstr "Raport Ace ma nieoczekiwany format."
 

@@ -20,8 +20,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from epubforge.core import Epub, EpubError, Metadata, Tool, Tools
+from epubforge.bookmeta import validate_isbn
+from epubforge.core import Epub, EpubError, Metadata, Tool, Tools, set_number_of_pages
 from epubforge.gui.external_tools import ToolUnavailableError, launch_tool
+from epubforge.gui.metadata_fetch import FetchMetadataDialog, FetchResult
 from epubforge.gui.widgets import (
     FileList,
     PathEntry,
@@ -53,6 +55,9 @@ class MetadataTab(QWidget):
         self.tools = tools if tools is not None else _detect_tools()
         self.current_path: Path | None = None
         self._loaded_metadata: Metadata | None = None
+        # Liczba stron pobrana z sieci, do zapisania w OPF przy najbliższym „Zapisz"
+        # (tylko EPUB 3). Czyszczona po zapisie i przy zmianie pliku.
+        self._pending_page_count: int | None = None
         self.tool_buttons: dict[str, QPushButton] = {}
 
         self._build_layout()
@@ -168,6 +173,12 @@ class MetadataTab(QWidget):
         save.setToolTip(_("Zapisuje metadane do wybranego EPUB"))
         save.clicked.connect(self._save_metadata)
         actions.addWidget(save)
+        fetch = QPushButton(_("Pobierz metadane…"))
+        fetch.setToolTip(
+            _("Pobiera metadane po ISBN z Biblioteki Narodowej / Open Library / Google Books")
+        )
+        fetch.clicked.connect(self._open_fetch_dialog)
+        actions.addWidget(fetch)
         actions.addStretch(1)
         for key, label in _TOOL_LABELS.items():
             button = QPushButton(label)
@@ -239,18 +250,18 @@ class MetadataTab(QWidget):
             return
         self.current_path = path
         self._loaded_metadata = metadata
+        self._pending_page_count = None
         self._set_form(metadata)
         self._set_status(_("Wczytano metadane: {name}").format(name=path.name))
 
     def _save_metadata(self) -> None:
-        """Zapisuje metadane do aktualnego EPUB przez setter Epub.metadata."""
+        """Zapisuje metadane (i ewentualną liczbę stron) do aktualnego EPUB."""
         if self.current_path is None:
             self._set_status(_("Wybierz plik EPUB przed zapisem"))
             return
         metadata = self._metadata_from_form()
         try:
-            with Epub(self.current_path) as epub:
-                epub.metadata = metadata
+            pages_skipped = self._write_metadata(self.current_path, metadata)
         except (EpubError, OSError, KeyError) as exc:
             self._set_status(_("Nie udało się zapisać metadanych: {error}").format(error=exc))
             QMessageBox.critical(
@@ -260,7 +271,82 @@ class MetadataTab(QWidget):
             )
             return
         self._loaded_metadata = metadata
-        self._set_status(_("Zapisano metadane: {name}").format(name=self.current_path.name))
+        self._pending_page_count = None
+        if pages_skipped:
+            self._set_status(
+                _("Zapisano metadane: {name} (liczbę stron pominięto — to EPUB 2)").format(
+                    name=self.current_path.name
+                )
+            )
+        else:
+            self._set_status(_("Zapisano metadane: {name}").format(name=self.current_path.name))
+
+    def _write_metadata(self, path: Path, metadata: Metadata) -> bool:
+        """Zapisuje metadane Dublin Core, a dla EPUB 3 dokłada liczbę stron.
+
+        Dublin Core idzie przez setter ``Epub.metadata`` (sprawdzona ścieżka).
+        Liczba stron (``schema:numberOfPages``) jest dopisywana osobno i tylko dla
+        EPUB 3 — dla EPUB 2 składnia ``<meta property>`` nie istnieje, więc zapis
+        jest pomijany.
+
+        Returns:
+            ``True``, gdy była liczba stron do zapisania, ale plik to EPUB 2
+            (zapis pominięty) — wywołujący dopisuje o tym notę w statusie.
+        """
+        with Epub(path) as epub:
+            epub.metadata = metadata
+            if self._pending_page_count is None:
+                return False
+            with_pages = set_number_of_pages(
+                epub.read_file(epub.opf_path), self._pending_page_count
+            )
+            if with_pages is None:
+                return True
+            epub.write_file(epub.opf_path, with_pages)
+            epub.save()
+        return False
+
+    def _open_fetch_dialog(self) -> None:
+        """Otwiera dialog pobierania metadanych po ISBN i nanosi wybór na formularz."""
+        current = self._metadata_from_form()
+        prefill = _isbn_prefill(current.identifier)
+        dialog = FetchMetadataDialog(current, prefill_isbn=prefill, parent=self)
+        if dialog.exec() != FetchMetadataDialog.DialogCode.Accepted:
+            return
+        self._apply_fetch_result(dialog.result_selection())
+
+    def _apply_fetch_result(self, selection: FetchResult) -> None:
+        """Nanosi wybrane pola z pobranego rekordu na formularz metadanych."""
+        setters: dict[str, QLineEdit | QPlainTextEdit] = {
+            "title": self.title_edit,
+            "publisher": self.publisher_edit,
+            "date": self.date_edit,
+            "language": self.language_edit,
+            "series": self.series_edit,
+            "description": self.description_edit,
+        }
+        for attr, value in selection.fields.items():
+            widget = setters.get(attr)
+            if isinstance(widget, QPlainTextEdit):
+                widget.setPlainText(value)
+            elif widget is not None:
+                widget.setText(value)
+        if selection.creators is not None:
+            self.creators_edit.setPlainText("\n".join(selection.creators))
+        if selection.add_subjects:
+            self._append_subjects(selection.add_subjects)
+        if selection.page_count is not None:
+            self._pending_page_count = selection.page_count
+        self._set_status(_("Naniesiono pobrane metadane — sprawdź i zapisz"))
+
+    def _append_subjects(self, new_subjects: list[str]) -> None:
+        """Dopisuje deskryptory do pola tematów, pomijając duplikaty."""
+        existing = _split_lines(self.subjects_edit.toPlainText())
+        merged = list(existing)
+        for subject in new_subjects:
+            if subject not in merged:
+                merged.append(subject)
+        self.subjects_edit.setPlainText("\n".join(merged))
 
     def _open_external(self, key: str, label: str) -> None:
         """Uruchamia zewnętrzny edytor/podgląd dla aktualnego EPUB."""
@@ -324,6 +410,7 @@ class MetadataTab(QWidget):
     def _clear_form(self) -> None:
         """Czyści formularz metadanych."""
         self._loaded_metadata = None
+        self._pending_page_count = None
         self._set_form(Metadata())
 
     def _series_index_from_form(self) -> float | None:
@@ -383,3 +470,8 @@ def _format_series_index(value: float | None) -> str:
 def _split_lines(value: str) -> list[str]:
     """Rozbija wielowierszową wartość formularza na niepuste wpisy."""
     return [line.strip() for line in value.splitlines() if line.strip()]
+
+
+def _isbn_prefill(identifier: str) -> str:
+    """Zwraca znormalizowany ISBN do prefillu, gdy identyfikator nim jest (inaczej pusty)."""
+    return validate_isbn(identifier) or ""
