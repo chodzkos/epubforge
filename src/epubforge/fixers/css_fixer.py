@@ -2,35 +2,24 @@
 
 from __future__ import annotations
 
-import posixpath
 from collections.abc import Callable
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Literal, cast
-from urllib.parse import unquote, urldefrag
 
 import tinycss2
 from lxml import etree
 
 from epubforge.core import Epub, ManifestItem
 from epubforge.core._xml_safe import parse_untrusted
+from epubforge.fixers._fontutil import FONT_MEDIA_TYPES as _FONT_MEDIA_TYPES
+from epubforge.fixers._fontutil import FONT_SUFFIXES as _FONT_SUFFIXES
+from epubforge.fixers._fontutil import font_files as _font_files
+from epubforge.fixers._fontutil import href_suffix as _href_suffix
+from epubforge.fixers._fontutil import manifest_path as _manifest_path
 
 JustifyMode = Literal["keep", "left"]
 
 _CSS_MEDIA_TYPES = {"text/css"}
-_FONT_MEDIA_TYPES = {
-    "application/font-sfnt",
-    "application/font-woff",
-    "application/vnd.ms-opentype",
-    "application/x-font-otf",
-    "application/x-font-ttf",
-    "font/otf",
-    "font/sfnt",
-    "font/ttf",
-    "font/woff",
-    "font/woff2",
-}
-_FONT_SUFFIXES = {".otf", ".ttf", ".woff", ".woff2"}
 _COLOR_PROPERTIES = {"color", "background", "background-color"}
 _FONT_PROPERTIES = {"font-family"}
 _RESET_RULE = "html, body { margin: 0; padding: 0; }"
@@ -191,19 +180,6 @@ def _css_items(epub: Epub) -> list[ManifestItem]:
     ]
 
 
-def _font_files(epub: Epub) -> list[str]:
-    """Zwraca wewnętrzne ścieżki plików fontów do usunięcia."""
-    manifest_paths = [
-        _manifest_path(epub, item)
-        for item in epub.manifest
-        if item.media_type in _FONT_MEDIA_TYPES or _href_suffix(item.href) in _FONT_SUFFIXES
-    ]
-    archive_paths = [
-        name for name in epub.list_files() if Path(name).suffix.lower() in _FONT_SUFFIXES
-    ]
-    return sorted(set(manifest_paths + archive_paths))
-
-
 def _remove_font_manifest_items(epub: Epub) -> None:
     """Usuwa z OPF wpisy manifestu prowadzące do plików fontów."""
     root = parse_untrusted(epub.read_file(epub.opf_path))
@@ -221,24 +197,6 @@ def _remove_font_manifest_items(epub: Epub) -> None:
             changed = True
     if changed:
         epub.write_file(epub.opf_path, etree.tostring(root, encoding="utf-8", xml_declaration=True))
-
-
-def _href_suffix(href: str) -> str:
-    """Zwraca rozszerzenie href bez fragmentu URL."""
-    path, _fragment = urldefrag(href)
-    return Path(path).suffix.lower()
-
-
-def _manifest_path(epub: Epub, item: ManifestItem) -> str:
-    """Rozwiązuje ``manifest href`` względem katalogu OPF."""
-    href, _fragment = urldefrag(item.href)
-    href = unquote(href)
-    if href.startswith("/"):
-        return posixpath.normpath(href.lstrip("/"))
-    base = epub.opf_dir()
-    if not base:
-        return posixpath.normpath(href)
-    return posixpath.normpath(posixpath.join(base, href))
 
 
 def _upsert_declaration(declarations: list[Any], name: str, value: str) -> list[Any]:

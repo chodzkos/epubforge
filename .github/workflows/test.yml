@@ -52,7 +52,7 @@ jobs:
       # `--frozen`: instalacja ściśle z locka; niezgodność lock↔pyproject = błąd
       # (wymusza świadome `uv lock` przy zmianie zależności). [gui] (PySide6)
       # potrzebne w CI: mypy wymaga stubów Qt, a testy GUI importują PySide6.
-      run: uv sync --frozen --extra dev --extra gui --extra images --python ${{ matrix.python-version }}
+      run: uv sync --frozen --extra dev --extra gui --extra images --extra fonts --python ${{ matrix.python-version }}
 
     - name: Lint with ruff
       run: |
@@ -93,5 +93,5 @@ jobs:
       if: runner.os == 'Linux' && matrix.python-version == '3.12'
       run: |
         uv export --frozen --no-emit-project --no-emit-package chodzkos-gui-kit \
-          --extra dev --extra gui --extra images --no-hashes --format requirements-txt > req-audit.txt
+          --extra dev --extra gui --extra images --extra fonts --no-hashes --format requirements-txt > req-audit.txt
         uv run --with pip-audit pip-audit -r req-audit.txt

@@ -77,6 +77,11 @@ motywu, „O programie") i zakładki robocze:
   liczbach z jednostką. Sekcja **Obrazy** odchudza EPUB pod e-ink: skalowanie do
   zadanego dłuższego boku, rekompresja JPEG/PNG, skala szarości i pominięcie okładki;
   w logu pojawia się „zaoszczędzono X MB (-Y%)" (wymaga `pip install epubforge[images]`).
+  W sekcji CSS opcja **Przytnij fonty do użytych znaków** wykonuje subsetting fontów
+  (zwykle −70…−90% rozmiaru fontu), zachowując polskie znaki, interpunkcję typograficzną
+  i efekty hyphenacji; zawsze pomija fonty z `@font-face unicode-range`, a pliki WOFF2
+  wymagają `brotli`. **Uwaga:** część licencji fontów zabrania modyfikacji — sprawdź
+  licencję (ostrzeżenie pojawia się po zaznaczeniu opcji). Wymaga `pip install epubforge[fonts]`.
   Sekcja **Preset CSS** dołącza gotowy szablon stylów (Dołącz/Zastąp), z możliwością
   **Importuj własny…** (plik `.css` trafia do katalogu presetów). Naprawa działa **w miejscu**.
   Sekcja **Uaktualnij do EPUB 3** (przycisk niezależny od „Napraw", z potwierdzeniem)
@@ -168,6 +173,8 @@ epubforge hyphenate book.epub --lang pl --method soft-hyphen --skip-headers
 epubforge hyphenate *.epub --method css --jobs 4 --dry-run
 epubforge typo book.epub --lang pl --dry-run
 epubforge fix book.epub --optimize-images --max-px 1200 --jpeg-quality 75  # wymaga [images]
+epubforge fix book.epub --subset-fonts             # przytnij fonty do użytych znaków ([fonts])
+epubforge fix book.epub --subset-fonts --dry-run   # delty rozmiarów fontów bez zapisu
 
 # Typografia (cudzysłowy, pauzy, wielokropek, twarde spacje)
 epubforge typo book.epub --lang pl                 # pełna typografia PL

@@ -13,6 +13,8 @@ from epubforge.core import Epub, EpubError
 from epubforge.fixers import (
     CssFixOptions,
     CssPreset,
+    FontSubsetError,
+    FontSubsetOptions,
     ImageFixOptions,
     ImageOptimizationError,
     PresetError,
@@ -20,6 +22,7 @@ from epubforge.fixers import (
     fix_css,
     get_preset,
     optimize_images,
+    subset_fonts,
 )
 from epubforge.i18n import _
 
@@ -32,6 +35,7 @@ class _FixPayload:
     preset: CssPreset | None
     preset_mode: str
     image_options: ImageFixOptions | None
+    font_options: FontSubsetOptions | None
     dry_run: bool
     diff_full: bool
 
@@ -84,6 +88,14 @@ def add_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) 
         action="store_true",
         help=_("Konwertuj obrazy do skali szarości (pod e-ink)"),
     )
+    parser.add_argument(
+        "--subset-fonts",
+        action="store_true",
+        help=_(
+            "Przytnij fonty do użytych znaków (wymaga epubforge[fonts]). "
+            "UWAGA: część licencji fontów zabrania modyfikacji — sprawdź licencję."
+        ),
+    )
     parser.add_argument("--preset", help=_("Dołącz preset CSS o podanym ID (zob. presets list)"))
     parser.add_argument(
         "--preset-mode",
@@ -130,11 +142,14 @@ def run(args: argparse.Namespace) -> int:
         else None
     )
 
+    font_options = FontSubsetOptions() if args.subset_fonts else None
+
     payload = _FixPayload(
         options=options,
         preset=preset,
         preset_mode=args.preset_mode,
         image_options=image_options,
+        font_options=font_options,
         dry_run=args.dry_run,
         diff_full=args.diff_full,
     )
@@ -156,9 +171,11 @@ def _run_fix_for_path(path: Path, raw_payload: object) -> str:
                 apply_preset(epub, payload.preset, mode=payload.preset_mode)
             if payload.image_options is not None:
                 optimize_images(epub, payload.image_options)
+            if payload.font_options is not None:
+                subset_fonts(epub, payload.font_options)
             if payload.dry_run:
                 return format_dry_run(epub, diff_full=payload.diff_full)
             epub.save()
-    except (EpubError, ImageOptimizationError) as exc:
+    except (EpubError, ImageOptimizationError, FontSubsetError) as exc:
         raise RuntimeError(exc) from exc
     return _("Zaktualizowano EPUB: {path}").format(path=path)

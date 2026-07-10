@@ -62,6 +62,13 @@ images = [
     # bez tego extra fixer obrazów zgłasza czytelny błąd instalacji.
     "Pillow>=10.0",
 ]
+fonts = [
+    # Subsetting fontów (przycinanie do użytych glifów); importowane leniwie —
+    # bez tego extra fixer fontów zgłasza czytelny błąd instalacji. brotli jest
+    # wymagane do odczytu/zapisu WOFF2 (bez niego pliki .woff2 są pomijane).
+    "fonttools>=4.50",
+    "brotli>=1.1",
+]
 dev = [
     "babel>=2.14",
     "pytest>=8.0",
@@ -144,10 +151,12 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101"]  # asserts dozwolone w testach
-# Fixer typografii operuje na „dwuznacznych" znakach (typograficzne cudzysłowy,
-# pauzy, twarda spacja) — to jego domena, więc RUF001/002/003 tu nie mają sensu.
+# Fixery typografii i fontów operują na „dwuznacznych" znakach (typograficzne
+# cudzysłowy, pauzy, twarda spacja) — to ich domena, RUF001/002/003 tu nie mają sensu.
 "src/epubforge/fixers/typography.py" = ["RUF001", "RUF002", "RUF003"]
+"src/epubforge/fixers/fonts.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/test_typography.py" = ["RUF001", "RUF002", "RUF003"]
+"tests/test_fonts.py" = ["RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -169,6 +178,8 @@ module = [
     "tomli",
     "PIL",
     "PIL.*",
+    "fontTools",
+    "fontTools.*",
 ]
 ignore_missing_imports = true
 

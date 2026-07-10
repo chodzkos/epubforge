@@ -9,6 +9,12 @@ from epubforge.fixers.css_presets import (
     import_user_preset,
     list_presets,
 )
+from epubforge.fixers.fonts import (
+    FontReport,
+    FontSubsetError,
+    FontSubsetOptions,
+    subset_fonts,
+)
 from epubforge.fixers.hyphenator import HyphenationOptions, hyphenate
 from epubforge.fixers.images import (
     ImageFixOptions,
@@ -21,6 +27,9 @@ from epubforge.fixers.typography import TypographyOptions, TypographyReport, fix
 __all__ = [
     "CssFixOptions",
     "CssPreset",
+    "FontReport",
+    "FontSubsetError",
+    "FontSubsetOptions",
     "HyphenationOptions",
     "ImageFixOptions",
     "ImageOptimizationError",
@@ -36,4 +45,5 @@ __all__ = [
     "import_user_preset",
     "list_presets",
     "optimize_images",
+    "subset_fonts",
 ]

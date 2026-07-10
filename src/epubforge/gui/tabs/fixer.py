@@ -31,6 +31,8 @@ from epubforge.converters import upgrade_to_epub3
 from epubforge.core import Epub, Tool, Tools
 from epubforge.fixers import (
     CssFixOptions,
+    FontReport,
+    FontSubsetOptions,
     HyphenationOptions,
     ImageFixOptions,
     ImageReport,
@@ -45,6 +47,7 @@ from epubforge.fixers import (
     import_user_preset,
     list_presets,
     optimize_images,
+    subset_fonts,
 )
 from epubforge.fixers.hyphenator import HyphenationMethod
 from epubforge.gui.widgets import (
@@ -337,6 +340,19 @@ class FixerTab(QWidget):
                 "UWAGA: usuwa @font-face i pliki fontów z EPUB — nieodwracalne dla danej kopii"
             ),
         )
+        self.css_subset_fonts = self._add_check(
+            section,
+            _("Przytnij fonty do użytych znaków"),
+            checked=False,
+            tooltip=_("Przycina fonty do glifów użytych w treści (wymaga epubforge[fonts])"),
+        )
+        self.css_subset_fonts.toggled.connect(self._refresh_font_warning)
+        self.font_license_warning = QLabel(
+            _("Niektóre licencje fontów zabraniają modyfikacji — sprawdź licencję fontu.")
+        )
+        self.font_license_warning.setWordWrap(True)
+        self.font_license_warning.setVisible(False)
+        section.add_widget(self.font_license_warning)
         self.css_inject_reset = self._add_check(
             section,
             _("Dodaj reset CSS"),
@@ -653,6 +669,14 @@ class FixerTab(QWidget):
         """Pokazuje ostrzeżenie tylko przy metodzie soft-hyphen."""
         self.hyphen_warning_label.setVisible(self._hyphen_method() == "soft-hyphen")
 
+    def _refresh_font_warning(self) -> None:
+        """Pokazuje ostrzeżenie o licencjach tylko, gdy zaznaczono subset fontów."""
+        self.font_license_warning.setVisible(self.css_subset_fonts.isChecked())
+
+    def _build_font_options(self) -> FontSubsetOptions | None:
+        """Zwraca opcje subsettingu fontów albo ``None``, gdy wyłączone."""
+        return FontSubsetOptions() if self.css_subset_fonts.isChecked() else None
+
     def _hyphen_method(self) -> str:
         """Zwraca wybraną metodę dzielenia wyrazów."""
         button = self.hyphen_method_group.checkedButton()
@@ -735,6 +759,7 @@ class FixerTab(QWidget):
             self._build_hyphen_options(),
             self._build_css_options(),
             self._build_image_options(),
+            self._build_font_options(),
             self._preset_choice(),
         )
         self._worker.line.connect(self.log_view.append_line)
@@ -857,6 +882,7 @@ def _run_fix_worker(
     hyphen_options: HyphenationOptions | None,
     css_options: CssFixOptions,
     image_options: ImageFixOptions | None,
+    font_options: FontSubsetOptions | None,
     preset_choice: tuple[str, str] | None,
 ) -> tuple[int, int, Path | None]:
     """Naprawia pliki po kolei w wątku roboczym.
@@ -882,6 +908,9 @@ def _run_fix_worker(
                 if image_options is not None:
                     emit_line(_("Obrazy..."), "info")
                     emit_line(_image_summary(optimize_images(epub, image_options)), "info")
+                if font_options is not None:
+                    emit_line(_("Subsetting fontów..."), "info")
+                    emit_line(_font_summary(subset_fonts(epub, font_options)), "info")
                 if preset_choice is not None:
                     preset_id, preset_mode = preset_choice
                     emit_line(_("Preset CSS: {name}").format(name=preset_id), "info")
@@ -966,6 +995,18 @@ def _image_summary(report: ImageReport) -> str:
     saved_mb = report.saved_bytes / (1024 * 1024)
     return _("Obrazy: zaoszczędzono {mb:.2f} MB (-{pct}%) w {count} plikach").format(
         mb=saved_mb, pct=report.saved_percent, count=len(report.changed_files)
+    )
+
+
+def _font_summary(report: FontReport) -> str:
+    """Buduje zlokalizowane podsumowanie subsettingu fontów do logu."""
+    for warning in report.warnings:
+        logger.warning("Subset fontów: %s", warning)
+    if not report.changed_files:
+        return _("Fonty: bez zmian")
+    saved_kb = report.saved_bytes / 1024
+    return _("Fonty: zaoszczędzono {kb:.1f} KB (-{pct}%) w {count} plikach").format(
+        kb=saved_kb, pct=report.saved_percent, count=len(report.changed_files)
     )
 
 
