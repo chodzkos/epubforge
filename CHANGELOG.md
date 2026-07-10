@@ -7,6 +7,22 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 
 ## [Unreleased]
 
+### Added
+- **Subsetting fontów** (Etap 24 roadmapy v3) — nowy fixer
+  `epubforge.fixers.subset_fonts` (`FontSubsetOptions`, `FontReport`) przycinający
+  fonty do znaków użytych w treści (zwykle −70…−90% rozmiaru fontu). Zbiór znaków =
+  wszystkie dokumenty spine + literały CSS + stały zestaw bezpieczeństwa (ASCII,
+  polskie znaki, interpunkcja typograficzna oraz `U+00AD`/`U+00A0` — efekty
+  hyphenacji i typografii muszą się renderować). Format zachowany (ttf/otf/woff/
+  woff2), zapis tylko gdy wynik mniejszy. `@font-face` z `unicode-range` jest
+  pomijany (bezpieczniej), a pliki WOFF2 bez `brotli` — pomijane z ostrzeżeniem
+  (nie wyjątkiem). Wykrywanie fontów współdzielone z `css_fixer` (`_fontutil`).
+  - `fonttools`/`brotli` w nowym extra `[fonts]` (import leniwy z czytelnym błędem).
+  - CLI `epubforge fix --subset-fonts` (`--dry-run` pokazuje delty rozmiarów) + krok
+    `subset_fonts` w recepturach.
+  - GUI: opcja **Przytnij fonty do użytych znaków** w sekcji CSS zakładki **Fixer**
+    z ostrzeżeniem o licencjach fontów.
+
 ## [2.3.0] - 2026-07-10
 
 Brama wydaniowa **v2.3** roadmapy v3 (Etapy 22–23): integracja pdf2md jako

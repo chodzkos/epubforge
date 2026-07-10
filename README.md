@@ -56,6 +56,7 @@
 - **✂️ Hyphenation** — dzielenie wyrazów dla 50+ języków
 - **🇵🇱 Typografia** — cudzysłowy typograficzne (pl/en/de), pauzy w dialogach, wielokropek, twarde spacje po sierotach
 - **🖼️ Optymalizacja obrazów** — skalowanie, rekompresja JPEG/PNG i skala szarości pod e-ink (`pip install ".[images]"`)
+- **🔤 Subsetting fontów** — przycinanie fontów do użytych znaków (zwykle −70…−90% rozmiaru fontu); zachowuje polskie znaki, interpunkcję i efekty hyphenacji (`pip install ".[fonts]"`)
 - **🎨 CSS Fixer** — czyszczenie kolorów, fontów, justify, marginesy
 - **🎨 Presety CSS** — wbudowane szablony stylów + import własnych (dołącz / zastąp)
 - **📝 Edytor wewnętrzny** — przegląd i szybka edycja plików w EPUB z podświetlaniem XML/CSS, przybliżony podgląd HTML (Kod ⇄ Podgląd) + handoff do Sigil/Calibre
@@ -135,6 +136,10 @@ epubforge fix book.epub --preset reader-friendly --dry-run
 # Optymalizacja obrazów (odchudza EPUB pod e-ink; wymaga ".[images]")
 epubforge fix book.epub --optimize-images
 epubforge fix book.epub --optimize-images --max-px 1000 --jpeg-quality 70 --grayscale
+
+# Subsetting fontów — przytnij fonty do użytych znaków (wymaga ".[fonts]")
+epubforge fix book.epub --subset-fonts
+epubforge fix book.epub --subset-fonts --dry-run   # delty rozmiarów bez zapisu
 
 # Typografia
 epubforge typo book.epub --lang pl
@@ -376,6 +381,7 @@ python build/compile_locales.py
   - [Kindle Previewer 3](https://www.amazon.com/gp/feature.html?ie=UTF8&docId=1000765261) — KFX (experimental)
   - [Temurin JRE 17+](https://adoptium.net/) + [EpubCheck 5.x](https://github.com/w3c/epubcheck/releases) — walidacja EPUB (`epubforge check` / zakładka **Walidacja**); rozpakuj `epubcheck.jar` do `<config>/epubcheck/epubcheck.jar` lub wskaż go w GUI
   - `pip install ".[stats]"` — wykrywanie języka w statystykach (langdetect); bez tego język brany jest z metadanych
+  - `pip install ".[fonts]"` — subsetting fontów (fonttools + brotli); bez tego opcja „Przytnij fonty" zgłasza czytelny błąd, a pliki WOFF2 są pomijane
 
 ### Do developmentu
 - Python 3.10+
