@@ -8,6 +8,26 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Added
+- **Provider LubimyCzytac + dopasowanie bez ISBN** (Etap 28 roadmapy v3) —
+  rozszerzenie podpakietu `epubforge.bookmeta` o źródło z lubimyczytac.pl
+  (scraper pisany **od zera**, bez nowych zależności) oraz wyszukiwanie po
+  tytule/autorze dla plików bez ISBN.
+  - `bookmeta/providers/lubimyczytac.py`: parsowanie strony książki **JSON-LD
+    first** (`schema.org/Book`) + **HTML fallback** (`html.parser`) dla pól spoza
+    JSON-LD (opis, wydawca, kategorie); wyszukiwarka → `list[Candidate]`. Każde
+    pole opcjonalne — zmiana layoutu → `None`, nigdy wyjątek („best effort").
+    LC dołączony do łańcucha **po BN** (daje opisy i cykle).
+  - `bookmeta/match.py`: `normalize()` (diakrytyki przez `unicodedata`, odcięcie
+    podtytułu po „:", interpunkcja) + scoring `difflib.SequenceMatcher`, próg
+    pewności 0.85; `rank_candidates()` sortuje kandydatów wg dopasowania.
+  - `bookmeta/isbn.extract_isbn_from_epub()`: wydobycie ISBN ze strony redakcyjnej
+    (regex po pierwszych dokumentach spine) — dla plików bez ISBN w metadanych.
+  - `bookmeta/cache.py`: cache SQLite w katalogu configu (TTL 30 dni, wersjonowany
+    schemat) + rate limiter (min. 2 s między żądaniami, bez równoległości) —
+    grzecznościowy scraping z User-Agent identyfikującym EpubForge.
+  - GUI: w dialogu „Pobierz metadane…" nowe pola **tytuł/autor** i przycisk
+    „Szukaj wg tytułu" → lista kandydatów (tytuł/autor/rok/% dopasowania); dwuklik
+    pobiera pełny rekord. Poniżej progu nic nie jest wybierane automatycznie.
 - **Metadane z ISBN** (Etap 26 roadmapy v3) — nowy, samodzielny podpakiet
   `epubforge.bookmeta` (zero zależności poza stdlib; **pierwszy kod sieciowy
   w projekcie**) pobierający metadane książki po ISBN. Publiczne API:

@@ -12,9 +12,10 @@ from pathlib import Path
 from typing import ClassVar
 
 import pytest
+from PySide6.QtCore import Qt
 from pytestqt.qtbot import QtBot
 
-from epubforge.bookmeta import BookRecord
+from epubforge.bookmeta import BookRecord, Candidate
 from epubforge.core import Metadata, Tool
 from epubforge.gui.metadata_fetch import FetchMetadataDialog, FetchResult
 from epubforge.gui.tabs import metadata as metadata_module
@@ -89,6 +90,43 @@ def test_dialog_no_result_shows_status(qtbot: QtBot) -> None:
     qtbot.addWidget(dialog)
     dialog._on_fetched(None)
     assert not dialog._ok_button().isEnabled()
+
+
+# ── Wyszukiwanie po tytule/autorze (tryb bez ISBN) ───────────────────────────────
+
+
+def test_dialog_prefills_title_author(qtbot: QtBot) -> None:
+    """Pola tytuł/autor są prefillowane z bieżących metadanych formularza."""
+    current = Metadata(title="Ostatnie życzenie", creators=["Andrzej Sapkowski", "Inny"])
+    dialog = FetchMetadataDialog(current, prefill_isbn="")
+    qtbot.addWidget(dialog)
+    assert dialog.title_edit.text() == "Ostatnie życzenie"
+    assert dialog.author_edit.text() == "Andrzej Sapkowski"
+
+
+def test_dialog_candidates_populate_list(qtbot: QtBot) -> None:
+    """Wyniki wyszukiwania kandydatów wypełniają widoczną listę (bez auto-wyboru)."""
+    dialog = FetchMetadataDialog(Metadata(), prefill_isbn="")
+    qtbot.addWidget(dialog)
+    candidates = [
+        Candidate(title="Ostatnie życzenie", authors=["Andrzej Sapkowski"], url="u1", score=0.95),
+        Candidate(title="Coś innego", authors=["X"], url="u2", score=0.4),
+    ]
+    dialog._on_candidates(candidates)
+    assert not dialog.candidates_list.isHidden()
+    assert dialog.candidates_list.count() == 2
+    stored = dialog.candidates_list.item(0).data(int(Qt.ItemDataRole.UserRole))
+    assert isinstance(stored, Candidate)
+    assert stored.url == "u1"
+    assert not dialog._ok_button().isEnabled()  # sam wybór nie zatwierdza
+
+
+def test_dialog_empty_candidates_shows_status(qtbot: QtBot) -> None:
+    """Brak kandydatów → komunikat, lista pozostaje ukryta."""
+    dialog = FetchMetadataDialog(Metadata(), prefill_isbn="")
+    qtbot.addWidget(dialog)
+    dialog._on_candidates([])
+    assert dialog.candidates_list.isHidden()
 
 
 # ── Integracja z zakładką ────────────────────────────────────────────────────────

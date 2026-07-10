@@ -14,10 +14,12 @@ from typing import Any
 
 import pytest
 
-from epubforge.bookmeta import _http, fetch_by_isbn
+from epubforge.bookmeta import _http, chain, fetch_by_isbn
+from epubforge.bookmeta.cache import MetadataCache, RateLimiter
 from epubforge.bookmeta.providers import (
     BNProvider,
     GoogleBooksProvider,
+    LubimyCzytacProvider,
     OpenLibraryProvider,
 )
 
@@ -26,6 +28,25 @@ _FIXTURES = Path(__file__).parent / "fixtures" / "bookmeta"
 # ISBN-y użyte w testach (poprawne sumy kontrolne).
 _ISBN_WIEDZMIN = "9788375780635"
 _ISBN_FOX = "9780140328721"
+
+
+@pytest.fixture(autouse=True)
+def _fast_lubimyczytac(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Podmienia globalny provider LC w łańcuchu na szybki (cache w RAM, zero czekania).
+
+    Domyślny łańcuch zawiera LubimyCzytac (scraping). Bez tego testy dotykałyby dysku
+    (cache w katalogu configu) i realnie usypiały (rate limiter). Tu wstrzykujemy
+    provider z cache ``:memory:`` i limiterem 0 s; nierozmapowany URL LC → ``URLError``
+    → ``None`` (łańcuch po prostu idzie dalej).
+    """
+    lc = LubimyCzytacProvider(cache=MetadataCache(), rate_limiter=RateLimiter(0.0))
+    monkeypatch.setattr(chain, "_LUBIMYCZYTAC", lc)
+    monkeypatch.setattr(
+        chain,
+        "_DEFAULT_PROVIDERS",
+        (BNProvider(), lc, OpenLibraryProvider(), GoogleBooksProvider()),
+    )
+
 
 # ── Atrapa sieci ────────────────────────────────────────────────────────────────
 

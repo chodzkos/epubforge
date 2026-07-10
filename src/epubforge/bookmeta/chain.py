@@ -16,19 +16,27 @@ import logging
 
 from epubforge.bookmeta._http import DEFAULT_TIMEOUT
 from epubforge.bookmeta.isbn import validate_isbn
-from epubforge.bookmeta.model import BookRecord
+from epubforge.bookmeta.match import rank_candidates
+from epubforge.bookmeta.model import BookRecord, Candidate
 from epubforge.bookmeta.providers import (
     BNProvider,
     GoogleBooksProvider,
+    LubimyCzytacProvider,
     OpenLibraryProvider,
     Provider,
 )
 
 logger = logging.getLogger(__name__)
 
-# Domyślna kolejność providerów w łańcuchu (priorytet malejąco).
+# Współdzielona instancja providera LC (wspólny cache + rate limiter): używana
+# w łańcuchu po ISBN oraz w wyszukiwaniu kandydatów po tytule/autorze.
+_LUBIMYCZYTAC = LubimyCzytacProvider()
+
+# Domyślna kolejność providerów w łańcuchu (priorytet malejąco). LC po BN — daje
+# opisy i cykle, których BN nie ma; OL/GB dopełniają wydania obce.
 _DEFAULT_PROVIDERS: tuple[Provider, ...] = (
     BNProvider(),
+    _LUBIMYCZYTAC,
     OpenLibraryProvider(),
     GoogleBooksProvider(),
 )
@@ -70,6 +78,46 @@ def fetch_by_isbn(
     if merged is not None:
         merged.isbn = normalized
     return merged
+
+
+def search_candidates(
+    title: str,
+    author: str = "",
+    *,
+    timeout: float = DEFAULT_TIMEOUT,
+    provider: LubimyCzytacProvider | None = None,
+) -> list[Candidate]:
+    """Wyszukuje kandydatów po tytule/autorze (dla plików bez ISBN), z oceną dopasowania.
+
+    Wynik jest posortowany malejąco po ``score`` (:mod:`epubforge.bookmeta.match`).
+    **Nic nie jest wybierane automatycznie** — decyzję (nawet poniżej progu pewności)
+    podejmuje użytkownik w GUI.
+
+    Args:
+        title: szukany tytuł.
+        author: szukany autor (opcjonalny).
+        timeout: timeout pojedynczego zapytania.
+        provider: własny provider LC (do testów); domyślnie współdzielona instancja.
+
+    Returns:
+        Lista :class:`Candidate` z wypełnionym ``score`` (może być pusta).
+    """
+    source = provider if provider is not None else _LUBIMYCZYTAC
+    if not title.strip():
+        return []
+    candidates = source.search_title_author(title, author, timeout=timeout)
+    return rank_candidates(candidates, title, author)
+
+
+def fetch_candidate(
+    candidate: Candidate,
+    *,
+    timeout: float = DEFAULT_TIMEOUT,
+    provider: LubimyCzytacProvider | None = None,
+) -> BookRecord | None:
+    """Pobiera pełny :class:`BookRecord` dla wybranego kandydata (strona LC)."""
+    source = provider if provider is not None else _LUBIMYCZYTAC
+    return source.fetch_record(candidate.url, timeout=timeout)
 
 
 def _is_complete(record: BookRecord) -> bool:

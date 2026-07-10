@@ -14,6 +14,31 @@ from dataclasses import dataclass, field, fields
 
 
 @dataclass
+class Candidate:
+    """Wynik wyszukiwania książki (kandydat do dopasowania i pobrania pełnego rekordu).
+
+    Zwracany przez providery obsługujące wyszukiwanie po tytule/autorze (gdy nie ma
+    ISBN). Niesie minimum potrzebne do pokazania listy wyboru w GUI i do pobrania
+    pełnych metadanych (``url`` strony książki).
+
+    Attributes:
+        title: tytuł z wyniku wyszukiwania.
+        authors: autorzy z wyniku (kolejność jak na stronie).
+        url: adres strony książki (do pobrania pełnego :class:`BookRecord`).
+        year: rok wydania, jeśli dostępny w wyniku (inaczej pusty).
+        source: identyfikator providera (``lubimyczytac`` itp.).
+        score: pewność dopasowania do zapytania (0..1), wypełniana przez ``match``.
+    """
+
+    title: str = ""
+    authors: list[str] = field(default_factory=list)
+    url: str = ""
+    year: str = ""
+    source: str = ""
+    score: float = 0.0
+
+
+@dataclass
 class BookRecord:
     """Rekord metadanych książki pobrany z zewnętrznego katalogu.
 

@@ -509,10 +509,10 @@ def replace_in_epub(epub: Epub, query: str, replacement: str, *, ...) -> Replace
 - Fuzzy match: poniżej progu **nigdy** auto‑zapis — zawsze wybór użytkownika.
 
 ### Kryteria akceptacji
-- [ ] Książka obecna w LC (po ISBN) → opis/strony/cykl w podglądzie
-- [ ] Plik bez ISBN → kandydaci po tytule/autorze, wybór ręczny, poprawny zapis
-- [ ] Drugi fetch tej samej książki → 0 żądań HTTP (cache)
-- [ ] Testy bez sieci (fixtures); zepsuty layout → provider zwraca `None`, reszta łańcucha działa
+- [x] Książka obecna w LC (po ISBN) → opis/strony/cykl w podglądzie
+- [x] Plik bez ISBN → kandydaci po tytule/autorze, wybór ręczny, poprawny zapis
+- [x] Drugi fetch tej samej książki → 0 żądań HTTP (cache)
+- [x] Testy bez sieci (fixtures); zepsuty layout → provider zwraca `None`, reszta łańcucha działa
 
 ---
 

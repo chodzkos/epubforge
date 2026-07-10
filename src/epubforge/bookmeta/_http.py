@@ -33,13 +33,17 @@ DEFAULT_TIMEOUT = 5
 _USER_AGENT = "EpubForge (+https://github.com/chodzkos/epubforge)"
 
 
-def fetch_bytes(url: str, *, timeout: float = DEFAULT_TIMEOUT) -> bytes | None:
+def fetch_bytes(
+    url: str, *, timeout: float = DEFAULT_TIMEOUT, user_agent: str | None = None
+) -> bytes | None:
     """Pobiera treść spod ``https`` URL, zwracając ``None`` przy dowolnym błędzie.
 
     Args:
         url: pełny adres — musi zaczynać się od ``https://`` (inne schematy są
             odrzucane bez połączenia).
         timeout: maksymalny czas oczekiwania na odpowiedź w sekundach.
+        user_agent: opcjonalny nagłówek ``User-Agent`` (np. z wersją projektu dla
+            grzecznościowego scrapingu); domyślnie :data:`_USER_AGENT`.
 
     Returns:
         Do :data:`MAX_BYTES` bajtów treści albo ``None`` (nie-https URL, błąd
@@ -48,7 +52,7 @@ def fetch_bytes(url: str, *, timeout: float = DEFAULT_TIMEOUT) -> bytes | None:
     if not url.lower().startswith("https://"):
         logger.debug("Odrzucono URL o niedozwolonym schemacie: %s", url)
         return None
-    request = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
+    request = urllib.request.Request(url, headers={"User-Agent": user_agent or _USER_AGENT})
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             return bytes(response.read(MAX_BYTES))
@@ -57,18 +61,21 @@ def fetch_bytes(url: str, *, timeout: float = DEFAULT_TIMEOUT) -> bytes | None:
         return None
 
 
-def fetch_json(url: str, *, timeout: float = DEFAULT_TIMEOUT) -> Any | None:
+def fetch_json(
+    url: str, *, timeout: float = DEFAULT_TIMEOUT, user_agent: str | None = None
+) -> Any | None:
     """Pobiera i parsuje odpowiedź JSON spod ``https`` URL.
 
     Args:
         url: pełny adres ``https``.
         timeout: maksymalny czas oczekiwania w sekundach.
+        user_agent: opcjonalny nagłówek ``User-Agent``.
 
     Returns:
         Zdekodowany obiekt JSON albo ``None``, gdy pobranie się nie powiodło
         lub treść nie jest poprawnym JSON-em (np. ucięta przez :data:`MAX_BYTES`).
     """
-    raw = fetch_bytes(url, timeout=timeout)
+    raw = fetch_bytes(url, timeout=timeout, user_agent=user_agent)
     if raw is None:
         return None
     try:
