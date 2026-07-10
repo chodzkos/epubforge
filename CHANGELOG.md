@@ -8,6 +8,23 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Added
+- **Metadane z ISBN** (Etap 26 roadmapy v3) — nowy, samodzielny podpakiet
+  `epubforge.bookmeta` (zero zależności poza stdlib; **pierwszy kod sieciowy
+  w projekcie**) pobierający metadane książki po ISBN. Publiczne API:
+  `fetch_by_isbn(isbn)`, `validate_isbn(text)`, dataclass `BookRecord`.
+  - Łańcuch providerów **Biblioteka Narodowa → Open Library → Google Books**
+    ze scalaniem per pole (puste pola dopełniane z kolejnych źródeł). BN parsuje
+    rekord MARC 21 (tytuł, autorzy, wydawca, rok, liczba stron z pola 300 oraz
+    **deskryptory przedmiotowe BN** z pól 6XX `$2=DBN`).
+  - Twarde zasady bezpieczeństwa dla ruchu sieciowego (wspólny `_http`): wyłącznie
+    `https`, twardy timeout, limit rozmiaru odpowiedzi (1 MB), każdy błąd → `None`
+    (nigdy wyjątek do UI). Walidacja ISBN (sumy kontrolne 10/13) **przed** zapytaniem.
+  - GUI: przycisk **Pobierz metadane…** w zakładce Metadane — pobranie w wątku
+    roboczym (nie blokuje UI), podgląd z checkboxami per pole (domyślnie zaznaczone
+    tylko puste pola formularza; deskryptory BN osobno, domyślnie odznaczone),
+    nigdy ciche nadpisanie. Liczba stron → `<meta property="schema:numberOfPages">`
+    w OPF (tylko EPUB 3; EPUB 2 pomijany z notą w statusie) przez nowy
+    `epubforge.core.set_number_of_pages`.
 - **Subsetting fontów** (Etap 24 roadmapy v3) — nowy fixer
   `epubforge.fixers.subset_fonts` (`FontSubsetOptions`, `FontReport`) przycinający
   fonty do znaków użytych w treści (zwykle −70…−90% rozmiaru fontu). Zbiór znaków =

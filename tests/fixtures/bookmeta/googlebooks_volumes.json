@@ -1,0 +1,17 @@
+{
+  "totalItems": 1,
+  "items": [
+    {
+      "volumeInfo": {
+        "title": "Fantastic Mr Fox",
+        "authors": ["Roald Dahl"],
+        "publisher": "Puffin",
+        "publishedDate": "1988",
+        "description": "Someone's been stealing from the three meanest farmers around, and they know the identity of the thief -- it's Fantastic Mr Fox!",
+        "pageCount": 96,
+        "categories": ["Juvenile Fiction"],
+        "language": "en"
+      }
+    }
+  ]
+}

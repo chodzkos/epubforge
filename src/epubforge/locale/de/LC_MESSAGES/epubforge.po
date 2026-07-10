@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EpubForge 1.0.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-07-10 12:32+0000\n"
+"POT-Creation-Date: 2026-07-10 17:41+0000\n"
 "PO-Revision-Date: 2026-06-12 13:30+0200\n"
 "Last-Translator: EpubForge translators <noreply@example.com>\n"
 "Language: de\n"
@@ -613,7 +613,8 @@ msgstr "ID"
 msgid "Nazwa"
 msgstr "Name"
 
-#: src/epubforge/cli/presets.py:24 src/epubforge/gui/tabs/metadata.py:145
+#: src/epubforge/cli/presets.py:24 src/epubforge/gui/metadata_fetch.py:42
+#: src/epubforge/gui/tabs/metadata.py:150
 msgid "Opis"
 msgstr "Beschreibung"
 
@@ -969,9 +970,9 @@ msgstr "Design: Automatisch / Hell / Dunkel"
 msgid "Język interfejsu"
 msgstr "Sprache der Oberfläche"
 
-#: src/epubforge/gui/app.py:219 src/epubforge/gui/tabs/metadata.py:236
-#: src/epubforge/gui/tabs/metadata.py:258
-#: src/epubforge/gui/tabs/metadata.py:348
+#: src/epubforge/gui/app.py:219 src/epubforge/gui/tabs/metadata.py:245
+#: src/epubforge/gui/tabs/metadata.py:267
+#: src/epubforge/gui/tabs/metadata.py:433
 msgid "Metadane"
 msgstr "Metadaten"
 
@@ -1008,9 +1009,10 @@ msgstr "Statistik"
 msgid "Motyw: {theme}"
 msgstr "Design: {theme}"
 
-#: src/epubforge/gui/app.py:261 src/epubforge/gui/tabs/converter.py:157
-#: src/epubforge/gui/tabs/fixer.py:297 src/epubforge/gui/tabs/fixer.py:407
-#: src/epubforge/gui/tabs/metadata.py:131 src/epubforge/gui/tabs/stats.py:122
+#: src/epubforge/gui/app.py:261 src/epubforge/gui/metadata_fetch.py:40
+#: src/epubforge/gui/tabs/converter.py:157 src/epubforge/gui/tabs/fixer.py:297
+#: src/epubforge/gui/tabs/fixer.py:407 src/epubforge/gui/tabs/metadata.py:136
+#: src/epubforge/gui/tabs/stats.py:122
 msgid "Język"
 msgstr "Sprache"
 
@@ -1073,6 +1075,81 @@ msgstr ""
 "Ein unerwarteter Fehler ist aufgetreten:\n"
 "{error}"
 
+#: src/epubforge/gui/metadata_fetch.py:37
+#: src/epubforge/gui/tabs/converter.py:147
+#: src/epubforge/gui/tabs/metadata.py:128 src/epubforge/gui/tabs/stats.py:146
+#: src/epubforge/gui/tabs/toc.py:74
+msgid "Tytuł"
+msgstr "Titel"
+
+#: src/epubforge/gui/metadata_fetch.py:38
+#: src/epubforge/gui/tabs/metadata.py:138
+msgid "Wydawca"
+msgstr "Verlag"
+
+#: src/epubforge/gui/metadata_fetch.py:39
+#: src/epubforge/gui/tabs/metadata.py:140
+msgid "Data"
+msgstr "Datum"
+
+#: src/epubforge/gui/metadata_fetch.py:41
+#: src/epubforge/gui/tabs/metadata.py:129
+msgid "Cykl"
+msgstr "Reihe"
+
+#: src/epubforge/gui/metadata_fetch.py:94
+msgid "Pobierz metadane"
+msgstr "Metadaten abrufen"
+
+#: src/epubforge/gui/metadata_fetch.py:107
+msgid "ISBN książki (10 lub 13 cyfr)"
+msgstr "Buch-ISBN (10 oder 13 Ziffern)"
+
+#: src/epubforge/gui/metadata_fetch.py:110
+#: src/epubforge/gui/widgets/search_panel.py:112
+msgid "Szukaj"
+msgstr "Suchen"
+
+#: src/epubforge/gui/metadata_fetch.py:115
+msgid "Podaj ISBN i naciśnij „Szukaj"
+msgstr "ISBN eingeben und „Suchen“ drücken"
+
+#: src/epubforge/gui/metadata_fetch.py:149
+msgid "Podaj ISBN"
+msgstr "ISBN eingeben"
+
+#: src/epubforge/gui/metadata_fetch.py:154
+#: src/epubforge/gui/widgets/search_panel.py:208
+msgid "Szukam…"
+msgstr "Suche läuft…"
+
+#: src/epubforge/gui/metadata_fetch.py:167
+msgid "Nie znaleziono metadanych dla tego ISBN (albo brak połączenia)"
+msgstr "Keine Metadaten für diese ISBN gefunden (oder keine Verbindung)"
+
+#: src/epubforge/gui/metadata_fetch.py:173
+#, python-brace-format
+msgid "Znaleziono metadane (źródło: {source}). Zaznacz pola do nadpisania."
+msgstr "Metadaten gefunden (Quelle: {source}). Felder zum Überschreiben wählen."
+
+#: src/epubforge/gui/metadata_fetch.py:183
+#, python-brace-format
+msgid "Błąd pobierania: {error}"
+msgstr "Abruffehler: {error}"
+
+#: src/epubforge/gui/metadata_fetch.py:222
+#, python-brace-format
+msgid "Liczba stron: {count} (zapis do OPF, tylko EPUB 3)"
+msgstr "Seitenzahl: {count} (in OPF gespeichert, nur EPUB 3)"
+
+#: src/epubforge/gui/metadata_fetch.py:231
+msgid "Deskryptory (dopisz do tematów):"
+msgstr "Deskriptoren (zu Themen hinzufügen):"
+
+#: src/epubforge/gui/metadata_fetch.py:240
+msgid "Ten temat jest już przypisany"
+msgstr "Dieses Thema ist bereits zugewiesen"
+
 #: src/epubforge/gui/tabs/converter.py:99
 msgid "Dodaj pliki wejściowe"
 msgstr "Eingabedateien hinzufügen"
@@ -1088,12 +1165,6 @@ msgstr "Konvertierungsoptionen"
 #: src/epubforge/gui/tabs/converter.py:146
 msgid "Tytuł książki w wynikowym EPUB (opcjonalny)"
 msgstr "Buchtitel im Ausgabe-EPUB (optional)"
-
-#: src/epubforge/gui/tabs/converter.py:147
-#: src/epubforge/gui/tabs/metadata.py:123 src/epubforge/gui/tabs/stats.py:146
-#: src/epubforge/gui/tabs/toc.py:74
-msgid "Tytuł"
-msgstr "Titel"
 
 #: src/epubforge/gui/tabs/converter.py:150
 msgid "Autor; zalecany format: Nazwisko, Imię (opcjonalny)"
@@ -1240,7 +1311,7 @@ msgid "pdf2md"
 msgstr "pdf2md"
 
 #: src/epubforge/gui/tabs/converter.py:361
-#: src/epubforge/gui/tabs/metadata.py:281
+#: src/epubforge/gui/tabs/metadata.py:365
 #, python-brace-format
 msgid ""
 "Nie udało się uruchomić programu:\n"
@@ -1270,7 +1341,7 @@ msgstr "Fertig: {done}/{total} OK"
 
 #: src/epubforge/gui/tabs/converter.py:439
 #: src/epubforge/gui/tabs/converter.py:440 src/epubforge/gui/tabs/kfx.py:406
-#: src/epubforge/gui/tabs/kfx.py:407 src/epubforge/gui/tabs/validator.py:424
+#: src/epubforge/gui/tabs/kfx.py:407 src/epubforge/gui/tabs/validator.py:422
 #: src/epubforge/gui/widgets/search_panel.py:235
 msgid "Anulowano"
 msgstr "Abgebrochen"
@@ -1374,7 +1445,7 @@ msgid "Pliki EPUB (*.epub)"
 msgstr "EPUB-Dateien (*.epub)"
 
 #: src/epubforge/gui/tabs/editor.py:232 src/epubforge/gui/tabs/editor.py:446
-#: src/epubforge/gui/tabs/validator.py:531
+#: src/epubforge/gui/tabs/validator.py:535
 msgid "Błąd"
 msgstr "Fehler"
 
@@ -1477,15 +1548,15 @@ msgid "Najpierw otwórz EPUB"
 msgstr "Zuerst ein EPUB öffnen"
 
 #: src/epubforge/gui/tabs/editor_preview.py:218
-#: src/epubforge/gui/tabs/metadata.py:273
-#: src/epubforge/gui/tabs/metadata.py:294
+#: src/epubforge/gui/tabs/metadata.py:357
+#: src/epubforge/gui/tabs/metadata.py:378
 #: src/epubforge/gui/widgets/html_preview.py:174
 #, python-brace-format
 msgid "Nie wykryto {tool}"
 msgstr "{tool} nicht erkannt"
 
 #: src/epubforge/gui/tabs/editor_preview.py:221
-#: src/epubforge/gui/tabs/metadata.py:276
+#: src/epubforge/gui/tabs/metadata.py:360
 #, python-brace-format
 msgid "Nie udało się uruchomić {tool}: {error}"
 msgstr "{tool} konnte nicht gestartet werden: {error}"
@@ -1500,7 +1571,7 @@ msgid "Receptura"
 msgstr "Rezept"
 
 #: src/epubforge/gui/tabs/fixer.py:108 src/epubforge/gui/tabs/fixer.py:253
-#: src/epubforge/gui/tabs/kfx.py:101 src/epubforge/gui/tabs/metadata.py:92
+#: src/epubforge/gui/tabs/kfx.py:101 src/epubforge/gui/tabs/metadata.py:97
 #: src/epubforge/gui/tabs/stats.py:82 src/epubforge/gui/tabs/toc.py:120
 #: src/epubforge/gui/tabs/validator.py:136
 msgid "Pliki EPUB"
@@ -2141,111 +2212,109 @@ msgstr ""
 "nicht mehr entwickelt. Es erzeugt weiterhin gültige MOBI-Dateien, "
 "empfohlen ist aber Calibre ebook-convert."
 
-#: src/epubforge/gui/tabs/metadata.py:79 src/epubforge/gui/tabs/metadata.py:268
+#: src/epubforge/gui/tabs/metadata.py:84 src/epubforge/gui/tabs/metadata.py:352
 msgid "Wybierz plik EPUB"
 msgstr "EPUB-Datei wählen"
 
-#: src/epubforge/gui/tabs/metadata.py:96
+#: src/epubforge/gui/tabs/metadata.py:101
 msgid "Folder z plikami EPUB"
 msgstr "Ordner mit EPUB-Dateien"
 
-#: src/epubforge/gui/tabs/metadata.py:98
+#: src/epubforge/gui/tabs/metadata.py:103
 msgid "Folder z plikami EPUB do edycji metadanych"
 msgstr "Ordner mit EPUB-Dateien zur Metadatenbearbeitung"
 
-#: src/epubforge/gui/tabs/metadata.py:115
+#: src/epubforge/gui/tabs/metadata.py:120
 msgid "Metadane Dublin Core"
 msgstr "Dublin-Core-Metadaten"
 
-#: src/epubforge/gui/tabs/metadata.py:122
+#: src/epubforge/gui/tabs/metadata.py:127
 msgid "Tytuł książki (dc:title)"
 msgstr "Buchtitel (dc:title)"
 
-#: src/epubforge/gui/tabs/metadata.py:124
-msgid "Cykl"
-msgstr "Reihe"
-
-#: src/epubforge/gui/tabs/metadata.py:126
+#: src/epubforge/gui/tabs/metadata.py:131
 msgid "Autorzy — jeden na linię; format: Nazwisko, Imię"
 msgstr "Autoren — einer pro Zeile; Format: Nachname, Vorname"
 
-#: src/epubforge/gui/tabs/metadata.py:128
+#: src/epubforge/gui/tabs/metadata.py:133
 msgid "Autorzy"
 msgstr "Autoren"
 
-#: src/epubforge/gui/tabs/metadata.py:129
+#: src/epubforge/gui/tabs/metadata.py:134
 msgid "Kod języka, np. pl, en (dc:language)"
 msgstr "Sprachcode, z. B. pl, en (dc:language)"
 
-#: src/epubforge/gui/tabs/metadata.py:132
+#: src/epubforge/gui/tabs/metadata.py:137
 msgid "Wydawca (dc:publisher)"
 msgstr "Verlag (dc:publisher)"
 
-#: src/epubforge/gui/tabs/metadata.py:133
-msgid "Wydawca"
-msgstr "Verlag"
-
-#: src/epubforge/gui/tabs/metadata.py:134
+#: src/epubforge/gui/tabs/metadata.py:139
 msgid "Data publikacji w formacie ISO: RRRR-MM-DD"
 msgstr "Veröffentlichungsdatum im ISO-Format: JJJJ-MM-TT"
 
-#: src/epubforge/gui/tabs/metadata.py:135
-msgid "Data"
-msgstr "Datum"
-
-#: src/epubforge/gui/tabs/metadata.py:136
+#: src/epubforge/gui/tabs/metadata.py:141
 msgid "Identyfikator: ISBN lub UUID (dc:identifier)"
 msgstr "Kennung: ISBN oder UUID (dc:identifier)"
 
-#: src/epubforge/gui/tabs/metadata.py:139
+#: src/epubforge/gui/tabs/metadata.py:144
 msgid "Tematy/tagi — jeden na linię (dc:subject)"
 msgstr "Themen/Tags — einer pro Zeile (dc:subject)"
 
-#: src/epubforge/gui/tabs/metadata.py:141
+#: src/epubforge/gui/tabs/metadata.py:146
 msgid "Tematy"
 msgstr "Themen"
 
-#: src/epubforge/gui/tabs/metadata.py:143
+#: src/epubforge/gui/tabs/metadata.py:148
 msgid "Opis/streszczenie książki (dc:description)"
 msgstr "Beschreibung/Zusammenfassung des Buchs (dc:description)"
 
-#: src/epubforge/gui/tabs/metadata.py:154
+#: src/epubforge/gui/tabs/metadata.py:159
 msgid "Nazwa cyklu/serii, np. Wiedźmin"
 msgstr "Name der Reihe/Serie, z. B. The Witcher"
 
-#: src/epubforge/gui/tabs/metadata.py:156
+#: src/epubforge/gui/tabs/metadata.py:161
 msgid "Tom nr:"
 msgstr "Band Nr.:"
 
-#: src/epubforge/gui/tabs/metadata.py:159
+#: src/epubforge/gui/tabs/metadata.py:164
 msgid "Numer tomu w cyklu, np. 2 (można 1.5)"
 msgstr "Bandnummer in der Reihe, z. B. 2 (1.5 möglich)"
 
-#: src/epubforge/gui/tabs/metadata.py:167
+#: src/epubforge/gui/tabs/metadata.py:172
 msgid "Zapisz"
 msgstr "Speichern"
 
-#: src/epubforge/gui/tabs/metadata.py:168
+#: src/epubforge/gui/tabs/metadata.py:173
 msgid "Zapisuje metadane do wybranego EPUB"
 msgstr "Speichert Metadaten im ausgewählten EPUB"
 
-#: src/epubforge/gui/tabs/metadata.py:202
+#: src/epubforge/gui/tabs/metadata.py:176
+msgid "Pobierz metadane…"
+msgstr "Metadaten abrufen…"
+
+#: src/epubforge/gui/tabs/metadata.py:177
+msgid ""
+"Pobiera metadane po ISBN z Biblioteki Narodowej / Open Library / Google "
+"Books"
+msgstr "Ruft Metadaten per ISBN von der Polnischen Nationalbibliothek / Open Library / Google Books ab"
+
+#: src/epubforge/gui/tabs/metadata.py:211
 msgid "Wybrany folder nie istnieje"
 msgstr "Der ausgewählte Ordner existiert nicht"
 
-#: src/epubforge/gui/tabs/metadata.py:210
+#: src/epubforge/gui/tabs/metadata.py:219
 #, python-brace-format
 msgid "Wczytano {n} plik EPUB"
 msgid_plural "Wczytano {n} plików EPUB"
 msgstr[0] "{n} EPUB-Datei geladen"
 msgstr[1] "{n} EPUB-Dateien geladen"
 
-#: src/epubforge/gui/tabs/metadata.py:233
+#: src/epubforge/gui/tabs/metadata.py:242
 #, python-brace-format
 msgid "Nie udało się wczytać metadanych: {error}"
 msgstr "Metadaten konnten nicht geladen werden: {error}"
 
-#: src/epubforge/gui/tabs/metadata.py:237
+#: src/epubforge/gui/tabs/metadata.py:246
 #, python-brace-format
 msgid ""
 "Nie udało się wczytać metadanych:\n"
@@ -2254,21 +2323,21 @@ msgstr ""
 "Metadaten konnten nicht geladen werden:\n"
 "{error}"
 
-#: src/epubforge/gui/tabs/metadata.py:243
+#: src/epubforge/gui/tabs/metadata.py:253
 #, python-brace-format
 msgid "Wczytano metadane: {name}"
 msgstr "Metadaten geladen: {name}"
 
-#: src/epubforge/gui/tabs/metadata.py:248
+#: src/epubforge/gui/tabs/metadata.py:258
 msgid "Wybierz plik EPUB przed zapisem"
 msgstr "Vor dem Speichern eine EPUB-Datei wählen"
 
-#: src/epubforge/gui/tabs/metadata.py:255
+#: src/epubforge/gui/tabs/metadata.py:264
 #, python-brace-format
 msgid "Nie udało się zapisać metadanych: {error}"
 msgstr "Metadaten konnten nicht gespeichert werden: {error}"
 
-#: src/epubforge/gui/tabs/metadata.py:259
+#: src/epubforge/gui/tabs/metadata.py:268
 #, python-brace-format
 msgid ""
 "Nie udało się zapisać metadanych:\n"
@@ -2277,16 +2346,25 @@ msgstr ""
 "Metadaten konnten nicht gespeichert werden:\n"
 "{error}"
 
-#: src/epubforge/gui/tabs/metadata.py:263
+#: src/epubforge/gui/tabs/metadata.py:275
+#, python-brace-format
+msgid "Zapisano metadane: {name} (liczbę stron pominięto — to EPUB 2)"
+msgstr "Metadaten gespeichert: {name} (Seitenzahl übersprungen – EPUB 2)"
+
+#: src/epubforge/gui/tabs/metadata.py:280
 #, python-brace-format
 msgid "Zapisano metadane: {name}"
 msgstr "Metadaten gespeichert: {name}"
 
-#: src/epubforge/gui/tabs/metadata.py:345
+#: src/epubforge/gui/tabs/metadata.py:338
+msgid "Naniesiono pobrane metadane — sprawdź i zapisz"
+msgstr "Abgerufene Metadaten übernommen – prüfen und speichern"
+
+#: src/epubforge/gui/tabs/metadata.py:430
 msgid "Tom nr nie jest liczbą; zapisano pozostałe metadane"
 msgstr "Bandnummer ist keine Zahl; übrige Metadaten wurden gespeichert"
 
-#: src/epubforge/gui/tabs/metadata.py:349
+#: src/epubforge/gui/tabs/metadata.py:434
 msgid ""
 "Pole „Tom nr” musi być liczbą, np. 2 albo 1.5. Ta wartość nie zostanie "
 "zmieniona."
@@ -2371,7 +2449,7 @@ msgstr "HTML-Bericht exportieren"
 msgid "HTML (*.html)"
 msgstr "HTML (*.html)"
 
-#: src/epubforge/gui/tabs/stats.py:222 src/epubforge/gui/tabs/validator.py:517
+#: src/epubforge/gui/tabs/stats.py:222 src/epubforge/gui/tabs/validator.py:521
 #, python-brace-format
 msgid "Zapisano raport: {name}"
 msgstr "Bericht gespeichert: {name}"
@@ -2480,7 +2558,7 @@ msgstr "Das Inhaltsverzeichnis ist gültig."
 msgid "Usunięto {n} wpisów."
 msgstr "{n} Einträge entfernt."
 
-#: src/epubforge/gui/tabs/toc.py:377 src/epubforge/gui/tabs/validator.py:515
+#: src/epubforge/gui/tabs/toc.py:377 src/epubforge/gui/tabs/validator.py:519
 #, python-brace-format
 msgid "Nie udało się zapisać: {error}"
 msgstr "Speichern fehlgeschlagen: {error}"
@@ -2647,62 +2725,62 @@ msgstr "UNGÜLTIG"
 msgid "Zakończono w {sec:.1f}s — {verdict}"
 msgstr "Fertig in {sec:.1f}s — {verdict}"
 
-#: src/epubforge/gui/tabs/validator.py:412
+#: src/epubforge/gui/tabs/validator.py:410
 msgid "DOSTĘPNY"
 msgstr "BARRIEREFREI"
 
-#: src/epubforge/gui/tabs/validator.py:412
+#: src/epubforge/gui/tabs/validator.py:410
 msgid "NIEDOSTĘPNY"
 msgstr "NICHT BARRIEREFREI"
 
-#: src/epubforge/gui/tabs/validator.py:414
+#: src/epubforge/gui/tabs/validator.py:412
 #, python-brace-format
 msgid "Audyt zakończono w {sec:.1f}s — {verdict}"
 msgstr "Prüfung abgeschlossen in {sec:.1f}s — {verdict}"
 
-#: src/epubforge/gui/tabs/validator.py:431
+#: src/epubforge/gui/tabs/validator.py:429
 #, python-brace-format
 msgid "Walidacja nieudana: {error}"
 msgstr "Validierung fehlgeschlagen: {error}"
 
-#: src/epubforge/gui/tabs/validator.py:485
+#: src/epubforge/gui/tabs/validator.py:487
 #, python-brace-format
 msgid "{n} błąd"
 msgid_plural "{n} błędów"
 msgstr[0] "{n} Fehler"
 msgstr[1] "{n} Fehler"
 
-#: src/epubforge/gui/tabs/validator.py:486
+#: src/epubforge/gui/tabs/validator.py:488
 #, python-brace-format
 msgid "{n} ostrzeżenie"
 msgid_plural "{n} ostrzeżeń"
 msgstr[0] "{n} Warnung"
 msgstr[1] "{n} Warnungen"
 
-#: src/epubforge/gui/tabs/validator.py:487
+#: src/epubforge/gui/tabs/validator.py:489
 #, python-brace-format
 msgid "{n} informacja"
 msgid_plural "{n} informacji"
 msgstr[0] "{n} Info"
 msgstr[1] "{n} Infos"
 
-#: src/epubforge/gui/tabs/validator.py:499
+#: src/epubforge/gui/tabs/validator.py:501
 msgid "Eksport raportu"
 msgstr "Bericht exportieren"
 
-#: src/epubforge/gui/tabs/validator.py:499
+#: src/epubforge/gui/tabs/validator.py:501
 msgid "JSON (*.json);;HTML (*.html)"
 msgstr "JSON (*.json);;HTML (*.html)"
 
-#: src/epubforge/gui/tabs/validator.py:530
+#: src/epubforge/gui/tabs/validator.py:534
 msgid "Krytyczny"
 msgstr "Kritisch"
 
-#: src/epubforge/gui/tabs/validator.py:532
+#: src/epubforge/gui/tabs/validator.py:536
 msgid "Ostrzeżenie"
 msgstr "Warnung"
 
-#: src/epubforge/gui/tabs/validator.py:533
+#: src/epubforge/gui/tabs/validator.py:537
 msgid "Informacja"
 msgstr "Info"
 
@@ -2925,10 +3003,6 @@ msgstr "Aktuelle Datei"
 msgid "Cały EPUB"
 msgstr "Gesamtes EPUB"
 
-#: src/epubforge/gui/widgets/search_panel.py:112
-msgid "Szukaj"
-msgstr "Suchen"
-
 #: src/epubforge/gui/widgets/search_panel.py:115
 msgid "Zamień wszystkie"
 msgstr "Alle ersetzen"
@@ -2940,10 +3014,6 @@ msgstr "Öffnen Sie zuerst eine EPUB-Datei."
 #: src/epubforge/gui/widgets/search_panel.py:177
 msgid "Podaj frazę do wyszukania."
 msgstr "Geben Sie einen Suchbegriff ein."
-
-#: src/epubforge/gui/widgets/search_panel.py:208
-msgid "Szukam…"
-msgstr "Suche läuft…"
 
 #: src/epubforge/gui/widgets/search_panel.py:261
 #, python-brace-format
@@ -2966,21 +3036,21 @@ msgstr "{total} in {files} Dateien ersetzt"
 msgid " · pominięto {n} (nie-UTF-8)"
 msgstr " · {n} übersprungen (nicht UTF-8)"
 
-#: src/epubforge/validators/ace.py:244 src/epubforge/validators/ace.py:267
+#: src/epubforge/validators/ace.py:244 src/epubforge/validators/ace.py:265
 #, python-brace-format
 msgid "Ace przekroczył limit czasu ({timeout}s)."
 msgstr "Ace hat das Zeitlimit überschritten ({timeout}s)."
 
-#: src/epubforge/validators/ace.py:248
+#: src/epubforge/validators/ace.py:247
 #, python-brace-format
 msgid "Nie udało się uruchomić Ace: {error}"
 msgstr "Ace konnte nicht gestartet werden: {error}"
 
-#: src/epubforge/validators/ace.py:264
+#: src/epubforge/validators/ace.py:262
 msgid "Audyt dostępności anulowano."
 msgstr "Barrierefreiheitsprüfung abgebrochen."
 
-#: src/epubforge/validators/ace.py:276
+#: src/epubforge/validators/ace.py:274
 #, python-brace-format
 msgid ""
 "Ace nie utworzył raportu JSON.\n"
@@ -2989,12 +3059,12 @@ msgstr ""
 "Ace hat keinen JSON-Bericht erstellt.\n"
 "{stderr}"
 
-#: src/epubforge/validators/ace.py:283
+#: src/epubforge/validators/ace.py:281
 #, python-brace-format
 msgid "Nie udało się odczytać raportu Ace: {error}"
 msgstr "Ace-Bericht konnte nicht gelesen werden: {error}"
 
-#: src/epubforge/validators/ace.py:286
+#: src/epubforge/validators/ace.py:284
 msgid "Raport Ace ma nieoczekiwany format."
 msgstr "Der Ace-Bericht hat ein unerwartetes Format."
 

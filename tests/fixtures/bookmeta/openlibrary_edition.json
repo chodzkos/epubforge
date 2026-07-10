@@ -1,0 +1,10 @@
+{
+  "title": "Fantastic Mr Fox",
+  "subtitle": "A Roald Dahl classic",
+  "authors": [{"key": "/authors/OL34184A"}],
+  "publishers": ["Puffin"],
+  "publish_date": "1988",
+  "number_of_pages": 96,
+  "languages": [{"key": "/languages/eng"}],
+  "subjects": ["Foxes", "Juvenile fiction"]
+}
