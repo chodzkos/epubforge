@@ -8,6 +8,18 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Added
+- **Upgrade EPUB 2 → EPUB 3** (Etap 23 roadmapy v3) — nowy moduł
+  `epubforge.converters.upgrade` (`upgrade_to_epub3`, `UpgradeReport`) modernizujący
+  pakiet: `package version` → 3.0, `nav.xhtml` (properties="nav") ze spisu NCX,
+  `guide` → landmarks (mapa typów → `epub:type`; nieznane pomijane z notą),
+  `dcterms:modified` (`CCYY-MM-DDThh:mm:ssZ`), naprawa `unique-identifier` oraz
+  `dc:date` (usunięcie `opf:event`, jedna data publikacji). NCX domyślnie zostaje
+  (kompatybilność), `--drop-ncx` usuwa plik + wpis manifestu + `spine@toc`.
+  Dokumentów treści nie rusza; na wejściu EPUB 3 → no-op. Wynik przechodzi
+  EpubCheck jako EPUB 3 bez błędów.
+  - CLI `epubforge upgrade book.epub [--drop-ncx] [--dry-run] [-o OUT]`.
+  - GUI: sekcja **Uaktualnij do EPUB 3** w zakładce **Fixer** (przycisk z
+    potwierdzeniem, raport transformacji w logu).
 - **Integracja pdf2md** (Etap 22 roadmapy v3) — nowy silnik konwersji PDF → EPUB
   przez [pdf2md](https://github.com/chodzkos/pdf2md): PDF → Markdown (z wyciąganiem
   obrazów) → Pandoc EPUB (z `--resource-path`, obrazy osadzone w książce). Cały

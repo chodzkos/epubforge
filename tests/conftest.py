@@ -55,6 +55,14 @@ def sample_epub(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
+def epub2_epub(tmp_path: Path) -> Path:
+    """Zapisywalna kopia fixture EPUB 2 (do testów upgrade → EPUB 3)."""
+    target = tmp_path / "book2.epub"
+    shutil.copy2(Path(__file__).parent / "fixtures" / "sample_epub2.epub", target)
+    return target
+
+
+@pytest.fixture
 def opf_bytes() -> bytes:
     """Surowa zawartość pliku OPF z fixture EPUB."""
     with zipfile.ZipFile(FIXTURE_EPUB) as zf:

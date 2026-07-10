@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QPushButton,
     QRadioButton,
     QSpinBox,
@@ -26,6 +27,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from epubforge.converters import upgrade_to_epub3
 from epubforge.core import Epub, Tool, Tools
 from epubforge.fixers import (
     CssFixOptions,
@@ -267,6 +269,7 @@ class FixerTab(QWidget):
 
         layout.addWidget(self._build_typography_section())
         layout.addWidget(self._build_images_section())
+        layout.addWidget(self._build_upgrade_section())
         layout.addWidget(self._build_preset_section())
         self._build_log(layout)
         self._build_actions(layout)
@@ -460,6 +463,31 @@ class FixerTab(QWidget):
         section.add_widget(self.images_skip_cover)
         return section
 
+    def _build_upgrade_section(self) -> Section:
+        """Buduje sekcję modernizacji EPUB 2 → EPUB 3 (akcja niezależna od „Napraw")."""
+        section = Section(_("Uaktualnij do EPUB 3"))
+        info = QLabel(
+            _(
+                "Modernizuje pakiet: nav.xhtml ze spisu NCX, landmarks z guide, "
+                "dcterms:modified. Dokumentów treści nie rusza."
+            )
+        )
+        info.setWordWrap(True)
+        section.add_widget(info)
+
+        self.upgrade_drop_ncx = QCheckBox(_("Usuń NCX (starsze czytniki stracą spis treści)"))
+        self.upgrade_drop_ncx.setToolTip(
+            _("Domyślnie NCX zostaje dla kompatybilności ze starszymi czytnikami")
+        )
+        section.add_widget(self.upgrade_drop_ncx)
+
+        self.upgrade_button = QPushButton(_("Uaktualnij do EPUB 3"))
+        self.upgrade_button.setToolTip(_("Uaktualnia wybrane pliki EPUB 2 do EPUB 3 (w miejscu)"))
+        self.upgrade_button.setEnabled(False)
+        self.upgrade_button.clicked.connect(self._run_upgrade)
+        section.add_widget(self.upgrade_button)
+        return section
+
     def _build_preset_section(self) -> Section:
         """Buduje sekcję wyboru i importu presetu CSS."""
         section = Section(_("Preset CSS"))
@@ -616,6 +644,7 @@ class FixerTab(QWidget):
         self.last_fixed_file = None
         self.fix_button.setEnabled(bool(files) and not self._running)
         self.recipe_button.setEnabled(not self._running)
+        self.upgrade_button.setEnabled(bool(files) and not self._running)
         self._refresh_preview_button()
         count = len(files)
         self._set_status(ngettext("Wybrano {n} plik", "Wybrano {n} plików", count).format(n=count))
@@ -695,6 +724,7 @@ class FixerTab(QWidget):
         self.fix_button.setEnabled(False)
         self.recipe_button.setEnabled(False)
         self.preview_button.setEnabled(False)
+        self.upgrade_button.setEnabled(False)
         self.log_view.clear()
         self._set_status(_("Naprawianie..."))
 
@@ -713,6 +743,43 @@ class FixerTab(QWidget):
         self._worker.failed.connect(self._on_failed)
         self._worker.start()
 
+    def _run_upgrade(self) -> None:
+        """Potwierdza i uruchamia modernizację EPUB 2 → 3 w wątku roboczym."""
+        if self._running:
+            return
+        files = self.file_list.files()
+        if not files:
+            self._set_status(_("Brak plików EPUB do modernizacji"))
+            return
+        drop_ncx = self.upgrade_drop_ncx.isChecked()
+        message = ngettext(
+            "Uaktualnić {n} plik do EPUB 3 (zapis w miejscu)?",
+            "Uaktualnić {n} plików do EPUB 3 (zapis w miejscu)?",
+            len(files),
+        ).format(n=len(files))
+        if drop_ncx:
+            message += _("\n\nNCX zostanie usunięty — starsze czytniki stracą spis treści.")
+        if QMessageBox.question(self, _("Uaktualnij do EPUB 3"), message) != (
+            QMessageBox.StandardButton.Yes
+        ):
+            return
+
+        self._running = True
+        self.last_fixed_file = None
+        self.fix_button.setEnabled(False)
+        self.recipe_button.setEnabled(False)
+        self.preview_button.setEnabled(False)
+        self.upgrade_button.setEnabled(False)
+        self.log_view.clear()
+        self._set_status(_("Modernizacja..."))
+
+        self._worker = Worker(_run_upgrade_worker, files, drop_ncx)
+        self._worker.line.connect(self.log_view.append_line)
+        self._worker.progress.connect(self._on_progress)
+        self._worker.done.connect(self._finish_fix)
+        self._worker.failed.connect(self._on_failed)
+        self._worker.start()
+
     def _on_progress(self, current: int, total: int) -> None:
         """Aktualizuje status w trakcie batcha."""
         self._set_status(_("Naprawianie {current}/{total}").format(current=current, total=total))
@@ -724,6 +791,7 @@ class FixerTab(QWidget):
         self.last_fixed_file = last_fixed
         self.fix_button.setEnabled(bool(self.file_list.files()))
         self.recipe_button.setEnabled(True)
+        self.upgrade_button.setEnabled(bool(self.file_list.files()))
         self._refresh_preview_button()
         self._set_status(_("Zakończono: {done}/{total} OK").format(done=succeeded, total=total))
 
@@ -732,6 +800,7 @@ class FixerTab(QWidget):
         self._running = False
         self.fix_button.setEnabled(bool(self.file_list.files()))
         self.recipe_button.setEnabled(True)
+        self.upgrade_button.setEnabled(bool(self.file_list.files()))
         self.log_view.append_line(_("BŁĄD: {message}").format(message=message), "err")
         self._set_status(_("Naprawa przerwana błędem"))
 
@@ -825,6 +894,39 @@ def _run_fix_worker(
         emit_line(_("OK: {path}").format(path=last_fixed), "ok")
         succeeded += 1
     return succeeded, total, last_fixed
+
+
+def _run_upgrade_worker(
+    emit_line: EmitLine,
+    emit_progress: EmitProgress,
+    files: list[Path],
+    drop_ncx: bool,
+) -> tuple[int, int, Path | None]:
+    """Modernizuje pliki EPUB 2 → 3 po kolei; zwraca ``(udane, łącznie, ostatni)``."""
+    succeeded = 0
+    last_upgraded: Path | None = None
+    total = len(files)
+    for index, path in enumerate(files, start=1):
+        emit_progress(index, total)
+        emit_line(f"→ {path.name}", "cmd")
+        try:
+            with Epub(path) as epub:
+                report = upgrade_to_epub3(epub, keep_ncx=not drop_ncx)
+                if report.already_epub3:
+                    emit_line(_("Już EPUB 3 — pominięto."), "info")
+                    continue
+                for transformation in report.transformations:
+                    emit_line(f"  • {transformation}", "info")
+                for note in report.skipped:
+                    emit_line(f"  ⚠ {note}", "warn")
+                last_upgraded = epub.save()
+        except Exception as exc:
+            logger.exception("Nie udało się uaktualnić EPUB: %s", path)
+            emit_line(_("BŁĄD: {error}").format(error=exc), "err")
+            continue
+        emit_line(_("OK: {path}").format(path=last_upgraded), "ok")
+        succeeded += 1
+    return succeeded, total, last_upgraded
 
 
 def _run_recipe_worker(

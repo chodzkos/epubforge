@@ -79,6 +79,10 @@ motywu, „O programie") i zakładki robocze:
   w logu pojawia się „zaoszczędzono X MB (-Y%)" (wymaga `pip install epubforge[images]`).
   Sekcja **Preset CSS** dołącza gotowy szablon stylów (Dołącz/Zastąp), z możliwością
   **Importuj własny…** (plik `.css` trafia do katalogu presetów). Naprawa działa **w miejscu**.
+  Sekcja **Uaktualnij do EPUB 3** (przycisk niezależny od „Napraw", z potwierdzeniem)
+  modernizuje pakiet: tworzy `nav.xhtml` ze spisu NCX, przenosi `guide` do landmarks,
+  dodaje `dcterms:modified` i porządkuje daty/identyfikator. Dokumentów treści nie rusza;
+  NCX domyślnie zostaje (opcja „Usuń NCX"). Raport transformacji trafia do logu.
 - **Eksport Kindle** — wybierz format (KFX / MOBI / AZW3) i silnik, opcjonalnie napraw
   EPUB przed konwersją, wskaż folder wyjściowy. Pasek postępu i przycisk **Anuluj**
   działają tak samo jak w Konwerterze (anulowanie kończy proces silnika).
@@ -151,6 +155,11 @@ epubforge check book.epub --json report.json --min-severity warning
 epubforge toc book.epub --show
 epubforge toc book.epub --generate --max-level 3 --output out.epub
 epubforge toc book.epub --repair --dry-run
+
+# Modernizacja EPUB 2 → EPUB 3 (nav, landmarks, dcterms:modified)
+epubforge upgrade book.epub                 # NCX zostaje dla starszych czytników
+epubforge upgrade book.epub --dry-run       # plan bez zapisu
+epubforge upgrade book.epub --drop-ncx -o out.epub
 
 # Naprawa EPUB (CSS, hyphenacja, typografia)
 epubforge fix book.epub --remove-colors --replace-justify
