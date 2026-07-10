@@ -362,6 +362,44 @@ class Tools:
         )
 
     @staticmethod
+    def pdf2md() -> Tool:
+        """Wykrywa CLI ``pdf2md`` (konwersja PDF → Markdown, zalecany silnik dla PDF).
+
+        Wersję ustalamy przez ``--version`` (Click wypisuje ``pdf2md, version X``).
+        Instalacja przez ``uv tool install`` ląduje w ``~/.local/bin`` (poza ``PATH``
+        na świeżym systemie), stąd ten katalog jako fallback.
+        """
+        return _make_tool(
+            "pdf2md",
+            _exe_names("pdf2md"),
+            [
+                *_env_dirs("pdf2md"),
+                Path.home() / ".local" / "bin",
+                Path("/usr/local/bin"),
+                Path("/usr/bin"),
+            ],
+        )
+
+    @staticmethod
+    def pdf2md_gui() -> Tool:
+        """Wykrywa GUI ``pdf2md-gui`` (handoff „Otwórz w pdf2md" dla plików PDF).
+
+        Wersji NIE ustalamy — ``pdf2md-gui`` to aplikacja okienkowa (Qt); na
+        ``--version`` otworzyłaby okno. Interesuje nas tylko dostępność do handoffu.
+        """
+        return _make_tool(
+            "pdf2md_gui",
+            _exe_names("pdf2md-gui"),
+            [
+                *_env_dirs("pdf2md"),
+                Path.home() / ".local" / "bin",
+                Path("/usr/local/bin"),
+                Path("/usr/bin"),
+            ],
+            detect_version=False,
+        )
+
+    @staticmethod
     def calibre_ebook_convert() -> Tool:
         """Wykrywa ``ebook-convert`` z pakietu Calibre."""
         return _make_tool(
@@ -495,6 +533,8 @@ class Tools:
         """
         return {
             "pandoc": Tools.pandoc(),
+            "pdf2md": Tools.pdf2md(),
+            "pdf2md_gui": Tools.pdf2md_gui(),
             "calibre_ebook_convert": Tools.calibre_ebook_convert(),
             "calibre_viewer": Tools.calibre_viewer(),
             "calibre_editor": Tools.calibre_editor(),
@@ -572,6 +612,8 @@ def _cache_is_fresh(config: Config, max_age: timedelta) -> bool:
 _NO_ARG_DETECTORS = frozenset(
     {
         "pandoc",
+        "pdf2md",
+        "pdf2md_gui",
         "calibre_ebook_convert",
         "calibre_viewer",
         "calibre_editor",

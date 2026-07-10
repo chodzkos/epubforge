@@ -35,7 +35,8 @@ Część funkcji korzysta z zewnętrznych programów — EpubForge wykrywa je au
 | Narzędzie | Do czego |
 |---|---|
 | **Pandoc** | konwersja TXT/MD/DOCX/HTML/ODT/RTF → EPUB |
-| **Calibre** (`ebook-convert`) | konwersja (w tym PDF), eksport KFX/MOBI/AZW3 |
+| **pdf2md** | zalecany silnik PDF → EPUB (PDF → Markdown → Pandoc); handoff „Otwórz w pdf2md" |
+| **Calibre** (`ebook-convert`) | konwersja (w tym PDF — fallback), eksport KFX/MOBI/AZW3 |
 | **Calibre — wtyczka KFX Output** | zalecany silnik eksportu KFX |
 | **Sigil**, **Calibre Editor/Viewer** | edycja/podgląd EPUB z poziomu zakładki Metadane |
 | **Kindle Previewer 3** | eksperymentalny silnik KFX |
@@ -60,11 +61,14 @@ motywu, „O programie") i zakładki robocze:
   (tytuł, autorzy, język, wydawca, data, ISBN, tematy, opis) i zapisz (tworzy backup
   `.bak`). Przyciski Sigil / Calibre Editor / Viewer otwierają plik w zewnętrznym programie.
 - **Konwerter** — dodaj pliki wejściowe, ustaw metadane i okładkę, wybierz silnik
-  (Auto / Pandoc / Calibre) i folder wyjściowy, kliknij **Konwertuj**. PDF wymaga
-  potwierdzenia (konwersja eksperymentalna). Formaty Kindle (MOBI/AZW3/AZW/PRC)
-  wymuszają silnik Calibre; pliki zabezpieczone **DRM** są odrzucane ostrzeżeniem
-  — EpubForge nie usuwa zabezpieczeń. Podczas pracy pasek postępu pokazuje procent
-  z Calibre, a przycisk **Anuluj** przerywa konwersję (kończy proces silnika).
+  (Auto / Pandoc / Calibre / pdf2md) i folder wyjściowy, kliknij **Konwertuj**. Przy
+  dodaniu **PDF** — gdy wykryto pdf2md — pojawia się wybór silnika: **pdf2md (zalecany)**
+  vs **Calibre (eksperymentalny)**; wybór jest zapamiętywany. Bez pdf2md tryb Auto wraca
+  do Calibre (konwersja eksperymentalna). Gdy wykryto **pdf2md-gui**, przycisk
+  **Otwórz w pdf2md** otwiera wybrany PDF w aplikacji pdf2md. Formaty Kindle
+  (MOBI/AZW3/AZW/PRC) wymuszają silnik Calibre; pliki zabezpieczone **DRM** są odrzucane
+  ostrzeżeniem — EpubForge nie usuwa zabezpieczeń. Podczas pracy pasek postępu pokazuje
+  procent z Calibre, a przycisk **Anuluj** przerywa konwersję (kończy proces silnika).
 - **Fixer** — hyphenacja (język, metoda soft-hyphen/CSS), **Typografia**, **Obrazy**
   i normalizacja CSS (usuń kolory/fonty, reset, justify→lewo, margines). Sekcja
   **Typografia** poprawia mikrotypografię tekstu: cudzysłowy typograficzne dobierane
@@ -136,7 +140,8 @@ systemem). Na Windows zmienia się też kolor paska tytułu.
 ```bash
 # Konwersja do EPUB
 epubforge convert book.docx book.epub
-epubforge convert input.pdf output.epub --engine calibre
+epubforge convert input.pdf output.epub --engine pdf2md   # zalecany silnik PDF
+epubforge convert input.pdf output.epub --engine calibre  # fallback
 
 # Walidacja EpubCheck (wymaga Javy + epubcheck.jar)
 epubforge check book.epub                          # raport; exit 0=OK, 1=błędy, 2=brak narzędzi

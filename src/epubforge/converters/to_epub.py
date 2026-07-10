@@ -22,7 +22,9 @@ from epubforge.core.streaming import CancelCheck, LineSink
 from epubforge.i18n import _
 
 EpubVersion = Literal["epub2", "epub3"]
-Engine = Literal["pandoc", "calibre", "auto"]
+Engine = Literal["pandoc", "calibre", "auto", "pdf2md"]
+# Silnik po rozstrzygnięciu ``auto`` — zawsze konkretny (bez ``auto``).
+ResolvedEngine = Literal["pandoc", "calibre", "pdf2md"]
 
 _NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 _PDF_EXTENSIONS = {".pdf"}
@@ -125,6 +127,13 @@ def to_epub(
     if source.suffix.lower() in KINDLE_INPUT_EXTENSIONS and has_kindle_drm(source):
         raise _drm_error()
     actual_engine, tool = _resolve_engine(source, engine)
+    if actual_engine == "pdf2md":
+        # Import leniwy: pdf2md.py importuje z tego modułu, więc top-level import
+        # zawiązałby cykl (por. Etap 22).
+        from epubforge.converters.pdf2md import convert_pdf2md
+
+        log = convert_pdf2md(source, target, actual_options, tool)
+        return ConversionResult(success=True, output_path=target, log=log, engine="pdf2md")
     command = _build_command(actual_engine, tool, source, target, actual_options)
     log = _run_converter(command, actual_engine)
     return ConversionResult(success=True, output_path=target, log=log, engine=actual_engine)
@@ -154,6 +163,18 @@ def to_epub_streaming(
     if source.suffix.lower() in KINDLE_INPUT_EXTENSIONS and has_kindle_drm(source):
         raise _drm_error()
     actual_engine, tool = _resolve_engine(source, engine)
+    if actual_engine == "pdf2md":
+        from epubforge.converters.pdf2md import convert_pdf2md_streaming
+
+        return convert_pdf2md_streaming(
+            source,
+            target,
+            actual_options,
+            tool,
+            on_line=on_line,
+            on_progress=on_progress,
+            should_cancel=should_cancel,
+        )
     command = _build_command(actual_engine, tool, source, target, actual_options)
 
     result = run_command_streaming(command, on_line, on_progress, should_cancel)
@@ -170,7 +191,7 @@ def to_epub_streaming(
     return ConversionResult(success=True, output_path=target, log="", engine=actual_engine)
 
 
-def _resolve_engine(source: Path, engine: Engine) -> tuple[Literal["pandoc", "calibre"], Tool]:
+def _resolve_engine(source: Path, engine: Engine) -> tuple[ResolvedEngine, Tool]:
     """Wybiera i weryfikuje dostępność silnika konwersji."""
     suffix = source.suffix.lower()
     if engine == "pandoc":
@@ -181,9 +202,20 @@ def _resolve_engine(source: Path, engine: Engine) -> tuple[Literal["pandoc", "ca
         return "pandoc", _require_pandoc()
     if engine == "calibre":
         return "calibre", _require_calibre()
+    if engine == "pdf2md":
+        if suffix not in _PDF_EXTENSIONS:
+            raise ConversionError(_("Silnik pdf2md obsługuje wyłącznie pliki PDF."))
+        return "pdf2md", _require_pdf2md()
 
-    # Formaty Kindle i PDF wymuszają Calibre (Pandoc ich nie czyta).
-    if suffix in _PDF_EXTENSIONS or suffix in KINDLE_INPUT_EXTENSIONS:
+    # PDF: pdf2md jeśli wykryty, inaczej Calibre (zachowanie sprzed integracji pdf2md).
+    if suffix in _PDF_EXTENSIONS:
+        pdf2md = Tools.pdf2md()
+        if pdf2md.available and pdf2md.path is not None:
+            return "pdf2md", pdf2md
+        return "calibre", _require_calibre()
+
+    # Formaty Kindle wymuszają Calibre (Pandoc ich nie czyta).
+    if suffix in KINDLE_INPUT_EXTENSIONS:
         return "calibre", _require_calibre()
 
     pandoc = Tools.pandoc()
@@ -217,6 +249,16 @@ def _require_calibre() -> Tool:
         return tool
     raise ConverterNotFoundError(
         "Nie znaleziono Calibre ebook-convert. Zainstaluj Calibre albo użyj engine='pandoc'."
+    )
+
+
+def _require_pdf2md() -> Tool:
+    """Zwraca CLI ``pdf2md`` albo zgłasza czytelny błąd."""
+    tool = Tools.pdf2md()
+    if tool.available and tool.path is not None:
+        return tool
+    raise ConverterNotFoundError(
+        "Nie znaleziono pdf2md. Zainstaluj pdf2md albo użyj engine='calibre' dla plików PDF."
     )
 
 
@@ -329,7 +371,7 @@ def _calibre_metadata_args(metadata: Metadata | None) -> list[str]:
     return args
 
 
-def _run_converter(command: list[str], engine: Literal["pandoc", "calibre"]) -> str:
+def _run_converter(command: list[str], engine: str) -> str:
     """Uruchamia proces konwersji i zwraca połączony log stdout/stderr."""
     try:
         result = subprocess.run(

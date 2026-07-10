@@ -26,9 +26,9 @@ def add_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) 
     parser.add_argument("target", type=Path, help=_("Docelowy plik EPUB"))
     parser.add_argument(
         "--engine",
-        choices=("pandoc", "calibre", "auto"),
+        choices=("pandoc", "calibre", "auto", "pdf2md"),
         default="auto",
-        help=_("Silnik konwersji (domyślnie: auto)"),
+        help=_("Silnik konwersji (domyślnie: auto; pdf2md tylko dla PDF)"),
     )
     parser.set_defaults(func=run)
 

@@ -196,6 +196,8 @@ def test_detect_all_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     tools = Tools.detect_all()
     assert set(tools) == {
         "pandoc",
+        "pdf2md",
+        "pdf2md_gui",
         "calibre_ebook_convert",
         "calibre_viewer",
         "calibre_editor",
@@ -253,6 +255,8 @@ def test_detect_with_cache_writes(tmp_path: Path, no_tools: None) -> None:
     tools = detect_with_cache(cfg, force=True)
     assert set(tools) == {
         "pandoc",
+        "pdf2md",
+        "pdf2md_gui",
         "calibre_ebook_convert",
         "calibre_viewer",
         "calibre_editor",

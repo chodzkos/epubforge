@@ -65,7 +65,7 @@
 - **📑 Spis treści** — generowanie z nagłówków (nav.xhtml + toc.ncx), edytor drzewa z drag&drop, wykrywanie i naprawa martwych wpisów
 - **📊 Statystyki** — słowa, szac. strony, czas czytania, język i top-słowa + samowystarczalny raport HTML (wykrywanie języka: `pip install ".[stats]"`)
 - **🏷️ Metadata** — pełna edycja Dublin Core + seria/tom (Calibre i EPUB 3)
-- **🔍 Auto-detekcja** — Pandoc, Calibre, Sigil, Kindle Previewer, kindlegen
+- **🔍 Auto-detekcja** — Pandoc, pdf2md, Calibre, Sigil, Kindle Previewer, kindlegen
 
 ---
 
@@ -108,7 +108,8 @@ standardowy katalog `Program Files`).
 ```bash
 # Konwersja
 epubforge convert book.docx book.epub
-epubforge convert input.pdf output.epub --engine calibre
+epubforge convert input.pdf output.epub --engine pdf2md   # zalecany silnik PDF
+epubforge convert input.pdf output.epub --engine calibre  # fallback
 
 # Walidacja EpubCheck (wymaga Javy + epubcheck.jar)
 epubforge check book.epub                            # raport + kod wyjścia 0/1/2
@@ -339,15 +340,18 @@ python build/compile_locales.py
 | HTML | Pandoc | bardzo dobra | |
 | ODT | Pandoc | dobra | |
 | RTF | Pandoc | średnia | |
-| **PDF** | Calibre | **eksperymentalna** | tylko PDF tekstowe; skany wymagają OCR (planowane) |
+| **PDF** | **pdf2md** (zalecany) / Calibre (fallback) | dobra / eksperymentalna | pdf2md → Markdown → EPUB (osadza obrazy); bez pdf2md fallback na Calibre |
 | FB2 / LIT | Calibre | dobra | |
 | **MOBI / AZW3 / AZW / PRC** | Calibre | dobra | formaty Kindle; pliki z DRM są odrzucane |
 
 > ⚠️ **DRM:** EpubForge **nie usuwa** zabezpieczeń DRM. Pliki Kindle z DRM są
 > wykrywane (nagłówek MOBI) i odrzucane z czytelnym komunikatem — nie trafiają do Calibre.
 
-> ⚠️ **PDF → EPUB jest eksperymentalne.** Najlepsze wyniki dla PDF z tekstem (nie skanów).
-> PDF wielokolumnowe, naukowe i skany dają słabą jakość. OCR planowany w przyszłych wersjach.
+> 📄 **PDF → EPUB:** zalecanym silnikiem jest [**pdf2md**](https://github.com/chodzkos/pdf2md)
+> (PDF → Markdown → Pandoc EPUB, z wyciąganiem i osadzaniem obrazów). Tryb `auto` używa
+> pdf2md, gdy jest wykryty, a w przeciwnym razie wraca do Calibre. Konwersja przez Calibre
+> pozostaje **eksperymentalna** (sztywne marginesy, łamanie akapitów). pdf2md wymaga
+> zainstalowanego silnika konwersji (np. `pymupdf4llm`) — zob. jego README.
 
 ### Konwersja EPUB → KFX
 
@@ -360,6 +364,7 @@ python build/compile_locales.py
 - Python 3.10+ (jeśli nie używasz .exe)
 - Opcjonalnie do pełnej funkcjonalności:
   - [Pandoc](https://pandoc.org/installing.html) — konwersja → EPUB
+  - [pdf2md](https://github.com/chodzkos/pdf2md) — zalecany silnik PDF → EPUB (+ handoff „Otwórz w pdf2md")
   - [Calibre](https://calibre-ebook.com) — fallback + KFX
   - [Sigil](https://sigil-ebook.com) — edytor EPUB
   - [Kindle Previewer 3](https://www.amazon.com/gp/feature.html?ie=UTF8&docId=1000765261) — KFX (experimental)
