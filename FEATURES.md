@@ -172,12 +172,16 @@ Wykrywanie motywu systemowego, auto-switch.
 
 ## 🔌 Integracje
 
-### I1. Calibre Library integration
-- Czytanie biblioteki Calibre (`metadata.db`)
-- Edycja metadanych ze synchronizacją
+### I1. Calibre Library integration ✅ zrealizowane
+- Hurtowe wzbogacanie biblioteki Calibre przez `calibredb` (bezpieczne — nie
+  dotyka plików biblioteki bezpośrednio; preflight blokady bazy)
+- → wydane w v3.0 (Etap 30): `epubforge enrich --calibre-library PATH`
 
-### I2. Goodreads / OpenLibrary metadata fetch
-- Wpisz tytuł/ISBN → pobierz metadane + okładkę
+### I2. OpenLibrary / ISBN metadata fetch ✅ zrealizowane
+- Pobieranie metadanych po ISBN oraz po tytule/autorze z Biblioteki Narodowej,
+  LubimyCzytac, Open Library i Google Books; opis, wydawca, rok, liczba stron,
+  deskryptory/tagi (okładka poza zakresem)
+- → wydane w v3.0 (Etapy 26/28): przycisk **Pobierz metadane…** i `epubforge enrich`
 
 ### I3. Wikidata enrichment
 - Auto-uzupełnianie metadanych z Wikidata
