@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+from collections import Counter
 from html import escape
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
@@ -41,7 +42,15 @@ from epubforge.gui.widgets import (
 )
 from epubforge.gui.workers import EmitLine, EmitProgress, ShouldCancel, Worker
 from epubforge.i18n import _, ngettext
-from epubforge.validators import Severity, ValidationMessage, ValidationReport, run_epubcheck
+from epubforge.validators import (
+    AceMessage,
+    AceReport,
+    Severity,
+    ValidationMessage,
+    ValidationReport,
+    run_ace,
+    run_epubcheck,
+)
 
 if TYPE_CHECKING:
     from epubforge.gui.app import MainWindow
@@ -50,6 +59,45 @@ if TYPE_CHECKING:
 _PAGE_RESULTS, _PAGE_HELP = 0, 1
 # Lokalizacja w wierszu drzewa: krotka ``(internal_path, line)`` pod jedną rolą.
 _LOCATION_ROLE = Qt.ItemDataRole.UserRole
+
+
+@dataclasses.dataclass(frozen=True)
+class _ResultRow:
+    """Znormalizowany wiersz wyniku wspólny dla EpubChecka i Ace.
+
+    Drzewo pokazuje wyniki obu audytów w tej samej tabeli, więc oba raporty
+    sprowadzamy do tego samego kształtu: ``code`` to kod EpubChecka albo reguła
+    Ace, a lokalizacja (``internal_path`` + opcjonalna ``line``) napędza skok do
+    edytora.
+    """
+
+    severity: Severity
+    code: str
+    internal_path: str | None
+    line: int | None
+    message: str
+
+
+def _row_from_message(message: ValidationMessage) -> _ResultRow:
+    """Sprowadza komunikat EpubChecka do znormalizowanego wiersza."""
+    return _ResultRow(
+        severity=message.severity,
+        code=message.code,
+        internal_path=message.internal_path,
+        line=message.line,
+        message=message.message,
+    )
+
+
+def _row_from_ace(message: AceMessage) -> _ResultRow:
+    """Sprowadza naruszenie Ace do znormalizowanego wiersza (Ace nie podaje linii)."""
+    return _ResultRow(
+        severity=message.severity,
+        code=message.rule,
+        internal_path=message.internal_path,
+        line=None,
+        message=message.message,
+    )
 
 
 class ValidatorTab(QWidget):
@@ -69,6 +117,9 @@ class ValidatorTab(QWidget):
         self._main_window = main_window
         self._theme: Theme = current_theme()
         self._report: ValidationReport | None = None
+        self._ace_report: AceReport | None = None
+        self._rows: list[_ResultRow] = []
+        self._active_epub: Path | None = None
         self._running = False
         self._worker: Worker | None = None
 
@@ -120,6 +171,9 @@ class ValidatorTab(QWidget):
         self.check_button.setToolTip(_("Uruchom EpubCheck na zaznaczonym pliku"))
         self.check_button.clicked.connect(self._run_check)
         toolbar.addWidget(self.check_button)
+        self.ace_button = QPushButton(_("Sprawdź dostępność (Ace)"))
+        self.ace_button.clicked.connect(self._run_ace_check)
+        toolbar.addWidget(self.ace_button)
         self.cancel_button = QPushButton(_("Anuluj"))
         self.cancel_button.setToolTip(_("Przerywa trwającą walidację (kończy proces Javy)"))
         self.cancel_button.setEnabled(False)
@@ -195,9 +249,19 @@ class ValidatorTab(QWidget):
         jar = self.tools.get("epubcheck")
         return bool(java and java.available and jar and jar.available)
 
+    def _ace_ready(self) -> bool:
+        """Czy narzędzie ``ace`` (DAISY) jest dostępne."""
+        ace = self.tools.get("ace")
+        return bool(ace and ace.available)
+
     def _refresh_tools_state(self) -> None:
-        """Pokazuje wyniki albo panel pomocy zależnie od dostępności narzędzi."""
-        ready = self._tools_ready()
+        """Pokazuje wyniki albo panel pomocy zależnie od dostępności narzędzi.
+
+        Panel wyników pokazujemy, gdy dostępny jest KTÓRYKOLWIEK audyt (EpubCheck
+        lub Ace); panel pomocy (o instalacji Javy/epubchecka) tylko gdy nie ma
+        żadnego.
+        """
+        ready = self._tools_ready() or self._ace_ready()
         self.stack.setCurrentIndex(_PAGE_RESULTS if ready else _PAGE_HELP)
         if not ready:
             self.help_label.setText(self._help_html())
@@ -205,12 +269,17 @@ class ValidatorTab(QWidget):
 
     def _refresh_actions(self) -> None:
         """Aktualizuje stan przycisków (zależnie od narzędzi, pliku, trwającej pracy)."""
-        can_check = (
-            self._tools_ready() and self.file_list.current_path() is not None and not self._running
+        has_file = self.file_list.current_path() is not None
+        self.check_button.setEnabled(self._tools_ready() and has_file and not self._running)
+        self.ace_button.setEnabled(self._ace_ready() and has_file and not self._running)
+        self.ace_button.setToolTip(
+            _("Uruchom audyt dostępności DAISY Ace na zaznaczonym pliku")
+            if self._ace_ready()
+            else _("Zainstaluj DAISY Ace (Node.js): npm install -g @daisy/ace")
         )
-        self.check_button.setEnabled(can_check)
         self.cancel_button.setEnabled(self._running)
-        self.export_button.setEnabled(self._report is not None and not self._running)
+        has_report = self._report is not None or self._ace_report is not None
+        self.export_button.setEnabled(has_report and not self._running)
 
     def _help_html(self) -> str:
         """Buduje treść panelu pomocy (czego brakuje + jak zainstalować)."""
@@ -279,6 +348,24 @@ class ValidatorTab(QWidget):
         self._worker.cancelled.connect(self._on_cancelled)
         self._worker.start()
 
+    def _run_ace_check(self) -> None:
+        """Audytuje dostępność zaznaczonego pliku w wątku roboczym (DAISY Ace)."""
+        epub_path = self.file_list.current_path()
+        ace = self.tools.get("ace")
+        if epub_path is None or self._running or not self._ace_ready():
+            return
+        assert ace is not None and ace.path is not None
+
+        self._running = True
+        self._set_busy(True)
+        self._refresh_actions()
+        self.status_label.setText(_("Audyt dostępności: {name}…").format(name=epub_path.name))
+        self._worker = Worker(_run_ace_worker, epub_path, ace.path)
+        self._worker.done.connect(self._on_ace_done)
+        self._worker.failed.connect(self._on_failed)
+        self._worker.cancelled.connect(self._on_cancelled)
+        self._worker.start()
+
     def _cancel(self) -> None:
         """Zgłasza anulowanie trwającej walidacji (ubija proces Javy)."""
         if self._worker is not None and self._running:
@@ -293,16 +380,39 @@ class ValidatorTab(QWidget):
             self.progress_bar.setValue(0)
 
     def _on_done(self, result: object) -> None:
-        """Odbiera raport z wątku i wypełnia drzewo."""
+        """Odbiera raport EpubChecka z wątku i wypełnia drzewo."""
         self._running = False
         self._set_busy(False)
-        self._report = cast(ValidationReport, result)
+        report = cast(ValidationReport, result)
+        self._report = report
+        self._ace_report = None
+        self._active_epub = report.epub_path
+        self._rows = [_row_from_message(msg) for msg in report.messages]
         self._populate_tree()
         self._update_summary()
-        verdict = _("POPRAWNY") if self._report.valid else _("NIEPOPRAWNY")
+        verdict = _("POPRAWNY") if report.valid else _("NIEPOPRAWNY")
         self.status_label.setText(
             _("Zakończono w {sec:.1f}s — {verdict}").format(
-                sec=self._report.duration_s, verdict=verdict
+                sec=report.duration_s, verdict=verdict
+            )
+        )
+        self._refresh_actions()
+
+    def _on_ace_done(self, result: object) -> None:
+        """Odbiera raport Ace z wątku i wypełnia to samo drzewo wyników."""
+        self._running = False
+        self._set_busy(False)
+        report = cast(AceReport, result)
+        self._ace_report = report
+        self._report = None
+        self._active_epub = report.epub_path
+        self._rows = [_row_from_ace(msg) for msg in report.messages]
+        self._populate_tree()
+        self._update_summary()
+        verdict = _("DOSTĘPNY") if report.accessible else _("NIEDOSTĘPNY")
+        self.status_label.setText(
+            _("Audyt zakończono w {sec:.1f}s — {verdict}").format(
+                sec=report.duration_s, verdict=verdict
             )
         )
         self._refresh_actions()
@@ -324,15 +434,13 @@ class ValidatorTab(QWidget):
     # ── Drzewo wyników ──────────────────────────────────────────────────────--
 
     def _populate_tree(self) -> None:
-        """Wypełnia drzewo komunikatami z aktualnego raportu (z filtrami severity)."""
+        """Wypełnia drzewo wierszami z aktualnego raportu (z filtrami severity)."""
         self.tree.clear()
-        if self._report is None:
-            return
         items: list[QTreeWidgetItem] = []
-        for message in self._report.messages:
-            if not self._severity_visible(message.severity):
+        for row in self._rows:
+            if not self._severity_visible(row.severity):
                 continue
-            items.append(self._make_item(message))
+            items.append(self._make_item(row))
         self.tree.addTopLevelItems(items)
 
     def _severity_visible(self, severity: Severity) -> bool:
@@ -343,36 +451,34 @@ class ValidatorTab(QWidget):
             return self.show_warnings.isChecked()
         return self.show_info.isChecked()
 
-    def _make_item(self, message: ValidationMessage) -> QTreeWidgetItem:
-        """Buduje wiersz drzewa dla komunikatu (kolor z motywu, dane w roli)."""
-        where = message.internal_path or "—"
-        if message.line is not None:
-            where = f"{where}:{message.line}"
-        item = QTreeWidgetItem(
-            [_severity_label(message.severity), message.code, where, message.message]
-        )
-        color = QColor(_severity_color(message.severity, self._theme))
+    def _make_item(self, row: _ResultRow) -> QTreeWidgetItem:
+        """Buduje wiersz drzewa dla wyniku (kolor z motywu, dane w roli)."""
+        where = row.internal_path or "—"
+        if row.line is not None:
+            where = f"{where}:{row.line}"
+        item = QTreeWidgetItem([_severity_label(row.severity), row.code, where, row.message])
+        color = QColor(_severity_color(row.severity, self._theme))
         for column in range(4):
             item.setForeground(column, color)
-        item.setToolTip(3, message.message)
-        item.setData(0, _LOCATION_ROLE, (message.internal_path, message.line))
+        item.setToolTip(3, row.message)
+        item.setData(0, _LOCATION_ROLE, (row.internal_path, row.line))
         return item
 
     def _on_item_double_clicked(self, item: QTreeWidgetItem, _column: int) -> None:
         """Dwuklik wiersza z lokalizacją otwiera plik w edytorze na danej linii."""
         location = item.data(0, _LOCATION_ROLE)
-        if not isinstance(location, tuple) or self._report is None or self._main_window is None:
+        if not isinstance(location, tuple) or self._active_epub is None or self._main_window is None:
             return
         internal_path, line = location
         if internal_path:
-            self._main_window.open_in_editor(self._report.epub_path, internal_path, line)
+            self._main_window.open_in_editor(self._active_epub, internal_path, line)
 
     def _update_summary(self) -> None:
         """Aktualizuje pasek podsumowania (z formami mnogimi przez ngettext)."""
-        if self._report is None:
+        if self._active_epub is None:
             self.summary_label.setText("")
             return
-        counts = self._report.counts()
+        counts: Counter[Severity] = Counter(row.severity for row in self._rows)
         errors = counts[Severity.FATAL] + counts[Severity.ERROR]
         warnings = counts[Severity.WARNING]
         infos = counts[Severity.INFO]
@@ -386,8 +492,8 @@ class ValidatorTab(QWidget):
     # ── Eksport ───────────────────────────────────────────────────────────────
 
     def _export_report(self) -> None:
-        """Eksportuje raport do JSON lub HTML (wg rozszerzenia wybranego pliku)."""
-        if self._report is None:
+        """Eksportuje aktywny raport (EpubCheck lub Ace) do JSON lub HTML."""
+        if self._report is None and self._ace_report is None:
             return
         path = save_file(
             self, _("Eksport raportu"), "", _("JSON (*.json);;HTML (*.html)"), self._config
@@ -395,11 +501,16 @@ class ValidatorTab(QWidget):
         if not path:
             return
         target = Path(path)
+        as_html = target.suffix.lower() == ".html"
+        if self._ace_report is not None:
+            content = _ace_report_to_html(self._ace_report) if as_html else _ace_report_to_json(
+                self._ace_report
+            )
+        else:
+            assert self._report is not None
+            content = _report_to_html(self._report) if as_html else _report_to_json(self._report)
         try:
-            if target.suffix.lower() == ".html":
-                target.write_text(_report_to_html(self._report), encoding="utf-8")
-            else:
-                target.write_text(_report_to_json(self._report), encoding="utf-8")
+            target.write_text(content, encoding="utf-8")
         except OSError as exc:
             self.status_label.setText(_("Nie udało się zapisać: {error}").format(error=exc))
             return
@@ -461,6 +572,31 @@ def _location_text(message: ValidationMessage) -> str:
     return f"{where}:{message.line}" if message.line is not None else where
 
 
+def _ace_report_to_json(report: AceReport) -> str:
+    """Serializuje raport Ace do JSON (``dataclasses.asdict`` + ścieżki jako str)."""
+    return json.dumps(dataclasses.asdict(report), ensure_ascii=False, indent=2, default=str)
+
+
+def _ace_report_to_html(report: AceReport) -> str:
+    """Buduje samowystarczalną stronę HTML z tabelą naruszeń dostępności."""
+    verdict = "accessible" if report.accessible else "INACCESSIBLE"
+    rows = "\n".join(
+        f"<tr><td>{escape(message.severity.value)}</td><td>{escape(message.rule)}</td>"
+        f"<td>{escape(message.internal_path or '—')}</td><td>{escape(message.message)}</td></tr>"
+        for message in report.messages
+    )
+    return (
+        "<!DOCTYPE html><html><head><meta charset='utf-8'>"
+        f"<title>DAISY Ace — {escape(report.epub_path.name)}</title>"
+        "<style>body{font-family:sans-serif}table{border-collapse:collapse;width:100%}"
+        "td,th{border:1px solid #ccc;padding:4px 8px;text-align:left}</style></head><body>"
+        f"<h1>DAISY Ace: {escape(report.epub_path.name)}</h1>"
+        f"<p>{escape(verdict)} · {escape(report.ace_version)}</p>"
+        "<table><thead><tr><th>Severity</th><th>Rule</th><th>Location</th><th>Message</th>"
+        f"</tr></thead><tbody>{rows}</tbody></table></body></html>"
+    )
+
+
 def _run_check_worker(
     _emit_line: EmitLine,
     _emit_progress: EmitProgress,
@@ -476,3 +612,18 @@ def _run_check_worker(
     obsługiwany na pasku statusu.
     """
     return run_epubcheck(epub_path, java_path, jar_path, should_cancel=should_cancel)
+
+
+def _run_ace_worker(
+    _emit_line: EmitLine,
+    _emit_progress: EmitProgress,
+    should_cancel: ShouldCancel,
+    epub_path: Path,
+    ace_path: Path,
+) -> AceReport:
+    """Uruchamia DAISY Ace w wątku roboczym z możliwością anulowania.
+
+    Błędy techniczne (:class:`ValidationError`) propagują się — :class:`Worker`
+    zamienia je na sygnał ``failed`` (albo ``cancelled``, gdy zażądano anulowania).
+    """
+    return run_ace(epub_path, ace_path, should_cancel=should_cancel)

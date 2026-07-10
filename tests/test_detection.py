@@ -98,6 +98,22 @@ def test_pandoc_available(monkeypatch: pytest.MonkeyPatch) -> None:
     assert tool.version == "pandoc 3.1.2"
 
 
+def test_ace_available(monkeypatch: pytest.MonkeyPatch) -> None:
+    """DAISY Ace obecny w PATH → available z wersją (ace --version)."""
+    monkeypatch.setattr(detection, "_find_executable", lambda names, dirs: Path("/usr/bin/ace"))
+    monkeypatch.setattr(detection, "_get_version", lambda path: "ace 1.3.2")
+    tool = Tools.ace()
+    assert tool.available is True
+    assert tool.path == Path("/usr/bin/ace")
+    assert tool.version == "ace 1.3.2"
+
+
+def test_ace_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Brak ace w PATH i typowych lokalizacjach → unavailable."""
+    monkeypatch.setattr(detection, "_find_executable", lambda names, dirs: None)
+    assert Tools.ace().available is False
+
+
 def test_tool_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
     """Brak narzędzia → Tool(available=False, path=None)."""
     monkeypatch.setattr(detection, "_find_executable", lambda names, dirs: None)
@@ -198,6 +214,7 @@ def test_detect_all_keys(monkeypatch: pytest.MonkeyPatch) -> None:
         "pandoc",
         "pdf2md",
         "pdf2md_gui",
+        "ace",
         "calibre_ebook_convert",
         "calibre_viewer",
         "calibre_editor",
@@ -257,6 +274,7 @@ def test_detect_with_cache_writes(tmp_path: Path, no_tools: None) -> None:
         "pandoc",
         "pdf2md",
         "pdf2md_gui",
+        "ace",
         "calibre_ebook_convert",
         "calibre_viewer",
         "calibre_editor",

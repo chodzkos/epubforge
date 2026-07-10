@@ -400,6 +400,27 @@ class Tools:
         )
 
     @staticmethod
+    def ace() -> Tool:
+        """Wykrywa CLI ``ace`` DAISY (audyt dostępności EPUB).
+
+        Instalacja przez ``npm install -g @daisy/ace`` ląduje w globalnym katalogu
+        binarek npm — na Linux/macOS zwykle w ``PATH``, ale przy instalacji do
+        katalogu użytkownika bywa w ``~/.npm-global/bin`` lub ``~/.local/bin``.
+        Wersję ustalamy przez ``ace --version``.
+        """
+        return _make_tool(
+            "ace",
+            _exe_names("ace"),
+            [
+                *_env_dirs(str(Path("npm")), str(Path("npm") / "bin")),
+                Path.home() / ".npm-global" / "bin",
+                Path.home() / ".local" / "bin",
+                Path("/usr/local/bin"),
+                Path("/usr/bin"),
+            ],
+        )
+
+    @staticmethod
     def calibre_ebook_convert() -> Tool:
         """Wykrywa ``ebook-convert`` z pakietu Calibre."""
         return _make_tool(
@@ -535,6 +556,7 @@ class Tools:
             "pandoc": Tools.pandoc(),
             "pdf2md": Tools.pdf2md(),
             "pdf2md_gui": Tools.pdf2md_gui(),
+            "ace": Tools.ace(),
             "calibre_ebook_convert": Tools.calibre_ebook_convert(),
             "calibre_viewer": Tools.calibre_viewer(),
             "calibre_editor": Tools.calibre_editor(),
@@ -614,6 +636,7 @@ _NO_ARG_DETECTORS = frozenset(
         "pandoc",
         "pdf2md",
         "pdf2md_gui",
+        "ace",
         "calibre_ebook_convert",
         "calibre_viewer",
         "calibre_editor",
