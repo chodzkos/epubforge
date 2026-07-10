@@ -249,7 +249,7 @@ def test_calibre_list_builds_command() -> None:
     assert books[0].authors == ["Autor X"]
     command = calls[0]
     assert "list" in command and "--for-machine" in command
-    assert "--library-path" in command and "/lib" in command
+    assert "--library-path" in command and str(Path("/lib")) in command  # zależne od platformy
 
 
 def test_calibre_set_metadata_command() -> None:
