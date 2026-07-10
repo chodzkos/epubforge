@@ -6,12 +6,13 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from PySide6.QtWidgets import QMessageBox
 from pytestqt.qtbot import QtBot
 
-from epubforge.core import Tool
+from epubforge.core import Epub, Tool
 from epubforge.fixers import CssFixOptions, HyphenationOptions, TypographyOptions
 from epubforge.gui.tabs import fixer as fixer_module
-from epubforge.gui.tabs.fixer import FixerTab, _run_fix_worker
+from epubforge.gui.tabs.fixer import FixerTab, _run_fix_worker, _run_upgrade_worker
 
 pytestmark = pytest.mark.gui
 
@@ -127,6 +128,70 @@ def test_fixer_preview_uses_calibre_viewer(
     tab._view_result()
 
     assert calls == [[str(Path("/bin/ebook-viewer")), str(fixed)]]
+
+
+def test_upgrade_button_confirms_and_starts_worker(
+    qtbot: QtBot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fake_worker: type
+) -> None:
+    """„Uaktualnij do EPUB 3" po potwierdzeniu startuje workera z plikami i flagą NCX."""
+    monkeypatch.setattr(fixer_module, "Worker", fake_worker)
+    monkeypatch.setattr(
+        QMessageBox, "question", staticmethod(lambda *a, **k: QMessageBox.StandardButton.Yes)
+    )
+    tab = FixerTab(tools=_tools())
+    qtbot.addWidget(tab)
+    book = tmp_path / "book.epub"
+    tab.file_list.add_files([book])
+    assert tab.upgrade_button.isEnabled() is True
+    tab.upgrade_drop_ncx.setChecked(True)
+    tab._run_upgrade()
+
+    fn, args, _kwargs = fake_worker.captured[-1]  # type: ignore[attr-defined]
+    assert fn is _run_upgrade_worker
+    assert args == ([book], True)  # (files, drop_ncx)
+
+
+def test_upgrade_cancelled_does_not_start_worker(
+    qtbot: QtBot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fake_worker: type
+) -> None:
+    """Odmowa w oknie potwierdzenia nie uruchamia workera."""
+    monkeypatch.setattr(fixer_module, "Worker", fake_worker)
+    monkeypatch.setattr(
+        QMessageBox, "question", staticmethod(lambda *a, **k: QMessageBox.StandardButton.No)
+    )
+    tab = FixerTab(tools=_tools())
+    qtbot.addWidget(tab)
+    tab.file_list.add_files([tmp_path / "book.epub"])
+    tab._run_upgrade()
+    assert fake_worker.captured == []  # type: ignore[attr-defined]
+
+
+def test_run_upgrade_worker_upgrades_epub2(epub2_epub: Path) -> None:
+    """Worker modernizuje EPUB 2 → 3, zapisuje i zwraca licznik sukcesów."""
+    lines: list[tuple[str, str]] = []
+    succeeded, total, last = _run_upgrade_worker(
+        lambda text, level: lines.append((text, level)),
+        lambda current, total_: None,
+        [epub2_epub],
+        False,
+    )
+    assert (succeeded, total) == (1, 1)
+    assert last == epub2_epub
+    with Epub(epub2_epub) as epub:
+        assert b'version="3.0"' in epub.read_file(epub.opf_path)
+
+
+def test_run_upgrade_worker_skips_epub3(sample_epub: Path) -> None:
+    """Worker pomija plik już w EPUB 3 (nie liczy jako sukces upgrade)."""
+    messages: list[str] = []
+    succeeded, total, _last = _run_upgrade_worker(
+        lambda text, level: messages.append(text),
+        lambda current, total_: None,
+        [sample_epub],
+        False,
+    )
+    assert (succeeded, total) == (0, 1)
+    assert any("Już EPUB 3" in message for message in messages)
 
 
 def test_run_fix_worker_calls_fixers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

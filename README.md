@@ -62,6 +62,7 @@
 - **🔎 Szukaj/Zamień w całym EPUB** — panel w Edytorze (Ctrl+Shift+F): regex, wielkość liter, całe słowa, zakres plik/EPUB; klikalne wyniki i „Zamień wszystkie"
 - **🔎 Inspektor CSS** — lista reguł arkusza z podglądem na żywo i edycją reguły (podgląd przybliżony)
 - **✅ Walidacja EpubCheck** — raport błędów/ostrzeżeń EPUB; dwuklik błędu skacze do linii w edytorze (wymaga Javy + epubcheck.jar)
+- **⬆️ Upgrade EPUB 2 → 3** — modernizacja pakietu: nav.xhtml ze spisu NCX, landmarks z guide, `dcterms:modified`; NCX zostaje (opcja `--drop-ncx`). Dokumentów treści nie rusza. CLI `epubforge upgrade` + przycisk w zakładce Fixer
 - **📑 Spis treści** — generowanie z nagłówków (nav.xhtml + toc.ncx), edytor drzewa z drag&drop, wykrywanie i naprawa martwych wpisów
 - **📊 Statystyki** — słowa, szac. strony, czas czytania, język i top-słowa + samowystarczalny raport HTML (wykrywanie języka: `pip install ".[stats]"`)
 - **🏷️ Metadata** — pełna edycja Dublin Core + seria/tom (Calibre i EPUB 3)
@@ -110,6 +111,11 @@ standardowy katalog `Program Files`).
 epubforge convert book.docx book.epub
 epubforge convert input.pdf output.epub --engine pdf2md   # zalecany silnik PDF
 epubforge convert input.pdf output.epub --engine calibre  # fallback
+
+# Modernizacja pakietu EPUB 2 → EPUB 3
+epubforge upgrade book.epub                 # nav.xhtml + landmarks + dcterms (NCX zostaje)
+epubforge upgrade book.epub --dry-run       # pokaż plan bez zapisu
+epubforge upgrade book.epub --drop-ncx -o out.epub
 
 # Walidacja EpubCheck (wymaga Javy + epubcheck.jar)
 epubforge check book.epub                            # raport + kod wyjścia 0/1/2
