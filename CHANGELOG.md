@@ -8,6 +8,26 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Added
+- **Hurtowe wzbogacanie metadanych + calibredb** (Etap 30 roadmapy v3) — nowa
+  komenda `epubforge enrich` dla plików/katalogów EPUB oraz bibliotek Calibre.
+  - `epubforge enrich <pliki/katalog> [--fields tytuł,opis,…] [--tags]
+    [--policy fill|append|overwrite] [--dry-run] [--report out.csv|json]` —
+    dla każdej książki dopasowanie ISBN → fuzzy tytuł/autor → brak (przez
+    `bookmeta`), plan zmian wg polityk i zapis do OPF. Przebieg **sekwencyjny
+    w jednym procesie**, więc współdzielony rate limiter/cache LC obowiązuje
+    cały hurt. `--dry-run` pokazuje pełny plan bez zapisów; `Ctrl+C` przerywa
+    po bieżącej książce.
+  - Domyślne polityki w hurcie: **fill** dla pól, **append** dla tagów — nic nie
+    znika bez `overwrite`. Raport CSV/JSON per książka (dopasowanie, źródło, pola
+    zmienione/pominięte, błąd) + podsumowanie (znalezione/nieznalezione/z cache).
+  - `--calibre-library PATH`: hurtowe wzbogacenie biblioteki Calibre przez
+    `calibredb` (odczyt `list --for-machine` → zapis `set_metadata`), **bez
+    dotykania plików biblioteki bezpośrednio**. Preflight wykrywa zablokowaną bazę
+    (otwarte GUI Calibre) i zatrzymuje z czytelnym komunikatem.
+  - `Tools.calibredb()` — detekcja `calibredb` (obok pozostałych narzędzi Calibre),
+    w raporcie `doctor` i pasku statusu GUI.
+  - `epubforge.core.get_number_of_pages` — odczyt `schema:numberOfPages` z OPF
+    (dla polityki `fill` liczby stron).
 - **Taksonomia tagów PL + tagowanie AI** (Etap 29 roadmapy v3) — maks. 10 tagów po
   polsku z kaskady trzech źródeł, AI **opt-in** (domyślnie lokalna Ollama).
   - `src/epubforge/data/taxonomy_pl.toml` — ~45 kanonicznych tagów w czterech

@@ -51,6 +51,8 @@ class MetadataCache:
         """
         self._clock = clock
         self._conn = sqlite3.connect(":memory:" if path is None else str(path))
+        # Licznik trafień w cache (do statystyki „z cache" w hurtowym wzbogacaniu).
+        self.hits = 0
         self._ensure_schema()
 
     def get(
@@ -73,6 +75,7 @@ class MetadataCache:
             )
             self._conn.commit()
             return None
+        self.hits += 1
         return str(value)
 
     def set(self, provider: str, query: str, value: str) -> None:

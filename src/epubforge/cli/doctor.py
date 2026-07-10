@@ -29,6 +29,7 @@ _PLATFORM_RESTRICTED = frozenset({"kindle_previewer", "kindlegen"})
 _TOOL_LABELS: tuple[tuple[str, str], ...] = (
     ("pandoc", "Pandoc"),
     ("calibre_ebook_convert", "Calibre ebook-convert"),
+    ("calibredb", "Calibre calibredb"),
     ("calibre_viewer", "Calibre ebook-viewer"),
     ("calibre_editor", "Calibre ebook-edit"),
     ("sigil", "Sigil"),

@@ -435,6 +435,25 @@ class Tools:
         )
 
     @staticmethod
+    def calibredb() -> Tool:
+        """Wykrywa ``calibredb`` (zarządzanie biblioteką Calibre z linii poleceń).
+
+        Używane do hurtowego wzbogacania metadanych biblioteki Calibre (odczyt przez
+        ``calibredb list``, zapis przez ``calibredb set_metadata``) — bez pisania
+        pluginu i bez dotykania plików biblioteki bezpośrednio na dysku.
+        """
+        return _make_tool(
+            "calibredb",
+            _exe_names("calibredb"),
+            [
+                *_env_dirs("Calibre2", "Calibre"),
+                Path("/usr/bin"),
+                Path("/opt/calibre"),
+                Path("/Applications/calibre.app/Contents/MacOS"),
+            ],
+        )
+
+    @staticmethod
     def calibre_viewer() -> Tool:
         """Wykrywa ``ebook-viewer`` (podgląd EPUB w Calibre).
 
@@ -558,6 +577,7 @@ class Tools:
             "pdf2md_gui": Tools.pdf2md_gui(),
             "ace": Tools.ace(),
             "calibre_ebook_convert": Tools.calibre_ebook_convert(),
+            "calibredb": Tools.calibredb(),
             "calibre_viewer": Tools.calibre_viewer(),
             "calibre_editor": Tools.calibre_editor(),
             "sigil": Tools.sigil(),
@@ -638,6 +658,7 @@ _NO_ARG_DETECTORS = frozenset(
         "pdf2md_gui",
         "ace",
         "calibre_ebook_convert",
+        "calibredb",
         "calibre_viewer",
         "calibre_editor",
         "sigil",

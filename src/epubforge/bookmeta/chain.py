@@ -120,6 +120,11 @@ def fetch_candidate(
     return source.fetch_record(candidate.url, timeout=timeout)
 
 
+def lubimyczytac_cache_hits() -> int:
+    """Liczba trafień w cache współdzielonego providera LC (statystyka „z cache")."""
+    return _LUBIMYCZYTAC.cache_hits()
+
+
 def _is_complete(record: BookRecord) -> bool:
     """Czy rekord jest na tyle kompletny, że nie warto odpytywać kolejnych źródeł."""
     return bool(

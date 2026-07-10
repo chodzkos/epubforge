@@ -414,6 +414,7 @@ def _format_tools_status(tools: dict[str, Tool]) -> str:
         "pandoc": "Pandoc",
         "pdf2md": "pdf2md",
         "calibre_ebook_convert": "Calibre",
+        "calibredb": "calibredb",
         "calibre_viewer": "Viewer",
         "calibre_editor": "Editor",
         "sigil": "Sigil",

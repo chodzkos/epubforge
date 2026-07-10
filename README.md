@@ -25,6 +25,7 @@
 | Pobieranie metadanych po ISBN (BN / Open Library / Google Books) | ✅ |
 | Pobieranie metadanych z LubimyCzytac + wyszukiwanie bez ISBN (tytuł/autor) | ✅ |
 | Taksonomia tagów PL + tagowanie AI (opt-in, domyślnie Ollama) | ✅ |
+| Hurtowe wzbogacanie metadanych (`enrich`) + integracja calibredb | ✅ |
 | Wykrywanie narzędzi | ✅ |
 | Konwersja → EPUB | ✅ |
 | Hyphenacja | ✅ |
@@ -71,6 +72,7 @@
 - **📑 Spis treści** — generowanie z nagłówków (nav.xhtml + toc.ncx), edytor drzewa z drag&drop, wykrywanie i naprawa martwych wpisów
 - **📊 Statystyki** — słowa, szac. strony, czas czytania, język i top-słowa + samowystarczalny raport HTML (wykrywanie języka: `pip install ".[stats]"`)
 - **🏷️ Metadata** — pełna edycja Dublin Core + seria/tom (Calibre i EPUB 3); przycisk **Pobierz metadane…** wciąga po ISBN wydawcę, rok, liczbę stron i deskryptory przedmiotowe z Biblioteki Narodowej → LubimyCzytac → Open Library → Google Books (wybór pól do nadpisania, nigdy ciche). Bez ISBN — wyszukiwanie po **tytule/autorze** w LubimyCzytac z listą kandydatów (opisy, cykle, kategorie; cache + rate limiter dla grzecznościowego scrapingu)
+- **📚 Wzbogacanie hurtowe** — `epubforge enrich <pliki/katalog>` uzupełnia metadane wielu książek naraz z BN/LubimyCzytac/OpenLibrary/GoogleBooks (dopasowanie po ISBN lub tytule/autorze); polityki `fill`/`append`/`overwrite`, `--dry-run`, raport CSV/JSON. `--calibre-library` wzbogaca bibliotekę **Calibre przez `calibredb`** (bez dotykania plików na dysku; preflight blokady bazy)
 - **🏷️ Tagi** — propozycje maks. 10 tagów po polsku z taksonomii (mapowanie deskryptorów BN / kategorii LC/GB) + opcjonalne tagowanie AI (opt-in): klient zgodny z OpenAI, domyślnie lokalna Ollama, chmury (OpenAI/Anthropic/Gemini/DeepSeek/GLM) jako opcja; klucz API tylko ze zmiennej środowiskowej. Klasyfikacja z listy zamkniętej + otwarte postacie/organizacje
 - **🔍 Auto-detekcja** — Pandoc, pdf2md, DAISY Ace, Calibre, Sigil, Kindle Previewer, kindlegen
 

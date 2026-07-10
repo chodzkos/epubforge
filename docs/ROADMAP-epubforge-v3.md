@@ -564,10 +564,10 @@ def replace_in_epub(epub: Epub, query: str, replacement: str, *, ...) -> Replace
 - `--dry-run` obowiązkowo pokazuje pełny plan zmian per książka przed jakimkolwiek zapisem.
 
 ### Kryteria akceptacji
-- [ ] Katalog ~50 EPUB‑ów → raport znalezione/nieznalezione/z cache; anulowanie działa
-- [ ] `--dry-run` → 0 zapisów, pełny plan; polityki fill/append/overwrite zgodne z opisem
-- [ ] Biblioteka Calibre: opis/strony/tagi uzupełnione przez calibredb; przy `fill` istniejące wartości nietknięte
-- [ ] Otwarty Calibre GUI → czytelny komunikat, zero zmian
+- [x] Katalog ~50 EPUB‑ów → raport znalezione/nieznalezione/z cache; anulowanie działa
+- [x] `--dry-run` → 0 zapisów, pełny plan; polityki fill/append/overwrite zgodne z opisem
+- [x] Biblioteka Calibre: opis/strony/tagi uzupełnione przez calibredb; przy `fill` istniejące wartości nietknięte
+- [x] Otwarty Calibre GUI → czytelny komunikat, zero zmian
 
 ---
 
