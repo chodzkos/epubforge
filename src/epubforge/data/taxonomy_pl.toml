@@ -1,0 +1,247 @@
+# Taksonomia tagów po polsku (Etap 29 roadmapy v3).
+#
+# Cztery kategorie: [[gatunek]], [[epoka]], [[miejsce]], [[tematy]]. Każdy wpis:
+#   tag       = kanoniczna nazwa PL (to trafia do dc:subject),
+#   synonyms  = warianty zapisu/nazwy sprowadzane do jednego kanonu
+#               (np. "sci-fi" = "SF" = "science fiction" -> "science fiction"),
+#   maps      = surowe stringi ze źródeł (deskryptory BN, kategorie LC/GB),
+#               które mają zostać zmapowane na ten tag.
+#
+# Dopasowanie synonimów i mapowań jest odporne na wielkość liter i diakrytyki
+# (porównanie po normalizacji), więc nie trzeba wpisywać wszystkich wariantów.
+#
+# Użytkownik może podłożyć własny plik `taxonomy_pl.toml` w katalogu konfiguracji
+# EpubForge — ma on pierwszeństwo przed tym wbudowanym.
+
+# ── Gatunek ─────────────────────────────────────────────────────────────────────
+
+[[gatunek]]
+tag = "powieść"
+synonyms = ["powieści", "roman"]
+maps = ["Powieść polska", "Powieść obyczajowa", "Powieść", "Proza"]
+
+[[gatunek]]
+tag = "beletrystyka"
+synonyms = ["fikcja literacka", "literatura piękna"]
+maps = ["Beletrystyka", "Literatura piękna", "Fiction"]
+
+[[gatunek]]
+tag = "opowiadania"
+synonyms = ["nowele", "zbiór opowiadań"]
+maps = ["Opowiadania i nowele", "Opowiadania", "Nowele"]
+
+[[gatunek]]
+tag = "fantastyka"
+synonyms = ["literatura fantastyczna"]
+maps = ["Fantastyka", "Fikcja spekulatywna"]
+
+[[gatunek]]
+tag = "science fiction"
+synonyms = ["sci-fi", "sf", "science-fiction", "fantastyka naukowa"]
+maps = ["Science fiction", "Fantastyka naukowa", "Powieść science fiction"]
+
+[[gatunek]]
+tag = "fantasy"
+synonyms = ["fantazy"]
+maps = ["Fantasy", "Powieść fantasy", "Literatura fantasy"]
+
+[[gatunek]]
+tag = "kryminał"
+synonyms = ["kryminalna", "powieść kryminalna", "krymi"]
+maps = ["Powieść kryminalna", "Kryminał", "Sensacja i kryminał"]
+
+[[gatunek]]
+tag = "thriller"
+synonyms = ["dreszczowiec"]
+maps = ["Thriller", "Powieść sensacyjna", "Sensacja"]
+
+[[gatunek]]
+tag = "horror"
+synonyms = ["groza"]
+maps = ["Horror", "Powieść grozy"]
+
+[[gatunek]]
+tag = "romans"
+synonyms = ["powieść obyczajowa i romans", "literatura romantyczna"]
+maps = ["Romans", "Powieść romantyczna", "Literatura kobieca"]
+
+[[gatunek]]
+tag = "poradnik"
+synonyms = ["poradniki", "self-help"]
+maps = ["Poradniki", "Poradnik", "Rozwój osobisty"]
+
+[[gatunek]]
+tag = "biografia"
+synonyms = ["biografie", "autobiografia", "wspomnienia"]
+maps = ["Biografie", "Biografia", "Pamiętniki i wspomnienia"]
+
+[[gatunek]]
+tag = "reportaż"
+synonyms = ["reportaże"]
+maps = ["Reportaż", "Literatura faktu, reportaż"]
+
+[[gatunek]]
+tag = "literatura faktu"
+synonyms = ["non-fiction", "non fiction"]
+maps = ["Literatura faktu", "Popularnonaukowa"]
+
+[[gatunek]]
+tag = "historyczna"
+synonyms = ["powieść historyczna", "proza historyczna"]
+maps = ["Powieść historyczna", "Historia", "Literatura historyczna"]
+
+[[gatunek]]
+tag = "naukowa"
+synonyms = ["popularnonaukowa", "literatura naukowa"]
+maps = ["Nauka", "Informatyka, matematyka", "Naukowe i akademickie", "Popularnonaukowe"]
+
+[[gatunek]]
+tag = "komiks"
+synonyms = ["komiksy", "powieść graficzna", "graphic novel"]
+maps = ["Komiksy", "Komiks", "Powieść graficzna"]
+
+[[gatunek]]
+tag = "dla dzieci"
+synonyms = ["książka dla dzieci", "literatura dziecięca"]
+maps = ["Dla dzieci", "Książki dla dzieci", "Lektury dziecięce"]
+
+[[gatunek]]
+tag = "młodzieżowa"
+synonyms = ["young adult", "ya", "dla młodzieży"]
+maps = ["Młodzieżowe", "Literatura młodzieżowa", "Dla młodzieży"]
+
+[[gatunek]]
+tag = "poezja"
+synonyms = ["wiersze", "liryka", "tomik poezji"]
+maps = ["Poezja", "Wiersze"]
+
+# ── Epoka ───────────────────────────────────────────────────────────────────────
+
+[[epoka]]
+tag = "starożytność"
+synonyms = ["antyk", "świat antyczny"]
+maps = ["Starożytność", "Antyk", "Historia starożytna"]
+
+[[epoka]]
+tag = "średniowiecze"
+synonyms = ["wieki średnie"]
+maps = ["Średniowiecze", "Historia średniowieczna"]
+
+[[epoka]]
+tag = "nowożytność"
+synonyms = ["renesans", "barok", "oświecenie"]
+maps = ["Nowożytność", "Renesans", "Barok", "Oświecenie"]
+
+[[epoka]]
+tag = "XIX wiek"
+synonyms = ["dziewiętnasty wiek", "wiek xix", "1801-1900"]
+maps = ["Historia XIX w.", "XIX wiek", "1801-1900"]
+
+[[epoka]]
+tag = "dwudziestolecie międzywojenne"
+synonyms = ["międzywojnie", "ii rzeczpospolita", "lata 1918-1939"]
+maps = ["Dwudziestolecie międzywojenne", "II Rzeczpospolita", "1918-1939"]
+
+[[epoka]]
+tag = "II wojna światowa"
+synonyms = ["druga wojna światowa", "wojna 1939-1945", "ii wojna swiatowa"]
+maps = ["II wojna światowa (1939-1945)", "1939-1945", "Wojna 1939-1945 r."]
+
+[[epoka]]
+tag = "PRL"
+synonyms = ["polska ludowa", "komunizm w polsce", "lata 1944-1989"]
+maps = ["PRL", "Polska Rzeczpospolita Ludowa", "1944-1989"]
+
+[[epoka]]
+tag = "współczesność"
+synonyms = ["czasy współczesne", "xxi wiek", "teraźniejszość"]
+maps = ["Współczesność", "XXI wiek", "Czasy najnowsze"]
+
+# ── Miejsce ─────────────────────────────────────────────────────────────────────
+
+[[miejsce]]
+tag = "Polska"
+synonyms = ["polski", "rzeczpospolita"]
+maps = ["Polska", "Literatura polska"]
+
+[[miejsce]]
+tag = "Arktyka"
+synonyms = ["biegun północny", "daleka północ"]
+maps = ["Arktyka", "Regiony polarne", "Biegun północny"]
+
+[[miejsce]]
+tag = "kosmos"
+synonyms = ["przestrzeń kosmiczna", "space"]
+maps = ["Kosmos", "Przestrzeń kosmiczna", "Podróże kosmiczne"]
+
+[[miejsce]]
+tag = "morze"
+synonyms = ["marynistyka", "ocean", "żegluga"]
+maps = ["Marynistyka", "Morze", "Powieść marynistyczna"]
+
+[[miejsce]]
+tag = "góry"
+synonyms = ["literatura górska", "wspinaczka"]
+maps = ["Góry", "Literatura górska", "Alpinizm"]
+
+# ── Tematy ──────────────────────────────────────────────────────────────────────
+
+[[tematy]]
+tag = "space opera"
+synonyms = ["opera kosmiczna"]
+maps = ["Space opera"]
+
+[[tematy]]
+tag = "saga"
+synonyms = ["saga rodzinna", "cykl powieściowy"]
+maps = ["Saga", "Saga rodzinna"]
+
+[[tematy]]
+tag = "cyberpunk"
+synonyms = ["cyber-punk"]
+maps = ["Cyberpunk"]
+
+[[tematy]]
+tag = "utopia"
+synonyms = ["świat idealny"]
+maps = ["Utopia"]
+
+[[tematy]]
+tag = "dystopia"
+synonyms = ["antyutopia"]
+maps = ["Dystopia", "Antyutopia"]
+
+[[tematy]]
+tag = "śledztwo"
+synonyms = ["dochodzenie", "detektyw"]
+maps = ["Śledztwo", "Detektywi", "Dochodzenie"]
+
+[[tematy]]
+tag = "technika wojskowa"
+synonyms = ["militaria", "uzbrojenie"]
+maps = ["Technika wojskowa", "Militaria", "Wojskowość"]
+
+[[tematy]]
+tag = "magia"
+synonyms = ["czary", "czarodzieje"]
+maps = ["Magia", "Czarodziejki i czarodzieje", "Czary"]
+
+[[tematy]]
+tag = "wojna"
+synonyms = ["konflikt zbrojny", "działania wojenne"]
+maps = ["Wojna", "Wojny", "Konflikty zbrojne"]
+
+[[tematy]]
+tag = "podróże"
+synonyms = ["wyprawy", "travel"]
+maps = ["Podróże", "Literatura podróżnicza", "Reportaż podróżniczy"]
+
+[[tematy]]
+tag = "przygoda"
+synonyms = ["powieść przygodowa", "przygody"]
+maps = ["Powieść przygodowa", "Przygoda", "Literatura przygodowa"]
+
+[[tematy]]
+tag = "potwory"
+synonyms = ["bestie", "stwory"]
+maps = ["Potwory", "Bestie"]
