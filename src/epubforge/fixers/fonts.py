@@ -227,7 +227,8 @@ def _content_chars(epub: Epub) -> set[str]:
         except (KeyError, ValueError):
             continue
         for text in root.itertext():
-            chars.update(text)
+            if isinstance(text, str):  # itertext() typuje str | bytes; glify liczymy z tekstu
+                chars.update(text)
     for path in _css_paths(epub):
         try:
             chars |= _css_string_chars(epub.read_file(path))
