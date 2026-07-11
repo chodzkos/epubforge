@@ -133,6 +133,11 @@ wheels = [
 ]
 
 [[package]]
+name = "chodzkos-detection"
+version = "0.1.2"
+source = { git = "https://github.com/chodzkos/chodzkos-detection?rev=6633745e17b170f991b8305448c3e5f96490b28f#6633745e17b170f991b8305448c3e5f96490b28f" }
+
+[[package]]
 name = "chodzkos-gui-kit"
 version = "0.5.1"
 source = { git = "https://github.com/chodzkos/gui-kit?rev=44e639881a7e86600efabe74ec0c8dc8c0114fd2#44e639881a7e86600efabe74ec0c8dc8c0114fd2" }
@@ -270,6 +275,7 @@ wheels = [
 name = "epubforge"
 source = { editable = "." }
 dependencies = [
+    { name = "chodzkos-detection" },
     { name = "chodzkos-gui-kit" },
     { name = "lxml" },
     { name = "platformdirs" },
@@ -317,6 +323,7 @@ requires-dist = [
     { name = "babel", marker = "extra == 'build'", specifier = ">=2.14" },
     { name = "babel", marker = "extra == 'dev'", specifier = ">=2.14" },
     { name = "brotli", marker = "extra == 'fonts'", specifier = ">=1.1" },
+    { name = "chodzkos-detection", git = "https://github.com/chodzkos/chodzkos-detection?rev=6633745e17b170f991b8305448c3e5f96490b28f" },
     { name = "chodzkos-gui-kit", git = "https://github.com/chodzkos/gui-kit?rev=44e639881a7e86600efabe74ec0c8dc8c0114fd2" },
     { name = "chodzkos-gui-kit", extras = ["qt"], marker = "extra == 'gui'", git = "https://github.com/chodzkos/gui-kit?rev=44e639881a7e86600efabe74ec0c8dc8c0114fd2" },
     { name = "fonttools", marker = "extra == 'fonts'", specifier = ">=4.50" },

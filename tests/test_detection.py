@@ -40,7 +40,9 @@ def test_find_executable_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     assert detection._find_executable(["pandoc"], [Path("/nope")]) is None
 
 
-# ── Wersja przez subprocess ─────────────────────────────────────────────────────
+# ── Wersja przez sondę (chodzkos-detection) ─────────────────────────────────────
+# Mechanika subprocessu żyje w chodzkos_detection.tools — mockujemy JĄ (nie lokalny
+# subprocess, którego detection już nie importuje). _probe_version składa tylko parser.
 
 
 def _fake_run(stdout: str = "", stderr: str = "") -> Callable[..., SimpleNamespace]:
@@ -50,39 +52,39 @@ def _fake_run(stdout: str = "", stderr: str = "") -> Callable[..., SimpleNamespa
     return runner
 
 
-def test_get_version_first_line(monkeypatch: pytest.MonkeyPatch) -> None:
-    """_get_version zwraca pierwszą, przyciętą linię wyjścia."""
+def test_probe_version_first_line(monkeypatch: pytest.MonkeyPatch) -> None:
+    """_probe_version zwraca pierwszą, przyciętą linię wyjścia (format EpubForge)."""
     monkeypatch.setattr(
-        "epubforge.core.detection.subprocess.run",
+        "chodzkos_detection.tools.subprocess.run",
         _fake_run(stdout="pandoc 3.1.2\nfeatures..."),
     )
-    assert detection._get_version(Path("/usr/bin/pandoc")) == "pandoc 3.1.2"
+    assert detection._probe_version(Path("/usr/bin/pandoc")) == "pandoc 3.1.2"
 
 
-def test_get_version_from_stderr(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_probe_version_from_stderr(monkeypatch: pytest.MonkeyPatch) -> None:
     """Wersja wypisywana na stderr też jest wychwytywana."""
-    monkeypatch.setattr("epubforge.core.detection.subprocess.run", _fake_run(stderr="tool v1.0"))
-    assert detection._get_version(Path("/x")) == "tool v1.0"
+    monkeypatch.setattr("chodzkos_detection.tools.subprocess.run", _fake_run(stderr="tool v1.0"))
+    assert detection._probe_version(Path("/x")) == "tool v1.0"
 
 
-def test_get_version_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_probe_version_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
     """Timeout subprocess → pusty łańcuch (bez wyjątku)."""
 
     def boom(*args: object, **kwargs: object) -> None:
-        raise subprocess.TimeoutExpired(cmd="x", timeout=10)
+        raise subprocess.TimeoutExpired(cmd="x", timeout=5)
 
-    monkeypatch.setattr("epubforge.core.detection.subprocess.run", boom)
-    assert detection._get_version(Path("/x")) == ""
+    monkeypatch.setattr("chodzkos_detection.tools.subprocess.run", boom)
+    assert detection._probe_version(Path("/x")) == ""
 
 
-def test_get_version_missing_binary(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_probe_version_missing_binary(monkeypatch: pytest.MonkeyPatch) -> None:
     """Brak binarki (OSError) → pusty łańcuch."""
 
     def boom(*args: object, **kwargs: object) -> None:
         raise FileNotFoundError
 
-    monkeypatch.setattr("epubforge.core.detection.subprocess.run", boom)
-    assert detection._get_version(Path("/x")) == ""
+    monkeypatch.setattr("chodzkos_detection.tools.subprocess.run", boom)
+    assert detection._probe_version(Path("/x")) == ""
 
 
 # ── Detektory Tools ─────────────────────────────────────────────────────────────
@@ -91,7 +93,7 @@ def test_get_version_missing_binary(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_pandoc_available(monkeypatch: pytest.MonkeyPatch) -> None:
     """Pandoc obecny w PATH → available z wersją."""
     monkeypatch.setattr(detection, "_find_executable", lambda names, dirs: Path("/usr/bin/pandoc"))
-    monkeypatch.setattr(detection, "_get_version", lambda path: "pandoc 3.1.2")
+    monkeypatch.setattr("chodzkos_detection.tools.subprocess.run", _fake_run(stdout="pandoc 3.1.2"))
     tool = Tools.pandoc()
     assert tool.available is True
     assert tool.path == Path("/usr/bin/pandoc")
@@ -101,7 +103,7 @@ def test_pandoc_available(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_ace_available(monkeypatch: pytest.MonkeyPatch) -> None:
     """DAISY Ace obecny w PATH → available z wersją (ace --version)."""
     monkeypatch.setattr(detection, "_find_executable", lambda names, dirs: Path("/usr/bin/ace"))
-    monkeypatch.setattr(detection, "_get_version", lambda path: "ace 1.3.2")
+    monkeypatch.setattr("chodzkos_detection.tools.subprocess.run", _fake_run(stdout="ace 1.3.2"))
     tool = Tools.ace()
     assert tool.available is True
     assert tool.path == Path("/usr/bin/ace")
@@ -137,11 +139,11 @@ def test_calibre_editor_available_via_path(monkeypatch: pytest.MonkeyPatch) -> N
             return "/usr/bin/ebook-edit"
         return None
 
-    def fail(path: Path) -> str:
+    def fail(*a: object, **k: object) -> object:
         raise AssertionError("--version nie powinno być wywołane dla narzędzia GUI")
 
     monkeypatch.setattr("epubforge.core.detection.shutil.which", fake_which)
-    monkeypatch.setattr(detection, "_get_version", fail)
+    monkeypatch.setattr("chodzkos_detection.tools.subprocess.run", fail)
     tool = Tools.calibre_editor()
     assert tool.available is True
     assert tool.path == Path("/usr/bin/ebook-edit")
@@ -154,10 +156,10 @@ def test_calibre_editor_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("epubforge.core.detection.shutil.which", lambda name: None)
     monkeypatch.setattr(Path, "is_file", lambda self: False)
 
-    def fail(path: Path) -> str:
+    def fail(*a: object, **k: object) -> object:
         raise AssertionError("--version nie powinno być wywołane dla brakującej binarki")
 
-    monkeypatch.setattr(detection, "_get_version", fail)
+    monkeypatch.setattr("chodzkos_detection.tools.subprocess.run", fail)
     tool = Tools.calibre_editor()
     assert tool.available is False
     assert tool.path is None
@@ -168,10 +170,10 @@ def test_kindle_previewer_skips_version(monkeypatch: pytest.MonkeyPatch) -> None
     """Dla Kindle Previewer NIE uruchamiamy --version (otwiera GUI)."""
     monkeypatch.setattr(detection, "_find_executable", lambda names, dirs: Path("/x/kp3"))
 
-    def fail(path: Path) -> str:
+    def fail(*a: object, **k: object) -> object:
         raise AssertionError("--version nie powinno być wywołane dla KP3")
 
-    monkeypatch.setattr(detection, "_get_version", fail)
+    monkeypatch.setattr("chodzkos_detection.tools.subprocess.run", fail)
     tool = Tools.kindle_previewer()
     assert tool.available is True
     assert tool.version == ""
@@ -181,10 +183,10 @@ def test_sigil_skips_version(monkeypatch: pytest.MonkeyPatch) -> None:
     """Dla Sigila NIE uruchamiamy --version (GUI miga przy detekcji)."""
     monkeypatch.setattr(detection, "_find_executable", lambda names, dirs: Path("/x/sigil"))
 
-    def fail(path: Path) -> str:
+    def fail(*a: object, **k: object) -> object:
         raise AssertionError("--version nie powinno być wywołane dla Sigila")
 
-    monkeypatch.setattr(detection, "_get_version", fail)
+    monkeypatch.setattr("chodzkos_detection.tools.subprocess.run", fail)
     tool = Tools.sigil()
     assert tool.available is True
     assert tool.version == ""
@@ -193,7 +195,9 @@ def test_sigil_skips_version(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_kindlegen_available(monkeypatch: pytest.MonkeyPatch) -> None:
     """kindlegen obecny w PATH → available z wersją."""
     monkeypatch.setattr(detection, "_find_executable", lambda names, dirs: Path("/bin/kindlegen"))
-    monkeypatch.setattr(detection, "_get_version", lambda path: "kindlegen 2.9")
+    monkeypatch.setattr(
+        "chodzkos_detection.tools.subprocess.run", _fake_run(stdout="kindlegen 2.9")
+    )
     tool = Tools.kindlegen()
     assert tool.available is True
     assert tool.path == Path("/bin/kindlegen")
@@ -349,7 +353,7 @@ def test_fresh_cache_reprobes_unavailable_tool(
         "_find_executable",
         lambda names, dirs: pandoc if any("pandoc" in n for n in names) else None,
     )
-    monkeypatch.setattr(detection, "_get_version", lambda path: "pandoc 3.7")
+    monkeypatch.setattr("chodzkos_detection.tools.subprocess.run", _fake_run(stdout="pandoc 3.7"))
 
     # 3. Cache świeży, BEZ force → pandoc mimo to re-sondowany na żywo i utrwalony.
     tools = detect_with_cache(cfg)
@@ -365,7 +369,7 @@ def test_fresh_cache_keeps_positives_without_reprobe(
     cfg = tmp_path / "config.json"
     found = tmp_path / "bin"
     monkeypatch.setattr(detection, "_find_executable", lambda names, dirs: found)
-    monkeypatch.setattr(detection, "_get_version", lambda path: "v1")
+    monkeypatch.setattr("chodzkos_detection.tools.subprocess.run", _fake_run(stdout="v1"))
     monkeypatch.setattr(
         detection, "_detect_java", lambda override=None: Tool("java", found, "17", True)
     )
@@ -393,7 +397,7 @@ def test_manual_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
     monkeypatch.setattr(detection.shutil, "which", lambda _name: None)
     monkeypatch.setattr(detection, "_find_executable", lambda names, dirs: None)
     monkeypatch.setattr(Tools, "calibre_kfx_plugin", staticmethod(lambda: False))
-    monkeypatch.setattr(detection, "_get_version", lambda path: "custom 1.0")
+    monkeypatch.setattr("chodzkos_detection.tools.subprocess.run", _fake_run(stdout="custom 1.0"))
     custom = tmp_path / "my-pandoc"
     custom.write_text("#!/bin/sh\n", encoding="utf-8")
     cfg = tmp_path / "config.json"

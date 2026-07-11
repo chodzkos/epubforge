@@ -7,6 +7,17 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 
 ## [Unreleased]
 
+### Changed
+- **Detekcja narzędzi zewnętrznych** (`epubforge.core.detection`) korzysta teraz z
+  pakietu **`chodzkos-detection` 0.1.2** dla mechaniki sond (`find_tool`: PATH +
+  katalogi kandydatów; `probe_tool`: obecność i wersja z timeoutem, `CREATE_NO_WINDOW`
+  na Windows, uruchamianie rozwiązanej ścieżki zamiast gołej nazwy). EpubForge zostaje
+  właścicielem **kompozycji**: warianty nazw plików, katalogi kandydatów per-narzędzie,
+  cache w `config.json`, override'y (`java_path`/`epubcheck_jar`) i platformowość
+  (KP3/KindleGen tylko na Windows/macOS). Kontrakt `Tool` (`name`/`path`/`version`/
+  `available`) oraz format `config.json` bez zmian — stary cache i override'y działają
+  dalej; `epubforge doctor` daje identyczny wynik jak przed migracją.
+
 ## [3.0.0] - 2026-07-10
 
 Brama wydaniowa **v3.0** roadmapy v3 (Etapy 24–30): kompletny tor metadanych —
