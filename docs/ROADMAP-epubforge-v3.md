@@ -38,10 +38,10 @@ Odniesienie: szczegóły problemów i gotowe prompty naprawcze → `AUDYT-epubfo
 6. Mniejsze: SEC‑2 (temp raportu), SEC‑3 (pin akcji do SHA), SEC‑4 (Dependabot/CodeQL/SECURITY.md), COR‑2 (i18n locale), TEST‑1 (coverage GUI), QUAL‑1 (ZipInfo).
 
 ### Kryteria akceptacji
-- [ ] Wszystkie prompty z `AUDYT-epubforge.md` zrealizowane albo świadomie odrzucone (decyzja zapisana w CHANGELOG/PR)
-- [ ] `python -m build` daje wheel bez direct references **albo** README nie obiecuje PyPI
-- [ ] Test regresji XXE zielony; test „konwersja nie zmienia bajtów źródła" zielony
-- [ ] CI zielone na całej macierzy
+- [x] Wszystkie prompty z `AUDYT-epubforge.md` zrealizowane albo świadomie odrzucone (decyzja zapisana w CHANGELOG/PR)
+- [x] `python -m build` daje wheel bez direct references **albo** README nie obiecuje PyPI
+- [x] Test regresji XXE zielony; test „konwersja nie zmienia bajtów źródła" zielony
+- [x] CI zielone na całej macierzy
 
 ### Stage gate
 ✋ **Tag:** `v2.0.1` (same naprawy, bez nowych funkcji) — dopiero po nim start etapów 16+.
@@ -85,12 +85,12 @@ def fix_typography(epub: Epub, options: TypographyOptions) -> TypographyReport: 
 - Dialogi PL zaczynające się od `-` na początku akapitu → pauza `—` tylko gdy `fix_dashes` i początek bloku (`<p>`); nie zamieniaj łączników wewnątrz słów (`biało-czerwony`).
 
 ### Kryteria akceptacji
-- [ ] Każda reguła działa niezależnie i w kombinacji; raport podaje liczby podmian
-- [ ] Cudzysłowy parowane poprawnie także przez granice `<em>/<i>` (test dedykowany)
-- [ ] `code`/`pre` nietknięte; atrybuty nietknięte
-- [ ] Idempotentność (drugi przebieg = 0 podmian)
-- [ ] Warianty en/de dają właściwe znaki cudzysłowów
-- [ ] CLI `epubforge typo book.epub --lang pl` działa; `--dry-run` po Etapie 17 pokazuje diff
+- [x] Każda reguła działa niezależnie i w kombinacji; raport podaje liczby podmian
+- [x] Cudzysłowy parowane poprawnie także przez granice `<em>/<i>` (test dedykowany)
+- [x] `code`/`pre` nietknięte; atrybuty nietknięte
+- [x] Idempotentność (drugi przebieg = 0 podmian)
+- [x] Warianty en/de dają właściwe znaki cudzysłowów
+- [x] CLI `epubforge typo book.epub --lang pl` działa; `--dry-run` po Etapie 17 pokazuje diff
 
 ---
 
