@@ -10,6 +10,21 @@
 
 ---
 
+## 🖼️ Zrzuty ekranu
+
+| Metadane + pobieranie z sieci | Fixer (hyphenacja, typografia, obrazy, CSS) |
+|---|---|
+| ![Zakładka Metadane z przyciskiem „Pobierz metadane…" i sekcją Tagi](docs/img/gui-metadata.png) | ![Zakładka Fixer](docs/img/gui-fixer.png) |
+
+| Pobieranie metadanych po ISBN (BN / LubimyCzytac / Open Library / Google Books) | Ustawienia AI (presety zgodne z OpenAI, klucz ze zmiennej środowiskowej) |
+|---|---|
+| ![Dialog „Pobierz metadane" z wynikami i wyborem pól](docs/img/gui-fetch-metadata.png) | ![Dialog „Ustawienia AI" z presetem Ollama](docs/img/gui-ai-settings.png) |
+
+> Zrzuty odświeżamy skryptem `scripts/make_screenshots.py`
+> (`QT_QPA_PLATFORM=offscreen python scripts/make_screenshots.py`).
+
+---
+
 ## ✅ Status projektu
 
 > **Wersja 3.0.0 — brama v3.0 (Etapy 24–30 roadmapy v3) domknięta.**
