@@ -7,6 +7,13 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-07-10
+
+Brama wydaniowa **v3.0** roadmapy v3 (Etapy 24–30): kompletny tor metadanych —
+pobieranie z sieci (ISBN/BN, LubimyCzytac, Open Library, Google Books),
+taksonomia i tagowanie AI, hurtowe wzbogacanie plików i biblioteki Calibre —
+oraz subsetting fontów i audyt dostępności DAISY Ace.
+
 ### Added
 - **Hurtowe wzbogacanie metadanych + calibredb** (Etap 30 roadmapy v3) — nowa
   komenda `epubforge enrich` dla plików/katalogów EPUB oraz bibliotek Calibre.
@@ -87,6 +94,12 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
     nigdy ciche nadpisanie. Liczba stron → `<meta property="schema:numberOfPages">`
     w OPF (tylko EPUB 3; EPUB 2 pomijany z notą w statusie) przez nowy
     `epubforge.core.set_number_of_pages`.
+- **Audyt dostępności DAISY Ace** (Etap 25 roadmapy v3) — raport naruszeń
+  WCAG / EPUB Accessibility parsowany do wspólnych struktur i pokazywany w tej
+  samej tabeli co EpubCheck; dwuklik wpisu skacze do pliku/linii w Edytorze.
+  CLI `epubforge a11y` + przycisk „Sprawdź dostępność (Ace)" w zakładce
+  **Walidacja**. Detekcja `ace` przez `Tools`; brak narzędzia → funkcja wyszarzona
+  z instrukcją instalacji (`npm install -g @daisy/ace`), bez błędu.
 - **Subsetting fontów** (Etap 24 roadmapy v3) — nowy fixer
   `epubforge.fixers.subset_fonts` (`FontSubsetOptions`, `FontReport`) przycinający
   fonty do znaków użytych w treści (zwykle −70…−90% rozmiaru fontu). Zbiór znaków =
@@ -490,5 +503,6 @@ Szablon wpisu dla nowej wersji:
 - poprawki bezpieczeństwa
 -->
 
-[Unreleased]: https://github.com/chodzkos/epubforge/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/chodzkos/epubforge/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/chodzkos/epubforge/compare/v2.3.0...v3.0.0
 [1.0.0]: https://github.com/chodzkos/epubforge/releases/tag/v1.0.0

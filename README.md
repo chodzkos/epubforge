@@ -12,10 +12,13 @@
 
 ## ✅ Status projektu
 
-> **Wersja 2.2.0 — brama v2.2 (Etapy 19–21 roadmapy v3) domknięta.**
+> **Wersja 3.0.0 — brama v3.0 (Etapy 24–30 roadmapy v3) domknięta.**
 > (2.0 = migracja GUI na PySide6 + wydzielenie rdzenia do
-> [chodzkos-gui-kit](https://github.com/chodzkos/gui-kit); 2.1–2.2 = typografia PL,
-> batch/dry-run, receptury, anulowanie/postęp, optymalizacja obrazów, szukaj/zamień;
+> [chodzkos-gui-kit](https://github.com/chodzkos/gui-kit); 2.1–2.3 = typografia PL,
+> batch/dry-run, receptury, anulowanie/postęp, optymalizacja obrazów, szukaj/zamień,
+> pdf2md, upgrade EPUB 2→3; 3.0 = subsetting fontów, audyt DAISY Ace, pełny tor
+> metadanych z sieci (ISBN/BN, LubimyCzytac, OpenLibrary, GoogleBooks), taksonomia
+> i tagowanie AI, hurtowe wzbogacanie + calibredb;
 > pełna historia w [CHANGELOG.md](CHANGELOG.md)).
 
 | Funkcja | Status |
