@@ -38,10 +38,10 @@ Odniesienie: szczegóły problemów i gotowe prompty naprawcze → `AUDYT-epubfo
 6. Mniejsze: SEC‑2 (temp raportu), SEC‑3 (pin akcji do SHA), SEC‑4 (Dependabot/CodeQL/SECURITY.md), COR‑2 (i18n locale), TEST‑1 (coverage GUI), QUAL‑1 (ZipInfo).
 
 ### Kryteria akceptacji
-- [ ] Wszystkie prompty z `AUDYT-epubforge.md` zrealizowane albo świadomie odrzucone (decyzja zapisana w CHANGELOG/PR)
-- [ ] `python -m build` daje wheel bez direct references **albo** README nie obiecuje PyPI
-- [ ] Test regresji XXE zielony; test „konwersja nie zmienia bajtów źródła" zielony
-- [ ] CI zielone na całej macierzy
+- [x] Wszystkie prompty z `AUDYT-epubforge.md` zrealizowane albo świadomie odrzucone (decyzja zapisana w CHANGELOG/PR)
+- [x] `python -m build` daje wheel bez direct references **albo** README nie obiecuje PyPI
+- [x] Test regresji XXE zielony; test „konwersja nie zmienia bajtów źródła" zielony
+- [x] CI zielone na całej macierzy
 
 ### Stage gate
 ✋ **Tag:** `v2.0.1` (same naprawy, bez nowych funkcji) — dopiero po nim start etapów 16+.
@@ -85,16 +85,16 @@ def fix_typography(epub: Epub, options: TypographyOptions) -> TypographyReport: 
 - Dialogi PL zaczynające się od `-` na początku akapitu → pauza `—` tylko gdy `fix_dashes` i początek bloku (`<p>`); nie zamieniaj łączników wewnątrz słów (`biało-czerwony`).
 
 ### Kryteria akceptacji
-- [ ] Każda reguła działa niezależnie i w kombinacji; raport podaje liczby podmian
-- [ ] Cudzysłowy parowane poprawnie także przez granice `<em>/<i>` (test dedykowany)
-- [ ] `code`/`pre` nietknięte; atrybuty nietknięte
-- [ ] Idempotentność (drugi przebieg = 0 podmian)
-- [ ] Warianty en/de dają właściwe znaki cudzysłowów
-- [ ] CLI `epubforge typo book.epub --lang pl` działa; `--dry-run` po Etapie 17 pokazuje diff
+- [x] Każda reguła działa niezależnie i w kombinacji; raport podaje liczby podmian
+- [x] Cudzysłowy parowane poprawnie także przez granice `<em>/<i>` (test dedykowany)
+- [x] `code`/`pre` nietknięte; atrybuty nietknięte
+- [x] Idempotentność (drugi przebieg = 0 podmian)
+- [x] Warianty en/de dają właściwe znaki cudzysłowów
+- [x] CLI `epubforge typo book.epub --lang pl` działa; `--dry-run` po Etapie 17 pokazuje diff
 
 ---
 
-## 📚 Etap 17 — Batch w CLI + `--dry-run`/diff wszędzie
+✅ zrobiony ## 📚 Etap 17 — Batch w CLI + `--dry-run`/diff wszędzie
 
 **Gałąź:** `feature/stage-17-batch-dryrun`
 **Czas:** ~3 h
@@ -116,14 +116,14 @@ def fix_typography(epub: Epub, options: TypographyOptions) -> TypographyReport: 
 - `--jobs` > 1 + ten sam plik podany dwa razy → dedup listy wejść przed startem.
 
 ### Kryteria akceptacji
-- [ ] Batch: N plików, raport per plik, poprawny kod wyjścia zbiorczy
-- [ ] `--dry-run` nie zmienia ŻADNEGO bajtu na dysku (test: hash pliku przed/po)
-- [ ] Diff czytelny dla zmiany CSS i XHTML; binaria bez wywału
-- [ ] Działa w zamrożonym `.exe` (test manualny w kryteriach builda)
+- [x] Batch: N plików, raport per plik, poprawny kod wyjścia zbiorczy
+- [x] `--dry-run` nie zmienia ŻADNEGO bajtu na dysku (test: hash pliku przed/po)
+- [x] Diff czytelny dla zmiany CSS i XHTML; binaria bez wywału
+- [x] Działa w zamrożonym `.exe` (test manualny w kryteriach builda)
 
 ---
 
-## 🧪 Etap 18 — Receptury (pipeline)
+✅ zrobiony ## 🧪 Etap 18 — Receptury (pipeline)
 
 **Gałąź:** `feature/stage-18-recipes`
 **Czas:** ~3 h
@@ -171,10 +171,10 @@ fmt = "mobi"
 - `tomllib` (stdlib 3.11+) — dla 3.10 dodaj zależność warunkową `tomli; python_version<'3.11'`.
 
 ### Kryteria akceptacji
-- [ ] `epubforge run kindle-pl book.epub --out-dir out/` wykonuje pełną sekwencję
-- [ ] Błędna receptura (literówka w op/opcji) → czytelny błąd, kod ≠ 0, nic nie zapisane
-- [ ] Własna receptura z `config_dir()` widoczna w `epubforge run --list`
-- [ ] GUI: receptura odpala się w `Worker` z logiem na żywo
+- [x] `epubforge run kindle-pl book.epub --out-dir out/` wykonuje pełną sekwencję
+- [x] Błędna receptura (literówka w op/opcji) → czytelny błąd, kod ≠ 0, nic nie zapisane
+- [x] Własna receptura z `config_dir()` widoczna w `epubforge run --list`
+- [x] GUI: receptura odpala się w `Worker` z logiem na żywo
 
 ---
 
@@ -183,7 +183,7 @@ fmt = "mobi"
 
 ---
 
-## ⏹️ Etap 19 — Anulowanie i postęp długich operacji
+✅ zrobiony ## ⏹️ Etap 19 — Anulowanie i postęp długich operacji
 
 **Gałąź:** `feature/stage-19-cancel-progress`
 **Czas:** ~3 h
@@ -203,14 +203,14 @@ fmt = "mobi"
 - Sygnał `failed` vs anulowanie: dodaj osobny sygnał `cancelled` (nie raportuj anulowania jako błędu).
 
 ### Kryteria akceptacji
-- [ ] Anulowanie konwersji Calibre ubija proces w ≤ 3 s, GUI wraca do stanu spoczynku
-- [ ] Postęp Calibre widoczny w pasku (parsowanie `NN%`)
-- [ ] Anulowanie nie zostawia plików `.tmp` ani uszkodzonego celu
-- [ ] Brak zmian API dla istniejących wywołań (parametr opcjonalny)
+- [x] Anulowanie konwersji Calibre ubija proces w ≤ 3 s, GUI wraca do stanu spoczynku
+- [x] Postęp Calibre widoczny w pasku (parsowanie `NN%`)
+- [x] Anulowanie nie zostawia plików `.tmp` ani uszkodzonego celu
+- [x] Brak zmian API dla istniejących wywołań (parametr opcjonalny)
 
 ---
 
-## 🖼️ Etap 20 — Optymalizacja obrazów
+✅ zrobiony ## 🖼️ Etap 20 — Optymalizacja obrazów
 
 **Gałąź:** `feature/stage-20-images`
 **Czas:** ~4 h
@@ -246,15 +246,15 @@ def optimize_images(epub: Epub, options: ImageFixOptions) -> ImageReport: ...
 - Brak Pillow → czytelny błąd „zainstaluj epubforge[images]" (wzorzec jak langdetect w stats).
 
 ### Kryteria akceptacji
-- [ ] Raport per plik: rozmiar przed/po, suma oszczędności
-- [ ] Plik po optymalizacji renderuje się (Pillow round‑trip w teście)
-- [ ] Okładka nietknięta przy `skip_cover=True`; EXIF usunięty przy `strip_metadata`
-- [ ] Wynikowy EPUB przechodzi EpubCheck (test integracyjny, jeśli dostępny)
-- [ ] Idempotentność praktyczna: drugi przebieg ~0 oszczędności
+- [x] Raport per plik: rozmiar przed/po, suma oszczędności
+- [x] Plik po optymalizacji renderuje się (Pillow round‑trip w teście)
+- [x] Okładka nietknięta przy `skip_cover=True`; EXIF usunięty przy `strip_metadata`
+- [x] Wynikowy EPUB przechodzi EpubCheck (test integracyjny, jeśli dostępny)
+- [x] Idempotentność praktyczna: drugi przebieg ~0 oszczędności
 
 ---
 
-## 🔎 Etap 21 — Szukaj i zamień w całym EPUB
+✅ zrobiony ## 🔎 Etap 21 — Szukaj i zamień w całym EPUB
 
 **Gałąź:** `feature/stage-21-search-replace`
 **Czas:** ~4 h
@@ -290,10 +290,10 @@ def replace_in_epub(epub: Epub, query: str, replacement: str, *, ...) -> Replace
 - `whole_words` w regexie: `\b` zawodzi przy polskich znakach w starych trybach — używaj `re.UNICODE` (domyślne w py3) i testu z „żółć".
 
 ### Kryteria akceptacji
-- [ ] Szukanie literal/regex/całe słowa/wielkość liter — testy czystej logiki
-- [ ] „Zamień wszystkie" raportuje liczbę podmian per plik; trafia do bufora, nie na dysk
-- [ ] Dwuklik wyniku otwiera plik i ustawia kursor na trafieniu
-- [ ] Undo w edytorze cofa zamianę w bieżącym pliku
+- [x] Szukanie literal/regex/całe słowa/wielkość liter — testy czystej logiki
+- [x] „Zamień wszystkie" raportuje liczbę podmian per plik; trafia do bufora, nie na dysk
+- [x] Dwuklik wyniku otwiera plik i ustawia kursor na trafieniu
+- [x] Undo w edytorze cofa zamianę w bieżącym pliku
 
 ---
 
@@ -302,7 +302,7 @@ def replace_in_epub(epub: Epub, query: str, replacement: str, *, ...) -> Replace
 
 ---
 
-## 🔗 Etap 22 — Integracja pdf2md
+✅ zrobiony ## 🔗 Etap 22 — Integracja pdf2md
 
 **Gałąź:** `feature/stage-22-pdf2md`
 **Czas:** ~3 h
@@ -324,14 +324,14 @@ def replace_in_epub(epub: Epub, query: str, replacement: str, *, ...) -> Replace
 - DRM/hasło w PDF: jeśli pdf2md zwróci błąd — pokaż jego log (wzorzec `_log_fragment`).
 
 ### Kryteria akceptacji
-- [ ] `epubforge convert scan.pdf out.epub --engine pdf2md` działa przy zainstalowanym pdf2md (test z mockiem subprocess + test integracyjny za markerem `integration`)
-- [ ] `--engine auto` z .pdf wybiera pdf2md gdy dostępny, inaczej Calibre
-- [ ] GUI: dialog PDF oferuje wybór silnika; handoff otwiera pdf2md
-- [ ] Brak pdf2md = zachowanie identyczne jak przed etapem (testy regresji przechodzą)
+- [x] `epubforge convert scan.pdf out.epub --engine pdf2md` działa przy zainstalowanym pdf2md (test z mockiem subprocess + test integracyjny za markerem `integration`)
+- [x] `--engine auto` z .pdf wybiera pdf2md gdy dostępny, inaczej Calibre
+- [x] GUI: dialog PDF oferuje wybór silnika; handoff otwiera pdf2md
+- [x] Brak pdf2md = zachowanie identyczne jak przed etapem (testy regresji przechodzą)
 
 ---
 
-## ⬆️ Etap 23 — Upgrade EPUB 2 → 3
+✅ zrobiony ## ⬆️ Etap 23 — Upgrade EPUB 2 → 3
 
 **Gałąź:** `feature/stage-23-epub-upgrade`
 **Czas:** ~4 h
@@ -359,11 +359,11 @@ def replace_in_epub(epub: Epub, query: str, replacement: str, *, ...) -> Replace
 - Idempotentność: upgrade na EPUB 3 = no-op z komunikatem.
 
 ### Kryteria akceptacji
-- [ ] Fixture EPUB 2 po upgrade przechodzi EpubCheck jako EPUB 3 (integracyjnie)
-- [ ] nav.xhtml odzwierciedla NCX (kolejność + zagnieżdżenie); landmarks z guide
-- [ ] `dcterms:modified` obecne i w poprawnym formacie
-- [ ] `--dry-run` pokazuje pełny plan zmian; `--drop-ncx` czyści spójnie
-- [ ] Upgrade na EPUB 3 = no-op
+- [x] Fixture EPUB 2 po upgrade przechodzi EpubCheck jako EPUB 3 (integracyjnie)
+- [x] nav.xhtml odzwierciedla NCX (kolejność + zagnieżdżenie); landmarks z guide
+- [x] `dcterms:modified` obecne i w poprawnym formacie
+- [x] `--dry-run` pokazuje pełny plan zmian; `--drop-ncx` czyści spójnie
+- [x] Upgrade na EPUB 3 = no-op
 
 ---
 
@@ -681,7 +681,7 @@ PRZYPOMNIENIE: komentarze po polsku, nie pushuj bez zatwierdzenia.
 
 ---
 
-## 📚 Etap 17 — Batch + dry-run
+✅ zrobiony ## 📚 Etap 17 — Batch + dry-run
 
 ```
 Realizujemy Etap 17 z ROADMAP-epubforge-v3.md — "Batch w CLI + --dry-run/diff".
@@ -716,7 +716,7 @@ Wykonaj:
 
 ---
 
-## 🧪 Etap 18 — Receptury
+✅ zrobiony ## 🧪 Etap 18 — Receptury
 
 ```
 Realizujemy Etap 18 z ROADMAP-epubforge-v3.md — "Receptury (pipeline)".
@@ -757,7 +757,7 @@ Wykonaj:
 
 ---
 
-## ⏹️ Etap 19 — Anulowanie i postęp
+✅ zrobiony ## ⏹️ Etap 19 — Anulowanie i postęp
 
 ```
 Realizujemy Etap 19 z ROADMAP-epubforge-v3.md — "Anulowanie i postęp".
@@ -795,7 +795,7 @@ Wykonaj:
 
 ---
 
-## 🖼️ Etap 20 — Optymalizacja obrazów
+✅ zrobiony ## 🖼️ Etap 20 — Optymalizacja obrazów
 
 ```
 Realizujemy Etap 20 z ROADMAP-epubforge-v3.md — "Optymalizacja obrazów".
@@ -830,7 +830,7 @@ Wykonaj:
 
 ---
 
-## 🔎 Etap 21 — Szukaj i zamień
+✅ zrobiony ## 🔎 Etap 21 — Szukaj i zamień
 
 ```
 Realizujemy Etap 21 z ROADMAP-epubforge-v3.md — "Szukaj i zamień w całym EPUB".
@@ -871,7 +871,7 @@ Wykonaj:
 
 ---
 
-## 🔗 Etap 22 — Integracja pdf2md
+✅ zrobiony ## 🔗 Etap 22 — Integracja pdf2md
 
 ```
 Realizujemy Etap 22 z ROADMAP-epubforge-v3.md — "Integracja pdf2md".
@@ -915,7 +915,7 @@ Po potwierdzeniu kontraktu:
 
 ---
 
-## ⬆️ Etap 23 — Upgrade EPUB 2→3
+✅ zrobiony ## ⬆️ Etap 23 — Upgrade EPUB 2→3
 
 ```
 Realizujemy Etap 23 z ROADMAP-epubforge-v3.md — "Upgrade EPUB 2 → 3".
