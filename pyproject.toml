@@ -41,6 +41,11 @@ dependencies = [
     # core/CLI używają chodzkos_gui_kit.config i .palette. Tor Qt dokłada extra [qt].
     # Pin po pełnym SHA commitu taga (supply-chain): tag mutowalny, SHA nie. v0.5.1.
     "chodzkos-gui-kit @ git+https://github.com/chodzkos/gui-kit@44e639881a7e86600efabe74ec0c8dc8c0114fd2",  # v0.5.1
+    # Mechanika sond detekcji (find_tool: PATH+extra_paths; probe_tool: obecność
+    # i wersja z timeoutem, CREATE_NO_WINDOW, uruchamia rozwiązaną ścieżkę). EpubForge
+    # zostaje właścicielem KOMPOZYCJI (warianty nazw, katalogi kandydatów per-narzędzie,
+    # cache, override, platformowość). Pin po pełnym SHA commitu taga v0.1.2.
+    "chodzkos-detection @ git+https://github.com/chodzkos/chodzkos-detection@6633745e17b170f991b8305448c3e5f96490b28f",  # v0.1.2
 ]
 
 [project.optional-dependencies]
@@ -103,8 +108,9 @@ Changelog = "https://github.com/chodzkos/epubforge/blob/main/CHANGELOG.md"
 [tool.hatch.version]
 path = "src/epubforge/__init__.py"
 
-# Zależność chodzkos-gui-kit jest referencją bezpośrednią (git+https @ SHA) — do
-# czasu publikacji kitu na PyPI hatchling wymaga jawnej zgody na takie odwołania.
+# Zależności chodzkos-gui-kit i chodzkos-detection są referencjami bezpośrednimi
+# (git+https @ SHA) — do czasu ich publikacji na PyPI hatchling wymaga jawnej zgody
+# na takie odwołania.
 [tool.hatch.metadata]
 allow-direct-references = true
 
@@ -120,8 +126,8 @@ packages = ["src/epubforge"]
 
 # ── uv (reprodukowalne buildy, REL-3) ───────────────────────────────────────────
 # `uv.lock` (wersjonowany) jest źródłem prawdy o wersjach: przypina wszystkie
-# zależności — w tym git-referencję chodzkos-gui-kit (po commicie) i transitive
-# z hashami. CI instaluje z locka przez `uv sync --frozen`, więc artefakty (.exe)
+# zależności — w tym git-referencje chodzkos-gui-kit i chodzkos-detection (po commicie)
+# i transitive z hashami. CI instaluje z locka przez `uv sync --frozen`, więc artefakty (.exe)
 # i testy powstają z tych samych wersji. `pip install -e ".[dev,gui]"` nadal działa
 # dla lokalnego dev-workflow (lock jest addytywny, pip go ignoruje).
 [tool.uv]

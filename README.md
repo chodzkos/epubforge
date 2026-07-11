@@ -99,8 +99,8 @@
 ## 🚀 Quick Start
 
 > **Uwaga:** EpubForge nie jest jeszcze publikowany na PyPI (zależy m.in. od
-> `chodzkos-gui-kit` z gita), więc `pip install epubforge` na razie **nie
-> działa**. Instaluj ze źródeł albo pobierz build dla Windows (niżej).
+> `chodzkos-gui-kit` i `chodzkos-detection` z gita), więc `pip install epubforge`
+> na razie **nie działa**. Instaluj ze źródeł albo pobierz build dla Windows (niżej).
 
 ### Ze źródeł
 ```bash

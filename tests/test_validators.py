@@ -158,12 +158,12 @@ def test_detect_java_requires_min_version(monkeypatch: pytest.MonkeyPatch) -> No
     )
 
     monkeypatch.setattr(
-        "epubforge.core.detection._get_version", lambda *_: 'java version "1.8.0_391"'
+        "epubforge.core.detection._probe_version", lambda *_: 'java version "1.8.0_391"'
     )
     assert _detect_java().available is False
 
     monkeypatch.setattr(
-        "epubforge.core.detection._get_version", lambda *_: 'openjdk version "25.0.3"'
+        "epubforge.core.detection._probe_version", lambda *_: 'openjdk version "25.0.3"'
     )
     java = _detect_java()
     assert java.available is True
@@ -251,7 +251,7 @@ def test_java_override_in_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     """tools.java_path nadpisuje detekcję Javy i jest re-utrwalany w cache."""
     java = tmp_path / "java.exe"
     java.write_text("x")
-    monkeypatch.setattr(detection, "_get_version", lambda *_a, **_k: 'openjdk version "25.0.3"')
+    monkeypatch.setattr(detection, "_probe_version", lambda *_a, **_k: 'openjdk version "25.0.3"')
     cfg = tmp_path / "config.json"
     cfg.write_text(json.dumps({"tools": {"java_path": str(java)}}), encoding="utf-8")
 
@@ -270,7 +270,7 @@ def test_java_override_forces_redetect_over_stale_cache(
 
     java = tmp_path / "java.exe"
     java.write_text("x")
-    monkeypatch.setattr(detection, "_get_version", lambda *_a, **_k: 'openjdk version "25.0.3"')
+    monkeypatch.setattr(detection, "_probe_version", lambda *_a, **_k: 'openjdk version "25.0.3"')
     cfg = tmp_path / "config.json"
     # Świeży cache twierdzi, że Javy nie ma — ale jest override java_path.
     cfg.write_text(

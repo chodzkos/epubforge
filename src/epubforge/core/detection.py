@@ -5,8 +5,13 @@ tylko ``PATH`` i system plików, można je wołać wielokrotnie. Wynik można
 zcache'ować w ``config.json`` (zob. :func:`detect_with_cache`) z ponowną
 detekcją po 7 dniach.
 
-Wersję narzędzia ustalamy przez ``--version`` z **timeoutem**; na Windows
-proces uruchamiamy z flagą ``CREATE_NO_WINDOW``, żeby nie migało okno konsoli.
+Mechanika sond (wyszukanie pliku w ``PATH``/katalogach, uruchomienie ``--version``
+z timeoutem i flagą ``CREATE_NO_WINDOW`` na Windows, odporność na wyjątki, security:
+uruchamianie rozwiązanej ścieżki zamiast gołej nazwy) pochodzi z pakietu
+``chodzkos-detection`` (:func:`find_tool` / :func:`probe_tool`). EpubForge zostaje
+właścicielem **kompozycji**: warianty nazw plików (``_exe_names``), katalogi
+kandydatów per-narzędzie, pole ``path``, cache w ``config.json``, override'y i
+platformowość (np. KP3/KindleGen tylko na Windows/macOS).
 """
 
 from __future__ import annotations
@@ -14,13 +19,14 @@ from __future__ import annotations
 import os
 import re
 import shutil
-import subprocess
 import sys
 import zipfile
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+
+from chodzkos_detection import find_tool, probe_tool
 
 from epubforge.core.config import (
     Config,
@@ -30,9 +36,6 @@ from epubforge.core.config import (
     save_config,
 )
 
-# Flaga ukrywająca okno konsoli przy subprocess na Windows (pułapka #7).
-_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
-_VERSION_TIMEOUT = 10  # sekundy
 _CACHE_MAX_AGE = timedelta(days=7)
 
 # Minimalna wersja Javy wymagana przez EpubCheck 5.x.
@@ -101,6 +104,11 @@ def _env_dirs(*subpaths: str) -> list[Path]:
 def _find_executable(names: list[str], extra_dirs: list[Path]) -> Path | None:
     """Szuka pliku wykonywalnego najpierw w ``PATH``, potem w podanych katalogach.
 
+    Mechanika sondy pochodzi z :func:`chodzkos_detection.find_tool` (PATH-first przez
+    ``shutil.which``, potem pełne ścieżki kandydatów). ``find_tool`` bierze JEDNĄ nazwę,
+    więc iterację po wariantach nazw (:func:`_exe_names`) robi tu EpubForge — kontrakt
+    ``_find_executable`` dla wołających pozostaje bez zmian.
+
     Args:
         names: kandydujące nazwy plików (z rozszerzeniem dla Windows).
         extra_dirs: dodatkowe katalogi instalacyjne do przeszukania.
@@ -109,34 +117,36 @@ def _find_executable(names: list[str], extra_dirs: list[Path]) -> Path | None:
         Ścieżka do pierwszego znalezionego pliku albo ``None``.
     """
     for name in names:
-        found = shutil.which(name)
+        found = find_tool(name, [directory / name for directory in extra_dirs])
         if found:
             return Path(found)
-    for directory in extra_dirs:
-        for name in names:
-            candidate = directory / name
-            if candidate.is_file():
-                return candidate
     return None
 
 
-def _get_version(path: Path, args: tuple[str, ...] = ("--version",)) -> str:
-    """Zwraca pierwszą linię wyjścia ``path --version`` (lub puste, gdy błąd/timeout)."""
-    try:
-        result = subprocess.run(
-            [str(path), *args],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=_VERSION_TIMEOUT,
-            creationflags=_NO_WINDOW,
-            check=False,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return ""
-    output = f"{result.stdout or ''}{result.stderr or ''}".strip()
-    return output.splitlines()[0].strip() if output else ""
+def _first_line(output: str) -> str:
+    """Parser wersji zachowujący format EpubForge: pierwsza niepusta linia w całości.
+
+    Domyślny parser pakietu zwraca ostatni token (np. ``"3.1.2"``); EpubForge trzyma
+    historycznie CAŁĄ pierwszą linię (np. ``"pandoc 3.1.2"``, a dla Javy linię
+    ``java -version``), więc podajemy własny parser, by pole ``version`` nie zmieniło
+    formatu (istotne dla stabilności cache i raportu ``doctor``).
+    """
+    stripped = output.strip()
+    return stripped.splitlines()[0].strip() if stripped else ""
+
+
+def _probe_version(path: Path, args: tuple[str, ...] = ("--version",), name: str = "") -> str:
+    """Zwraca pierwszą linię wyjścia sondy wersji (lub puste, gdy błąd/timeout/niezerowy kod).
+
+    Cienka kompozycja nad :func:`chodzkos_detection.probe_tool` — mechanika (subprocess,
+    timeout, ``CREATE_NO_WINDOW``, uruchomienie rozwiązanej ścieżki) żyje w pakiecie;
+    EpubForge dokłada tylko parser :func:`_first_line`. Używane tam, gdzie dostępność
+    liczona jest osobno (Java ≥ 11, override), więc bierzemy sam łańcuch wersji.
+    """
+    version = probe_tool(
+        name, version_args=list(args), version_parser=_first_line, executable=str(path)
+    )["version"]
+    return str(version)  # probe_tool typuje wynik jako dict[str, Any] — jawne str dla mypy
 
 
 def _make_tool(
@@ -158,8 +168,16 @@ def _make_tool(
     path = _find_executable(names, extra_dirs)
     if path is None:
         return Tool(name=name, path=None, version="", available=False)
-    version = _get_version(path) if detect_version else ""
-    return Tool(name=name, path=path, version=version, available=True)
+    # Mechanika obecności+wersji z pakietu; EpubForge składa Tool z path (z kompozycji)
+    # oraz available/version z sondy. detect_version=False → version_args=None →
+    # probe_tool zwraca available=True (istnieje executable), version="" (bez subprocessu).
+    probe = probe_tool(
+        name,
+        version_args=["--version"] if detect_version else None,
+        version_parser=_first_line,
+        executable=str(path),
+    )
+    return Tool(name=name, path=path, version=probe["version"], available=probe["available"])
 
 
 def _calibre_plugins_dir() -> Path:
@@ -286,7 +304,7 @@ def _detect_java(override: Path | None = None) -> Tool:
     path = _find_java(override)
     if path is None:
         return Tool(name="java", path=None, version="", available=False)
-    version_line = _get_version(path, ("-version",))  # java pisze na STDERR
+    version_line = _probe_version(path, ("-version",), "java")  # java pisze na STDERR
     major = _parse_java_major(version_line)
     available = major is not None and major >= _JAVA_MIN_MAJOR
     return Tool(name="java", path=path, version=version_line, available=available)
@@ -617,7 +635,7 @@ def _override_tool(name: str, path: Path) -> Tool:
     epubcheck z manifestu) — generyczne ``--version`` by je zepsuło.
     """
     if name == "java":
-        version = _get_version(path, ("-version",)) if path.is_file() else ""
+        version = _probe_version(path, ("-version",), "java") if path.is_file() else ""
         major = _parse_java_major(version)
         ok = path.is_file() and major is not None and major >= _JAVA_MIN_MAJOR
         return Tool("java", path, version, ok)
@@ -625,7 +643,10 @@ def _override_tool(name: str, path: Path) -> Tool:
         return _detect_epubcheck(path)
     exists = path.is_file()
     return Tool(
-        name=name, path=path, version=_get_version(path) if exists else "", available=exists
+        name=name,
+        path=path,
+        version=_probe_version(path, name=name) if exists else "",
+        available=exists,
     )
 
 
