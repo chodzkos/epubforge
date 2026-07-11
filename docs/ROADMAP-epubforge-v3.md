@@ -372,7 +372,7 @@ def replace_in_epub(epub: Epub, query: str, replacement: str, *, ...) -> Replace
 
 ---
 
-## 🔤 Etap 24 — Subsetting fontów
+✅ zrobiony ## 🔤 Etap 24 — Subsetting fontów
 
 **Gałąź:** `feature/stage-24-font-subset`
 **Czas:** ~4 h
@@ -391,14 +391,14 @@ def replace_in_epub(epub: Epub, query: str, replacement: str, *, ...) -> Replace
 - Font używany przez `@font-face` z `unicode-range` — jeżeli obecny, nie zawężaj poniżej deklarowanego zakresu (bezpieczniej: pomiń taki font z notą w raporcie).
 
 ### Kryteria akceptacji
-- [ ] Po subsetcie wszystkie glify użyte w treści renderują się (test: cmap fontu zawiera każdy codepoint z treści)
-- [ ] `U+00AD`, „”, —, … zawsze zachowane
-- [ ] Raport: rozmiar przed/po per font
-- [ ] .woff2 bez brotli → ostrzeżenie, nie błąd; EpubCheck zielony po operacji
+- [x] Po subsetcie wszystkie glify użyte w treści renderują się (test: cmap fontu zawiera każdy codepoint z treści)
+- [x] `U+00AD`, „”, —, … zawsze zachowane
+- [x] Raport: rozmiar przed/po per font
+- [x] .woff2 bez brotli → ostrzeżenie, nie błąd; EpubCheck zielony po operacji
 
 ---
 
-## ♿ Etap 25 — Audyt dostępności (DAISY Ace)
+✅ zrobiony ## ♿ Etap 25 — Audyt dostępności (DAISY Ace)
 
 **Gałąź:** `feature/stage-25-a11y`
 **Czas:** ~3 h
@@ -418,13 +418,13 @@ def replace_in_epub(epub: Epub, query: str, replacement: str, *, ...) -> Replace
 - Wyniki wskazują pliki wewnętrzne → reuse mechanizmu klikalnych błędów z zakładki Walidacja.
 
 ### Kryteria akceptacji
-- [ ] Raport Ace sparsowany do wspólnych struktur (`ValidationMessage`-podobnych) na fixtures
-- [ ] Brak ace = funkcja wyszarzona z instrukcją instalacji (bez błędu)
-- [ ] Dwuklik wyniku skacze do pliku/linii w Edytorze (gdzie dotyczy)
+- [x] Raport Ace sparsowany do wspólnych struktur (`ValidationMessage`-podobnych) na fixtures
+- [x] Brak ace = funkcja wyszarzona z instrukcją instalacji (bez błędu)
+- [x] Dwuklik wyniku skacze do pliku/linii w Edytorze (gdzie dotyczy)
 
 ---
 
-## 🌐 Etap 26 — Metadane z ISBN i Biblioteki Narodowej (opt‑in)
+✅ zrobiony ## 🌐 Etap 26 — Metadane z ISBN i Biblioteki Narodowej (opt‑in)
 
 **Gałąź:** `feature/stage-26-isbn`
 **Czas:** ~3 h
@@ -489,7 +489,7 @@ def replace_in_epub(epub: Epub, query: str, replacement: str, *, ...) -> Replace
 
 ---
 
-## 📖 Etap 28 — Provider LubimyCzytac + dopasowanie bez ISBN
+✅ zrobiony ## 📖 Etap 28 — Provider LubimyCzytac + dopasowanie bez ISBN
 
 **Gałąź:** `feature/stage-28-lubimyczytac`
 **Czas:** ~4 h
@@ -516,7 +516,7 @@ def replace_in_epub(epub: Epub, query: str, replacement: str, *, ...) -> Replace
 
 ---
 
-## 🏷️ Etap 29 — Taksonomia tagów + tagowanie AI (opt‑in)
+✅ zrobiony ## 🏷️ Etap 29 — Taksonomia tagów + tagowanie AI (opt‑in)
 
 **Gałąź:** `feature/stage-29-tags`
 **Czas:** ~4 h
@@ -538,14 +538,14 @@ def replace_in_epub(epub: Epub, query: str, replacement: str, *, ...) -> Replace
 - Prompt klasyfikacyjny po polsku; wejście przycięte (opis + TOC; próbka treści maks. ~5 tys. słów z początku spine).
 
 ### Kryteria akceptacji
-- [ ] Książka z deskryptorami BN → tagi PL bez żadnego wywołania AI
-- [ ] Opis bez deskryptorów → AI (mock) → tagi wyłącznie z taksonomii + ewentualne postacie/organizacje
-- [ ] Maks. 10 tagów, kanon PL, synonimy scalone; polityka „dopisz" nie duplikuje istniejących
-- [ ] Zapis do `dc:subject`; import w Calibre pokazuje je jako tagi
+- [x] Książka z deskryptorami BN → tagi PL bez żadnego wywołania AI
+- [x] Opis bez deskryptorów → AI (mock) → tagi wyłącznie z taksonomii + ewentualne postacie/organizacje
+- [x] Maks. 10 tagów, kanon PL, synonimy scalone; polityka „dopisz" nie duplikuje istniejących
+- [x] Zapis do `dc:subject`; import w Calibre pokazuje je jako tagi
 
 ---
 
-## 📦 Etap 30 — Wzbogacanie hurtowe + calibredb
+✅ zrobiony ## 📦 Etap 30 — Wzbogacanie hurtowe + calibredb
 
 **Gałąź:** `feature/stage-30-enrich-batch`
 **Czas:** ~3 h
@@ -951,7 +951,7 @@ Wykonaj:
 
 ---
 
-## 🔤 Etap 24 — Subsetting fontów
+✅ zrobiony ## 🔤 Etap 24 — Subsetting fontów
 
 ```
 Realizujemy Etap 24 z ROADMAP-epubforge-v3.md — "Subsetting fontów".
@@ -988,7 +988,7 @@ Wykonaj:
 
 ---
 
-## ♿ Etap 25 — Ace (dostępność)
+✅ zrobiony ## ♿ Etap 25 — Ace (dostępność)
 
 ```
 Realizujemy Etap 25 z ROADMAP-epubforge-v3.md — "Audyt dostępności (DAISY Ace)".
@@ -1024,7 +1024,7 @@ Wykonaj:
 
 ---
 
-## 🌐 Etap 26 — Metadane z ISBN i BN
+✅ zrobiony ## 🌐 Etap 26 — Metadane z ISBN i BN
 
 ```
 Realizujemy Etap 26 z ROADMAP-epubforge-v3.md — "Metadane z ISBN i Biblioteki
@@ -1113,7 +1113,7 @@ Wykonaj:
 
 ---
 
-## 📖 Etap 28 — LubimyCzytac + dopasowanie
+✅ zrobiony ## 📖 Etap 28 — LubimyCzytac + dopasowanie
 
 ```
 Realizujemy Etap 28 z ROADMAP-epubforge-v3.md — "Provider LubimyCzytac +
@@ -1156,7 +1156,7 @@ Po potwierdzeniu:
 
 ---
 
-## 🏷️ Etap 29 — Taksonomia + tagi AI
+✅ zrobiony ## 🏷️ Etap 29 — Taksonomia + tagi AI
 
 ```
 Realizujemy Etap 29 z ROADMAP-epubforge-v3.md — "Taksonomia tagów + tagowanie
@@ -1209,7 +1209,7 @@ Wykonaj:
 
 ---
 
-## 📦 Etap 30 — Enrich hurtowo + calibredb
+✅ zrobiony ## 📦 Etap 30 — Enrich hurtowo + calibredb
 
 ```
 Realizujemy Etap 30 z ROADMAP-epubforge-v3.md — "Wzbogacanie hurtowe +
