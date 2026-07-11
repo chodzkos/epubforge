@@ -18,8 +18,8 @@ Odniesienie: szczegóły problemów i gotowe prompty naprawcze → `AUDYT-epubfo
 | **v2.1** | 15–18 | fundament wydaniowy + polska typografia + batch/dry‑run + receptury |
 | **v2.2** | 19–21 | anulowanie/postęp, optymalizacja obrazów, szukaj i zamień |
 | **v2.3** | 22–23 | integracja pdf2md, upgrade EPUB 2→3 |
-| **v3.0** | 24–27 | subsetting fontów, dostępność (Ace), ISBN, dystrybucja PyPI/Linux/macOS/winget |
-| **v3.1** | 28–30 | wzbogacanie metadanych: LubimyCzytac, taksonomia tagów + AI, batch/calibredb |
+| **v3.0.0** | 24–26, 28–30 | subsetting fontów, dostępność (Ace), metadane z ISBN + wzbogacanie (LubimyCzytac, taksonomia tagów + AI, batch/calibredb) — Etapy 28–30 domknięte razem z bramą v3.0 zamiast osobnego v3.1 |
+| _odłożone_ | 27 | dystrybucja PyPI/Linux/macOS/winget — do przyszłego wydania |
 
 ---
 
@@ -457,7 +457,9 @@ def replace_in_epub(epub: Epub, query: str, replacement: str, *, ...) -> Replace
 
 ---
 
-## 📦 Etap 27 — Dystrybucja: PyPI, Linux/macOS, winget
+⏸️ odłożony ## 📦 Etap 27 — Dystrybucja: PyPI, Linux/macOS, winget
+
+> **Status: odłożony.** Nie wchodził w skład wydania v3.0.0 — brama v3.0 została zamknięta z kompletem funkcji (Etapy 24–26, 28–30), ale bez pełnej dystrybucji. Release `v3.0.0` dostarcza wyłącznie binaria Windows (`epubforge.exe`, `epubforge-setup.exe`); PyPI, artefakty Linux/macOS i manifest winget przeniesione do przyszłego wydania. Kryteria akceptacji pozostają niezaznaczone celowo.
 
 **Gałąź:** `feature/stage-27-distribution`
 **Czas:** ~4 h
@@ -484,8 +486,8 @@ def replace_in_epub(epub: Epub, query: str, replacement: str, *, ...) -> Replace
 
 ---
 
-## 🏷️ Stage gate v3.0
-**Tag:** `git tag v3.0.0` — pełna dystrybucja + komplet funkcji v3. Zrzuty ekranu, wpis CHANGELOG, aktualizacja `FEATURES.md`.
+## 🏷️ Stage gate v3.0 — ✅ zamknięta (tag `v3.0.0`)
+**Tag:** `git tag v3.0.0` — komplet funkcji v3 (Etapy 24–26, 28–30). Zrzuty ekranu, wpis CHANGELOG, aktualizacja `FEATURES.md` — zrobione. **Etap 27 (pełna dystrybucja PyPI/Linux/macOS/winget) odłożony** — v3.0.0 dostarcza tylko binaria Windows; Etapy 28–30 domknięto razem z tą bramą zamiast osobnego wydania v3.1.
 
 ---
 
@@ -571,8 +573,8 @@ def replace_in_epub(epub: Epub, query: str, replacement: str, *, ...) -> Replace
 
 ---
 
-## 🏷️ Stage gate v3.1
-**Tag:** `git tag v3.1.0` — wzbogacanie metadanych i tagi. Zrzuty ekranu, wpis CHANGELOG, aktualizacja `FEATURES.md`.
+## 🏷️ Stage gate v3.1 — ✅ złożona w `v3.0.0` (bez osobnego taga)
+**Tag:** ~~`git tag v3.1.0`~~ — wzbogacanie metadanych i tagi (Etapy 28–30). Zamiast osobnego wydania Etapy 28–30 domknięto razem z bramą v3.0 pod tagiem **`v3.0.0`** (nie było wcześniejszego taga 3.0). Zrzuty ekranu, wpis CHANGELOG i aktualizacja `FEATURES.md` — zrobione w ramach v3.0.0.
 
 ---
 
@@ -589,13 +591,13 @@ def replace_in_epub(epub: Epub, query: str, replacement: str, *, ...) -> Replace
 | 21 | Szukaj/zamień | 4 h | v2.2 |
 | 22 | Integracja pdf2md | 3 h | v2.3 |
 | 23 | Upgrade EPUB 2→3 | 4 h | v2.3 |
-| 24 | Subsetting fontów | 4 h | v3.0 |
-| 25 | Ace (a11y) | 3 h | v3.0 |
-| 26 | Metadane ISBN/BN | 3 h | v3.0 |
-| 27 | Dystrybucja | 4 h | v3.0 |
-| 28 | LubimyCzytac + fuzzy match | 4 h | v3.1 |
-| 29 | Taksonomia + tagi AI | 4 h | v3.1 |
-| 30 | Enrich hurtowo + calibredb | 3 h | v3.1 |
+| 24 | Subsetting fontów | 4 h | v3.0.0 |
+| 25 | Ace (a11y) | 3 h | v3.0.0 |
+| 26 | Metadane ISBN/BN | 3 h | v3.0.0 |
+| 27 | Dystrybucja | 4 h | _odłożone_ |
+| 28 | LubimyCzytac + fuzzy match | 4 h | v3.0.0 |
+| 29 | Taksonomia + tagi AI | 4 h | v3.0.0 |
+| 30 | Enrich hurtowo + calibredb | 3 h | v3.0.0 |
 
 **~57 h** — realistycznie 3–4 miesiące popołudniami. Etapy 20/21/24/25/26 są od siebie niezależne — kolejność wewnątrz wydania dowolna. Etapy 28–30 budują na Etapie 26 (kolejność: 26 → 28 → 29/30; Etap 29 nie wymaga 28, ale korzysta z jego kategorii LC).
 
@@ -1075,7 +1077,7 @@ Po potwierdzeniu:
 
 ---
 
-## 📦 Etap 27 — Dystrybucja
+⏸️ odłożony ## 📦 Etap 27 — Dystrybucja
 
 ```
 Realizujemy Etap 27 z ROADMAP-epubforge-v3.md — "Dystrybucja: PyPI, Linux/macOS,
