@@ -87,8 +87,19 @@ class LubimyCzytacProvider:
 
     # ── API providera ────────────────────────────────────────────────────────────
 
-    def fetch_by_isbn(self, isbn: str, *, timeout: float = DEFAULT_TIMEOUT) -> BookRecord | None:
-        """Pobiera pełny rekord dla ISBN (wyszukiwarka → pierwszy trafiony → strona)."""
+    def fetch_by_isbn(
+        self,
+        isbn: str,
+        *,
+        timeout: float = DEFAULT_TIMEOUT,
+        title: str = "",
+        author: str = "",
+    ) -> BookRecord | None:
+        """Pobiera pełny rekord dla ISBN (wyszukiwarka → pierwszy trafiony → strona).
+
+        ``title``/``author`` (podpowiedzi z EPUB) są tu ignorowane — wyszukiwanie po
+        tytule/autorze w LC ma osobną ścieżkę (:meth:`search_title_author`, dialog GUI).
+        """
         candidates = self.search_by_isbn(isbn, timeout=timeout)
         if not candidates:
             return None

@@ -21,8 +21,18 @@ class GoogleBooksProvider:
 
     name = "googlebooks"
 
-    def fetch_by_isbn(self, isbn: str, *, timeout: float = DEFAULT_TIMEOUT) -> BookRecord | None:
-        """Pobiera i parsuje pierwszy wolumin Google Books (``None`` przy braku/błędzie)."""
+    def fetch_by_isbn(
+        self,
+        isbn: str,
+        *,
+        timeout: float = DEFAULT_TIMEOUT,
+        title: str = "",
+        author: str = "",
+    ) -> BookRecord | None:
+        """Pobiera i parsuje pierwszy wolumin Google Books (``None`` przy braku/błędzie).
+
+        ``title``/``author`` (podpowiedzi z EPUB) są ignorowane — GB wyszukuje tylko po ISBN.
+        """
         data = fetch_json(_API_URL.format(isbn=isbn), timeout=timeout)
         info = _volume_info(data)
         if info is None:

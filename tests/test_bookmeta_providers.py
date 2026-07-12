@@ -11,6 +11,7 @@ import urllib.error
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote_plus
 
 import pytest
 
@@ -30,6 +31,11 @@ _ISBN_WIEDZMIN = "9788375780635"
 _ISBN_FOX = "9780140328721"
 
 
+def _bn() -> BNProvider:
+    """BN z cache w RAM i zerowym limiterem — bez dysku i bez czekania w testach."""
+    return BNProvider(cache=MetadataCache(), rate_limiter=RateLimiter(0.0))
+
+
 @pytest.fixture(autouse=True)
 def _fast_lubimyczytac(monkeypatch: pytest.MonkeyPatch) -> None:
     """Podmienia globalny provider LC w łańcuchu na szybki (cache w RAM, zero czekania).
@@ -44,7 +50,7 @@ def _fast_lubimyczytac(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         chain,
         "_DEFAULT_PROVIDERS",
-        (BNProvider(), lc, OpenLibraryProvider(), GoogleBooksProvider()),
+        (_bn(), lc, OpenLibraryProvider(), GoogleBooksProvider()),
     )
 
 
@@ -103,7 +109,7 @@ def _bn_url(isbn: str) -> str:
 def test_bn_provider_parses_real_response(monkeypatch: pytest.MonkeyPatch) -> None:
     """Prawdziwa odpowiedź BN → poprawny rekord (tytuł, autor, strony, deskryptory)."""
     _install_routes(monkeypatch, {_bn_url(_ISBN_WIEDZMIN): _fixture_bytes("bn_wiedzmin.json")})
-    record = BNProvider().fetch_by_isbn(_ISBN_WIEDZMIN)
+    record = _bn().fetch_by_isbn(_ISBN_WIEDZMIN)
     assert record is not None
     assert record.title == "Ostatnie życzenie"
     assert record.creators == ["Sapkowski, Andrzej"]
@@ -121,13 +127,116 @@ def test_bn_provider_parses_real_response(monkeypatch: pytest.MonkeyPatch) -> No
 def test_bn_provider_empty_bibs(monkeypatch: pytest.MonkeyPatch) -> None:
     """Pusta lista ``bibs`` (książki nie ma w BN) → None."""
     _install_routes(monkeypatch, {_bn_url(_ISBN_FOX): b'{"bibs": []}'})
-    assert BNProvider().fetch_by_isbn(_ISBN_FOX) is None
+    assert _bn().fetch_by_isbn(_ISBN_FOX) is None
 
 
 def test_bn_provider_network_error(monkeypatch: pytest.MonkeyPatch) -> None:
     """Błąd sieci (URL spoza mapy) → None, bez wyjątku."""
     _install_routes(monkeypatch, {})
-    assert BNProvider().fetch_by_isbn(_ISBN_WIEDZMIN) is None
+    assert _bn().fetch_by_isbn(_ISBN_WIEDZMIN) is None
+
+
+# ── Provider BN: fallback tytułowy (ISBN e-wydania nieobecny w katalogu) ──────────
+
+
+def _bn_title_url(title: str) -> str:
+    return f"https://data.bn.org.pl/api/institutions/bibs.json?title={quote_plus(title)}&limit=5"
+
+
+def _install_recording_routes(
+    monkeypatch: pytest.MonkeyPatch, routes: dict[str, bytes]
+) -> list[str]:
+    """Jak ``_install_routes``, ale zwraca listę URL-i żądań (do asercji „nie odpytano")."""
+    calls: list[str] = []
+
+    def opener(request: Any, timeout: float | None = None) -> _FakeResponse:
+        url = getattr(request, "full_url", request)
+        calls.append(url)
+        if url not in routes:
+            raise urllib.error.URLError(f"brak atrapy dla {url}")
+        return _FakeResponse(routes[url])
+
+    monkeypatch.setattr(_http.urllib.request, "urlopen", opener)
+    return calls
+
+
+# Minimalny rekord BN o INNYM tytule (do testu progu fuzzy).
+_BN_MISMATCH = (
+    b'{"bibs": [{"publicationYear": "1834", "marc": {"fields": ['
+    b'{"245": {"subfields": [{"a": "Pan Tadeusz"}]}},'
+    b'{"100": {"subfields": [{"a": "Mickiewicz, Adam"}]}}]}}]}'
+)
+_TITLE = "Ostatnie życzenie"
+_AUTHOR = "Sapkowski, Andrzej"
+
+
+def test_bn_fallback_by_title_when_isbn_absent(monkeypatch: pytest.MonkeyPatch) -> None:
+    """ISBN e-booka nieobecny w BN + znany tytuł/autor → dopasowanie po tytule (fuzzy).
+
+    ISBN rekordu pozostaje ISBN-em z pliku (NIE jest nadpisywany papierowym z BN).
+    """
+    routes = {
+        _bn_url(_ISBN_FOX): b'{"bibs": []}',  # ISBN e-booka: pudło
+        _bn_title_url(_TITLE): _fixture_bytes("bn_wiedzmin.json"),  # po tytule: trafienie
+    }
+    _install_routes(monkeypatch, routes)
+    record = _bn().fetch_by_isbn(_ISBN_FOX, title=_TITLE, author=_AUTHOR)
+    assert record is not None
+    assert record.match_type == "fuzzy"
+    assert record.title == "Ostatnie życzenie"
+    assert record.creators == ["Sapkowski, Andrzej"]
+    assert record.isbn == _ISBN_FOX  # ISBN pliku NIETKNIĘTY (nie papierowy z BN)
+
+
+def test_bn_isbn_hit_skips_title_query(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Trafienie po ISBN → match_type='isbn' i ZERO zapytań po tytule."""
+    calls = _install_recording_routes(
+        monkeypatch, {_bn_url(_ISBN_WIEDZMIN): _fixture_bytes("bn_wiedzmin.json")}
+    )
+    record = _bn().fetch_by_isbn(_ISBN_WIEDZMIN, title=_TITLE, author=_AUTHOR)
+    assert record is not None
+    assert record.match_type == "isbn"
+    assert all("title=" not in url for url in calls)  # brak zapytania tytułowego
+
+
+def test_bn_fuzzy_below_threshold_returns_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    """ISBN pudłuje + najlepsze dopasowanie poniżej progu → None (łańcuch idzie dalej)."""
+    routes = {
+        _bn_url(_ISBN_FOX): b'{"bibs": []}',
+        _bn_title_url(_TITLE): _BN_MISMATCH,  # inny tytuł → niski score
+    }
+    _install_routes(monkeypatch, routes)
+    assert _bn().fetch_by_isbn(_ISBN_FOX, title=_TITLE, author=_AUTHOR) is None
+
+
+def test_bn_no_title_hint_skips_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    """ISBN pudłuje + brak tytułu → brak drugiego (tytułowego) zapytania."""
+    calls = _install_recording_routes(monkeypatch, {_bn_url(_ISBN_FOX): b'{"bibs": []}'})
+    assert _bn().fetch_by_isbn(_ISBN_FOX) is None
+    assert all("title=" not in url for url in calls)
+
+
+def test_bn_cache_distinguishes_isbn_and_title(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Cache rozróżnia zapytania isbn vs title — fallback nie nadpisuje wpisu ISBN."""
+    provider = _bn()
+    routes = {
+        _bn_url(_ISBN_FOX): b'{"bibs": []}',
+        _bn_title_url(_TITLE): _fixture_bytes("bn_wiedzmin.json"),
+    }
+    _install_routes(monkeypatch, routes)
+    record = provider.fetch_by_isbn(_ISBN_FOX, title=_TITLE, author=_AUTHOR)
+    assert record is not None and record.match_type == "fuzzy"
+
+    cache = provider._ensure_cache()
+    isbn_entry = cache.get("bn", _bn_url(_ISBN_FOX))
+    title_entry = cache.get("bn", _bn_title_url(_TITLE))
+    assert isbn_entry is not None and title_entry is not None  # dwa osobne wpisy
+    assert isbn_entry != title_entry  # wpis ISBN NIE nadpisany odpowiedzią tytułową
+
+    # Drugie wywołanie działa z cache (sieć odcięta) — wynik ten sam.
+    _install_routes(monkeypatch, {})
+    again = provider.fetch_by_isbn(_ISBN_FOX, title=_TITLE, author=_AUTHOR)
+    assert again is not None and again.match_type == "fuzzy"
 
 
 # ── Provider Open Library ────────────────────────────────────────────────────────
@@ -249,7 +358,7 @@ def test_chain_returns_none_when_all_empty(monkeypatch: pytest.MonkeyPatch) -> N
 @pytest.mark.integration
 def test_bn_integration_real_network() -> None:
     """Realne zapytanie do API BN dla znanego ISBN (pomijane bez sieci)."""
-    record = BNProvider().fetch_by_isbn(_ISBN_WIEDZMIN)
+    record = _bn().fetch_by_isbn(_ISBN_WIEDZMIN)
     if record is None:
         pytest.skip("Brak dostępu do API BN (offline lub API niedostępne)")
     assert record.title

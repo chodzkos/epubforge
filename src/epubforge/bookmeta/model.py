@@ -54,6 +54,10 @@ class BookRecord:
         subjects: tematy/deskryptory przedmiotowe (surowe stringi).
         series: nazwa cyklu/serii lub pusty łańcuch.
         source: identyfikator providera źródłowego (``bn``/``openlibrary``/``googlebooks``).
+        match_type: jak dopasowano rekord — ``"isbn"`` (trafienie po ISBN) lub ``"fuzzy"``
+            (dopasowanie po tytule/autorze, gdy ISBN e-wydania nie ma w katalogu). Dopasowanie
+            ``"fuzzy"`` użytkownik powinien świadomie zaakceptować (metadane bibliograficzne
+            są wiarygodne, ale ISBN pliku NIE jest nadpisywany ISBN-em z katalogu).
     """
 
     title: str = ""
@@ -67,6 +71,7 @@ class BookRecord:
     subjects: list[str] = field(default_factory=list)
     series: str = ""
     source: str = ""
+    match_type: str = "isbn"
 
     def is_empty(self) -> bool:
         """Czy rekord nie niesie żadnej użytecznej wartości (same domyślne pola)."""

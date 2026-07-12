@@ -24,12 +24,23 @@ class Provider(Protocol):
 
     name: str
 
-    def fetch_by_isbn(self, isbn: str, *, timeout: float = DEFAULT_TIMEOUT) -> BookRecord | None:
+    def fetch_by_isbn(
+        self,
+        isbn: str,
+        *,
+        timeout: float = DEFAULT_TIMEOUT,
+        title: str = "",
+        author: str = "",
+    ) -> BookRecord | None:
         """Pobiera rekord dla znormalizowanego ISBN albo ``None``.
 
         Args:
             isbn: **już zwalidowany** ISBN (10 lub 13 znaków; walidację robi łańcuch).
             timeout: maksymalny czas pojedynczego zapytania w sekundach.
+            title: podpowiedź — tytuł z metadanych EPUB. Provider MOŻE go użyć do
+                fallbacku, gdy ISBN nie trafia (BN: wyszukanie po tytule + fuzzy match);
+                providery, które go nie obsługują, po prostu go ignorują.
+            author: podpowiedź — autor z metadanych EPUB (wzmacnia fuzzy dopasowanie).
 
         Returns:
             :class:`BookRecord` z wypełnionymi polami albo ``None`` (brak wyniku,

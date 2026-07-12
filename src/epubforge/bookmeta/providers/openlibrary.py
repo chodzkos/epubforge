@@ -24,8 +24,18 @@ class OpenLibraryProvider:
 
     name = "openlibrary"
 
-    def fetch_by_isbn(self, isbn: str, *, timeout: float = DEFAULT_TIMEOUT) -> BookRecord | None:
-        """Pobiera i parsuje rekord wydania Open Library (``None`` przy braku/błędzie)."""
+    def fetch_by_isbn(
+        self,
+        isbn: str,
+        *,
+        timeout: float = DEFAULT_TIMEOUT,
+        title: str = "",
+        author: str = "",
+    ) -> BookRecord | None:
+        """Pobiera i parsuje rekord wydania Open Library (``None`` przy braku/błędzie).
+
+        ``title``/``author`` (podpowiedzi z EPUB) są ignorowane — OL wyszukuje tylko po ISBN.
+        """
         data = fetch_json(_ISBN_URL.format(isbn=isbn), timeout=timeout)
         if not isinstance(data, dict):
             return None

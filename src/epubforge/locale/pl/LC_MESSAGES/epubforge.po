@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EpubForge 1.0.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-07-10 21:30+0000\n"
+"POT-Creation-Date: 2026-07-12 18:48+0000\n"
 "PO-Revision-Date: 2026-06-12 13:30+0200\n"
 "Last-Translator: EpubForge translators <noreply@example.com>\n"
 "Language: pl\n"
@@ -360,7 +360,9 @@ msgstr "Pliki lub katalogi EPUB"
 msgid ""
 "Pola do wzbogacenia po przecinku, np. tytuł,opis,wydawca (domyślnie: "
 "komplet)"
-msgstr "Pola do wzbogacenia po przecinku, np. tytuł,opis,wydawca (domyślnie: komplet)"
+msgstr ""
+"Pola do wzbogacenia po przecinku, np. tytuł,opis,wydawca (domyślnie: "
+"komplet)"
 
 #: src/epubforge/cli/enrich.py:46
 msgid "Uzupełnij tagi z taksonomii"
@@ -404,7 +406,9 @@ msgstr "— PLAN (dry-run, nic nie zapisano) —"
 msgid ""
 "\n"
 "Przerywam po bieżącej książce…"
-msgstr "\nPrzerywam po bieżącej książce…"
+msgstr ""
+"\n"
+"Przerywam po bieżącej książce…"
 
 #: src/epubforge/cli/fix.py:45
 msgid "Normalizuj CSS w EPUB"
@@ -975,7 +979,10 @@ msgid ""
 "Nie udało się otworzyć biblioteki Calibre. Zamknij program Calibre "
 "(blokuje bazę) i spróbuj ponownie.\n"
 "Szczegóły: {details}"
-msgstr "Nie udało się otworzyć biblioteki Calibre. Zamknij program Calibre (blokuje bazę) i spróbuj ponownie.\nSzczegóły: {details}"
+msgstr ""
+"Nie udało się otworzyć biblioteki Calibre. Zamknij program Calibre "
+"(blokuje bazę) i spróbuj ponownie.\n"
+"Szczegóły: {details}"
 
 #: src/epubforge/enrich/calibre.py:119
 msgid "nieznany błąd"
@@ -1010,7 +1017,9 @@ msgstr "Nie wykryto calibredb. Zainstaluj Calibre i upewnij się, że jest w PAT
 msgid ""
 "Podsumowanie: {total} książek — znalezione: {found}, nieznalezione: "
 "{not_found}, z cache: {cache}, zmienione: {changed}, błędy: {errors}"
-msgstr "Podsumowanie: {total} książek — znalezione: {found}, nieznalezione: {not_found}, z cache: {cache}, zmienione: {changed}, błędy: {errors}"
+msgstr ""
+"Podsumowanie: {total} książek — znalezione: {found}, nieznalezione: "
+"{not_found}, z cache: {cache}, zmienione: {changed}, błędy: {errors}"
 
 #: src/epubforge/enrich/report.py:72
 #, python-brace-format
@@ -1039,7 +1048,9 @@ msgstr "(nic)"
 msgid ""
 "{id}: dopasowanie {match} ({source}); {verb}: {changed}; pominięte: "
 "{skipped}"
-msgstr "{id}: dopasowanie {match} ({source}); {verb}: {changed}; pominięte: {skipped}"
+msgstr ""
+"{id}: dopasowanie {match} ({source}); {verb}: {changed}; pominięte: "
+"{skipped}"
 
 #: src/epubforge/fixers/fonts.py:150
 msgid "nie udało się odczytać fontu"
@@ -1197,7 +1208,7 @@ msgstr ""
 "{error}"
 
 #: src/epubforge/gui/metadata_fetch.py:48
-#: src/epubforge/gui/metadata_fetch.py:172
+#: src/epubforge/gui/metadata_fetch.py:182
 #: src/epubforge/gui/tabs/converter.py:147
 #: src/epubforge/gui/tabs/metadata.py:131 src/epubforge/gui/tabs/stats.py:146
 #: src/epubforge/gui/tabs/toc.py:74
@@ -1219,91 +1230,98 @@ msgstr "Data"
 msgid "Cykl"
 msgstr "Cykl"
 
-#: src/epubforge/gui/metadata_fetch.py:117
+#: src/epubforge/gui/metadata_fetch.py:127
 msgid "Pobierz metadane"
 msgstr "Pobierz metadane"
 
-#: src/epubforge/gui/metadata_fetch.py:130
+#: src/epubforge/gui/metadata_fetch.py:140
 msgid "ISBN książki (10 lub 13 cyfr)"
 msgstr "ISBN książki (10 lub 13 cyfr)"
 
-#: src/epubforge/gui/metadata_fetch.py:133
+#: src/epubforge/gui/metadata_fetch.py:143
 #: src/epubforge/gui/widgets/search_panel.py:112
 msgid "Szukaj"
 msgstr "Szukaj"
 
-#: src/epubforge/gui/metadata_fetch.py:140
+#: src/epubforge/gui/metadata_fetch.py:150
 msgid "Podaj ISBN i naciśnij „Szukaj"
 msgstr "Podaj ISBN i naciśnij „Szukaj"
 
-#: src/epubforge/gui/metadata_fetch.py:146
+#: src/epubforge/gui/metadata_fetch.py:156
 msgid "Dwuklik pobiera pełne metadane wybranej książki"
 msgstr "Dwuklik pobiera pełne metadane wybranej książki"
 
-#: src/epubforge/gui/metadata_fetch.py:176
+#: src/epubforge/gui/metadata_fetch.py:186
 #: src/epubforge/gui/tabs/converter.py:151
 msgid "Autor"
 msgstr "Autor"
 
-#: src/epubforge/gui/metadata_fetch.py:178
+#: src/epubforge/gui/metadata_fetch.py:188
 msgid "Szukaj wg tytułu"
 msgstr "Szukaj wg tytułu"
 
-#: src/epubforge/gui/metadata_fetch.py:180
+#: src/epubforge/gui/metadata_fetch.py:190
 msgid "Wyszukuje kandydatów w LubimyCzytac (gdy nie masz ISBN)"
 msgstr "Wyszukuje kandydatów w LubimyCzytac (gdy nie masz ISBN)"
 
-#: src/epubforge/gui/metadata_fetch.py:200
+#: src/epubforge/gui/metadata_fetch.py:210
 msgid "Podaj ISBN"
 msgstr "Podaj ISBN"
 
-#: src/epubforge/gui/metadata_fetch.py:206
-#: src/epubforge/gui/metadata_fetch.py:258
+#: src/epubforge/gui/metadata_fetch.py:216
+#: src/epubforge/gui/metadata_fetch.py:281
 #: src/epubforge/gui/widgets/search_panel.py:208
 msgid "Szukam…"
 msgstr "Szukam…"
 
-#: src/epubforge/gui/metadata_fetch.py:219
+#: src/epubforge/gui/metadata_fetch.py:232
 msgid "Nie znaleziono metadanych dla tego ISBN (albo brak połączenia)"
 msgstr "Nie znaleziono metadanych dla tego ISBN (albo brak połączenia)"
 
-#: src/epubforge/gui/metadata_fetch.py:225
+#: src/epubforge/gui/metadata_fetch.py:242
+#, python-brace-format
+msgid ""
+"Znaleziono (dopasowanie po tytule — ISBN e-wydania nieobecny w BN, "
+"źródło: {source}). Zweryfikuj i zaznacz pola do nadpisania."
+msgstr "Znaleziono (dopasowanie po tytule — ISBN e-wydania nieobecny w BN, źródło: {source}). Zweryfikuj i zaznacz pola do nadpisania."
+
+#: src/epubforge/gui/metadata_fetch.py:248
 #, python-brace-format
 msgid "Znaleziono metadane (źródło: {source}). Zaznacz pola do nadpisania."
 msgstr "Znaleziono metadane (źródło: {source}). Zaznacz pola do nadpisania."
 
-#: src/epubforge/gui/metadata_fetch.py:235
+#: src/epubforge/gui/metadata_fetch.py:258
 #, python-brace-format
 msgid "Błąd pobierania: {error}"
 msgstr "Błąd pobierania: {error}"
 
-#: src/epubforge/gui/metadata_fetch.py:250
+#: src/epubforge/gui/metadata_fetch.py:273
 msgid "Podaj tytuł do wyszukania"
 msgstr "Podaj tytuł do wyszukania"
 
-#: src/epubforge/gui/metadata_fetch.py:271
+#: src/epubforge/gui/metadata_fetch.py:294
 msgid "Nie znaleziono książek dla tego tytułu/autora"
 msgstr "Nie znaleziono książek dla tego tytułu/autora"
 
-#: src/epubforge/gui/metadata_fetch.py:280
+#: src/epubforge/gui/metadata_fetch.py:303
 #, python-brace-format
 msgid "Znaleziono {n} kandydatów — dwuklik wybiera i pobiera pełne dane"
 msgstr "Znaleziono {n} kandydatów — dwuklik wybiera i pobiera pełne dane"
 
-#: src/epubforge/gui/metadata_fetch.py:295
+#: src/epubforge/gui/metadata_fetch.py:318
 msgid "Pobieram metadane wybranej książki…"
 msgstr "Pobieram metadane wybranej książki…"
 
-#: src/epubforge/gui/metadata_fetch.py:339
+#: src/epubforge/gui/metadata_fetch.py:362
 #, python-brace-format
 msgid "Liczba stron: {count} (zapis do OPF, tylko EPUB 3)"
 msgstr "Liczba stron: {count} (zapis do OPF, tylko EPUB 3)"
 
-#: src/epubforge/gui/metadata_fetch.py:348
+#: src/epubforge/gui/metadata_fetch.py:371
 msgid "Deskryptory (dopisz do tematów):"
 msgstr "Deskryptory (dopisz do tematów):"
 
-#: src/epubforge/gui/metadata_fetch.py:357
+#: src/epubforge/gui/metadata_fetch.py:380
 msgid "Ten temat jest już przypisany"
 msgstr "Ten temat jest już przypisany"
 

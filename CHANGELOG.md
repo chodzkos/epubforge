@@ -8,6 +8,16 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Fixed
+- **Pobieranie metadanych po ISBN z e-booka** (Etap 26) — Biblioteka Narodowa nie
+  znajdowała książek po ISBN wydania elektronicznego, bo katalog BN indeksuje głównie
+  wydania papierowe (e-book ma własny ISBN, którego w BN zwykle nie ma). Provider BN
+  wyszukuje teraz **dwustopniowo**: po ISBN, a przy pudle — po **tytule** (z metadanych
+  EPUB) z **fuzzy dopasowaniem** tytuł+autor (progi z `bookmeta.match`). Pewne trafienie
+  wraca z `match_type="fuzzy"`, a GUI wyraźnie to sygnalizuje („dopasowanie po tytule —
+  ISBN e-wydania nieobecny w BN"), by użytkownik świadomie je zaakceptował. **ISBN pliku
+  NIE jest nadpisywany** ISBN-em papierowym z katalogu — uzupełniane są tylko metadane
+  bibliograficzne (tytuł, autor, rok, wydawca, opis, deskryptory). Oba żądania BN idą
+  przez wspólny cache/rate limiter, z kluczami rozróżniającymi zapytanie isbn vs title.
 - **Zapis EPUB jest teraz reprodukowalny** (`epubforge.core.Epub.save`). Wpisy zapisywane
   po nazwie (mimetype, zmodyfikowane, nowo dodane) dostawały do nagłówka ZIP bieżący czas
   (`writestr` z gołą nazwą używa `time.localtime()`), więc te same zmiany dawały różne bajty
