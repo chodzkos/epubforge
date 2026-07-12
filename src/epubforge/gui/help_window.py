@@ -78,7 +78,28 @@ def _metadata_tab() -> str:
             ["Opis", _code("dc:description"), "Streszczenie książki"],
         ],
     )
-    return _section("Metadane (Dublin Core)", intro + fields)
+    fetch = _section(
+        "Pobieranie metadanych z sieci",
+        _p(
+            "Przycisk <b>Pobierz metadane…</b> dociąga dane po <b>ISBN</b> z łańcucha źródeł: "
+            "<b>Biblioteka Narodowa → LubimyCzytac → Open Library → Google Books</b>. W podglądzie "
+            "zaznaczasz, <b>które pola nadpisać</b> — nigdy nie dzieje się to po cichu."
+        )
+        + _ul(
+            "<b>ISBN e-booka a katalog BN</b> — e-booki mają własny ISBN wydania "
+            "elektronicznego, którego katalog BN (głównie wydania papierowe) często nie ma. "
+            "Gdy ISBN nie trafia, aplikacja automatycznie <b>dopasowuje książkę po tytule</b> "
+            "(z metadanych pliku) i wyraźnie to zaznacza w komunikacie "
+            "(„dopasowanie po tytule — ISBN e-wydania nieobecny w BN”). Uzupełniane są tylko "
+            "metadane bibliograficzne; <b>ISBN pliku pozostaje niezmieniony</b> — zweryfikuj "
+            "dopasowanie przed zatwierdzeniem.",
+            "<b>Bez ISBN</b> — wpisz <b>Tytuł/Autor</b> i użyj „Szukaj wg tytułu”: wyszukiwarka "
+            "LubimyCzytac zwraca listę kandydatów z oceną dopasowania; wybór należy do Ciebie "
+            "(poniżej progu pewności nic nie jest zaznaczane automatycznie).",
+            "<b>Liczba stron</b> wydania papierowego zapisywana jest do OPF (tylko EPUB 3).",
+        ),
+    )
+    return _section("Metadane (Dublin Core)", intro + fields) + fetch
 
 
 def _converter_tab() -> str:
