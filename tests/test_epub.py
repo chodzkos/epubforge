@@ -302,3 +302,47 @@ def test_roundtrip_preserves_stored_entry_compression(tmp_path: Path) -> None:
         assert by_name["OEBPS/content.opf"].compress_type == zipfile.ZIP_DEFLATED
         # Treść nienaruszona.
         assert zf.read("OEBPS/img.bin") == b"already-compressed-payload"
+
+
+def test_save_is_reproducible_with_fixed_timestamp(tmp_path: Path) -> None:
+    """Zapis jest reprodukowalny: wpisy pisane po nazwie (mimetype, zmienione, nowe) mają
+    stały ``date_time`` (1980-01-01), więc te same zmiany dają identyczne bajty niezależnie
+    od zegara. Regresja flaki ``test_idempotent_second_run_is_noop`` (upgrade EPUB 2→3):
+    ``writestr`` z gołą nazwą wstawiał ``time.localtime()`` do nagłówka ZIP.
+    """
+    container = (
+        b'<?xml version="1.0"?>'
+        b'<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">'
+        b'<rootfiles><rootfile full-path="OEBPS/content.opf" '
+        b'media-type="application/oebps-package+xml"/></rootfiles></container>'
+    )
+    opf = (
+        b'<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" '
+        b'version="3.0"><manifest/><spine/></package>'
+    )
+    src = tmp_path / "book.epub"
+    with zipfile.ZipFile(src, "w") as zf:
+        zf.writestr("mimetype", b"application/epub+zip", zipfile.ZIP_STORED)
+        zf.writestr("META-INF/container.xml", container, zipfile.ZIP_DEFLATED)
+        zf.writestr("OEBPS/content.opf", opf, zipfile.ZIP_DEFLATED)
+
+    def save_copy(dst: Path) -> None:
+        work = tmp_path / f"work-{dst.name}"
+        shutil.copy2(src, work)
+        with Epub(work) as epub:
+            epub.write_file("OEBPS/content.opf", opf + b"<!-- zmiana -->")  # zmodyfikowany
+            epub.write_file("OEBPS/new.xhtml", b"<html/>")  # nowy wpis
+            epub.save(dst)
+
+    first = tmp_path / "a.epub"
+    second = tmp_path / "b.epub"
+    save_copy(first)
+    save_copy(second)
+    # Reprodukowalność: dwa zapisy tej samej treści → identyczne bajty (regresja flaki).
+    assert first.read_bytes() == second.read_bytes()
+
+    with zipfile.ZipFile(first) as zf:
+        by_name = {info.filename: info for info in zf.infolist()}
+        assert by_name["mimetype"].date_time == (1980, 1, 1, 0, 0, 0)
+        assert by_name["OEBPS/content.opf"].date_time == (1980, 1, 1, 0, 0, 0)  # zmodyfikowany
+        assert by_name["OEBPS/new.xhtml"].date_time == (1980, 1, 1, 0, 0, 0)  # nowy

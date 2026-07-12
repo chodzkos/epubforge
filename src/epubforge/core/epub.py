@@ -41,6 +41,24 @@ _MIMETYPE_CONTENT = b"application/epub+zip"
 _CONTAINER_NS = "urn:oasis:names:tc:opendocument:xmlns:container"
 _OPF_NS = "http://www.idpf.org/2007/opf"
 
+# Stały timestamp ZIP (1980-01-01 — minimum formatu) dla wpisów zapisywanych po nazwie.
+# ``writestr`` z gołą nazwą wstawia ``time.localtime()``, więc te same dane logiczne dawały
+# różne bajty przy kolejnych zapisach (zależnie od zegara) — łamało to reprodukowalność i
+# idempotencję (np. dwukrotny upgrade EPUB 2→3). Wpisy KOPIOWANE ze źródła zachowują swój
+# oryginalny ``date_time`` (przez ZipInfo), więc niezmieniona treść daje niezmienne bajty.
+_ZIP_EPOCH = (1980, 1, 1, 0, 0, 0)
+
+
+def _named_entry(name: str, compress_type: int) -> zipfile.ZipInfo:
+    """Buduje :class:`zipfile.ZipInfo` z **deterministycznym** ``date_time`` (:data:`_ZIP_EPOCH`).
+
+    Używane zamiast gołej nazwy w ``writestr``, by zapis był reprodukowalny (bez zegara
+    ściennego w nagłówku ZIP).
+    """
+    info = zipfile.ZipInfo(name, date_time=_ZIP_EPOCH)
+    info.compress_type = compress_type
+    return info
+
 
 @dataclass(frozen=True)
 class ManifestItem:
@@ -86,8 +104,8 @@ def _write_epub(source: Path, target: Path, modified: dict[str, bytes], deleted:
     tmp = target.with_suffix(target.suffix + ".tmp")
     written: set[str] = set()
     with zipfile.ZipFile(source) as zin, zipfile.ZipFile(tmp, "w") as zout:
-        # 1. mimetype PIERWSZY i BEZ kompresji.
-        zout.writestr(_MIMETYPE_PATH, _MIMETYPE_CONTENT, compress_type=zipfile.ZIP_STORED)
+        # 1. mimetype PIERWSZY i BEZ kompresji (deterministyczny timestamp — reprodukowalność).
+        zout.writestr(_named_entry(_MIMETYPE_PATH, zipfile.ZIP_STORED), _MIMETYPE_CONTENT)
         written.add(_MIMETYPE_PATH)
         # 2. Reszta wpisów ze źródła: zmienione bierzemy z dict, inne kopiujemy.
         for item in zin.infolist():
@@ -103,13 +121,14 @@ def _write_epub(source: Path, target: Path, modified: dict[str, bytes], deleted:
                 # nie są rekompresowane, a atrybuty nie są resetowane.
                 zout.writestr(item, zin.read(item.filename))
             else:
-                # Zmodyfikowany wpis — nowa treść, domyślna kompresja DEFLATED.
-                zout.writestr(item.filename, data, compress_type=zipfile.ZIP_DEFLATED)
+                # Zmodyfikowany wpis — nowa treść, domyślna kompresja DEFLATED,
+                # deterministyczny timestamp (reprodukowalny zapis).
+                zout.writestr(_named_entry(item.filename, zipfile.ZIP_DEFLATED), data)
             written.add(item.filename)
         # 3. Pliki dodane przez write_file, których nie ma jeszcze w źródle.
         for name, data in modified.items():
             if name not in deleted and name not in written:
-                zout.writestr(name, data, compress_type=zipfile.ZIP_DEFLATED)
+                zout.writestr(_named_entry(name, zipfile.ZIP_DEFLATED), data)
     os.replace(tmp, target)
 
 
