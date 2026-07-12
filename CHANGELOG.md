@@ -7,6 +7,17 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 
 ## [Unreleased]
 
+### Fixed
+- **Pobieranie metadanych po ISBN/tytule** (Etapy 26/28) wywalało się z błędem
+  `SQLite objects created in a thread can only be used in that same thread` przy drugim
+  i kolejnych wyszukiwaniach w dialogu „Pobierz metadane". Cache SQLite providerów
+  (`epubforge.bookmeta.cache.MetadataCache`) powstawał w pierwszym wątku roboczym
+  (leniwa inicjalizacja we współdzielonej instancji providera `chain._LUBIMYCZYTAC`),
+  a kolejne kliknięcia „Szukaj" działają w **nowych** `QThread`-ach. `MetadataCache` jest
+  teraz bezpieczny międzywątkowo: `check_same_thread=False` + `threading.Lock` wokół całej
+  operacji na bazie (odczyt+commit atomowo), `close()` idempotentne. `RateLimiter` też
+  dostał lock na mutowalny stan (czas ostatniego żądania).
+
 ### Changed
 - **Detekcja narzędzi zewnętrznych** (`epubforge.core.detection`) korzysta teraz z
   pakietu **`chodzkos-detection` 0.1.2** dla mechaniki sond (`find_tool`: PATH +

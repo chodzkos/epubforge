@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import sqlite3
+import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -30,10 +31,19 @@ DEFAULT_TTL_SECONDS = 30 * 24 * 60 * 60
 
 
 class MetadataCache:
-    """Trwały cache odpowiedzi providerów w bazie SQLite.
+    """Trwały cache odpowiedzi providerów w bazie SQLite (**bezpieczny międzywątkowo**).
 
     Klucz wpisu to para (``provider``, ``query``) — np. ``("lubimyczytac", url)``.
     Wpisy starsze niż TTL są traktowane jak brak (i usuwane przy odczycie).
+
+    Thread-safety: GUI woła cache z **różnych** ``QThread``-ów (każde „Szukaj" w dialogu
+    „Pobierz metadane" to nowy ``Worker``), a instancja providera jest współdzielona na
+    proces (``chain._LUBIMYCZYTAC``) — więc połączenie SQLite powstaje w jednym wątku, a
+    używane jest w kolejnych. ``sqlite3`` domyślnie tego zabrania (``check_same_thread``).
+    Dlatego: jedno połączenie z ``check_same_thread=False`` + ``threading.Lock`` wokół
+    **całej** operacji na bazie (odczyt+commit atomowo). Nie robimy połączenia-per-wywołanie,
+    bo cache wspiera ``:memory:`` (testy), gdzie osobne połączenia = osobne puste bazy;
+    realną współbieżność żądań i tak serializuje rate limiter.
     """
 
     def __init__(
@@ -50,48 +60,65 @@ class MetadataCache:
             clock: źródło czasu (epoch, sekundy) — wstrzykiwalne dla testów TTL.
         """
         self._clock = clock
-        self._conn = sqlite3.connect(":memory:" if path is None else str(path))
+        # Serializuje KAŻDY dostęp do _conn — patrz docstring klasy (dostęp międzywątkowy).
+        self._lock = threading.Lock()
+        self._conn = sqlite3.connect(
+            ":memory:" if path is None else str(path), check_same_thread=False
+        )
+        self._closed = False
         # Licznik trafień w cache (do statystyki „z cache" w hurtowym wzbogacaniu).
         self.hits = 0
-        self._ensure_schema()
+        with self._lock:
+            self._ensure_schema_locked()
 
     def get(
         self, provider: str, query: str, *, ttl_seconds: int = DEFAULT_TTL_SECONDS
     ) -> str | None:
         """Zwraca zbuforowaną wartość albo ``None`` (brak lub przeterminowana).
 
-        Przeterminowany wpis jest przy okazji usuwany.
+        Przeterminowany wpis jest przy okazji usuwany. Cała operacja (odczyt +
+        ewentualne usunięcie i commit) jest atomowa pod lockiem.
         """
-        row = self._conn.execute(
-            "SELECT value, created_at FROM cache WHERE provider = ? AND query = ?",
-            (provider, query),
-        ).fetchone()
-        if row is None:
-            return None
-        value, created_at = row
-        if self._clock() - float(created_at) > ttl_seconds:
-            self._conn.execute(
-                "DELETE FROM cache WHERE provider = ? AND query = ?", (provider, query)
-            )
-            self._conn.commit()
-            return None
-        self.hits += 1
-        return str(value)
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT value, created_at FROM cache WHERE provider = ? AND query = ?",
+                (provider, query),
+            ).fetchone()
+            if row is None:
+                return None
+            value, created_at = row
+            if self._clock() - float(created_at) > ttl_seconds:
+                self._conn.execute(
+                    "DELETE FROM cache WHERE provider = ? AND query = ?", (provider, query)
+                )
+                self._conn.commit()
+                return None
+            self.hits += 1
+            return str(value)
 
     def set(self, provider: str, query: str, value: str) -> None:
-        """Zapisuje (lub nadpisuje) wartość w cache ze znacznikiem czasu."""
-        self._conn.execute(
-            "INSERT OR REPLACE INTO cache (provider, query, value, created_at) VALUES (?, ?, ?, ?)",
-            (provider, query, value, self._clock()),
-        )
-        self._conn.commit()
+        """Zapisuje (lub nadpisuje) wartość w cache ze znacznikiem czasu (execute+commit atomowo)."""
+        with self._lock:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO cache (provider, query, value, created_at) "
+                "VALUES (?, ?, ?, ?)",
+                (provider, query, value, self._clock()),
+            )
+            self._conn.commit()
 
     def close(self) -> None:
-        """Zamyka połączenie z bazą."""
-        self._conn.close()
+        """Zamyka połączenie z bazą (idempotentne — drugie ``close`` nie rzuca)."""
+        with self._lock:
+            if self._closed:
+                return
+            self._closed = True
+            self._conn.close()
 
-    def _ensure_schema(self) -> None:
-        """Tworzy tabelę cache; przy niezgodnej wersji schematu przebudowuje ją."""
+    def _ensure_schema_locked(self) -> None:
+        """Tworzy tabelę cache; przy niezgodnej wersji schematu przebudowuje ją.
+
+        Zakłada, że ``self._lock`` jest już trzymany przez wołającego (``__init__``).
+        """
         version = int(self._conn.execute("PRAGMA user_version").fetchone()[0])
         if version != _SCHEMA_VERSION:
             if version != 0:
@@ -115,6 +142,11 @@ class RateLimiter:
 
     Zegar (``clock``) i uśpienie (``sleep``) są wstrzykiwalne, więc w testach można
     zasymulować upływ czasu bez realnego czekania.
+
+    Thread-safety: ``wait`` mutuje ``_last`` (czas ostatniego żądania), a jest wołany
+    z różnych ``QThread``-ów przez współdzieloną instancję providera. Cała metoda idzie
+    pod ``threading.Lock`` — to serializuje żądania (dokładnie sens limitera: jedno na
+    raz, w minimalnym odstępie) i eliminuje wyścig na ``_last``.
     """
 
     def __init__(
@@ -133,11 +165,13 @@ class RateLimiter:
         self._clock = clock
         self._sleep = sleep
         self._last: float | None = None
+        self._lock = threading.Lock()
 
     def wait(self) -> None:
         """Blokuje, aż od poprzedniego żądania minie co najmniej ``min_interval``."""
-        if self._last is not None:
-            remaining = self._min_interval - (self._clock() - self._last)
-            if remaining > 0:
-                self._sleep(remaining)
-        self._last = self._clock()
+        with self._lock:
+            if self._last is not None:
+                remaining = self._min_interval - (self._clock() - self._last)
+                if remaining > 0:
+                    self._sleep(remaining)
+            self._last = self._clock()
