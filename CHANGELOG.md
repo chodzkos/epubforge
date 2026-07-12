@@ -8,6 +8,13 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Fixed
+- **Zapis EPUB jest teraz reprodukowalny** (`epubforge.core.Epub.save`). Wpisy zapisywane
+  po nazwie (mimetype, zmodyfikowane, nowo dodane) dostawały do nagłówka ZIP bieżący czas
+  (`writestr` z gołą nazwą używa `time.localtime()`), więc te same zmiany dawały różne bajty
+  przy kolejnych zapisach — łamało to idempotencję (np. dwukrotny upgrade EPUB 2→3 dawał
+  różne pliki, co niedeterministycznie wywracało test na wolniejszych runnerach). Teraz te
+  wpisy mają stały `date_time` (1980-01-01); wpisy **kopiowane** ze źródła nadal zachowują
+  swój oryginalny znacznik czasu.
 - **Pobieranie metadanych po ISBN/tytule** (Etapy 26/28) wywalało się z błędem
   `SQLite objects created in a thread can only be used in that same thread` przy drugim
   i kolejnych wyszukiwaniach w dialogu „Pobierz metadane". Cache SQLite providerów
