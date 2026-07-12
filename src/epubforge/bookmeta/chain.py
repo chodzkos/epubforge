@@ -47,18 +47,23 @@ def fetch_by_isbn(
     *,
     timeout: float = DEFAULT_TIMEOUT,
     providers: tuple[Provider, ...] | None = None,
+    title: str = "",
+    author: str = "",
 ) -> BookRecord | None:
     """Pobiera metadane dla ISBN, scalając wyniki kolejnych providerów.
 
     Args:
         isbn: ISBN w dowolnym zapisie (z myślnikami/spacjami) — walidowany lokalnie.
         timeout: timeout pojedynczego zapytania (sekundy).
-        providers: własna lista providerów (do testów); domyślnie BN → OL → GB.
+        providers: własna lista providerów (do testów); domyślnie BN → LC → OL → GB.
+        title: podpowiedź tytułu z metadanych EPUB — pozwala providerom (BN) na fallback
+            po tytule, gdy ISBN e-wydania nie ma w katalogu.
+        author: podpowiedź autora z metadanych EPUB — wzmacnia fuzzy dopasowanie fallbacku.
 
     Returns:
         Scalony :class:`BookRecord` (pole ``isbn`` zawsze ustawione na wersję
-        znormalizowaną) albo ``None``, gdy ISBN jest niepoprawny lub żadne źródło
-        nie zwróciło danych.
+        znormalizowaną **z pliku** — fallback tytułowy NIE nadpisuje go ISBN-em z katalogu)
+        albo ``None``, gdy ISBN jest niepoprawny lub żadne źródło nie zwróciło danych.
     """
     normalized = validate_isbn(isbn)
     if normalized is None:
@@ -68,7 +73,9 @@ def fetch_by_isbn(
     chain = providers if providers is not None else _DEFAULT_PROVIDERS
     merged: BookRecord | None = None
     for provider in chain:
-        record = provider.fetch_by_isbn(normalized, timeout=timeout)
+        # Podpowiedź tytuł/autor idzie do KAŻDEGO providera; korzysta z niej ten, który
+        # umie fallback (BN). Pudło ISBN u jednego providera nie przerywa łańcucha.
+        record = provider.fetch_by_isbn(normalized, timeout=timeout, title=title, author=author)
         if record is None:
             continue
         merged = record if merged is None else merged.filled_from(record)
@@ -76,6 +83,7 @@ def fetch_by_isbn(
             break
 
     if merged is not None:
+        # ISBN pliku jest źródłem prawdy — nie nadpisujemy go papierowym z katalogu (1c).
         merged.isbn = normalized
     return merged
 

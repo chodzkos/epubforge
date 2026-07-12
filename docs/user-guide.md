@@ -60,6 +60,12 @@ motywu, „O programie") i zakładki robocze:
 - **Metadane** — wybierz folder z EPUB-ami, kliknij plik, edytuj pola Dublin Core
   (tytuł, autorzy, język, wydawca, data, ISBN, tematy, opis) i zapisz (tworzy backup
   `.bak`). Przyciski Sigil / Calibre Editor / Viewer otwierają plik w zewnętrznym programie.
+  Przycisk **Pobierz metadane…** dociąga dane po ISBN (Biblioteka Narodowa → LubimyCzytac →
+  Open Library → Google Books). Uwaga: e-booki mają **własny ISBN** wydania elektronicznego,
+  którego katalog BN (głównie wydania papierowe) często nie ma — wtedy aplikacja
+  automatycznie **dopasowuje książkę po tytule** i wyraźnie to zaznacza w komunikacie
+  („dopasowanie po tytule — ISBN e-wydania nieobecny w BN"). Uzupełniane są tylko metadane
+  bibliograficzne; **ISBN pliku pozostaje niezmieniony**. Zaznacz pola do nadpisania i OK.
 - **Konwerter** — dodaj pliki wejściowe, ustaw metadane i okładkę, wybierz silnik
   (Auto / Pandoc / Calibre / pdf2md) i folder wyjściowy, kliknij **Konwertuj**. Przy
   dodaniu **PDF** — gdy wykryto pdf2md — pojawia się wybór silnika: **pdf2md (zalecany)**

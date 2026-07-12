@@ -71,9 +71,19 @@ class FetchResult:
     page_count: int | None = None
 
 
-def _fetch_worker(emit_line: EmitLine, emit_progress: EmitProgress, isbn: str) -> BookRecord | None:
-    """Funkcja robocza wątku: odpytuje łańcuch providerów po ISBN (bez dotykania GUI)."""
-    return chain.fetch_by_isbn(isbn)
+def _fetch_worker(
+    emit_line: EmitLine,
+    emit_progress: EmitProgress,
+    isbn: str,
+    title: str,
+    author: str,
+) -> BookRecord | None:
+    """Funkcja robocza wątku: odpytuje łańcuch providerów po ISBN (bez dotykania GUI).
+
+    ``title``/``author`` (z metadanych EPUB) idą jako podpowiedź — BN użyje ich do
+    fallbacku po tytule, gdy ISBN e-wydania nie ma w katalogu.
+    """
+    return chain.fetch_by_isbn(isbn, title=title, author=author)
 
 
 def _search_worker(
@@ -204,7 +214,10 @@ class FetchMetadataDialog(QDialog):
         self._ok_button().setEnabled(False)
         self._set_busy(True)
         self.status_label.setText(_("Szukam…"))
-        worker = Worker(_fetch_worker, isbn)
+        # Tytuł/autor z pól dialogu (prefill z metadanych EPUB) → podpowiedź dla fallbacku BN.
+        title = self.title_edit.text().strip()
+        author = self.author_edit.text().strip()
+        worker = Worker(_fetch_worker, isbn, title, author)
         worker.done.connect(self._on_fetched)
         worker.failed.connect(self._on_failed)
         self._worker = worker
@@ -221,11 +234,21 @@ class FetchMetadataDialog(QDialog):
             return
         self._record = result
         self._build_results(result)
-        self.status_label.setText(
-            _("Znaleziono metadane (źródło: {source}). Zaznacz pola do nadpisania.").format(
-                source=result.source or "?"
+        if result.match_type == "fuzzy":
+            # Dopasowano po tytule (ISBN e-wydania nieobecny w katalogu) — użytkownik ma
+            # świadomie zaakceptować; ISBN pliku NIE jest nadpisywany.
+            self.status_label.setText(
+                _(
+                    "Znaleziono (dopasowanie po tytule — ISBN e-wydania nieobecny w BN, "
+                    "źródło: {source}). Zweryfikuj i zaznacz pola do nadpisania."
+                ).format(source=result.source or "?")
             )
-        )
+        else:
+            self.status_label.setText(
+                _("Znaleziono metadane (źródło: {source}). Zaznacz pola do nadpisania.").format(
+                    source=result.source or "?"
+                )
+            )
         self._ok_button().setEnabled(True)
 
     def _on_failed(self, message: str) -> None:
