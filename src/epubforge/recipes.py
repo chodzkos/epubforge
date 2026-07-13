@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
+import os
+import shutil
 import sys
+import tempfile
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, fields, is_dataclass
+from dataclasses import dataclass, fields, is_dataclass, replace
 from pathlib import Path
 from typing import Any, Literal, TypeAlias, cast
 
@@ -36,6 +40,14 @@ StepKind: TypeAlias = Literal["fixer", "export"]
 EmitLine: TypeAlias = Callable[[str], None]
 ShouldCancel: TypeAlias = Callable[[], bool]
 DryRunFormatter: TypeAlias = Callable[[Epub], str]
+
+# Układ ścieżek wyjściowych eksportu:
+# * ``preserve`` — płasko w katalogu docelowym (``out/<stem>.<ext>``); wejścia
+#   o tym samym stem z różnych katalogów kolidują → preflight przerywa;
+# * ``unique`` — podkatalog per WEJŚCIE (``out/<hash>/<stem>.<ext>``), gdzie hash
+#   pochodzi z pełnej ścieżki źródła; deterministyczny i wolny od kolizji między
+#   wejściami niezależnie od kolejności workerów.
+OutputLayout: TypeAlias = Literal["preserve", "unique"]
 
 
 class RecipeError(ValueError):
@@ -78,11 +90,21 @@ class Recipe:
 
 @dataclass(frozen=True)
 class StepSpec:
-    """Jawny wpis rejestru operacji receptur."""
+    """Jawny wpis rejestru operacji receptur.
+
+    Attributes:
+        kind: ``fixer`` (modyfikuje EPUB w miejscu) albo ``export`` (tworzy nowy plik).
+        fn: funkcja wykonawcza kroku.
+        options_cls: dataclass opcji kroku.
+        output_name: dla kroków ``export`` — deterministyczna nazwa pliku wyniku
+            z ``(options, source)``; ``None`` dla fixerów. Używane przez preflight
+            (przewidywanie ścieżek) i wykonanie (spójne z faktycznym zapisem).
+    """
 
     kind: StepKind
     fn: Callable[..., object]
     options_cls: type[Any]
+    output_name: Callable[[Any, Path], str] | None = None
 
 
 def _apply_preset_step(epub: Epub, options: PresetOptions) -> None:
@@ -105,9 +127,41 @@ STEP_REGISTRY: dict[str, StepSpec] = {
     "optimize_images": StepSpec("fixer", optimize_images, ImageFixOptions),
     "subset_fonts": StepSpec("fixer", subset_fonts, FontSubsetOptions),
     "apply_preset": StepSpec("fixer", _apply_preset_step, PresetOptions),
-    "to_mobi": StepSpec("export", _export_mobi_step, MobiOptions),
-    "to_kfx": StepSpec("export", _export_kfx_step, KfxOptions),
+    "to_mobi": StepSpec(
+        "export",
+        _export_mobi_step,
+        MobiOptions,
+        output_name=lambda options, source: f"{source.stem}.{options.fmt}",
+    ),
+    "to_kfx": StepSpec(
+        "export",
+        _export_kfx_step,
+        KfxOptions,
+        output_name=lambda _options, source: f"{source.stem}.kfx",
+    ),
 }
+
+
+def effective_out_dir(source: Path, base_dir: Path, layout: OutputLayout = "preserve") -> Path:
+    """Katalog docelowy dla danego źródła wg układu (``preserve``/``unique``).
+
+    ``unique`` izoluje każde wejście w podkatalogu o nazwie z hasha pełnej ścieżki
+    źródła — dwa ``book.epub`` z różnych katalogów trafiają do różnych podkatalogów,
+    więc nie kolidują (deterministycznie, niezależnie od kolejności workerów).
+    """
+    base = Path(base_dir)
+    if layout == "unique":
+        digest = hashlib.sha256(str(Path(source).resolve(strict=False)).encode("utf-8")).hexdigest()
+        return base / digest[:12]
+    return base
+
+
+def export_output_path(step: RecipeStep, source: Path, out_dir: Path) -> Path:
+    """Przewiduje ścieżkę wyniku kroku eksportu (spójnie z faktycznym zapisem)."""
+    spec = STEP_REGISTRY[step.op]
+    if spec.output_name is None:
+        raise RecipeError(_("Operacja {op} nie jest eksportem").format(op=step.op))
+    return Path(out_dir) / spec.output_name(step.options, Path(source))
 
 
 def load_recipe(path: Path) -> Recipe:
@@ -330,13 +384,27 @@ def _run_fixer_step(step: RecipeStep, epub: Epub) -> object:
 
 
 def _run_export_step(step: RecipeStep, source: Path, out_dir: Path) -> ConversionResult:
+    """Wykonuje krok eksportu **atomowo**: konwersja do katalogu tymczasowego w
+    katalogu docelowym, potem :func:`os.replace` na finalną ścieżkę.
+
+    Konwerter tworzy plik w prywatnym podkatalogu tymczasowym (obok celu, więc na
+    tym samym systemie plików — ``os.replace`` jest atomowy). Dzięki temu nie ma
+    częściowych plików przy błędzie, a podmiana istniejącego wyniku jest atomowa.
+    """
     spec = STEP_REGISTRY[step.op]
     if spec.kind != "export":
         raise RecipeError(_("Operacja {op} nie jest eksportem").format(op=step.op))
-    result = spec.fn(source, out_dir, step.options)
-    if not isinstance(result, ConversionResult):
-        raise RecipeError(_("Eksport {op} nie zwrócił wyniku konwersji").format(op=step.op))
-    return result
+    final = export_output_path(step, source, out_dir)
+    final.parent.mkdir(parents=True, exist_ok=True)
+    tmp_dir = Path(tempfile.mkdtemp(prefix=".epubforge-export-", dir=final.parent))
+    try:
+        result = spec.fn(source, tmp_dir, step.options)
+        if not isinstance(result, ConversionResult):
+            raise RecipeError(_("Eksport {op} nie zwrócił wyniku konwersji").format(op=step.op))
+        os.replace(result.output_path, final)
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+    return replace(result, output_path=final)
 
 
 def _steps_by_kind(
@@ -416,6 +484,7 @@ __all__ = [
     "STEP_REGISTRY",
     "DryRunFormatter",
     "EmitLine",
+    "OutputLayout",
     "PresetOptions",
     "Recipe",
     "RecipeCancelledError",
@@ -423,6 +492,8 @@ __all__ = [
     "RecipeStep",
     "StepSpec",
     "discover_recipes",
+    "effective_out_dir",
+    "export_output_path",
     "load_recipe",
     "resolve_recipe",
     "run_recipe",

@@ -134,7 +134,16 @@ fmt = "mobi"
         return ConversionResult(success=True, output_path=target, log="ok", engine="fake")
 
     monkeypatch.setitem(STEP_REGISTRY, "fix_css", StepSpec("fixer", fake_fix, CssFixOptions))
-    monkeypatch.setitem(STEP_REGISTRY, "to_mobi", StepSpec("export", fake_export, MobiOptions))
+    monkeypatch.setitem(
+        STEP_REGISTRY,
+        "to_mobi",
+        StepSpec(
+            "export",
+            fake_export,
+            MobiOptions,
+            output_name=lambda options, source: f"{source.stem}.{options.fmt}",
+        ),
+    )
     recipe = load_recipe(recipe_path)
     lines: list[str] = []
 
