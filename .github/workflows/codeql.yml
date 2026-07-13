@@ -30,6 +30,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      with:
+        # Analiza CodeQL czyta źródła, ale niczego nie pushuje — bez utrwalonego tokenu.
+        persist-credentials: false
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@02c5e83432fe5497fd85b873b6c9f16a8578e1d9  # v3.37.0

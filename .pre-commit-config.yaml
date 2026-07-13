@@ -1,9 +1,13 @@
 # Hooki NARZĘDZIOWE (ruff/ruff-format/mypy) wołają `uv run` — wymaga `uv` na PATH.
 # uv run używa tego samego środowiska co kanoniczne bramki (gui-kit z gita, Qt, aktualne wersje),
 # więc mypy sprawdza CAŁY src/ (w tym GUI), zamiast izolowanego środowiska z pinami.
+#
+# Supply-chain (F-12): repozytoria hooków przypięte po PEŁNYM SHA commitu (nie po
+# ruchomym tagu). Komentarz obok trzyma czytelną wersję. Podniesienie wersji =
+# świadoma zmiana SHA (nie da się jej podmienić po cichu przez re-tag u dostawcy).
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v6.0.0
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -14,6 +18,13 @@ repos:
       - id: check-merge-conflict
       - id: mixed-line-ending
         args: ['--fix=lf']
+  # Skan sekretów: łapie przypadkowe klucze/tokeny/hasła w commitach, zanim trafią
+  # do historii. `--staged`/`--pre-commit` (domyślne w tym hooku) skanuje wyłącznie
+  # to, co idzie do commita; `--redact` nie wypisuje samego sekretu w logu.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: 83d9cd684c87d95d656c1458ef04895a7f1cbd8e  # v8.30.1
+    hooks:
+      - id: gitleaks
   - repo: local
     hooks:
       - id: ruff
