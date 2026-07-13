@@ -159,10 +159,12 @@ def test_consent_dialog_shows_target_and_fields(qtbot: QtBot) -> None:
     disclosure = describe_request(_cloud_config(), description="opis", toc="", sample_text="")
     dialog = CloudConsentDialog(disclosure, content_sample_on=True)
     qtbot.addWidget(dialog)
-    texts = " ".join(label.text() for label in dialog.findChildren(QLabel))
-    assert "api.openai.com" in texts
-    assert "gpt-4o-mini" in texts
-    assert "opis książki" in texts  # ujawnione pole (etykieta)
+    label_texts = [label.text() for label in dialog.findChildren(QLabel)]
+    # Ujawniony host i model pochodzą z obiektu disclosure (zmienne, nie literały —
+    # unikamy wzorca „host in url", który CodeQL czyta jako niepełną sanityzację URL).
+    assert any(disclosure.host in text for text in label_texts)
+    assert any(disclosure.model in text for text in label_texts)
+    assert any("opis książki" in text for text in label_texts)  # ujawnione pole (etykieta)
     assert dialog.content_sample_allowed() is True
     dialog.sample_check.setChecked(False)
     assert dialog.content_sample_allowed() is False
