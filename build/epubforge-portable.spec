@@ -21,7 +21,9 @@ a = Analysis(
     datas=common.datas(spec_dir),
     hiddenimports=common.HIDDEN_IMPORTS,
     hookspath=[],
-    runtime_hooks=[],
+    # Runtime hook oznacza ten (jednoplikowy) build jako portable — core.config
+    # trzyma wtedy config obok exe, bez sidecara. Tylko wariant portable (F-04).
+    runtime_hooks=[os.path.join(spec_dir, "rthook_portable.py")],
     excludes=common.EXCLUDES,
     noarchive=False,
 )

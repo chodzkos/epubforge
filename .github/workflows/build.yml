@@ -39,11 +39,12 @@ jobs:
       working-directory: build
       run: uv run python -m PyInstaller epubforge-portable.spec --clean --noconfirm --distpath dist --workpath build-tmp
 
-    - name: Smoke test — zasoby w portable (onefile)
+    - name: Smoke test — zasoby + kontrakt portable (onefile)
       # Zamrożony .exe waliduje pakowane zasoby przez `--self-check` i loadery
       # z sys._MEIPASS (nie z checkoutu). Brak dowolnego zasobu → kod ≠ 0 →
       # release przerwany. Windowed build (console=False) nie zwraca kodu do
       # konsoli — używamy Start-Process -Wait -PassThru, a log czytamy z pliku.
+      # Dodatkowo: onefile MUSI raportować `mode=portable` (config obok exe, F-04).
       working-directory: build
       shell: pwsh
       run: |
@@ -55,12 +56,18 @@ jobs:
           Write-Error "portable self-check FAILED (exit $($proc.ExitCode))"
           exit 1
         }
+        if (-not (Select-String -Path $log -Pattern "mode=portable" -Quiet)) {
+          Write-Error "portable .exe nie zglosil mode=portable (kontrakt F-04)"
+          exit 1
+        }
 
     - name: Build onedir (do instalatora)
       working-directory: build
       run: uv run python -m PyInstaller epubforge-dir.spec --clean --noconfirm --distpath dist --workpath build-tmp
 
-    - name: Smoke test — zasoby w onedir
+    - name: Smoke test — zasoby + kontrakt instalatora (onedir)
+      # Onedir/instalator NIE ma runtime hooka portable → MUSI raportować
+      # `mode=installed` (config w %APPDATA%, nie obok exe).
       working-directory: build
       shell: pwsh
       run: |
@@ -70,6 +77,10 @@ jobs:
         if (Test-Path $log) { Get-Content $log }
         if ($proc.ExitCode -ne 0) {
           Write-Error "onedir self-check FAILED (exit $($proc.ExitCode))"
+          exit 1
+        }
+        if (-not (Select-String -Path $log -Pattern "mode=installed" -Quiet)) {
+          Write-Error "onedir .exe nie zglosil mode=installed (kontrakt F-04)"
           exit 1
         }
 

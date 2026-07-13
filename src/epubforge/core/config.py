@@ -2,15 +2,24 @@
 
 Logika (platformdirs, zapis atomowy, ``ConfigStore``/debounce) mieszka w kicie
 ``chodzkos-gui-kit`` (warstwa 0, czysty Python bez Qt — patrz ekstrakcja P1).
-Tu zostaje wyłącznie glue specyficzne dla EpubForge:
+Tu zostaje glue specyficzne dla EpubForge:
 
 * nazwa aplikacji ``"epubforge"`` dla :func:`config_dir`/:func:`default_config_path`;
-* jednorazowa migracja starego configu spod ``.exe`` (:func:`_migrate_legacy_config`),
-  której kit świadomie nie zawiera (była specyficzna dla EpubForge).
+* **kontrakt portable** (:func:`_is_portable`) i **lokalizacja configu**
+  (:func:`config_dir`) — EpubForge jest tu źródłem prawdy, bo jego wariant
+  portable jest samo-oznaczający (patrz niżej), a nie zależny od sidecara;
+* migracja configu przy zmianie lokalizacji między wydaniami (:func:`_migrate_config`).
 
-Reszta (``load_config``, ``save_config``, ``ConfigStore``, ``PORTABLE_MARKER``)
-jest re-eksportowana z kitu, żeby istniejący kod ``core``/``cli``/``gui`` nie
-musiał znać ścieżki importu kitu.
+Kontrakt portable (jednoznaczny — audyt F-04):
+
+* **portable** = zamrożony build ONEFILE oznaczony runtime hookiem
+  (``build/rthook_portable.py`` ustawia ``sys._epubforge_portable = True``) →
+  config leży **obok ``epubforge.exe``**, bez żadnego pliku-sidecara. Wydawany
+  pojedynczy ``epubforge.exe`` jest więc naprawdę przenośny.
+* **instalowany** = build ONEDIR / instalator (bez hooka) → config w lokalizacji
+  systemowej (``%APPDATA%\\epubforge`` / ``~/.config/epubforge``).
+* Dla zgodności wstecznej honorujemy też sidecar ``portable.flag`` obok exe
+  (mechanizm kitu) — ale nie jest już dołączany do wydania.
 """
 
 from __future__ import annotations
@@ -43,6 +52,10 @@ Config = dict[str, Any]
 # ~/.config/epubforge — zgodna z poprzednią lokalizacją, bez migracji ścieżek.
 _APP_NAME = "epubforge"
 
+# Atrybut na ``sys`` ustawiany przez runtime hook builda ONEFILE
+# (``build/rthook_portable.py``). Jego obecność = wariant portable, bez sidecara.
+_PORTABLE_ATTR = "_epubforge_portable"
+
 __all__ = [
     "PORTABLE_MARKER",
     "Config",
@@ -65,41 +78,65 @@ def _exe_dir() -> Path:
 
 
 def _is_portable() -> bool:
-    """Tryb portable: zamrożony exe z markerem ``portable.flag`` obok."""
-    return _is_frozen() and (_exe_dir() / PORTABLE_MARKER).is_file()
+    """Tryb portable: onefile oznaczony runtime hookiem albo (kompat) sidecar obok exe."""
+    if not _is_frozen():
+        return False
+    if bool(getattr(sys, _PORTABLE_ATTR, False)):
+        return True
+    return (_exe_dir() / PORTABLE_MARKER).is_file()
 
 
-def config_dir() -> Path:
-    """Zwraca katalog konfiguracji EpubForge (kit liczy lokalizację z nazwy app)."""
+def _installed_config_dir() -> Path:
+    """Lokalizacja systemowa configu (``%APPDATA%``/``~/.config``) — wariant instalowany.
+
+    Liczy ją kit (platformdirs z ``appauthor=False``/``roaming=True``). Wołamy ją
+    tylko poza trybem portable, więc sidecar-owa gałąź kitu nas tu nie zaskoczy.
+    """
     return _kit_config_dir(_APP_NAME)
 
 
+def config_dir() -> Path:
+    """Zwraca katalog konfiguracji EpubForge — jedyne źródło prawdy o lokalizacji."""
+    if _is_portable():
+        return _exe_dir()
+    return _installed_config_dir()
+
+
 def default_config_path() -> Path:
-    """Zwraca domyślną ścieżkę ``config.json`` (z jednorazową migracją legacy)."""
+    """Zwraca domyślną ścieżkę ``config.json`` (z jednorazową migracją przy zmianie lokalizacji)."""
     path = config_dir() / "config.json"
-    _migrate_legacy_config(path)
+    _migrate_config(path)
     return path
 
 
-def _migrate_legacy_config(target: Path) -> None:
-    """Kopiuje stary config spod exe do nowej lokalizacji (jednorazowo).
+def _migration_source() -> Path | None:
+    """Skąd skopiować config, gdy w bieżącej lokalizacji jeszcze go nie ma."""
+    if _is_portable():
+        # Nowy portable trzyma config OBOK exe — przejmij ustawienia z lokalizacji
+        # systemowej, w której starszy „portable" (wydawany bez markera) błędnie
+        # je trzymał. Dzięki temu aktualizacja nie gubi preferencji.
+        return _installed_config_dir() / "config.json"
+    # Wariant instalowany (config w %APPDATA%) — przejmij config spod exe, który
+    # do v2.0 zamrożony build trzymał zawsze obok siebie.
+    return _exe_dir() / "config.json"
 
-    Dotyczy tylko scenariusza frozen-bez-markera: do v2.0 zamrożony exe trzymał
-    config zawsze obok siebie (utajony bug zapisu w ``Program Files`` dla wersji
-    instalowanej). Jeśli nowy config jeszcze nie istnieje, a obok exe leży stary
-    ``config.json`` — kopiujemy go (oryginału NIE kasujemy: to może być czyjś
-    świadomy układ portable). Kit nie zna tej historii, więc glue zostaje tutaj.
+
+def _migrate_config(target: Path) -> None:
+    """Jednorazowo KOPIUJE config ze starej lokalizacji, gdy w nowej go brak.
+
+    Kopiuje (nie przenosi) — oryginał zostaje nietknięty (może to być czyjś
+    świadomy układ albo współdzielona instalacja), a aktualizacja nie gubi
+    ustawień. Działa tylko w trybie frozen; w dev to no-op. Kit nie zna tej
+    historii lokalizacji, więc glue zostaje tutaj.
     """
-    if _is_portable() or not _is_frozen():
+    if not _is_frozen() or target.exists():
         return
-    if target.exists():
-        return
-    legacy = _exe_dir() / "config.json"
-    if not legacy.is_file():
+    source = _migration_source()
+    if source is None or source == target or not source.is_file():
         return
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(legacy, target)
-        logger.info("Zmigrowano config spod exe %s → %s", legacy, target)
+        shutil.copy2(source, target)
+        logger.info("Zmigrowano config %s → %s", source, target)
     except OSError as exc:
-        logger.warning("Nie udało się zmigrować configu spod exe: %s", exc)
+        logger.warning("Nie udało się zmigrować configu: %s", exc)
