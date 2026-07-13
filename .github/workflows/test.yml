@@ -144,3 +144,56 @@ jobs:
       # Testy GUI (tests/gui) pomija `collect_ignore` w tests/gui/conftest.py, gdy
       # brak PySide6. Bez bramki pokrycia — kod GUI świadomie nie jest tu wykonywany.
       run: uv run pytest -p "no:pytest-qt" -m "not integration"
+
+  package:
+    # Kontrakt dystrybucji (REL): sdist + wheel budują się czysto, koło nie ma
+    # duplikatów, zawiera wszystkie zasoby + py.typed dokładnie raz i po instalacji
+    # w pustym venv czyta je przez publiczne API — bez plików z checkoutu.
+    name: Package (sdist + wheel)
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990  # v8.3.2
+      with:
+        version: "0.8.17"
+        enable-cache: true
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
+      with:
+        python-version: "3.12"
+
+    - name: Build sdist + wheel (koło budowane ZE SDISTA — domyślne uv build)
+      run: uv build
+
+    - name: Build wheel także z drzewa (kontrola tree vs sdist)
+      run: uv build --wheel -o dist_tree
+
+    - name: Parzystość kół — brak duplikatów, identyczny zestaw plików
+      run: |
+        uv run python build/check_wheel_parity.py \
+          dist/epubforge-*.whl dist_tree/epubforge-*.whl
+
+    - name: twine check (metadane sdista i koła)
+      run: uv run --with twine twine check dist/*
+
+    - name: Instalacja koła w pustym venv (bez extra gui)
+      # Osobny interpreter, świeży venv — izolacja od środowiska uv projektu.
+      run: |
+        python -m venv /tmp/pkgvenv
+        /tmp/pkgvenv/bin/python -m pip install --upgrade pip
+        /tmp/pkgvenv/bin/python -m pip install dist/epubforge-*.whl
+
+    - name: CLI z zainstalowanego koła
+      run: |
+        /tmp/pkgvenv/bin/epubforge --version
+        /tmp/pkgvenv/bin/epubforge --help > /dev/null
+        /tmp/pkgvenv/bin/epubforge info > /dev/null
+
+    - name: Odczyt każdego zasobu przez publiczne API (spoza checkoutu)
+      # `cd /tmp`: gwarantuje, że loadery nie sięgają po pliki z drzewa źródeł.
+      run: |
+        cd /tmp
+        /tmp/pkgvenv/bin/python "$GITHUB_WORKSPACE/build/verify_wheel_resources.py"
