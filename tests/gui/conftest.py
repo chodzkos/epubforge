@@ -7,6 +7,7 @@ modułu wykonuje się w fazie zbierania testów, przed pierwszym użyciem fixtur
 
 from __future__ import annotations
 
+import importlib.util
 import os
 from collections.abc import Callable
 from pathlib import Path
@@ -15,6 +16,12 @@ from typing import Any, ClassVar
 import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+# Bazowa instalacja (bez extra ``gui``) nie ma PySide6 — pomijamy cały katalog
+# testów GUI zamiast wywalać kolekcję na ImportError. Testy GUI biegają w torze
+# z zainstalowanym PySide6 (job ``test`` matrycy).
+if importlib.util.find_spec("PySide6") is None:  # pragma: no cover - zależne od środowiska
+    collect_ignore_glob = ["*.py"]
 
 from epubforge.core import Tool
 

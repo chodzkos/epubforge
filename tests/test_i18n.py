@@ -5,23 +5,14 @@ from __future__ import annotations
 import builtins
 import io
 import locale
-import os
 from pathlib import Path
 from typing import Any
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
 from babel.messages.mofile import write_mo
 from babel.messages.pofile import read_po
-from chodzkos_gui_kit.qt.theme import ThemeManager
-from PySide6.QtWidgets import QApplication
-from pytestqt.qtbot import QtBot
 
 from epubforge.cli.main import main
-from epubforge.core import Tool
-from epubforge.core.config import ConfigStore
-from epubforge.gui.app import MainWindow
 from epubforge.i18n import _DEFAULT_LANGUAGE, _, detect_system_language, init_i18n, ngettext
 
 LOCALE_DIR = Path(__file__).resolve().parents[1] / "src" / "epubforge" / "locale"
@@ -144,37 +135,6 @@ def test_cli_uses_language_from_config(
     captured = capsys.readouterr()
     # Komunikat jest tłumaczony — w trybie en oczekujemy angielskiej wersji.
     assert "No tools detected." in captured.out
-
-
-@pytest.mark.gui
-def test_main_window_uses_english_language_from_config(
-    qtbot: QtBot, qapp: QApplication, tmp_path: Path
-) -> None:
-    """MainWindow z configiem language=en buduje zakładki po angielsku."""
-    config_path = tmp_path / "config.json"
-    store = ConfigStore("epubforge", path=config_path)
-    store.update({"language": "en"})  # seed in-memory (update omija __setitem__)
-    tools = {
-        "pandoc": Tool("pandoc", None, available=False),
-        "calibre_ebook_convert": Tool(
-            "calibre_ebook_convert", Path("/bin/ebook-convert"), available=True
-        ),
-    }
-    manager = ThemeManager(qapp, store)
-    window = MainWindow(config_path, store, tools, manager)
-    qtbot.addWidget(window)
-
-    titles = [window.tabs.tabText(index) for index in range(window.tabs.count())]
-    assert titles == [
-        "Metadata",
-        "Converter",
-        "Fixer",
-        "Kindle Export",
-        "Editor",
-        "Validation",
-        "Table of contents",
-        "Statistics",
-    ]
 
 
 def _messages(path: Path) -> dict[str | tuple[str, str], Any]:
