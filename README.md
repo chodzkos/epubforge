@@ -215,6 +215,8 @@ epubforge hyphenate *.epub --method css --jobs 4 --dry-run
 epubforge run --list
 epubforge run kindle-pl book.epub --out-dir dist
 epubforge run czytnik-epub a.epub b.epub --jobs 2
+epubforge run kindle-pl a/book.epub b/book.epub --out-dir dist --output-layout unique  # bez kolizji stemów
+epubforge run kindle-pl book.epub --out-dir dist --force                               # nadpisz istniejące
 epubforge run moja-receptura.toml book.epub --dry-run --diff-full
 
 # Edycja metadanych
@@ -247,6 +249,28 @@ na zapisanym pliku. Wbudowane receptury:
 Dostępne kroki fixerów: `fix_css`, `typography`, `hyphenate`, `optimize_images`,
 `apply_preset`; kroki eksportu: `to_mobi`, `to_kfx`. Własne receptury trzymaj w
 `config_dir()/recipes/*.toml`; receptura użytkownika o tej samej nazwie przykrywa wbudowaną.
+
+#### Kolizje i nadpisywanie wyników eksportu
+
+Przed pierwszym zapisem `run` robi **preflight**: przewiduje wszystkie ścieżki
+wyjściowe i **przerywa** (kod 2), jeśli wykryje kolizję — zanim cokolwiek zapisze.
+Dzięki temu wynik jest deterministyczny **niezależnie od kolejności workerów**
+(`--jobs N`) i nie ma cichego nadpisywania. Wykrywane kolizje:
+
+- **wejścia o tym samym stem** — np. `a/book.epub` i `b/book.epub` dają `out/book.mobi`;
+- **powtórzone kroki eksportu** dające ten sam plik;
+- **istniejące pliki** na dysku.
+
+Polityka nadpisywania:
+
+- `--force` — nadpisz **istniejące** pliki (nie znosi kolizji między wejściami);
+- `--output-layout unique` — rozdziel wyjścia do podkatalogu per wejście
+  (`out/<hash-źródła>/<stem>.<ext>`), co znosi kolizje między plikami o tym samym stem;
+- `--output-layout preserve` (domyślnie) — płasko w `--out-dir`.
+
+Każdy wynik eksportu jest zapisywany **atomowo** (plik tymczasowy w katalogu
+docelowym → `os.replace`), więc błąd nie zostawia pliku w połowie, a podmiana
+istniejącego wyniku jest atomowa.
 
 ```toml
 name = "kindle-pl"

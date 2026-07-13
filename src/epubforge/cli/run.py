@@ -10,7 +10,16 @@ from typing import cast
 
 from epubforge.cli._batch import format_dry_run, run_batch
 from epubforge.i18n import _
-from epubforge.recipes import Recipe, RecipeError, discover_recipes, resolve_recipe, run_recipe
+from epubforge.recipes import (
+    OutputLayout,
+    Recipe,
+    RecipeError,
+    discover_recipes,
+    effective_out_dir,
+    resolve_recipe,
+    run_recipe,
+)
+from epubforge.recipes_plan import describe_conflict, plan_recipe_outputs
 
 
 @dataclass(frozen=True)
@@ -21,6 +30,7 @@ class _RunPayload:
     out_dir: Path | None
     dry_run: bool
     diff_full: bool
+    layout: OutputLayout
 
 
 def add_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -50,6 +60,20 @@ def add_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) 
         default=1,
         help=_("Liczba równoległych procesów roboczych (domyślnie: 1)"),
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help=_("Nadpisz istniejące pliki wyjściowe (nie dotyczy kolizji między wejściami)"),
+    )
+    parser.add_argument(
+        "--output-layout",
+        choices=("preserve", "unique"),
+        default="preserve",
+        help=_(
+            "Układ ścieżek wyjściowych: preserve (płasko w --out-dir) albo "
+            "unique (podkatalog per wejście — bez kolizji między plikami o tym samym stem)"
+        ),
+    )
     parser.set_defaults(func=run)
 
 
@@ -70,13 +94,49 @@ def run(args: argparse.Namespace) -> int:
         print(_("Błąd: {error}").format(error=exc), file=sys.stderr)
         return 1
 
+    # Preflight: przewidź wszystkie ścieżki wyjściowe i przerwij PRZED pierwszym
+    # zapisem, jeśli są kolizje. Dry-run pomija eksport, więc pomija też preflight.
+    if not args.dry_run:
+        conflict_code = _check_output_conflicts(recipe, args)
+        if conflict_code is not None:
+            return conflict_code
+
     payload = _RunPayload(
         recipe=recipe,
         out_dir=args.out_dir,
         dry_run=args.dry_run,
         diff_full=args.diff_full,
+        layout=args.output_layout,
     )
     return run_batch(args.files, jobs=args.jobs, handler=_run_recipe_for_path, payload=payload)
+
+
+def _check_output_conflicts(recipe: Recipe, args: argparse.Namespace) -> int | None:
+    """Uruchamia preflight; zwraca kod wyjścia przy kolizji albo ``None`` gdy czysto."""
+    plan = plan_recipe_outputs(
+        recipe,
+        args.files,
+        args.out_dir,
+        layout=args.output_layout,
+        force=args.force,
+    )
+    if not plan.conflicts:
+        return None
+    print(
+        _("Przerwano przed zapisem — wykryto {count} kolizji ścieżek wyjściowych:").format(
+            count=len(plan.conflicts)
+        ),
+        file=sys.stderr,
+    )
+    for conflict in plan.conflicts:
+        print(f"  {describe_conflict(conflict)}", file=sys.stderr)
+    print(
+        _(
+            "Użyj --force (nadpisanie istniejących) lub --output-layout unique (rozdzielenie wyjść)."
+        ),
+        file=sys.stderr,
+    )
+    return 2
 
 
 def _run_recipe_for_path(path: Path, raw_payload: object) -> str:
@@ -89,7 +149,8 @@ def _run_recipe_for_path(path: Path, raw_payload: object) -> str:
     def emit_line(line: str) -> None:
         lines.append(line)
 
-    output_dir = payload.out_dir if payload.out_dir is not None else path.parent
+    base_dir = payload.out_dir if payload.out_dir is not None else path.parent
+    output_dir = effective_out_dir(path, base_dir, payload.layout)
     outputs = run_recipe(
         payload.recipe,
         path,
