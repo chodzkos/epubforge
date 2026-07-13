@@ -14,7 +14,14 @@ import pytest
 from lxml import etree
 
 from epubforge.core import Epub, Metadata
-from epubforge.core._xml_safe import parse_untrusted
+from epubforge.core._archive import DEFAULT_LIMITS
+from epubforge.core._xml_safe import (
+    DEFAULT_MAX_XML_BYTES,
+    XmlSecurityError,
+    parse_untrusted,
+    parse_untrusted_document,
+    parse_untrusted_tree,
+)
 
 OPF_NS = "http://www.idpf.org/2007/opf"
 DC_NS = "http://purl.org/dc/elements/1.1/"
@@ -148,3 +155,113 @@ def test_malformed_xml_raises_syntax_error() -> None:
     """Niepoprawny składniowo XML nadal rzuca ``XMLSyntaxError`` (strict, bez recover)."""
     with pytest.raises(etree.XMLSyntaxError):
         parse_untrusted(b"<a><b></a>")
+
+
+# ── Centralne API: tryby strict/recover, DTD, HTTP, limit rozmiaru ────────────
+
+_XHTML = (
+    b'<?xml version="1.0"?>'
+    b'<html xmlns="http://www.w3.org/1999/xhtml"><body><p>ok &amp; ok</p></body></html>'
+)
+
+
+def test_valid_xhtml_parses_strict_and_recover() -> None:
+    """Poprawny XHTML parsuje się w obu trybach; predefiniowane encje działają."""
+    for recover in (False, True):
+        root = parse_untrusted(_XHTML, recover=recover)
+        paragraphs = list(root.iter("{http://www.w3.org/1999/xhtml}p"))
+        assert paragraphs and paragraphs[0].text == "ok & ok"
+
+
+def test_malformed_recover_returns_element() -> None:
+    """Tryb recover naprawia drobne błędy składni i zwraca element (nie rzuca)."""
+    root = parse_untrusted(b"<a><b>tekst</a>", recover=True)
+    assert root.tag == "a"
+
+
+def test_external_http_entity_not_fetched() -> None:
+    """Encja ``SYSTEM http://`` nie jest pobierana (no_network) — brak zdalnej treści."""
+    data = b'<!DOCTYPE r [ <!ENTITY xxe SYSTEM "http://127.0.0.1:9/secret"> ]><r>&xxe;</r>'
+    root = parse_untrusted(data, recover=True)
+    serialized = etree.tostring(root, encoding="unicode")
+    assert "127.0.0.1" not in serialized  # żadne zdalne żądanie nie zwróciło treści
+
+
+def test_internal_entities_increasing_amplification_not_expanded() -> None:
+    """Rosnąca amplifikacja encji wewnętrznych (lol1→lol4) nie jest rozwijana."""
+    dtd = (
+        "<!DOCTYPE package [\n"
+        '<!ENTITY lol "lol">\n'
+        '<!ENTITY lol1 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">\n'
+        '<!ENTITY lol2 "&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;">\n'
+        '<!ENTITY lol3 "&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;">\n'
+        '<!ENTITY lol4 "&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;">\n'
+        "]>\n"
+    )
+    root = parse_untrusted(_opf("&lol4;", dtd), recover=True)
+    serialized = etree.tostring(root, encoding="unicode")
+    assert "lollol" not in serialized  # brak eksplozji wykładniczej
+    assert len(serialized) < 10_000
+
+
+def test_doctype_preserved_but_not_executed() -> None:
+    """DOCTYPE jest ZACHOWANY (do serializacji), ale DTD nie jest walidowane/ładowane."""
+    doctype = "<!DOCTYPE html>"
+    data = (
+        f'{doctype}<html xmlns="http://www.w3.org/1999/xhtml"><head></head><body></body></html>'
+    ).encode()
+    root, returned_doctype = parse_untrusted_document(data)
+    assert "DOCTYPE html" in returned_doctype
+    assert root.tag == "{http://www.w3.org/1999/xhtml}html"
+
+
+def test_parse_untrusted_tree_returns_tree() -> None:
+    """Wariant drzewa (css_presets) zwraca ElementTree z dostępnym korzeniem."""
+    tree = parse_untrusted_tree(_XHTML)
+    assert tree.getroot().tag == "{http://www.w3.org/1999/xhtml}html"
+
+
+def test_size_limit_rejects_oversized_in_all_modes() -> None:
+    """Przekroczenie ``max_bytes`` → ``XmlSecurityError`` w każdym wariancie parsera."""
+    data = b"<r>" + b"a" * 200 + b"</r>"
+    with pytest.raises(XmlSecurityError):
+        parse_untrusted(data, max_bytes=10)
+    with pytest.raises(XmlSecurityError):
+        parse_untrusted(data, recover=True, max_bytes=10)
+    with pytest.raises(XmlSecurityError):
+        parse_untrusted_document(data, max_bytes=10)
+    with pytest.raises(XmlSecurityError):
+        parse_untrusted_tree(data, max_bytes=10)
+
+
+def test_size_limit_disabled_with_none() -> None:
+    """``max_bytes=None`` wyłącza kontrolę rozmiaru (parsuje normalnie)."""
+    data = b"<r>" + b"a" * 200 + b"</r>"
+    assert parse_untrusted(data, max_bytes=None).tag == "r"
+
+
+def test_default_size_limit_matches_epub_text_limit() -> None:
+    """Domyślny limit XML jest sprzężony z limitem wpisu tekstowego EPUB."""
+    assert DEFAULT_LIMITS.max_text_size == DEFAULT_MAX_XML_BYTES
+
+
+# ── Strażnik polityki: żadnego parsowania poza modułem bezpieczeństwa ─────────
+
+
+def test_no_direct_xml_parsing_outside_xml_safe() -> None:
+    """Kryterium: ``etree.XMLParser``/``fromstring``/``parse`` istnieją TYLKO w _xml_safe.
+
+    Strażnik regresji — nowe miejsce parsujące treść EPUB poza centralnym,
+    utwardzonym modułem natychmiast wywali ten test.
+    """
+    import re
+
+    src_root = Path(__file__).resolve().parents[1] / "src" / "epubforge"
+    pattern = re.compile(r"etree\.(XMLParser|fromstring|parse)\b")
+    offenders: list[str] = []
+    for path in src_root.rglob("*.py"):
+        if path.name == "_xml_safe.py":
+            continue  # jedyne zatwierdzone miejsce
+        if pattern.search(path.read_text(encoding="utf-8")):
+            offenders.append(str(path.relative_to(src_root)))
+    assert offenders == [], f"Bezpośrednie parsowanie XML poza _xml_safe: {offenders}"

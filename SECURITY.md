@@ -41,10 +41,17 @@ with Epub(path, limits=limits) as epub:
 ```
 
 Zapis kopiuje niezmienione wpisy **strumieniowo** (stały bufor), więc pamięć
-szczytowa nie rośnie z rozmiarem największego wpisu. Niezaufany XML (container,
-OPF, NCX, XHTML) parsujemy utwardzonym parserem lxml (`core/_xml_safe.py`):
-bez rozwijania encji, bez sieci, bez zewnętrznego DTD (ochrona przed XXE i
-rozdmuchaniem encji).
+szczytowa nie rośnie z rozmiarem największego wpisu.
+
+Niezaufany XML (container, OPF, NCX, XHTML) parsujemy **wyłącznie** przez jeden
+utwardzony moduł `core/_xml_safe.py` — poza nim w kodzie nie ma bezpośredniego
+`etree.XMLParser`/`fromstring`/`parse`. Parser ma jawnie ustawione
+`resolve_entities=False`, `no_network=True`, `load_dtd=False`,
+`dtd_validation=False` (DOCTYPE jest zachowany do serializacji, ale **nie
+wykonywany**), co chroni przed XXE, dereferencją `SYSTEM file://`/`http://` i
+rozdmuchaniem encji (billion laughs). Moduł udostępnia tryby strict/recover oraz
+wariant na drzewo, a każdy przyjmuje limit rozmiaru `max_bytes` sprzężony z
+limitem wpisu tekstowego EPUB (odrzucenie „dużego XML" przez `XmlSecurityError`).
 
 ## Model bezpieczeństwa (sieć — metadane książek)
 
