@@ -123,10 +123,16 @@ Pobierz z [Releases](https://github.com/chodzkos/epubforge/releases) jeden z dw�
 - **`epubforge-setup.exe`** — **instalator** (Inno Setup), **rekomendowany**: rozpakowany
   folder (onedir) startuje szybko, dodaje skrót w menu Start, opcjonalnie na pulpicie,
   i odinstalowanie przez „Dodaj/usuń programy".
-- **`epubforge.exe`** — wersja **portable**: jeden plik, bez instalacji. Uwaga: przy każdym
-  uruchomieniu rozpakowuje się do katalogu tymczasowego, więc **startuje wolniej** (kilka
-  sekund) i bywa **fałszywie zgłaszany przez antywirusy**. Config trzyma obok siebie, gdy
-  obok `.exe` leży plik `portable.flag` (dołączany do wariantu portable).
+- **`epubforge.exe`** — wersja **portable**: jeden samowystarczalny plik, bez instalacji
+  i **bez żadnego sidecara**. Config (`config.json`) trzyma **obok `.exe`** — wariant jest
+  samo-oznaczający (runtime hook wbudowany w build onefile), więc wystarczy skopiować sam
+  plik. Uwaga: przy każdym uruchomieniu rozpakowuje się do katalogu tymczasowego, więc
+  **startuje wolniej** (kilka sekund) i bywa **fałszywie zgłaszany przez antywirusy**.
+
+> **Kontrakt lokalizacji configu.** Portable (`epubforge.exe`) → `config.json` **obok exe**.
+> Instalator/onedir → lokalizacja systemowa (`%APPDATA%\epubforge`). Aktualizacja nie gubi
+> ustawień: przy pierwszym uruchomieniu nowa lokalizacja przejmuje (kopiuje) istniejący
+> config ze starej, a oryginał zostaje nietknięty.
 
 Build lokalny (Windows): `build\build.bat` — wybiera Pythona 3.10+ przez launcher
 `py`, przygotowuje zależności, sprawdza środowisko i tworzy pliki w `build\dist\`.

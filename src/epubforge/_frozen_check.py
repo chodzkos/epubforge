@@ -90,6 +90,19 @@ CHECKS: tuple[tuple[str, Callable[[], str]], ...] = (
 )
 
 
+def _config_mode_line() -> str:
+    """Raportuje kontrakt portable: gdzie trafia config i w jakim trybie.
+
+    Onefile (runtime hook) → ``mode=portable`` i katalog obok exe; onedir/instalator
+    → ``mode=installed`` i lokalizacja systemowa. Format ``mode=<tryb>`` jest
+    parsowany przez smoke test w ``build.yml`` do asercji per-wariant.
+    """
+    from epubforge.core import config
+
+    mode = "portable" if config._is_portable() else "installed"
+    return f"config: mode={mode} dir={config.config_dir()}"
+
+
 def check_bundled_resources() -> list[str]:
     """Uruchamia wszystkie kontrole zasobów; rzuca przy pierwszym braku.
 
@@ -118,6 +131,7 @@ def run_self_check(argv: list[str] | None = None) -> int:
     try:
         for detail in check_bundled_resources():
             lines.append(f"OK: {detail}")
+        lines.append(f"OK: {_config_mode_line()}")
         lines.append("OK: wszystkie zasoby wczytane z bundla")
     except Exception as exc:  # celowo szeroko — raport dowolnego braku zasobu jako FAIL
         lines.append(f"FAIL: {exc}")

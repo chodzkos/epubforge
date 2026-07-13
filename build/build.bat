@@ -73,10 +73,10 @@ if not exist "dist\epubforge.exe" (
     echo [BLAD] Portable build nie powiodl sie.
     exit /b 1
 )
-REM Marker wariantu portable — obecnosc obok exe przelacza config na katalog
-REM obok exe (GUI_STANDARD v2.0 sekcja 8). Dystrybuuj exe RAZEM z tym plikiem.
-echo portable > "dist\portable.flag"
-echo [OK] dist\epubforge.exe (+ portable.flag)
+REM Wariant portable jest samo-oznaczajacy: runtime hook (rthook_portable.py)
+REM wpiety w spec sprawia, ze epubforge.exe trzyma config obok siebie BEZ
+REM sidecara. Zaden portable.flag nie jest juz potrzebny ani dolaczany (F-04).
+echo [OK] dist\epubforge.exe (portable - config obok exe)
 
 echo === Smoke test zasobow (portable) ===
 REM `start /wait` czeka na proces GUI i przenosi jego kod wyjscia do errorlevel.
