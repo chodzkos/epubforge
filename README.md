@@ -134,6 +134,14 @@ Instalator powstaje tylko wtedy, gdy zainstalowany jest
 [Inno Setup](https://jrsoftware.org/isinfo.php) (`ISCC.exe` w `PATH` albo
 standardowy katalog `Program Files`).
 
+Oba warianty (`onefile` i `onedir`) pakują ten sam komplet zasobów przez jeden
+współdzielony fragment specu `build/_spec_common.py` (locale, presety CSS,
+`recipes_builtin`, `stats_stopwords`, `data/taxonomy_pl.toml`, ikona) — brak
+któregokolwiek katalogu przerywa build. Po każdym buildzie (lokalnie i w CI
+`build.yml`) zamrożony `.exe` przechodzi **smoke test** `--self-check`: ładuje
+taksonomię, receptury, presety, stopwords i tłumaczenia z bundla (`sys._MEIPASS`,
+nie z checkoutu). Brak dowolnego zasobu → kod ≠ 0 → release przerwany.
+
 ---
 
 ## 📖 Użycie
