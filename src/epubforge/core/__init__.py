@@ -1,5 +1,6 @@
 """Core library modules — biblioteka bez zależności od GUI."""
 
+from epubforge.core._archive import DEFAULT_LIMITS, ArchiveLimits
 from epubforge.core.config import (
     Config,
     ConfigStore,
@@ -17,11 +18,14 @@ from epubforge.core.exceptions import (
     EpubNotOpenError,
     InvalidEpubError,
     OpfNotFoundError,
+    ResourceLimitError,
     ValidationError,
 )
 from epubforge.core.metadata import Metadata, get_number_of_pages, set_number_of_pages
 
 __all__ = [
+    "DEFAULT_LIMITS",
+    "ArchiveLimits",
     "Config",
     "ConfigStore",
     "ConversionError",
@@ -34,6 +38,7 @@ __all__ = [
     "Metadata",
     "OpfNotFoundError",
     "PendingChanges",
+    "ResourceLimitError",
     "Tool",
     "Tools",
     "ValidationError",

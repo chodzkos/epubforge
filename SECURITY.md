@@ -13,6 +13,39 @@ nie są łatane — zalecamy aktualizację do najnowszej.
 | 2.0.x   | :white_check_mark: |
 | < 2.0   | :x:                |
 
+## Model bezpieczeństwa (niezaufane pliki EPUB)
+
+EPUB to archiwum ZIP dostarczone przez użytkownika — traktujemy je jako
+**niezaufane**. Zanim odczytamy jakąkolwiek treść, `epubforge.core.Epub`
+centralnie waliduje archiwum (`core/_archive.py`) **na metadanych nagłówka ZIP,
+bez dekompresji** — każde odrzucenie następuje więc zanim cokolwiek zostanie
+rozpakowane:
+
+- **budżety zasobów** (bomby ZIP / wyczerpanie pamięci): liczba wpisów, suma
+  rozmiarów nieskompresowanych, rozmiar pojedynczego wpisu, rozmiar XML/tekstu,
+  maksymalny współczynnik kompresji i budżet operacji;
+- **niekanoniczne nazwy**: duplikaty, znak NUL, backslash, ścieżki absolutne,
+  segmenty `..` (traversal) oraz wpisy zaszyfrowane — odrzucane z
+  `ResourceLimitError` (bezpieczny komunikat dla GUI/CLI).
+
+Limity są **konfigurowalne i udokumentowane** (`ArchiveLimits`) — domyślne
+wartości nie blokują typowych dużych EPUB-ów (grafika/audio), a kto ufa źródłu,
+może je świadomie podnieść:
+
+```python
+from epubforge.core import Epub, ArchiveLimits
+
+limits = ArchiveLimits(max_entry_size=1024 ** 3)  # np. 1 GiB na wpis
+with Epub(path, limits=limits) as epub:
+    ...
+```
+
+Zapis kopiuje niezmienione wpisy **strumieniowo** (stały bufor), więc pamięć
+szczytowa nie rośnie z rozmiarem największego wpisu. Niezaufany XML (container,
+OPF, NCX, XHTML) parsujemy utwardzonym parserem lxml (`core/_xml_safe.py`):
+bez rozwijania encji, bez sieci, bez zewnętrznego DTD (ochrona przed XXE i
+rozdmuchaniem encji).
+
 ## Zgłaszanie podatności
 
 **Nie zgłaszaj podatności przez publiczne Issues ani Pull Requesty** — dałoby to
