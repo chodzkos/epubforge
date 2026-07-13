@@ -21,8 +21,8 @@ WORKFLOWS_DIR = Path(__file__).resolve().parent.parent / ".github" / "workflows"
 # Joby uruchamiające kod zależności — MUSZĄ mieć wyłącznie odczyt i checkout bez
 # utrwalonych credentials. (plik workflow -> nazwy jobów).
 DEPENDENCY_JOBS = {
-    "test.yml": {"test", "base-cli", "package"},
-    "build.yml": {"build-windows"},
+    "test.yml": {"test", "base-cli", "package", "security-tests"},
+    "build.yml": {"verify-version", "build-dist", "build-windows"},
     "docs.yml": {"build"},
     "codeql.yml": {"analyze"},
 }

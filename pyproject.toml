@@ -88,6 +88,8 @@ dev = [
     # Jawnie (mimo że wciąga je pre-commit) — test bramkowy least-privilege CI
     # parsuje pliki workflow przez PyYAML.
     "pyyaml>=6.0",
+    # Property-based / fuzz testy bezpieczeństwa (ZIP/XML/ścieżki).
+    "hypothesis>=6.100",
 ]
 build = [
     "babel>=2.14",
@@ -206,6 +208,7 @@ markers = [
     "gui: testy GUI (wymagają PySide6; w CI offscreen)",
     "integration: testy integracyjne (wymagają zewnętrznych narzędzi)",
     "slow: wolne testy",
+    "security: testy bezpieczeństwa/odporności (fuzz, property) — osobny stabilny job CI",
 ]
 
 # ── Coverage ───────────────────────────────────────────────────────────────────

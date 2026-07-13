@@ -10,8 +10,8 @@ nie są łatane — zalecamy aktualizację do najnowszej.
 
 | Wersja  | Wspierana          |
 |---------|--------------------|
-| 2.0.x   | :white_check_mark: |
-| < 2.0   | :x:                |
+| 3.0.x   | :white_check_mark: |
+| < 3.0   | :x:                |
 
 ## Model bezpieczeństwa (niezaufane pliki EPUB)
 
@@ -122,6 +122,46 @@ wydań:
   wymuszoną weryfikacją sumy (`--require-checksums`, fail-closed);
 - **skan sekretów** — hook `gitleaks` (pre-commit) blokuje przypadkowe klucze,
   tokeny i hasła, zanim trafią do historii; uzupełnia go cotygodniowy CodeQL.
+
+## Zaufany release i weryfikacja pochodzenia
+
+Każde wydanie jest **weryfikowalne przez odbiorcę** i spójne z wersją w kodzie:
+
+- **kontrola zgodności tagu z wersją** — przed budową sprawdzamy, że tag `vX.Y.Z`
+  odpowiada `epubforge.__version__` (`build/check_tag_version.py`); rozjazd
+  przerywa release, więc opublikowana wersja zawsze zgadza się z tagiem;
+- **pełny test przed publikacją** — sdist+wheel budują się i instalują czysto, oba
+  pliki `.exe` (portable + instalator) przechodzą smoke test `--self-check`;
+- **`SHA256SUMS`** — sumy wszystkich artefaktów są liczone w nieuprzywilejowanym
+  jobie, weryfikowane przed publikacją (`sha256sum -c`) i **dołączane do wydania**,
+  więc każdy może potwierdzić integralność pobranego pliku;
+- **SBOM (CycloneDX/SPDX)** — pełny wykaz zależności dołączony do wydania;
+- **GitHub artifact attestation** — provenance każdego artefaktu (kto/co/skąd zbudował);
+  odbiorca weryfikuje pochodzenie poleceniem:
+
+  ```bash
+  gh attestation verify epubforge.exe --repo chodzkos/epubforge
+  sha256sum -c SHA256SUMS
+  ```
+
+- **podpis Authenticode** — pliki `.exe` są podpisywane, **jeśli** w repozytorium
+  skonfigurowano bezpieczny certyfikat i sekret (krok warunkowy; brak sekretu nie
+  blokuje wydania niepodpisanego).
+
+## Checklista ustawień repozytorium
+
+Poniższe ustawienia utrzymują integralność gałęzi i procesu (do skonfigurowania w
+ustawieniach repozytorium — poza kodem):
+
+- [ ] **Branch protection / ruleset** na `main`: wymagany PR, wymagane statusy,
+      brak bezpośrednich pushy, aktualność gałęzi przed merge, liniowa historia;
+- [ ] **wymagane statusy**: `Tests` (matryca OS/Python), `CodeQL`,
+      `Package (sdist + wheel)`, `Security tests`;
+- [ ] **Secret scanning** + **push protection** włączone;
+- [ ] **Dependabot alerts** (i aktualizacje bezpieczeństwa) włączone;
+- [ ] **Private Vulnerability Reporting** włączone (kanał zgłoszeń, patrz niżej);
+- [ ] środowisko `github-pages` i (opcjonalnie) środowisko podpisu z sekretem
+      certyfikatu ograniczonym do gałęzi wydań.
 
 ## Zgłaszanie podatności
 

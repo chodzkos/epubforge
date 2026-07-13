@@ -6,23 +6,103 @@ on:
   workflow_dispatch:
 
 # Least privilege na poziomie workflow: domyślnie ZERO uprawnień. Token nadajemy
-# jawnie per-job — job budujący tylko czyta i NIE może publikować; osobny job
-# release dostaje minimalny contents:write i publikuje zweryfikowany artefakt (F-12).
+# jawnie per-job — joby budujące tylko czytają i NIE publikują; osobny job release
+# dostaje minimalny write i publikuje zweryfikowany, poświadczony artefakt (F-12/F-17).
 permissions: {}
 
 jobs:
+  verify-version:
+    name: Verify tag matches __version__
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      with:
+        persist-credentials: false
+    - name: Kontrola zgodności tagu z wersją (F-16)
+      # Egzekwowane tylko dla tagów; workflow_dispatch (bez tagu) pomija krok, więc
+      # job kończy się sukcesem i nie blokuje ręcznego builda artefaktów.
+      if: startsWith(github.ref, 'refs/tags/v')
+      run: python build/check_tag_version.py "$GITHUB_REF_NAME"
+
+  build-dist:
+    name: Build sdist + wheel + SBOM
+    needs: verify-version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      with:
+        persist-credentials: false
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990  # v8.3.2
+      with:
+        version: "0.8.17"
+        enable-cache: true
+
+    - name: Setup Python 3.12
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
+      with:
+        python-version: '3.12'
+
+    - name: Build sdist + wheel (koło budowane ZE SDISTA)
+      run: uv build
+
+    - name: twine check (metadane sdista i koła)
+      run: uv run --with twine twine check dist/*
+
+    - name: Pełny test koła — instalacja w pustym venv + odczyt zasobów
+      # „Pełny test wheel" przed wydaniem: koło instaluje się czysto, CLI działa,
+      # a każdy pakowany zasób jest czytelny przez publiczne API SPOZA checkoutu.
+      run: |
+        python -m venv /tmp/relvenv
+        /tmp/relvenv/bin/python -m pip install --upgrade pip
+        /tmp/relvenv/bin/python -m pip install dist/epubforge-*.whl
+        /tmp/relvenv/bin/epubforge --version
+        /tmp/relvenv/bin/epubforge --help > /dev/null
+        (cd /tmp && /tmp/relvenv/bin/python "$GITHUB_WORKSPACE/build/verify_wheel_resources.py")
+
+    - name: Generate SBOM (CycloneDX, F-17)
+      # Wykaz zależności (z uv.lock/pyproject) — dołączany do wydania, by odbiorca
+      # znał pełny łańcuch dostaw artefaktu.
+      uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610  # v0.24.0
+      with:
+        path: .
+        format: cyclonedx-json
+        output-file: dist/epubforge.cdx.json
+        upload-artifact: false
+        upload-release-assets: false
+
+    - name: Generate SHA256SUMS.dist (integralność dla joba release)
+      working-directory: dist
+      run: |
+        sha256sum epubforge-*.whl epubforge-*.tar.gz epubforge.cdx.json > SHA256SUMS.dist
+        cat SHA256SUMS.dist
+
+    - name: Upload dist artifacts
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+      with:
+        name: epubforge-dist
+        path: |
+          dist/epubforge-*.whl
+          dist/epubforge-*.tar.gz
+          dist/epubforge.cdx.json
+          dist/SHA256SUMS.dist
+        retention-days: 30
+
   build-windows:
     name: Build Windows artifacts (.exe + installer)
+    needs: verify-version
     runs-on: windows-latest
-    # Kod zależności (uv sync, PyInstaller, Inno Setup, silnik testów) NIE dostaje
-    # tokenu zapisu ani utrwalonych credentials — może wyłącznie czytać repo.
     permissions:
       contents: read
 
     steps:
     - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       with:
-        # Bez zapisu tokenu do .git/config — build nie ma czym pushować ani tworzyć Release.
         persist-credentials: false
 
     - name: Install uv (build z uv.lock — reprodukowalne artefakty)
@@ -37,8 +117,6 @@ jobs:
         python-version: '3.12'
 
     - name: Install dependencies (z uv.lock — te same wersje co w testach)
-      # `--frozen`: .exe powstaje ze ściśle zablokowanych wersji (lxml, PySide6,
-      # PyInstaller, Pillow itd.), więc Release jest reprodukowalny.
       run: uv sync --frozen --extra build --extra gui --python 3.12
 
     - name: Generate placeholder icon (gdy brak prawdziwej)
@@ -50,10 +128,7 @@ jobs:
 
     - name: Smoke test — zasoby + kontrakt portable (onefile)
       # Zamrożony .exe waliduje pakowane zasoby przez `--self-check` i loadery
-      # z sys._MEIPASS (nie z checkoutu). Brak dowolnego zasobu → kod ≠ 0 →
-      # release przerwany. Windowed build (console=False) nie zwraca kodu do
-      # konsoli — używamy Start-Process -Wait -PassThru, a log czytamy z pliku.
-      # Dodatkowo: onefile MUSI raportować `mode=portable` (config obok exe, F-04).
+      # z sys._MEIPASS (nie z checkoutu). Onefile MUSI raportować `mode=portable`.
       working-directory: build
       shell: pwsh
       run: |
@@ -75,8 +150,6 @@ jobs:
       run: uv run python -m PyInstaller epubforge-dir.spec --clean --noconfirm --distpath dist --workpath build-tmp
 
     - name: Smoke test — zasoby + kontrakt instalatora (onedir)
-      # Onedir/instalator NIE ma runtime hooka portable → MUSI raportować
-      # `mode=installed` (config w %APPDATA%, nie obok exe).
       working-directory: build
       shell: pwsh
       run: |
@@ -93,11 +166,31 @@ jobs:
           exit 1
         }
 
+    - name: Sign EXE (Authenticode — warunkowo, gdy dostępny certyfikat)
+      # Podpisujemy portable + onedir .exe TYLKO gdy skonfigurowano bezpieczny
+      # certyfikat i sekret. Brak sekretu → krok pomijany (wydanie niepodpisane,
+      # ale nie zablokowane). Certyfikat trafia do RUNNER_TEMP i jest kasowany.
+      if: env.WINDOWS_CERT_BASE64 != ''
+      working-directory: build
+      shell: pwsh
+      env:
+        WINDOWS_CERT_BASE64: ${{ secrets.WINDOWS_CERT_BASE64 }}
+        WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+      run: |
+        $pfx = Join-Path $env:RUNNER_TEMP "codesign.pfx"
+        [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERT_BASE64))
+        $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" |
+          Sort-Object FullName -Descending | Select-Object -First 1
+        try {
+          & $signtool.FullName sign /f $pfx /p $env:WINDOWS_CERT_PASSWORD `
+            /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 `
+            "dist/epubforge.exe" "dist/epubforge/epubforge.exe"
+          if ($LASTEXITCODE -ne 0) { throw "signtool zwrocil $LASTEXITCODE" }
+        } finally {
+          Remove-Item $pfx -Force -ErrorAction SilentlyContinue
+        }
+
     - name: Install Inno Setup (pinned + wymuszona weryfikacja sumy)
-      # Przypięta DOKŁADNA wersja (nie „latest") → reprodukowalny instalator.
-      # `--require-checksums`: Chocolatey MUSI zweryfikować sumę SHA pobranego
-      # instalatora z sumą osadzoną w pakiecie (fail-closed) — bez cichego
-      # pominięcia weryfikacji. Zmiana wersji = świadoma edycja pinu.
       run: choco install innosetup --version=6.4.3 --require-checksums --no-progress -y
 
     - name: Build installer
@@ -107,10 +200,28 @@ jobs:
         $ver = uv run python -c "import epubforge; print(epubforge.__version__)"
         & "ISCC.exe" "/DMyAppVersion=$ver" installer.iss
 
-    - name: Generate SHA256SUMS (integralność artefaktów dla joba release)
-      # Sumy liczymy w jobie budującym (bez uprawnień do zapisu). Job release
-      # pobierze artefakt i zweryfikuje te sumy PRZED publikacją — publikuje więc
-      # dokładnie to, co zbudował nieuprzywilejowany build (łańcuch zaufania F-12).
+    - name: Sign installer (Authenticode — warunkowo)
+      if: env.WINDOWS_CERT_BASE64 != ''
+      working-directory: build
+      shell: pwsh
+      env:
+        WINDOWS_CERT_BASE64: ${{ secrets.WINDOWS_CERT_BASE64 }}
+        WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+      run: |
+        $pfx = Join-Path $env:RUNNER_TEMP "codesign.pfx"
+        [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERT_BASE64))
+        $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" |
+          Sort-Object FullName -Descending | Select-Object -First 1
+        try {
+          & $signtool.FullName sign /f $pfx /p $env:WINDOWS_CERT_PASSWORD `
+            /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "dist/epubforge-setup.exe"
+          if ($LASTEXITCODE -ne 0) { throw "signtool zwrocil $LASTEXITCODE" }
+        } finally {
+          Remove-Item $pfx -Force -ErrorAction SilentlyContinue
+        }
+
+    - name: Generate SHA256SUMS.windows (integralność dla joba release)
+      # Sumy liczone po ewentualnym podpisie — pokrywają dokładnie publikowane pliki.
       working-directory: build/dist
       shell: pwsh
       run: |
@@ -118,44 +229,71 @@ jobs:
           "$((Get-FileHash epubforge.exe -Algorithm SHA256).Hash.ToLower())  epubforge.exe"
           "$((Get-FileHash epubforge-setup.exe -Algorithm SHA256).Hash.ToLower())  epubforge-setup.exe"
         )
-        Set-Content -Path SHA256SUMS -Value $lines -Encoding ascii
-        Get-Content SHA256SUMS
+        Set-Content -Path SHA256SUMS.windows -Value $lines -Encoding ascii
+        Get-Content SHA256SUMS.windows
 
-    - name: Upload artifacts
+    - name: Upload Windows artifacts
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
       with:
         name: epubforge-windows
         path: |
           build/dist/epubforge.exe
           build/dist/epubforge-setup.exe
-          build/dist/SHA256SUMS
+          build/dist/SHA256SUMS.windows
         retention-days: 30
 
   release:
-    name: Publish GitHub Release
-    needs: build-windows
-    # Release tylko dla tagów `v*` — workflow_dispatch buduje artefakty bez publikacji.
+    name: Publish GitHub Release (signed provenance)
+    needs: [build-dist, build-windows]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-    # JEDYNY job z zapisem: minimalny contents:write, wyłącznie po to, by utworzyć
-    # Release. Nie instaluje zależności projektu i nie uruchamia żadnego kodu
-    # zależności — konsumuje tylko gotowy, zweryfikowany artefakt.
+    # Minimalny write: utworzenie Release (contents) + poświadczenie pochodzenia
+    # (id-token/attestations). Job NIE instaluje zależności i NIE checkoutuje repo —
+    # konsumuje wyłącznie gotowe, zweryfikowane artefakty.
     permissions:
       contents: write
+      id-token: write
+      attestations: write
 
     steps:
-    - name: Download built artifacts
+    - name: Download Windows artifacts
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131  # v7.0.0
       with:
         name: epubforge-windows
         path: dist
 
-    - name: Verify SHA256SUMS (zweryfikowany artefakt przed publikacją)
-      # Publikujemy dokładnie te binaria, które zbudował nieuprzywilejowany job.
-      # Niezgodność sumy = przerwany release (fail-closed), zanim cokolwiek trafi
-      # do wydania.
+    - name: Download dist artifacts
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131  # v7.0.0
+      with:
+        name: epubforge-dist
+        path: dist
+
+    - name: Verify per-job SHA256SUMS (zweryfikowany artefakt przed publikacją)
+      # Potwierdzamy, że publikujemy dokładnie to, co zbudowały nieuprzywilejowane
+      # joby — niezgodność którejkolwiek sumy przerywa release (fail-closed).
       working-directory: dist
-      run: sha256sum -c SHA256SUMS
+      run: |
+        sha256sum -c SHA256SUMS.windows
+        sha256sum -c SHA256SUMS.dist
+
+    - name: Build combined SHA256SUMS (asset wydania)
+      # Jeden plik sum dla odbiorcy — obejmuje wszystkie publikowane artefakty.
+      working-directory: dist
+      run: |
+        sha256sum epubforge.exe epubforge-setup.exe epubforge-*.whl epubforge-*.tar.gz \
+          epubforge.cdx.json > SHA256SUMS
+        cat SHA256SUMS
+
+    - name: Attestation provenance (F-17)
+      # Poświadczenie pochodzenia (SLSA provenance) dla każdego artefaktu. Odbiorca
+      # weryfikuje: `gh attestation verify <plik> --repo chodzkos/epubforge`.
+      uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373  # v4.1.1
+      with:
+        subject-path: |
+          dist/epubforge.exe
+          dist/epubforge-setup.exe
+          dist/epubforge-*.whl
+          dist/epubforge-*.tar.gz
 
     - name: Create Release
       uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b  # v3.0.1
@@ -163,6 +301,10 @@ jobs:
         files: |
           dist/epubforge.exe
           dist/epubforge-setup.exe
+          dist/epubforge-*.whl
+          dist/epubforge-*.tar.gz
+          dist/epubforge.cdx.json
+          dist/SHA256SUMS
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

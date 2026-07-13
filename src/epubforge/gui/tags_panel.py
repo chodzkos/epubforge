@@ -39,7 +39,20 @@ from epubforge.bookmeta import (
     load_taxonomy,
     suggest_tags_cascade,
 )
-from epubforge.bookmeta.ai import DEFAULT_PRESET
+from epubforge.bookmeta.ai import (
+    DEFAULT_PRESET,
+    FIELD_CONTENT_SAMPLE,
+    FIELD_DESCRIPTION,
+    FIELD_TAXONOMY,
+    FIELD_TOC,
+    AIDisclosure,
+    cloud_consent_granted,
+    content_sample_enabled,
+    describe_request,
+    grant_cloud_consent,
+    is_cloud_endpoint,
+    set_content_sample_enabled,
+)
 from epubforge.core import ConfigStore, Epub, EpubError
 from epubforge.gui.widgets import Section
 from epubforge.gui.workers import EmitLine, EmitProgress, Worker
@@ -59,11 +72,16 @@ def _propose_worker(
     path_str: str,
     use_ai: bool,
     ai_config: AIConfig,
+    send_content_sample: bool,
 ) -> TaggingResult:
-    """Funkcja robocza wątku: uruchamia kaskadę tagowania (bez dotykania GUI)."""
+    """Funkcja robocza wątku: uruchamia kaskadę tagowania (bez dotykania GUI).
+
+    ``send_content_sample=False`` (ustawienie prywatności) całkowicie pomija
+    ekstrakcję próbki treści — do modelu nie trafi żaden fragment tekstu książki.
+    """
     taxonomy = load_taxonomy()
     content_sample = ""
-    if use_ai and not description and path_str:
+    if use_ai and send_content_sample and not description and path_str:
         try:
             with Epub(Path(path_str)) as epub:
                 content_sample = extract_content_sample(epub)
@@ -130,6 +148,15 @@ class TagsPanel(QWidget):
         subjects, description, path = self._context_provider()
         use_ai = self.use_ai_check.isChecked()
         ai_config = load_ai_config(self._config)
+        send_content_sample = self._content_sample_on()
+        # Prywatność (F-19): przy modelu w CHMURZE wymagamy świadomej zgody przed
+        # PIERWSZĄ wysyłką. Brak zgody → tagujemy wyłącznie deterministycznie (bez
+        # wysyłki), więc użytkownik i tak dostaje propozycje z taksonomii.
+        if use_ai and is_cloud_endpoint(ai_config.base_url):
+            if self._ensure_cloud_consent(ai_config, description):
+                send_content_sample = self._content_sample_on()
+            else:
+                use_ai = False
         self.propose_button.setEnabled(False)
         self.status_label.setText(_("Analizuję…"))
         worker = Worker(
@@ -139,11 +166,47 @@ class TagsPanel(QWidget):
             str(path) if path is not None else "",
             use_ai,
             ai_config,
+            send_content_sample,
         )
         worker.done.connect(self._on_done)
         worker.failed.connect(self._on_failed)
         self._worker = worker
         worker.start()
+
+    def _content_sample_on(self) -> bool:
+        """Czy wolno wysyłać próbkę treści (ustawienie prywatności; domyślnie tak)."""
+        return self._config is None or content_sample_enabled(self._config)
+
+    def _ensure_cloud_consent(self, ai_config: AIConfig, description: str) -> bool:
+        """Zapewnia świadomą zgodę na wysyłkę do chmury; zwraca ``True`` gdy wolno wysyłać.
+
+        Ujawnia host, model i dokładną listę pól (ekran :class:`CloudConsentDialog`).
+        Zgoda jest per ``(host, model)`` i zapamiętywana w konfiguracji, więc pytamy
+        tylko przy pierwszej wysyłce do danego celu (albo po zmianie modelu/hosta).
+        """
+        config = self._config
+        would_send_sample = self._content_sample_on() and not description
+        disclosure = describe_request(
+            ai_config,
+            description=description,
+            toc="",
+            sample_text="x" if would_send_sample else "",
+        )
+        if config is not None and cloud_consent_granted(config, disclosure.host, ai_config.model):
+            return True
+        dialog = CloudConsentDialog(
+            disclosure, content_sample_on=self._content_sample_on(), parent=self
+        )
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            self.status_label.setText(
+                _("Nie wysłano do chmury — brak zgody. Pokazuję tagi z taksonomii.")
+            )
+            return False
+        if config is not None:
+            grant_cloud_consent(config, disclosure.host, ai_config.model)
+            set_content_sample_enabled(config, dialog.content_sample_allowed())
+            config.save_now()
+        return True
 
     def _on_done(self, result: object) -> None:
         """Pokazuje dialog propozycji; komunikuje ewentualny błąd AI."""
@@ -222,6 +285,83 @@ class TagProposalsDialog(QDialog):
             if checkbox.isChecked() and tag not in result:
                 result.append(tag)
         return result
+
+
+def _field_label(field: str) -> str:
+    """Tłumaczy identyfikator pola AI na czytelną etykietę dla ekranu zgody."""
+    labels = {
+        FIELD_DESCRIPTION: _("opis książki (dc:description)"),
+        FIELD_TOC: _("spis treści — tytuły rozdziałów"),
+        FIELD_CONTENT_SAMPLE: _("próbka treści książki (fragment tekstu)"),
+        FIELD_TAXONOMY: _("lista dozwolonych tagów (taksonomia)"),
+    }
+    return labels.get(field, field)
+
+
+class CloudConsentDialog(QDialog):
+    """Ekran świadomej zgody przed PIERWSZĄ wysyłką do modelu w chmurze (F-19).
+
+    Ujawnia host, model i DOKŁADNĄ listę pól, które zostaną wysłane, oraz pozwala
+    wyłączyć wysyłkę próbki treści książki. Bez akceptacji nic nie jest wysyłane.
+    """
+
+    def __init__(
+        self,
+        disclosure: AIDisclosure,
+        *,
+        content_sample_on: bool,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle(_("Zgoda na wysyłkę do chmury AI"))
+        self.setMinimumWidth(500)
+        self._build_layout(disclosure, content_sample_on)
+
+    def _build_layout(self, disclosure: AIDisclosure, content_sample_on: bool) -> None:
+        """Buduje ujawnienie (host/model/pola) + przełącznik próbki i przyciski."""
+        layout = QVBoxLayout(self)
+        intro = QLabel(
+            _(
+                "Wybrany model AI działa w chmurze. Przed pierwszą wysyłką potwierdź, co i "
+                "dokąd zostanie wysłane. Dane NIE są wysyłane bez Twojej zgody."
+            )
+        )
+        intro.setWordWrap(True)
+        layout.addWidget(intro)
+
+        target = QLabel(
+            _("Host: {host} ({scheme})\nModel: {model}").format(
+                host=disclosure.host, scheme=disclosure.scheme, model=disclosure.model
+            )
+        )
+        target.setWordWrap(True)
+        target.setStyleSheet("font-weight: bold;")
+        layout.addWidget(target)
+
+        layout.addWidget(QLabel(_("Do modelu zostaną wysłane:")))
+        for field in disclosure.fields:
+            layout.addWidget(QLabel(f"  •  {_field_label(field)}"))
+
+        self.sample_check = QCheckBox(_("Wysyłaj też próbkę treści książki (fragment tekstu)"))
+        self.sample_check.setChecked(content_sample_on)
+        self.sample_check.setToolTip(
+            _("Wyłącz, jeśli nie chcesz, aby jakikolwiek fragment treści książki opuścił komputer.")
+        )
+        layout.addWidget(self.sample_check)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        ok_button = buttons.button(QDialogButtonBox.StandardButton.Ok)
+        if ok_button is not None:
+            ok_button.setText(_("Wyślij za zgodą"))
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def content_sample_allowed(self) -> bool:
+        """Czy użytkownik zezwolił na wysyłkę próbki treści (stan przełącznika)."""
+        return self.sample_check.isChecked()
 
 
 class AISettingsDialog(QDialog):
