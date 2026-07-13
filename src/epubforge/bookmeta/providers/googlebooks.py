@@ -14,6 +14,8 @@ from epubforge.bookmeta._lang import to_iso639_1
 from epubforge.bookmeta.model import BookRecord
 
 _API_URL = "https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}"
+# Pin hosta API (obrona przed SSRF, gdyby URL kiedyś składano z danych zewnętrznych).
+_HOSTS = frozenset({"www.googleapis.com"})
 
 
 class GoogleBooksProvider:
@@ -33,7 +35,7 @@ class GoogleBooksProvider:
 
         ``title``/``author`` (podpowiedzi z EPUB) są ignorowane — GB wyszukuje tylko po ISBN.
         """
-        data = fetch_json(_API_URL.format(isbn=isbn), timeout=timeout)
+        data = fetch_json(_API_URL.format(isbn=isbn), timeout=timeout, allowed_hosts=_HOSTS)
         info = _volume_info(data)
         if info is None:
             return None

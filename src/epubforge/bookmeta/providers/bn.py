@@ -27,6 +27,8 @@ from epubforge.bookmeta.match import CONFIDENCE_THRESHOLD, score_candidate
 from epubforge.bookmeta.model import BookRecord, Candidate
 
 _API_URL = "https://data.bn.org.pl/api/institutions/bibs.json"
+# Pin hosta API BN (defense-in-depth).
+_HOSTS = frozenset({"data.bn.org.pl"})
 
 # Pola MARC 6XX niosące tematy/deskryptory (osobowe, korporatywne, geograficzne,
 # chronologiczne, przedmiotowe, gatunkowe). Bierzemy z nich deskryptory BN.
@@ -139,7 +141,7 @@ class BNProvider:
             except (json.JSONDecodeError, ValueError):
                 return None
         self._rate_limiter.wait()
-        data = fetch_json(url, timeout=timeout)
+        data = fetch_json(url, timeout=timeout, allowed_hosts=_HOSTS)
         if data is None:
             return None
         cache.set(self.name, url, json.dumps(data))

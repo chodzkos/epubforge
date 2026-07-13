@@ -21,7 +21,7 @@ import re
 from html.parser import HTMLParser
 from importlib.metadata import PackageNotFoundError, version
 from typing import Any
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlsplit
 
 from epubforge.bookmeta._http import DEFAULT_TIMEOUT, fetch_bytes
 from epubforge.bookmeta._lang import to_iso639_1
@@ -31,6 +31,10 @@ from epubforge.bookmeta.model import BookRecord, Candidate
 logger = logging.getLogger(__name__)
 
 _BASE = "https://lubimyczytac.pl"
+# Pin hostów LC — provider akceptuje wyłącznie WŁASNE URL-e (bezwzględne na tym
+# hoście albo względne rozwijane względem _BASE). Chroni przed SSRF, gdyby wyniki
+# wyszukiwarki podsunęły absolutny URL na obcy host (redesign/wstrzyknięcie).
+_LC_HOSTS = frozenset({"lubimyczytac.pl", "www.lubimyczytac.pl"})
 _SEARCH_URL = _BASE + "/szukaj/ksiazki?phrase={phrase}"
 # Minimalny odstęp między żądaniami do LC (grzecznościowy scraping).
 _MIN_INTERVAL_SECONDS = 2.0
@@ -145,7 +149,9 @@ class LubimyCzytacProvider:
         if cached is not None:
             return cached
         self._rate_limiter.wait()
-        raw = fetch_bytes(url, timeout=timeout, user_agent=self._user_agent)
+        raw = fetch_bytes(
+            url, timeout=timeout, user_agent=self._user_agent, allowed_hosts=_LC_HOSTS
+        )
         if raw is None:
             return None
         html = raw.decode("utf-8", "replace")
@@ -314,23 +320,41 @@ class _SearchParser(HTMLParser):
 
 
 def _candidates_from_search(html: str) -> list[Candidate]:
-    """Parsuje kandydatów z HTML wyników wyszukiwarki (URL-e absolutne)."""
+    """Parsuje kandydatów z HTML wyników wyszukiwarki (tylko WŁASNE URL-e LC)."""
     parser = _SearchParser()
     parser.feed(html)
     result: list[Candidate] = []
     for card in parser.candidates:
         title = str(card.get("title", ""))
-        url = str(card.get("url", ""))
-        if not title or not url:
-            continue
-        if url.startswith("/"):
-            url = _BASE + url
+        normalized = _normalize_lc_url(str(card.get("url", "")))
+        if not title or normalized is None:
+            continue  # obcy host albo pusty URL — odrzucamy kandydata
         result.append(
             Candidate(
-                title=title, authors=list(card.get("authors", [])), url=url, source="lubimyczytac"
+                title=title,
+                authors=list(card.get("authors", [])),
+                url=normalized,
+                source="lubimyczytac",
             )
         )
     return result
+
+
+def _normalize_lc_url(url: str) -> str | None:
+    """Zwraca WŁASNY URL LC (absolutny na hoście LC albo względny → _BASE) lub ``None``.
+
+    Odrzuca absolutne URL-e na obce hosty i cokolwiek nie-https — kandydat z takim
+    linkiem nie trafia do dalszego pobierania (ochrona przed SSRF przez wyniki wyszukiwarki).
+    """
+    if not url:
+        return None
+    # Względny URL książki (np. ``/ksiazka/...``) — rozwiń względem bazy LC.
+    if url.startswith("/") and not url.startswith("//"):
+        return _BASE + url
+    parts = urlsplit(url)
+    if parts.scheme == "https" and (parts.hostname or "").lower() in _LC_HOSTS:
+        return url
+    return None
 
 
 # ── Pomocniki JSON-LD i HTML ────────────────────────────────────────────────────────

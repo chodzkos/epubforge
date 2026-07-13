@@ -10,8 +10,12 @@ Publiczne API:
 * :func:`validate_isbn` / :func:`extract_isbn_from_epub` — walidacja i ekstrakcja ISBN;
 * :class:`BookRecord` / :class:`Candidate` — rekord metadanych i wynik wyszukiwania.
 
-Cały ruch sieciowy przechodzi przez :mod:`epubforge.bookmeta._http` (tylko https,
-twardy timeout, limit rozmiaru odpowiedzi, każdy błąd → ``None``). Scraping LC jest
+Cały ruch sieciowy przechodzi przez :mod:`epubforge.bookmeta._http` (utwardzony:
+wyłącznie https z walidacją hosta/portu/braku userinfo, blokada SSRF po DNS —
+loopback/prywatne/link-local/reserved, walidacja KAŻDEGO przekierowania z limitem
+liczby hopów, opcjonalny pin hostów per provider, twardy timeout, odrzucanie
+odpowiedzi ponad ``MAX_BYTES``, każdy błąd → ``None``). Provider LubimyCzytac
+akceptuje wyłącznie WŁASNE URL-e (host LC lub link względny). Scraping LC jest
 dodatkowo grzecznościowy: cache + rate limiter (:mod:`epubforge.bookmeta.cache`).
 """
 
