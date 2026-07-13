@@ -34,6 +34,20 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
   teraz bezpieczny międzywątkowo: `check_same_thread=False` + `threading.Lock` wokół całej
   operacji na bazie (odczyt+commit atomowo), `close()` idempotentne. `RateLimiter` też
   dostał lock na mutowalny stan (czas ostatniego żądania).
+- **Dystrybucja sdist/wheel i PEP 561** (#110): naprawiony `uv build`, usunięte
+  zbędne `force-include` (duplikaty wpisów w kole), dodany marker **`py.typed`**
+  (typy widoczne dla `mypy` u konsumentów). Job CI **`package`** buduje oba warianty
+  koła, sprawdza parzystość i czyta zasoby po instalacji w pustym venv.
+- **Kompletne dane w buildzie PyInstaller** (#111): oba spece (onefile + onedir)
+  pakują ten sam komplet zasobów przez wspólny fragment (`build/_spec_common.py`);
+  zamrożony `.exe` przechodzi smoke test **`--self-check`**, ładując taksonomię,
+  receptury, presety, stopwords i tłumaczenia z bundla (`sys._MEIPASS`), nie z checkoutu.
+- **Hermetyczne testy detekcji i odporny cache czasu** (#115): testy wykrywania Javy
+  mockują granicę, więc nie zależą od maszyny CI; `core/detection` odczytuje znacznik
+  czasu cache odpornie na naiwne/przyszłe/niepoprawne strefy i zawsze zapisuje w UTC.
+- **CLI `--engine` dla `kfx`** (#116): dodana wartość `auto` do dozwolonych wyborów
+  (spójnie z resztą komend); guard testowy pilnuje spójności `default` vs `choices`
+  we wszystkich parserach, bez zmiany domyślnego zachowania.
 
 ### Changed
 - **Detekcja narzędzi zewnętrznych** (`epubforge.core.detection`) korzysta teraz z
@@ -45,6 +59,88 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
   (KP3/KindleGen tylko na Windows/macOS). Kontrakt `Tool` (`name`/`path`/`version`/
   `available`) oraz format `config.json` bez zmian — stary cache i override'y działają
   dalej; `epubforge doctor` daje identyczny wynik jak przed migracją.
+- **Odseparowanie CLI od GUI** (#109): warstwy `epubforge.cli`/`epubforge.core`
+  nie importują już `epubforge.gui` ani PySide6 — bazowa instalacja (bez extra
+  `[gui]`) daje pełne CLI i publiczne API, więc nadaje się na serwery/headless.
+  Klasyfikacja plików przeniesiona do `core`; `gui/__init__` ładowany leniwie.
+  Pilnuje tego job CI **`base-cli`**.
+- **Jednoznaczny kontrakt portable** (#112): wariant onefile sam oznacza się przez
+  runtime hook i trzyma `config.json` **obok exe** (bez sidecara), a onedir/instalator
+  używa lokalizacji systemowej — aktualizacja nie gubi ani nie przenosi configu.
+- **SECURITY.md** zaktualizowany do wspieranej linii **3.0.x** oraz o sekcje
+  „Procesy zewnętrzne i bezpieczny zapis", „Łańcuch dostaw i CI", „Zaufany release
+  i weryfikacja pochodzenia" wraz z **checklistą ustawień repozytorium** (branch
+  protection/ruleset, wymagane statusy `Tests`/`CodeQL`/`Package`/`Security tests`,
+  secret scanning, Dependabot, Private Vulnerability Reporting).
+
+### Security
+- **Bezpieczny model niezaufanego EPUB** (`core/_archive.py`): archiwum jest
+  walidowane **na metadanych nagłówka ZIP, bez dekompresji** — budżety zasobów
+  (liczba wpisów, sumaryczny/pojedynczy rozmiar, współczynnik kompresji) chronią
+  przed bombami ZIP, a niekanoniczne nazwy (duplikaty, NUL, backslash, ścieżki
+  absolutne, `..`, wpisy zaszyfrowane) są odrzucane `ResourceLimitError` przed
+  odczytem treści. Limity konfigurowalne przez `ArchiveLimits`; zapis kopiuje
+  niezmienione wpisy **strumieniowo** (stała pamięć). (#113)
+- **Utwardzony klient HTTP metadanych** (`bookmeta/_http.py`, F-10): wyłącznie
+  `https` (schemat/host/port walidowane przez `urlsplit`), **ochrona przed SSRF** —
+  host rozwiązywany przez DNS, adresy loopback/prywatne/link-local/reserved/multicast
+  odrzucane; własny handler sprawdza **każde przekierowanie** (bez downgrade do HTTP,
+  bez skoku na host lokalny) i ogranicza ich liczbę; **pin hostów per provider**
+  (LubimyCzytac akceptuje tylko własne URL-e); twardy limit rozmiaru odpowiedzi i
+  timeout, każdy błąd sieci kończy się `None` (nigdy wyjątkiem w UI). Bandit B310
+  wyeliminowany przez bezpieczny wrapper `opener.open`. (#117)
+- **Jedna polityka parsowania XML** (`core/_xml_safe.py`, F-11): CAŁA treść EPUB
+  (container/OPF/NCX/XHTML, podgląd, edytor, hyphenator, presety CSS) idzie przez
+  jeden utwardzony moduł z jawnym `resolve_entities=False`, `no_network=True`,
+  `load_dtd=False`, `dtd_validation=False` (DOCTYPE zachowany, **nie wykonywany**) i
+  limitem rozmiaru `max_bytes` — ochrona przed XXE, `SYSTEM file://`/`http://` i
+  rozdmuchaniem encji. Test bramkowy pilnuje braku `etree.XMLParser`/`fromstring`/
+  `parse` poza modułem bezpieczeństwa. (#118)
+- **Minimalne uprawnienia CI i łańcuch dostaw** (F-12): domyślnie `permissions: {}`,
+  joby z kodem zależności dostają wyłącznie `contents: read` i checkout
+  `persist-credentials: false`; build oddzielony od publikacji; wszystkie akcje
+  GitHub i hooki pre-commit **przypięte po pełnym SHA**; Inno Setup instalowany w
+  przypiętej wersji z `--require-checksums`; dodany **skan sekretów** `gitleaks`.
+  Test bramkowy `test_ci_workflows.py` egzekwuje te niezmienniki. (#119)
+- **Wspólny runner procesów zewnętrznych** (`core/process.py`, F-13): jeden silnik
+  dla trybu synchronicznego i strumieniowego (ta sama semantyka) dla wszystkich
+  konwerterów i walidatorów — domyślne/konfigurowalne timeouty, limit
+  przechowywanego logu z licznikiem uciętych bajtów, ograniczona kolejka
+  (backpressure) i **ubijanie całego drzewa/grupy procesu** przy anulowaniu lub
+  timeoucie na Windows (`taskkill /T`), Linux i macOS (`start_new_session` +
+  `killpg`). Tor detekcji narzędzi celowo pozostaje na własnej mechanice sond. (#120)
+- **Bezpieczny zapis EPUB** (`core/_epub_write.py`, F-14): nowa treść trafia do
+  **unikalnego pliku tymczasowego w katalogu docelowym**, jest fsyncowana (plik, a na
+  POSIX także katalog) i podmieniana atomowo (`os.replace`); przy dowolnym błędzie
+  (brak miejsca, brak uprawnień, przerwana podmiana) temp jest sprzątany, a
+  **oryginał zostaje nietknięty**. `output_path` równy źródłu jest traktowany jak
+  nadpisanie oryginału; nadpisanie poprzedza **rotowany backup** (`.bak`, `.bak.1`, …)
+  z konfigurowalną retencją. Dodane testy fault-injection (timeout, ogromny log,
+  proces potomny, ENOSPC, PermissionError, przerwany `os.replace`). (#120)
+- **Testy odporności** (F-18): fuzz/property (hypothesis) dla ZIP/XML/ścieżek —
+  parser nigdy nie wywala/nie sięga sieci, a zaakceptowana nazwa wpisu nie ucieka
+  poza archiwum. Uruchamiane w **osobnym, stabilnym jobie CI** `security-tests`
+  (marker `security`). Podniesione pokrycie modułów krytycznych (`gui/workers` 100%,
+  `cli/run` 96%, `_frozen_check` 99%, `recipes` 84%). (#121)
+
+### Added
+- **Preflight kolizji ścieżek wyjściowych i polityka nadpisywania** (`epubforge run`,
+  #114): przewidywanie wszystkich ścieżek wyjściowych i przerwanie **przed** pierwszym
+  zapisem przy kolizji; flaga `--force` (nadpisz istniejące) i `--output-layout`
+  (`preserve`/`unique`). Eksport receptur jest **atomowy** (konwersja do katalogu
+  tymczasowego obok celu → `os.replace`). (#114)
+- **Zaufany, weryfikowalny release** (F-16/F-17): bramka zgodności tagu `vX.Y.Z` z
+  `epubforge.__version__` (`build/check_tag_version.py`), pełny test wheel i smoke
+  test obu `.exe` przed wydaniem, generacja **`SHA256SUMS`**, **SBOM (CycloneDX)** i
+  **GitHub artifact attestation** (provenance) jako assety wydania oraz **warunkowy
+  podpis Authenticode** (gdy skonfigurowano certyfikat i sekret). Odbiorca weryfikuje
+  pochodzenie: `gh attestation verify <plik> --repo chodzkos/epubforge` oraz
+  `sha256sum -c SHA256SUMS`. (#121)
+- **Prywatność tagowania AI** (F-19): przed **pierwszą** wysyłką do modelu w
+  **chmurze** GUI pokazuje ekran świadomej zgody z hostem, modelem i dokładną listą
+  wysyłanych pól (opis / spis treści / próbka treści / listy taksonomii) i wymaga
+  akceptacji (zapisywana per `host+model`); osobne ustawienie **wyłącza wysyłkę
+  próbki treści** książki. Modele lokalne (loopback/LAN) nie wymagają zgody. (#121)
 
 ## [3.0.0] - 2026-07-10
 
