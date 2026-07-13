@@ -50,23 +50,13 @@ def _force_utf8_streams() -> None:
             reconfigure(encoding="utf-8", errors="backslashreplace")
 
 
-def main(argv: list[str] | None = None) -> int:
-    """Punkt wejścia komendy `epubforge`.
+def build_parser() -> argparse.ArgumentParser:
+    """Buduje główny parser argparse ze wszystkimi subkomendami.
 
-    Args:
-        argv: Lista argumentów (głównie do testowania). None = sys.argv.
-
-    Returns:
-        Kod wyjścia procesu (0 = OK).
+    Wydzielone z :func:`main`, by testy mogły introspekcję parsera (spójność
+    ``default``/``choices``, snapshot pomocy) bez uruchamiania komend. Wymaga
+    wcześniejszego :func:`~epubforge.i18n.init_i18n` (teksty pomocy przez ``_()``).
     """
-    # PyInstaller/Windows: ProcessPoolExecutor w komendach batchowych wymaga
-    # freeze_support(), zanim uruchomimy parser i ewentualnie zespawnujemy workery.
-    multiprocessing.freeze_support()
-    # Zanim cokolwiek wypiszemy (pomoc, wersja, tłumaczone komunikaty) — UTF-8.
-    _force_utf8_streams()
-    config = load_config(default_config_path())
-    init_i18n(str(config.get("language", "auto")))
-
     parser = argparse.ArgumentParser(
         prog="epubforge",
         description=_("Nowoczesny zestaw narzędzi do EPUB — walidacja, naprawa, konwersja."),
@@ -95,7 +85,27 @@ def main(argv: list[str] | None = None) -> int:
     toc.add_parser(subparsers)
     typo.add_parser(subparsers)
     upgrade.add_parser(subparsers)
+    return parser
 
+
+def main(argv: list[str] | None = None) -> int:
+    """Punkt wejścia komendy `epubforge`.
+
+    Args:
+        argv: Lista argumentów (głównie do testowania). None = sys.argv.
+
+    Returns:
+        Kod wyjścia procesu (0 = OK).
+    """
+    # PyInstaller/Windows: ProcessPoolExecutor w komendach batchowych wymaga
+    # freeze_support(), zanim uruchomimy parser i ewentualnie zespawnujemy workery.
+    multiprocessing.freeze_support()
+    # Zanim cokolwiek wypiszemy (pomoc, wersja, tłumaczone komunikaty) — UTF-8.
+    _force_utf8_streams()
+    config = load_config(default_config_path())
+    init_i18n(str(config.get("language", "auto")))
+
+    parser = build_parser()
     args = parser.parse_args(argv)
 
     if hasattr(args, "func"):

@@ -19,7 +19,7 @@ def add_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) 
     parser.add_argument("file", type=Path, help=_("Plik EPUB do konwersji"))
     parser.add_argument(
         "--engine",
-        choices=("calibre", "kindle-previewer"),
+        choices=("auto", "calibre", "kindle-previewer"),
         default="auto",
         help=_("Silnik KFX; domyślnie auto: Calibre+KFX Output, potem Kindle Previewer"),
     )

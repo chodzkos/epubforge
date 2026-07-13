@@ -200,7 +200,8 @@ epubforge meta book.epub --title "Krew elfów" --author "Sapkowski, Andrzej" \
 # Statystyki książki (+ raport HTML)
 epubforge stats book.epub --report stats.html --top 50
 
-# Eksport Kindle
+# Eksport Kindle (kfx: --engine auto [domyślnie] | calibre | kindle-previewer)
+epubforge kfx book.epub                          # auto: Calibre+KFX Output, potem Kindle Previewer
 epubforge kfx book.epub --engine calibre
 epubforge mobi book.epub --format azw3 --engine calibre
 ```
