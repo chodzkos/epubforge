@@ -15,6 +15,8 @@ from epubforge.bookmeta.model import BookRecord
 
 _ISBN_URL = "https://openlibrary.org/isbn/{isbn}.json"
 _AUTHOR_URL = "https://openlibrary.org{key}.json"
+# Pin hosta — chroni też przed podsunięciem obcego hosta przez pole ``key`` z odpowiedzi.
+_HOSTS = frozenset({"openlibrary.org"})
 # Górny limit dociąganych autorów — chroni przed lawiną zapytań przy dziwnym rekordzie.
 _MAX_AUTHORS = 8
 
@@ -36,7 +38,7 @@ class OpenLibraryProvider:
 
         ``title``/``author`` (podpowiedzi z EPUB) są ignorowane — OL wyszukuje tylko po ISBN.
         """
-        data = fetch_json(_ISBN_URL.format(isbn=isbn), timeout=timeout)
+        data = fetch_json(_ISBN_URL.format(isbn=isbn), timeout=timeout, allowed_hosts=_HOSTS)
         if not isinstance(data, dict):
             return None
         record = BookRecord(
@@ -71,7 +73,7 @@ def _authors(authors: Any, timeout: float) -> list[str]:
         key = entry.get("key") if isinstance(entry, dict) else None
         if not isinstance(key, str) or not key.startswith("/"):
             continue
-        detail = fetch_json(_AUTHOR_URL.format(key=key), timeout=timeout)
+        detail = fetch_json(_AUTHOR_URL.format(key=key), timeout=timeout, allowed_hosts=_HOSTS)
         if not isinstance(detail, dict):
             continue
         name = str(detail.get("name") or detail.get("personal_name") or "").strip()

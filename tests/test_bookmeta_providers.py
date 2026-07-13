@@ -15,7 +15,7 @@ from urllib.parse import quote_plus
 
 import pytest
 
-from epubforge.bookmeta import _http, chain, fetch_by_isbn
+from epubforge.bookmeta import chain, fetch_by_isbn
 from epubforge.bookmeta.cache import MetadataCache, RateLimiter
 from epubforge.bookmeta.providers import (
     BNProvider,
@@ -23,6 +23,7 @@ from epubforge.bookmeta.providers import (
     LubimyCzytacProvider,
     OpenLibraryProvider,
 )
+from tests._net import patch_net
 
 _FIXTURES = Path(__file__).parent / "fixtures" / "bookmeta"
 
@@ -91,7 +92,7 @@ def _url_router(routes: dict[str, bytes]) -> Callable[..., _FakeResponse]:
 
 def _install_routes(monkeypatch: pytest.MonkeyPatch, routes: dict[str, bytes]) -> None:
     """Podmienia urlopen w kliencie HTTP na router URL→treść."""
-    monkeypatch.setattr(_http.urllib.request, "urlopen", _url_router(routes))
+    patch_net(monkeypatch, _url_router(routes))
 
 
 def _fixture_bytes(name: str) -> bytes:
@@ -156,7 +157,7 @@ def _install_recording_routes(
             raise urllib.error.URLError(f"brak atrapy dla {url}")
         return _FakeResponse(routes[url])
 
-    monkeypatch.setattr(_http.urllib.request, "urlopen", opener)
+    patch_net(monkeypatch, opener)
     return calls
 
 
@@ -306,7 +307,7 @@ def test_chain_rejects_invalid_isbn_without_network(monkeypatch: pytest.MonkeyPa
     def explode(*_args: object, **_kwargs: object) -> None:
         raise AssertionError("łańcuch nie powinien odpytywać sieci dla złego ISBN")
 
-    monkeypatch.setattr(_http.urllib.request, "urlopen", explode)
+    patch_net(monkeypatch, explode)
     assert fetch_by_isbn("0000000000001") is None  # zła suma kontrolna ISBN-13
 
 

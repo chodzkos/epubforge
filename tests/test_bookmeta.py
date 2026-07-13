@@ -1,8 +1,9 @@
 """Testy warstwy metadanych: walidacja ISBN, klient HTTP, model scalania.
 
-Testy klienta HTTP mockują ``urllib.request.urlopen`` — nie wychodzą do sieci.
-Wzorzec ``_FakeResponse`` odwzorowuje kontrakt odpowiedzi (context manager +
-``read(n)``), więc sprawdzamy też limit rozmiaru i odrzucanie nie-https URL.
+Testy klienta HTTP mockują sieć przez ``tests._net.patch_net`` (opener + DNS) —
+nie wychodzą do sieci. Wzorzec ``_FakeResponse`` odwzorowuje kontrakt odpowiedzi
+(context manager + ``read(n)``), więc sprawdzamy też limit rozmiaru i odrzucanie
+nie-https URL. Twarda walidacja URL/redirect/SSRF ma osobny plik ``test_http_security``.
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ from epubforge.bookmeta._lang import to_iso639_1
 from epubforge.bookmeta.isbn import _find_isbn_in_text
 from epubforge.bookmeta.model import BookRecord
 from epubforge.core import ManifestItem
+from tests._net import patch_net
 
 # ── Walidacja ISBN ──────────────────────────────────────────────────────────────
 
@@ -87,7 +89,7 @@ def _opener(body: bytes | Exception) -> Callable[..., _FakeResponse]:
 
 def test_fetch_json_happy_path(monkeypatch: pytest.MonkeyPatch) -> None:
     """Poprawny JSON spod https jest dekodowany."""
-    monkeypatch.setattr(_http.urllib.request, "urlopen", _opener(b'{"ok": true}'))
+    patch_net(monkeypatch, _opener(b'{"ok": true}'))
     assert _http.fetch_json("https://example.org/x.json") == {"ok": True}
 
 
@@ -97,20 +99,26 @@ def test_fetch_bytes_rejects_non_https(monkeypatch: pytest.MonkeyPatch) -> None:
     def explode(*_args: object, **_kwargs: object) -> None:
         raise AssertionError("urlopen nie powinno zostać wywołane dla http://")
 
-    monkeypatch.setattr(_http.urllib.request, "urlopen", explode)
+    patch_net(monkeypatch, explode)
     assert _http.fetch_bytes("http://example.org/x.json") is None
 
 
 def test_fetch_json_over_limit_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Odpowiedź większa niż MAX_BYTES jest ucinana → zepsuty JSON → None."""
+    """Odpowiedź większa niż MAX_BYTES jest odrzucana (nie ucinana) → None."""
     oversized = b'{"x": "' + b"a" * (_http.MAX_BYTES + 100) + b'"}'
-    monkeypatch.setattr(_http.urllib.request, "urlopen", _opener(oversized))
+    patch_net(monkeypatch, _opener(oversized))
     assert _http.fetch_json("https://example.org/big.json") is None
 
 
-def test_fetch_bytes_truncates_to_max(monkeypatch: pytest.MonkeyPatch) -> None:
-    """fetch_bytes nigdy nie zwraca więcej niż MAX_BYTES bajtów."""
-    monkeypatch.setattr(_http.urllib.request, "urlopen", _opener(b"z" * (_http.MAX_BYTES * 2)))
+def test_fetch_bytes_rejects_over_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Odpowiedź ponad MAX_BYTES jest ODRZUCANA (odczyt MAX_BYTES+1, bez cichego ucięcia)."""
+    patch_net(monkeypatch, _opener(b"z" * (_http.MAX_BYTES * 2)))
+    assert _http.fetch_bytes("https://example.org/big") is None
+
+
+def test_fetch_bytes_accepts_exactly_max(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Odpowiedź dokładnie MAX_BYTES bajtów jest akceptowana w całości."""
+    patch_net(monkeypatch, _opener(b"z" * _http.MAX_BYTES))
     data = _http.fetch_bytes("https://example.org/big")
     assert data is not None
     assert len(data) == _http.MAX_BYTES
@@ -118,15 +126,13 @@ def test_fetch_bytes_truncates_to_max(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_fetch_json_timeout_returns_none(monkeypatch: pytest.MonkeyPatch) -> None:
     """Timeout/błąd sieci → None (żaden wyjątek nie wychodzi na zewnątrz)."""
-    monkeypatch.setattr(
-        _http.urllib.request, "urlopen", _opener(urllib.error.URLError("timed out"))
-    )
+    patch_net(monkeypatch, _opener(urllib.error.URLError("timed out")))
     assert _http.fetch_json("https://example.org/x.json") is None
 
 
 def test_fetch_json_invalid_json_returns_none(monkeypatch: pytest.MonkeyPatch) -> None:
     """Niepoprawny JSON → None."""
-    monkeypatch.setattr(_http.urllib.request, "urlopen", _opener(b"<html>not json</html>"))
+    patch_net(monkeypatch, _opener(b"<html>not json</html>"))
     assert _http.fetch_json("https://example.org/x.json") is None
 
 

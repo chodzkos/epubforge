@@ -14,13 +14,13 @@ from typing import Any
 
 import pytest
 
-from epubforge.bookmeta import _http
 from epubforge.bookmeta.cache import MetadataCache, RateLimiter
 from epubforge.bookmeta.providers.lubimyczytac import (
     LubimyCzytacProvider,
     _candidates_from_search,
     _record_from_page,
 )
+from tests._net import patch_net
 
 _FIXTURES = Path(__file__).parent / "fixtures" / "lc"
 _WITCHER_URL = "https://lubimyczytac.pl/ksiazka/303348/wiedzmin-ostatnie-zyczenie"
@@ -123,7 +123,7 @@ def test_fetch_by_isbn_via_network(monkeypatch: pytest.MonkeyPatch) -> None:
         _WITCHER_URL: _fixture("book_witcher.html").encode("utf-8"),
     }
     calls = [0]
-    monkeypatch.setattr(_http.urllib.request, "urlopen", _router(routes, calls))
+    patch_net(monkeypatch, _router(routes, calls))
     record = _provider().fetch_by_isbn(isbn)
     assert record is not None
     assert record.title == "Wiedźmin. Ostatnie życzenie"
@@ -139,7 +139,7 @@ def test_cache_hit_skips_network(monkeypatch: pytest.MonkeyPatch) -> None:
     def explode(*_a: object, **_k: object) -> None:
         raise AssertionError("urlopen nie powinno zostać wywołane przy trafieniu w cache")
 
-    monkeypatch.setattr(_http.urllib.request, "urlopen", explode)
+    patch_net(monkeypatch, explode)
     record = _provider(cache).fetch_record(_WITCHER_URL)
     assert record is not None
     assert record.title == "Wiedźmin. Ostatnie życzenie"
@@ -150,7 +150,7 @@ def test_fetch_stores_in_cache(monkeypatch: pytest.MonkeyPatch) -> None:
     cache = MetadataCache()
     routes = {_WITCHER_URL: _fixture("book_witcher.html").encode("utf-8")}
     calls = [0]
-    monkeypatch.setattr(_http.urllib.request, "urlopen", _router(routes, calls))
+    patch_net(monkeypatch, _router(routes, calls))
     provider = _provider(cache)
     assert provider.fetch_record(_WITCHER_URL) is not None
     assert provider.fetch_record(_WITCHER_URL) is not None
@@ -160,5 +160,5 @@ def test_fetch_stores_in_cache(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_fetch_record_network_error(monkeypatch: pytest.MonkeyPatch) -> None:
     """Błąd sieci → None, bez wyjątku."""
     calls = [0]
-    monkeypatch.setattr(_http.urllib.request, "urlopen", _router({}, calls))
+    patch_net(monkeypatch, _router({}, calls))
     assert _provider().fetch_record(_WITCHER_URL) is None

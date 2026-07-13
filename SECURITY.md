@@ -46,6 +46,26 @@ OPF, NCX, XHTML) parsujemy utwardzonym parserem lxml (`core/_xml_safe.py`):
 bez rozwijania encji, bez sieci, bez zewnętrznego DTD (ochrona przed XXE i
 rozdmuchaniem encji).
 
+## Model bezpieczeństwa (sieć — metadane książek)
+
+Pobieranie metadanych jest **opt-in** i przechodzi w całości przez jeden
+utwardzony klient (`bookmeta/_http.py`):
+
+- **wyłącznie `https`** — schemat, host i port walidowane przez `urlsplit` przed
+  połączeniem; `http:`/`file:`/`data:` oraz `userinfo` (`login:hasło@`) odrzucane;
+- **ochrona przed SSRF** — host jest rozwiązywany przez DNS, a adresy loopback /
+  prywatne / link-local / reserved / multicast są odrzucane (brak żądań do sieci
+  lokalnej i metadanych chmury);
+- **walidacja każdego przekierowania** — własny redirect handler sprawdza KAŻDY
+  hop przed kolejnym żądaniem (brak downgrade do HTTP, brak skoku na host lokalny)
+  i ogranicza liczbę przekierowań;
+- **pin hostów per provider** — każdy provider akceptuje tylko własny host API;
+  LubimyCzytac dodatkowo akceptuje wyłącznie **własne** URL-e książek (host LC lub
+  link względny) z wyników wyszukiwarki;
+- **limit rozmiaru** — odpowiedź ponad `MAX_BYTES` jest odrzucana (odczyt
+  `MAX_BYTES+1`, bez cichego ucięcia), obowiązuje twardy timeout, a każdy błąd
+  sieciowy kończy się `None` (nigdy wyjątkiem widocznym dla UI).
+
 ## Zgłaszanie podatności
 
 **Nie zgłaszaj podatności przez publiczne Issues ani Pull Requesty** — dałoby to
