@@ -106,8 +106,16 @@
 ```bash
 git clone https://github.com/chodzkos/epubforge
 cd epubforge
-pip install -e ".[dev]"
+pip install -e .          # biblioteka + pełne CLI (bez GUI, bez PySide6)
+pip install -e ".[gui]"   # dodatkowo aplikacja graficzna (PySide6)
+pip install -e ".[dev]"   # narzędzia developerskie (pytest, ruff, mypy…)
 ```
+
+> **CLI bez GUI.** Bazowa instalacja (`pip install -e .`) daje w pełni działające
+> `epubforge …` oraz publiczne API biblioteki — **nie wymaga PySide6**, więc nadaje
+> się na serwery i środowiska headless. Warstwy `epubforge.cli` i `epubforge.core`
+> nigdy nie importują `epubforge.gui` ani PySide6 (pilnuje tego job CI `base-cli`).
+> Aplikacja graficzna (`epubforge-gui`) wymaga extra `[gui]`.
 
 ### Windows (bez instalacji Pythona)
 Pobierz z [Releases](https://github.com/chodzkos/epubforge/releases) jeden z dwóch wariantów:

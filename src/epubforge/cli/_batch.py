@@ -17,7 +17,8 @@ from rich.table import Table
 from rich.text import Text
 
 from epubforge.core import Epub
-from epubforge.gui.editor_files import decode_text, is_editable, resolve_internal_path
+from epubforge.core.filetypes import is_editable
+from epubforge.core.textutil import decode_text, resolve_internal_path
 from epubforge.i18n import _
 
 BatchHandler: TypeAlias = Callable[[Path, object], str]

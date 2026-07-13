@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import multiprocessing
 import sys
 from collections.abc import Callable
@@ -31,6 +32,24 @@ from epubforge.core import default_config_path, load_config
 from epubforge.i18n import _, init_i18n
 
 
+def _force_utf8_streams() -> None:
+    """Wymusza UTF-8 na stdout/stderr — Windows: konsola/pipe bywa cp1252.
+
+    Pomoc argparse i raporty CLI zawierają znaki spoza ASCII (polskie znaki,
+    „→"). Gdy stdout jest przekierowany albo konsola Windows używa cp1252,
+    domyślny zapis kończy się ``UnicodeEncodeError``. ``reconfigure`` (3.7+)
+    przełącza kodowanie strumienia bez jego podmiany; ``errors`` jako zapas
+    chroni przed padem, gdyby przełączenie nie doszło do skutku.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        # Strumień bez wsparcia rekonfiguracji (np. podmieniony na atrapę) — pomiń.
+        with contextlib.suppress(ValueError, OSError):
+            reconfigure(encoding="utf-8", errors="backslashreplace")
+
+
 def main(argv: list[str] | None = None) -> int:
     """Punkt wejścia komendy `epubforge`.
 
@@ -43,6 +62,8 @@ def main(argv: list[str] | None = None) -> int:
     # PyInstaller/Windows: ProcessPoolExecutor w komendach batchowych wymaga
     # freeze_support(), zanim uruchomimy parser i ewentualnie zespawnujemy workery.
     multiprocessing.freeze_support()
+    # Zanim cokolwiek wypiszemy (pomoc, wersja, tłumaczone komunikaty) — UTF-8.
+    _force_utf8_streams()
     config = load_config(default_config_path())
     init_i18n(str(config.get("language", "auto")))
 
