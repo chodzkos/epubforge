@@ -301,6 +301,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "pytest-mock" },
     { name = "pytest-qt" },
+    { name = "pyyaml" },
     { name = "ruff" },
 ]
 fonts = [
@@ -343,6 +344,7 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1" },
     { name = "pytest-mock", marker = "extra == 'dev'", specifier = ">=3.12" },
     { name = "pytest-qt", marker = "extra == 'dev'", specifier = ">=4.4" },
+    { name = "pyyaml", marker = "extra == 'dev'", specifier = ">=6.0" },
     { name = "rich", specifier = ">=13.7" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },
     { name = "tinycss2", specifier = ">=1.3" },

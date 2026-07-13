@@ -73,6 +73,30 @@ utwardzony klient (`bookmeta/_http.py`):
   `MAX_BYTES+1`, bez cichego ucięcia), obowiązuje twardy timeout, a każdy błąd
   sieciowy kończy się `None` (nigdy wyjątkiem widocznym dla UI).
 
+## Łańcuch dostaw i CI (least privilege)
+
+Pipeline CI trzyma się zasady **minimalnych uprawnień**, żeby kompromitacja
+zależności lub akcji nie dała dostępu do zapisu w repozytorium ani do publikacji
+wydań:
+
+- **jawne uprawnienia per job** — domyślny poziom workflow to `permissions: {}`
+  (zero); token nadajemy dopiero na poziomie joba. Joby uruchamiające kod
+  zależności (`test`, build `.exe`, `pdoc`, CodeQL) dostają wyłącznie
+  `contents: read` i checkout z `persist-credentials: false` — nie widzą tokenu z
+  prawem zapisu ani utrwalonych credentials;
+- **rozdzielony build i publikacja** — job budujący nie może publikować. Osobny
+  job `release` (`contents: write`) i `deploy` Pages (`pages`/`id-token: write`)
+  **nie instalują zależności projektu**: konsumują tylko gotowy, zweryfikowany
+  artefakt (`sha256sum -c` przed utworzeniem Release; oficjalny `deploy-pages` bez
+  checkoutu repo);
+- **piny po pełnym SHA** — wszystkie akcje GitHub oraz hooki `pre-commit` przypięte
+  po pełnym SHA commitu (nie po ruchomym tagu), więc dostawca nie podmieni ich po
+  cichu przez re-tag;
+- **przypięte narzędzia zewnętrzne** — Inno Setup instalowany w dokładnej wersji z
+  wymuszoną weryfikacją sumy (`--require-checksums`, fail-closed);
+- **skan sekretów** — hook `gitleaks` (pre-commit) blokuje przypadkowe klucze,
+  tokeny i hasła, zanim trafią do historii; uzupełnia go cotygodniowy CodeQL.
+
 ## Zgłaszanie podatności
 
 **Nie zgłaszaj podatności przez publiczne Issues ani Pull Requesty** — dałoby to

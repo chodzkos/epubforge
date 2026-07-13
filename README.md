@@ -510,6 +510,33 @@ Job CI `package` buduje oba warianty koła, porównuje ich zawartość
 instaluje koło w pustym venv i czyta każdy zasób przez publiczne API spoza
 checkoutu (`build/verify_wheel_resources.py`).
 
+### CI/CD i łańcuch dostaw (least privilege)
+
+Workflowy GitHub Actions trzymają się zasady **minimalnych uprawnień** — token
+`GITHUB_TOKEN` jest nadawany **jawnie per job**, a domyślny poziom workflow to
+`permissions: {}` (zero). Kod zależności (instalacja z locka, `pytest`,
+`pip-audit`, PyInstaller, `pdoc`) nigdy nie widzi tokenu z prawem zapisu ani
+utrwalonych w `.git/config` credentials — każdy checkout budujący ustawia
+`persist-credentials: false`.
+
+- **`test.yml`** — cały workflow `contents: read`; testy, lint, typy, audyt CVE.
+- **`build.yml`** — job `build-windows` (`contents: read`, bez publikacji) buduje
+  `.exe` + instalator, liczy `SHA256SUMS` i wysyła artefakt. Osobny job `release`
+  (`contents: write`, tylko dla tagów `v*`) **nie instaluje zależności projektu** —
+  pobiera artefakt, weryfikuje sumy `sha256sum -c` i dopiero wtedy tworzy Release.
+  Publikuje więc dokładnie to, co zbudował nieuprzywilejowany job.
+- **`docs.yml`** — job `build` (`contents: read`) generuje docs przez
+  `uv sync --frozen` + `pdoc`; job `deploy` używa **oficjalnego mechanizmu GitHub
+  Pages** (`actions/deploy-pages`, `pages: write` + `id-token: write`) i nie
+  checkoutuje repo. Wymaga ustawienia **Settings → Pages → Source: GitHub Actions**.
+- **`codeql.yml`** — `contents: read` + `security-events: write` (wynik do zakładki
+  Security).
+
+Wszystkie akcje są **przypięte po pełnym SHA** (komentarz obok trzyma wersję).
+Inno Setup instalujemy w **przypiętej wersji** z wymuszoną weryfikacją sumy
+(`choco install innosetup --version=… --require-checksums`). Hooki `pre-commit`
+(w tym skan sekretów **gitleaks**) też są przypięte po pełnym SHA commitu.
+
 Zobacz `ROADMAP.md` i `CLAUDE.md` po więcej szczegółów technicznych.
 
 ---

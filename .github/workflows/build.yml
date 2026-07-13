@@ -5,16 +5,25 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
-# Tworzenie Release wymaga zapisu w repo (inaczej GITHUB_TOKEN dostaje 403).
-permissions:
-  contents: write
+# Least privilege na poziomie workflow: domyślnie ZERO uprawnień. Token nadajemy
+# jawnie per-job — job budujący tylko czyta i NIE może publikować; osobny job
+# release dostaje minimalny contents:write i publikuje zweryfikowany artefakt (F-12).
+permissions: {}
 
 jobs:
   build-windows:
+    name: Build Windows artifacts (.exe + installer)
     runs-on: windows-latest
+    # Kod zależności (uv sync, PyInstaller, Inno Setup, silnik testów) NIE dostaje
+    # tokenu zapisu ani utrwalonych credentials — może wyłącznie czytać repo.
+    permissions:
+      contents: read
 
     steps:
     - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      with:
+        # Bez zapisu tokenu do .git/config — build nie ma czym pushować ani tworzyć Release.
+        persist-credentials: false
 
     - name: Install uv (build z uv.lock — reprodukowalne artefakty)
       uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990  # v8.3.2
@@ -84,8 +93,12 @@ jobs:
           exit 1
         }
 
-    - name: Install Inno Setup
-      run: choco install innosetup --no-progress -y
+    - name: Install Inno Setup (pinned + wymuszona weryfikacja sumy)
+      # Przypięta DOKŁADNA wersja (nie „latest") → reprodukowalny instalator.
+      # `--require-checksums`: Chocolatey MUSI zweryfikować sumę SHA pobranego
+      # instalatora z sumą osadzoną w pakiecie (fail-closed) — bez cichego
+      # pominięcia weryfikacji. Zmiana wersji = świadoma edycja pinu.
+      run: choco install innosetup --version=6.4.3 --require-checksums --no-progress -y
 
     - name: Build installer
       working-directory: build
@@ -94,6 +107,20 @@ jobs:
         $ver = uv run python -c "import epubforge; print(epubforge.__version__)"
         & "ISCC.exe" "/DMyAppVersion=$ver" installer.iss
 
+    - name: Generate SHA256SUMS (integralność artefaktów dla joba release)
+      # Sumy liczymy w jobie budującym (bez uprawnień do zapisu). Job release
+      # pobierze artefakt i zweryfikuje te sumy PRZED publikacją — publikuje więc
+      # dokładnie to, co zbudował nieuprzywilejowany build (łańcuch zaufania F-12).
+      working-directory: build/dist
+      shell: pwsh
+      run: |
+        $lines = @(
+          "$((Get-FileHash epubforge.exe -Algorithm SHA256).Hash.ToLower())  epubforge.exe"
+          "$((Get-FileHash epubforge-setup.exe -Algorithm SHA256).Hash.ToLower())  epubforge-setup.exe"
+        )
+        Set-Content -Path SHA256SUMS -Value $lines -Encoding ascii
+        Get-Content SHA256SUMS
+
     - name: Upload artifacts
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
       with:
@@ -101,15 +128,41 @@ jobs:
         path: |
           build/dist/epubforge.exe
           build/dist/epubforge-setup.exe
+          build/dist/SHA256SUMS
         retention-days: 30
 
-    - name: Create Release (only on tags)
-      if: startsWith(github.ref, 'refs/tags/v')
+  release:
+    name: Publish GitHub Release
+    needs: build-windows
+    # Release tylko dla tagów `v*` — workflow_dispatch buduje artefakty bez publikacji.
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    # JEDYNY job z zapisem: minimalny contents:write, wyłącznie po to, by utworzyć
+    # Release. Nie instaluje zależności projektu i nie uruchamia żadnego kodu
+    # zależności — konsumuje tylko gotowy, zweryfikowany artefakt.
+    permissions:
+      contents: write
+
+    steps:
+    - name: Download built artifacts
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131  # v7.0.0
+      with:
+        name: epubforge-windows
+        path: dist
+
+    - name: Verify SHA256SUMS (zweryfikowany artefakt przed publikacją)
+      # Publikujemy dokładnie te binaria, które zbudował nieuprzywilejowany job.
+      # Niezgodność sumy = przerwany release (fail-closed), zanim cokolwiek trafi
+      # do wydania.
+      working-directory: dist
+      run: sha256sum -c SHA256SUMS
+
+    - name: Create Release
       uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b  # v3.0.1
       with:
         files: |
-          build/dist/epubforge.exe
-          build/dist/epubforge-setup.exe
+          dist/epubforge.exe
+          dist/epubforge-setup.exe
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

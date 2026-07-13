@@ -5,32 +5,74 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Potrzebne, by akcja mogła wypchnąć gałąź gh-pages.
-permissions:
-  contents: write
+# Least privilege na poziomie workflow: domyślnie ZERO uprawnień. Token nadajemy
+# jawnie per-job — build tylko czyta, publikuje wyłącznie osobny job deploy przez
+# oficjalny mechanizm GitHub Pages (F-12).
+permissions: {}
+
+# Tylko jedno wdrożenie Pages naraz; NIE przerywamy trwającego (cancel-in-progress:
+# false), by nie zostawić środowiska Pages w połowie publikacji.
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-  docs:
+  build:
+    name: Build API docs (pdoc)
     runs-on: ubuntu-latest
-
+    # Kod zależności (pdoc importuje pakiet, uv rozwiązuje drzewo) NIE dostaje
+    # tokenu zapisu ani utrwalonych credentials — może wyłącznie czytać repo.
+    permissions:
+      contents: read
     steps:
     - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      with:
+        # Bez zapisu tokenu do .git/config — krok budujący nie ma czym (ani po co) pushować.
+        persist-credentials: false
+
+    - name: Install uv (instalacja z uv.lock — reprodukowalne wersje)
+      uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990  # v8.3.2
+      with:
+        version: "0.8.17"
+        enable-cache: true
 
     - name: Setup Python 3.12
       uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
       with:
         python-version: '3.12'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[dev,gui]"
+    - name: Install docs deps (z uv.lock — pdoc + gui)
+      # `--frozen`: dokładnie te wersje co w testach. pdoc introspektuje CAŁY pakiet,
+      # więc importuje też submoduły `epubforge.gui` → potrzebny extra gui (PySide6),
+      # inaczej import padłby na braku bindingu Qt.
+      run: uv sync --frozen --extra dev --extra gui --python 3.12
 
     - name: Generate API docs (pdoc)
-      run: pdoc epubforge -o site
+      run: uv run pdoc epubforge -o site
 
-    - name: Deploy to gh-pages
-      uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453  # v4
+    - name: Upload Pages artifact
+      # Artefakt konsumuje osobny (uprzywilejowany) job deploy — build sam nie publikuje.
+      uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa  # v3.0.1
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./site
+        path: ./site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    # Minimalny write pod oficjalny mechanizm Pages: publikacja artefaktu (pages)
+    # i token OIDC do uwierzytelnienia wdrożenia (id-token). BRAK contents:write —
+    # ten job niczego nie commituje do repo (żadnej gałęzi gh-pages).
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      # Oficjalny mechanizm Pages: pobiera zweryfikowany artefakt z joba build
+      # i publikuje go. NIE checkoutuje repo ani NIE instaluje zależności projektu,
+      # więc kod zależności nigdy nie widzi tokenu z uprawnieniem do zapisu.
+      uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e  # v4.0.5

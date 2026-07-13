@@ -85,6 +85,9 @@ dev = [
     "pre-commit>=3.7",
     "pdoc>=14.0",
     "lxml-stubs",
+    # Jawnie (mimo że wciąga je pre-commit) — test bramkowy least-privilege CI
+    # parsuje pliki workflow przez PyYAML.
+    "pyyaml>=6.0",
 ]
 build = [
     "babel>=2.14",
