@@ -78,6 +78,16 @@ REM obok exe (GUI_STANDARD v2.0 sekcja 8). Dystrybuuj exe RAZEM z tym plikiem.
 echo portable > "dist\portable.flag"
 echo [OK] dist\epubforge.exe (+ portable.flag)
 
+echo === Smoke test zasobow (portable) ===
+REM `start /wait` czeka na proces GUI i przenosi jego kod wyjscia do errorlevel.
+start "" /wait "dist\epubforge.exe" --self-check "dist\selfcheck-portable.log"
+if errorlevel 1 (
+    if exist "dist\selfcheck-portable.log" type "dist\selfcheck-portable.log"
+    echo [BLAD] Portable self-check nie powiodl sie - brak zasobu w artefakcie.
+    exit /b 1
+)
+echo [OK] portable self-check
+
 echo === [2/3] Build ONEDIR (do instalatora) ===
 !PYTHON_CMD! -m PyInstaller epubforge-dir.spec --clean --noconfirm --distpath dist --workpath build-tmp
 if not exist "dist\epubforge\epubforge.exe" (
@@ -85,6 +95,15 @@ if not exist "dist\epubforge\epubforge.exe" (
     exit /b 1
 )
 echo [OK] dist\epubforge\
+
+echo === Smoke test zasobow (onedir) ===
+start "" /wait "dist\epubforge\epubforge.exe" --self-check "dist\selfcheck-onedir.log"
+if errorlevel 1 (
+    if exist "dist\selfcheck-onedir.log" type "dist\selfcheck-onedir.log"
+    echo [BLAD] Onedir self-check nie powiodl sie - brak zasobu w artefakcie.
+    exit /b 1
+)
+echo [OK] onedir self-check
 
 echo === [3/3] Instalator (Inno Setup) ===
 set "ISCC_CMD="

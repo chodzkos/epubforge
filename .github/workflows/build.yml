@@ -39,9 +39,39 @@ jobs:
       working-directory: build
       run: uv run python -m PyInstaller epubforge-portable.spec --clean --noconfirm --distpath dist --workpath build-tmp
 
+    - name: Smoke test — zasoby w portable (onefile)
+      # Zamrożony .exe waliduje pakowane zasoby przez `--self-check` i loadery
+      # z sys._MEIPASS (nie z checkoutu). Brak dowolnego zasobu → kod ≠ 0 →
+      # release przerwany. Windowed build (console=False) nie zwraca kodu do
+      # konsoli — używamy Start-Process -Wait -PassThru, a log czytamy z pliku.
+      working-directory: build
+      shell: pwsh
+      run: |
+        $log = Join-Path $PWD "selfcheck-portable.log"
+        $proc = Start-Process -FilePath "dist/epubforge.exe" `
+          -ArgumentList "--self-check", "$log" -Wait -PassThru
+        if (Test-Path $log) { Get-Content $log }
+        if ($proc.ExitCode -ne 0) {
+          Write-Error "portable self-check FAILED (exit $($proc.ExitCode))"
+          exit 1
+        }
+
     - name: Build onedir (do instalatora)
       working-directory: build
       run: uv run python -m PyInstaller epubforge-dir.spec --clean --noconfirm --distpath dist --workpath build-tmp
+
+    - name: Smoke test — zasoby w onedir
+      working-directory: build
+      shell: pwsh
+      run: |
+        $log = Join-Path $PWD "selfcheck-onedir.log"
+        $proc = Start-Process -FilePath "dist/epubforge/epubforge.exe" `
+          -ArgumentList "--self-check", "$log" -Wait -PassThru
+        if (Test-Path $log) { Get-Content $log }
+        if ($proc.ExitCode -ne 0) {
+          Write-Error "onedir self-check FAILED (exit $($proc.ExitCode))"
+          exit 1
+        }
 
     - name: Install Inno Setup
       run: choco install innosetup --no-progress -y

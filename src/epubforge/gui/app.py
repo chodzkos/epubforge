@@ -486,6 +486,15 @@ def _install_excepthook(config_path: Path) -> None:
 
 def main() -> None:  # pragma: no cover - entry point + pętla zdarzeń Qt (app.exec)
     """Entry point ``epubforge-gui``."""
+    # Zamrożony artefakt: `epubforge.exe --self-check [log]` waliduje zasoby z
+    # bundla (taksonomia, receptury, presety, stopwords, tłumaczenia) i kończy
+    # proces BEZ uruchamiania GUI — smoke test release (patrz build.yml).
+    if "--self-check" in sys.argv[1:]:
+        from epubforge._frozen_check import run_self_check
+
+        index = sys.argv.index("--self-check")
+        raise SystemExit(run_self_check(sys.argv[index + 1 :]))
+
     app = QApplication(sys.argv)
     app.setApplicationName("EpubForge")
 
