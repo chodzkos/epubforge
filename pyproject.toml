@@ -115,14 +115,12 @@ path = "src/epubforge/__init__.py"
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
+# `packages` sprawia, że hatchling pakuje CAŁE drzewo `src/epubforge` (kod +
+# dane: locale/*.mo, fixers/presets, recipes_builtin, stats_stopwords,
+# data/taxonomy_pl.toml, py.typed) — pliki śledzone przez git trafiają do koła
+# raz. Żadnego `force-include`: te dane leżą już pod pakietem, więc jawne
+# doklejanie duplikowałoby wpisy (ValueError: „second file … at the same path").
 packages = ["src/epubforge"]
-
-[tool.hatch.build.targets.wheel.force-include]
-"src/epubforge/locale" = "epubforge/locale"
-"src/epubforge/fixers/presets" = "epubforge/fixers/presets"
-"src/epubforge/recipes_builtin" = "epubforge/recipes_builtin"
-"src/epubforge/stats_stopwords" = "epubforge/stats_stopwords"
-"src/epubforge/data" = "epubforge/data"
 
 # ── uv (reprodukowalne buildy, REL-3) ───────────────────────────────────────────
 # `uv.lock` (wersjonowany) jest źródłem prawdy o wersjach: przypina wszystkie

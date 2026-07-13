@@ -452,6 +452,24 @@ mypy src/
 pre-commit run --all-files
 ```
 
+### Dystrybucja (sdist + wheel)
+
+```bash
+uv build                 # sdist + wheel do dist/ (koło budowane ZE SDISTA)
+uv build --wheel -o dist_tree   # koło wprost z drzewa (kontrola tree vs sdist)
+uvx twine check dist/*   # walidacja metadanych
+```
+
+Pakowaniem zarządza **hatchling**. Całe `src/epubforge` (kod + dane: `locale/*.mo`,
+`fixers/presets`, `recipes_builtin`, `stats_stopwords`, `data/taxonomy_pl.toml`
+oraz marker PEP 561 `py.typed`) trafia do koła przez `packages = ["src/epubforge"]`
+— **bez `force-include`**, bo te dane leżą już pod pakietem i jawne doklejanie
+duplikowałoby wpisy (build kończyłby się błędem *„second file … at the same path"*).
+Job CI `package` buduje oba warianty koła, porównuje ich zawartość
+(`build/check_wheel_parity.py` — brak duplikatów, identyczny zestaw plików),
+instaluje koło w pustym venv i czyta każdy zasób przez publiczne API spoza
+checkoutu (`build/verify_wheel_resources.py`).
+
 Zobacz `ROADMAP.md` i `CLAUDE.md` po więcej szczegółów technicznych.
 
 ---
