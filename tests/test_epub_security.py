@@ -142,14 +142,22 @@ def test_encrypted_entry_rejected() -> None:
         validate_archive(fake)  # type: ignore[arg-type]
 
 
-def test_nul_in_name_rejected() -> None:
-    """Znak NUL w nazwie wpisu → ResourceLimitError (NUL nie przeżywa realnego ZIP-a).
+@pytest.mark.parametrize(
+    ("filename", "match"),
+    [
+        ("bad\x00name.xhtml", "NUL"),  # ZipInfo ucina nazwę na NUL
+        ("OEBPS\\win.xhtml", "backslash"),  # ZipInfo/zipfile zamienia os.sep '\\' → '/'
+    ],
+)
+def test_unsafe_name_via_metadata_rejected(filename: str, match: str) -> None:
+    """Nazwy, których realny ZIP normalizuje (NUL, backslash), testujemy na metadanych.
 
-    ``ZipInfo(...)`` ucina nazwę na NUL, więc wstawiamy go wprost w atrybut ``filename``.
+    ``ZipInfo(...)`` i ``writestr`` sanityzują te znaki (m.in. na Windows ``\\`` → ``/``),
+    więc ustawiamy ``filename`` wprost — walidacja i tak patrzy tylko na metadane.
     """
     info = _info("placeholder.xhtml")
-    info.filename = "bad\x00name.xhtml"
-    with pytest.raises(ResourceLimitError, match="NUL"):
+    info.filename = filename
+    with pytest.raises(ResourceLimitError, match=match):
         validate_archive(_FakeZip([info]))  # type: ignore[arg-type]
 
 
@@ -174,7 +182,6 @@ def test_duplicate_names_rejected(tmp_path: Path) -> None:
         ("OEBPS/../../etc/passwd", "poza archiwum"),
         ("/abs/path.xhtml", "absolutna"),
         ("C:/win/path.xhtml", "absolutna"),
-        ("OEBPS\\win.xhtml", "backslash"),
         ("OEBPS/./x.xhtml", "segment '.'"),
         ("OEBPS//x.xhtml", "pusty segment"),
     ],
