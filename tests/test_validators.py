@@ -151,23 +151,92 @@ def test_parse_java_major(line: str, expected: int | None) -> None:
 
 
 def test_detect_java_requires_min_version(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Java 8 jest niedostępna (wymagane ≥ 11), Java 25 dostępna."""
-    monkeypatch.setattr("epubforge.core.detection.shutil.which", lambda _name: None)
-    monkeypatch.setattr(
-        "epubforge.core.detection._find_executable", lambda *_: Path("/usr/bin/java")
-    )
+    """Java 8 jest niedostępna (wymagane ≥ 11), Java 25 dostępna.
 
-    monkeypatch.setattr(
-        "epubforge.core.detection._probe_version", lambda *_: 'java version "1.8.0_391"'
-    )
+    Mockujemy GRANICĘ ``_find_java`` — test bada wyłącznie bramkę wersji, więc
+    lokalizacja (PATH/App Paths/rejestr/katalogi) nie może zależeć od realnej
+    maszyny (na runnerze z Temurin poprzednia wersja testu łapała prawdziwą Javę).
+    """
+    monkeypatch.setattr(detection, "_find_java", lambda override=None: Path("/usr/bin/java"))
+
+    monkeypatch.setattr(detection, "_probe_version", lambda *_: 'java version "1.8.0_391"')
     assert _detect_java().available is False
 
-    monkeypatch.setattr(
-        "epubforge.core.detection._probe_version", lambda *_: 'openjdk version "25.0.3"'
-    )
+    monkeypatch.setattr(detection, "_probe_version", lambda *_: 'openjdk version "25.0.3"')
     java = _detect_java()
     assert java.available is True
     assert java.path == Path("/usr/bin/java")
+
+
+def _mock_java_channels(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    which: str | None = None,
+    app_paths: Path | None = None,
+    adoptium: Path | None = None,
+    dirs: Path | None = None,
+) -> None:
+    """Podmienia WSZYSTKIE kanały ``_find_java`` (hermetycznie, niezależnie od maszyny).
+
+    ``shutil.which`` wołany jest wewnątrz ``_find_java`` na globalnym module
+    ``shutil`` (w EpubForge nie ma lokalnego ``which`` do podmiany) — patchujemy
+    więc ``epubforge.core.detection.shutil.which`` (wzorzec z ``test_detection.py``).
+    """
+    monkeypatch.setattr(detection.shutil, "which", lambda _name: which)
+    monkeypatch.setattr(detection, "_java_from_app_paths", lambda: app_paths)
+    monkeypatch.setattr(detection, "_java_from_adoptium_registry", lambda: adoptium)
+    monkeypatch.setattr(detection, "_find_executable", lambda *_: dirs)
+
+
+def test_find_java_override_wins_over_all_channels(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Override (istniejący plik) ma pierwszeństwo nawet gdy Java jest w PATH."""
+    override = tmp_path / "java.exe"
+    override.write_text("x", encoding="utf-8")
+    _mock_java_channels(monkeypatch, which="/usr/bin/java", app_paths=Path("/reg/java"))
+    assert detection._find_java(override) == override
+
+
+def test_find_java_path_before_registry_and_dirs(monkeypatch: pytest.MonkeyPatch) -> None:
+    """PATH (``shutil.which``) wygrywa z App Paths, Adoptium i katalogami."""
+    _mock_java_channels(
+        monkeypatch,
+        which="/usr/bin/java",
+        app_paths=Path("/app/java"),
+        adoptium=Path("/adopt/java"),
+        dirs=Path("/dir/java"),
+    )
+    assert detection._find_java(None) == Path("/usr/bin/java")
+
+
+def test_find_java_app_paths_before_adoptium_and_dirs(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Bez PATH: App Paths wygrywa z rejestrem Adoptium i katalogami."""
+    _mock_java_channels(
+        monkeypatch,
+        app_paths=Path("/app/java"),
+        adoptium=Path("/adopt/java"),
+        dirs=Path("/dir/java"),
+    )
+    assert detection._find_java(None) == Path("/app/java")
+
+
+def test_find_java_adoptium_before_dirs(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Bez PATH i App Paths: rejestr Adoptium wygrywa z fallbackiem katalogów."""
+    _mock_java_channels(monkeypatch, adoptium=Path("/adopt/java"), dirs=Path("/dir/java"))
+    assert detection._find_java(None) == Path("/adopt/java")
+
+
+def test_find_java_dirs_fallback_last(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Fallback katalogów jest ostatni w kolejności priorytetów."""
+    _mock_java_channels(monkeypatch, dirs=Path("/dir/java"))
+    assert detection._find_java(None) == Path("/dir/java")
+
+
+def test_find_java_none_when_all_channels_empty(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Brak Javy we wszystkich kanałach → ``None`` (niezależnie od realnej maszyny)."""
+    _mock_java_channels(monkeypatch)
+    assert detection._find_java(None) is None
 
 
 def _make_jar(path: Path, version: str | None) -> None:

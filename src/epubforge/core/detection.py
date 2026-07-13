@@ -659,7 +659,20 @@ def _apply_overrides(tools: dict[str, Tool], overrides: dict[str, object]) -> No
 
 
 def _cache_is_fresh(config: Config, max_age: timedelta) -> bool:
-    """Sprawdza, czy zapisany timestamp ``last_detected`` jest świeży."""
+    """Sprawdza, czy zapisany timestamp ``last_detected`` jest świeży.
+
+    Polityka odpornościowa — w razie JAKICHKOLWIEK wątpliwości uznajemy cache za
+    NIEŚWIEŻY (ponowna detekcja jest tania; awaria startu na zepsutym timestampie
+    nie). Kolejne przypadki brzegowe:
+
+    * brak wpisu albo nie-łańcuch → nieświeży;
+    * niepoprawny ISO 8601 / zła strefa (``ValueError``) → nieświeży;
+    * data NAIWNA (bez strefy) → **polityka: traktuj jako UTC** (starsze wersje
+      zapisywały ``utcnow()`` bez offsetu; my zawsze zapisujemy UTC — patrz
+      :func:`_save_detection`);
+    * data z PRZYSZŁOŚCI (skok zegara wstecz / zła strefa) → nieświeży;
+    * ``TypeError``/``OverflowError`` przy odejmowaniu → nieświeży.
+    """
     last = config.get("last_detected")
     if not isinstance(last, str):
         return False
@@ -667,7 +680,17 @@ def _cache_is_fresh(config: Config, max_age: timedelta) -> bool:
         detected_at = datetime.fromisoformat(last)
     except ValueError:
         return False
-    return datetime.now(timezone.utc) - detected_at < max_age
+    if detected_at.tzinfo is None:
+        # Stary timestamp bez strefy — polityka: interpretuj jako UTC.
+        detected_at = detected_at.replace(tzinfo=timezone.utc)
+    try:
+        age = datetime.now(timezone.utc) - detected_at
+    except (TypeError, OverflowError):
+        return False
+    if age < timedelta(0):
+        # Timestamp z przyszłości (np. zegar cofnięty) — nie ufamy, wymuś detekcję.
+        return False
+    return age < max_age
 
 
 # Detektory bez argumentów (java/epubcheck przyjmują override) — do re-sondowania
@@ -718,6 +741,7 @@ def _save_detection(
     if java_override is not None:
         config["tools"][_JAVA_EXE_KEY] = str(java_override)
     config["kfx_plugin"] = Tools.calibre_kfx_plugin()
+    # ZAWSZE UTC z offsetem (aware) — spójne z polityką odczytu w _cache_is_fresh.
     config["last_detected"] = datetime.now(timezone.utc).isoformat()
     save_config(path, config)
 

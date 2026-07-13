@@ -408,3 +408,63 @@ def test_manual_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
     assert tools["pandoc"].path == custom
     assert tools["pandoc"].available is True
     assert tools["pandoc"].version == "custom 1.0"
+
+
+# ── Świeżość cache timestampu (_cache_is_fresh) ────────────────────────────────
+
+
+def _iso(delta: timedelta) -> str:
+    """ISO 8601 (aware, UTC) przesunięty o ``delta`` względem teraz."""
+    return (datetime.now(timezone.utc) + delta).isoformat()
+
+
+def test_cache_fresh_for_recent_aware_timestamp() -> None:
+    """Świeży, strefowy timestamp (młodszy niż max_age) → cache świeży."""
+    config = {"last_detected": _iso(-timedelta(hours=1))}
+    assert detection._cache_is_fresh(config, timedelta(days=7)) is True
+
+
+def test_cache_stale_for_old_timestamp() -> None:
+    """Timestamp starszy niż max_age → cache nieświeży."""
+    config = {"last_detected": _iso(-timedelta(days=10))}
+    assert detection._cache_is_fresh(config, timedelta(days=7)) is False
+
+
+def test_cache_naive_timestamp_treated_as_utc() -> None:
+    """Data NAIWNA (bez strefy) jest interpretowana jako UTC — nie wybucha TypeError.
+
+    Regresja F-08: odejmowanie aware-now od naive-datetime rzucało TypeError.
+    """
+    naive_recent = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
+    assert detection._cache_is_fresh({"last_detected": naive_recent}, timedelta(days=7)) is True
+    naive_old = (datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=10)).isoformat()
+    assert detection._cache_is_fresh({"last_detected": naive_old}, timedelta(days=7)) is False
+
+
+def test_cache_future_timestamp_is_stale() -> None:
+    """Timestamp z przyszłości (zegar cofnięty) → nieświeży, wymusza ponowną detekcję."""
+    config = {"last_detected": _iso(timedelta(days=3))}
+    assert detection._cache_is_fresh(config, timedelta(days=7)) is False
+
+
+def test_cache_invalid_iso_is_stale() -> None:
+    """Niepoprawny ISO 8601 / zła strefa → nieświeży (nie wyjątek)."""
+    assert detection._cache_is_fresh({"last_detected": "not-a-date"}, timedelta(days=7)) is False
+    assert (
+        detection._cache_is_fresh({"last_detected": "2026-13-45T99:99"}, timedelta(days=7)) is False
+    )
+
+
+def test_cache_missing_or_nonstring_is_stale() -> None:
+    """Brak wpisu albo nie-łańcuch → nieświeży."""
+    assert detection._cache_is_fresh({}, timedelta(days=7)) is False
+    assert detection._cache_is_fresh({"last_detected": 12345}, timedelta(days=7)) is False
+
+
+def test_cache_freshness_independent_of_system_timezone(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Wynik nie zależy od strefy systemowej — porównujemy w UTC po obu stronach."""
+    monkeypatch.setenv("TZ", "Pacific/Kiritimati")  # UTC+14
+    config = {"last_detected": _iso(-timedelta(hours=2))}
+    assert detection._cache_is_fresh(config, timedelta(days=7)) is True
