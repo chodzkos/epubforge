@@ -225,8 +225,10 @@ epubforge meta book.epub --title "Nowy tytuł" --author "Jan Kowalski"
 # Statystyki książki (+ raport HTML)
 epubforge stats book.epub --report stats.html --top 50
 
-# Konwersja do KFX
+# Konwersja do KFX (silnik: auto [domyślnie], calibre, kindle-previewer)
+epubforge kfx book.epub                          # auto: Calibre+KFX Output, potem Kindle Previewer
 epubforge kfx book.epub --engine calibre
+epubforge kfx book.epub --engine kindle-previewer
 ```
 
 ### Batch i dry-run w CLI
