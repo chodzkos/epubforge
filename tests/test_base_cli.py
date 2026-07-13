@@ -22,16 +22,23 @@ def _run_python(code: str) -> subprocess.CompletedProcess[str]:
         [sys.executable, "-c", textwrap.dedent(code)],
         capture_output=True,
         text=True,
+        encoding="utf-8",
         timeout=120,
     )
 
 
 def _run_cli(*args: str) -> subprocess.CompletedProcess[str]:
-    """Uruchamia ``python -m epubforge`` z podanymi argumentami."""
+    """Uruchamia ``python -m epubforge`` z podanymi argumentami.
+
+    Dekodujemy wyjście jawnie jako UTF-8 — pomoc CLI zawiera znaki spoza ASCII
+    („→", polskie znaki), a domyślne kodowanie rodzica na Windows (cp1252) mogłoby
+    zepsuć asercje. Sam proces potomny wymusza UTF-8 na swoich strumieniach.
+    """
     return subprocess.run(
         [sys.executable, "-m", "epubforge", *args],
         capture_output=True,
         text=True,
+        encoding="utf-8",
         timeout=120,
     )
 
