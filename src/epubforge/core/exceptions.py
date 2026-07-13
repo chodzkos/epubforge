@@ -15,6 +15,18 @@ class InvalidEpubError(EpubError):
     """Plik nie istnieje lub nie jest poprawnym archiwum ZIP/EPUB."""
 
 
+class ResourceLimitError(EpubError):
+    """Archiwum EPUB przekracza limit bezpieczeństwa albo ma niekanoniczną nazwę wpisu.
+
+    Zgłaszane PRZED kosztowną dekompresją (na podstawie metadanych nagłówka ZIP),
+    m.in. przy: zbyt wielu wpisach, zbyt dużej sumie rozmiarów nieskompresowanych,
+    zbyt dużym pojedynczym wpisie, zbyt wysokim współczynniku kompresji (bomba ZIP),
+    zaszyfrowanym wpisie oraz nazwie z NUL/backslashem, ścieżką absolutną czy
+    segmentem ``..`` (traversal). Komunikat jest bezpieczny do pokazania w GUI/CLI.
+    Świadome podniesienie limitów: :class:`~epubforge.core._archive.ArchiveLimits`.
+    """
+
+
 class EpubNotOpenError(EpubError):
     """Operacja wymaga otwartego EPUB-a.
 

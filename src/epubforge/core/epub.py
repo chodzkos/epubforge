@@ -24,11 +24,18 @@ from types import TracebackType
 
 from lxml import etree
 
+from epubforge.core._archive import (
+    DEFAULT_LIMITS,
+    ArchiveLimits,
+    copy_entry_streamed,
+    validate_archive,
+)
 from epubforge.core._xml_safe import parse_untrusted
 from epubforge.core.exceptions import (
     EpubNotOpenError,
     InvalidEpubError,
     OpfNotFoundError,
+    ResourceLimitError,
 )
 from epubforge.core.metadata import Metadata
 
@@ -89,47 +96,64 @@ class PendingChanges:
     deleted: frozenset[str]
 
 
-def _write_epub(source: Path, target: Path, modified: dict[str, bytes], deleted: set[str]) -> None:
-    """Zapisuje EPUB kopiując niezmienione wpisy strumieniowo ze źródła.
+def _write_epub(
+    source: Path,
+    target: Path,
+    modified: dict[str, bytes],
+    deleted: set[str],
+    limits: ArchiveLimits = DEFAULT_LIMITS,
+) -> None:
+    """Zapisuje EPUB kopiując niezmienione wpisy **strumieniowo** ze źródła.
 
-    W pamięci trzymamy wyłącznie zmodyfikowane pliki (``modified``); resztę
-    czytamy i przepisujemy wpis po wpisie z ``source``. Zapis jest atomowy.
+    W pamięci trzymamy wyłącznie zmodyfikowane pliki (``modified``); niezmienione
+    wpisy kopiujemy strumieniowo (``zin.open`` → ``zout.open``, bufor z limitów),
+    więc pamięć szczytowa zapisu NIE rośnie z rozmiarem największego niezmienionego
+    wpisu. Źródło jest walidowane przed kopiowaniem (odrzucenie przed dekompresją).
+    Zapis jest atomowy (``.tmp`` + :func:`os.replace`); przy błędzie ``.tmp`` jest
+    sprzątany, więc oryginał nigdy nie zostaje uszkodzony.
 
     Args:
         source: oryginalny EPUB — źródło niezmienionych wpisów.
         target: plik docelowy (może być identyczny z ``source``).
         modified: zmienione/nowe pliki jako ``{ścieżka_wewnętrzna: dane}``.
         deleted: ścieżki wpisów, których nie należy kopiować do wyjścia.
+        limits: limity bezpieczeństwa (walidacja źródła + rozmiar bufora kopii).
     """
     tmp = target.with_suffix(target.suffix + ".tmp")
     written: set[str] = set()
-    with zipfile.ZipFile(source) as zin, zipfile.ZipFile(tmp, "w") as zout:
-        # 1. mimetype PIERWSZY i BEZ kompresji (deterministyczny timestamp — reprodukowalność).
-        zout.writestr(_named_entry(_MIMETYPE_PATH, zipfile.ZIP_STORED), _MIMETYPE_CONTENT)
-        written.add(_MIMETYPE_PATH)
-        # 2. Reszta wpisów ze źródła: zmienione bierzemy z dict, inne kopiujemy.
-        for item in zin.infolist():
-            if item.filename == _MIMETYPE_PATH:
-                continue
-            if item.filename in deleted:
-                continue
-            data = modified.get(item.filename)
-            if data is None:
-                # Niezmieniony wpis — zachowaj oryginalne metadane (compress_type,
-                # date_time, external_attr). Przekazanie ZipInfo do writestr honoruje
-                # jego compress_type, więc wpisy STORED (np. już skompresowane obrazy)
-                # nie są rekompresowane, a atrybuty nie są resetowane.
-                zout.writestr(item, zin.read(item.filename))
-            else:
-                # Zmodyfikowany wpis — nowa treść, domyślna kompresja DEFLATED,
-                # deterministyczny timestamp (reprodukowalny zapis).
-                zout.writestr(_named_entry(item.filename, zipfile.ZIP_DEFLATED), data)
-            written.add(item.filename)
-        # 3. Pliki dodane przez write_file, których nie ma jeszcze w źródle.
-        for name, data in modified.items():
-            if name not in deleted and name not in written:
-                zout.writestr(_named_entry(name, zipfile.ZIP_DEFLATED), data)
-    os.replace(tmp, target)
+    operations = 0
+    try:
+        with zipfile.ZipFile(source) as zin, zipfile.ZipFile(tmp, "w") as zout:
+            # Odrzuć złośliwe źródło PRZED kosztowną dekompresją/kopiowaniem.
+            validate_archive(zin, limits)
+            # 1. mimetype PIERWSZY i BEZ kompresji (deterministyczny timestamp).
+            zout.writestr(_named_entry(_MIMETYPE_PATH, zipfile.ZIP_STORED), _MIMETYPE_CONTENT)
+            written.add(_MIMETYPE_PATH)
+            # 2. Reszta wpisów ze źródła: zmienione bierzemy z dict, inne kopiujemy.
+            for item in zin.infolist():
+                if item.filename == _MIMETYPE_PATH or item.filename in deleted:
+                    continue
+                operations += 1
+                if operations > limits.max_operations:
+                    raise ResourceLimitError("Przekroczono budżet operacji zapisu EPUB.")
+                data = modified.get(item.filename)
+                if data is None:
+                    # Niezmieniony wpis — kopia STRUMIENIOWA (stały bufor), zachowuje
+                    # compress_type źródła (STORED, np. obrazy, nie są rekompresowane).
+                    copy_entry_streamed(zin, zout, item, buffer_size=limits.copy_buffer_size)
+                else:
+                    # Zmodyfikowany wpis — nowa treść, DEFLATED, deterministyczny timestamp.
+                    zout.writestr(_named_entry(item.filename, zipfile.ZIP_DEFLATED), data)
+                written.add(item.filename)
+            # 3. Pliki dodane przez write_file, których nie ma jeszcze w źródle.
+            for name, data in modified.items():
+                if name not in deleted and name not in written:
+                    zout.writestr(_named_entry(name, zipfile.ZIP_DEFLATED), data)
+        os.replace(tmp, target)
+    except BaseException:
+        # Nie zostawiaj częściowego ``.tmp`` (oryginał ``target`` pozostaje nietknięty).
+        tmp.unlink(missing_ok=True)
+        raise
 
 
 def _parse_opf_path(container_xml: bytes) -> str:
@@ -165,13 +189,17 @@ class Epub:
             epub.save()
     """
 
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, *, limits: ArchiveLimits | None = None) -> None:
         """Inicjalizuje obiekt bez otwierania pliku.
 
         Args:
             path: ścieżka do pliku ``.epub`` na dysku.
+            limits: limity bezpieczeństwa dla niezaufanego archiwum. ``None`` =
+                :data:`~epubforge.core._archive.DEFAULT_LIMITS` (bezpieczne dla
+                typowych dużych EPUB-ów). Podaj własne, by świadomie je podnieść.
         """
         self.path = Path(path)
+        self._limits = limits if limits is not None else DEFAULT_LIMITS
         self._zip: zipfile.ZipFile | None = None
         self._modified: dict[str, bytes] = {}
         self._deleted: set[str] = set()
@@ -196,6 +224,13 @@ class Epub:
             zf = zipfile.ZipFile(self.path)
         except zipfile.BadZipFile as exc:
             raise InvalidEpubError(f"Plik nie jest poprawnym archiwum ZIP: {self.path}") from exc
+        # Centralna walidacja niezaufanego archiwum PRZED jakimkolwiek odczytem
+        # treści — bomby ZIP i niekanoniczne nazwy odrzucamy na metadanych.
+        try:
+            validate_archive(zf, self._limits)
+        except ResourceLimitError:
+            zf.close()
+            raise
         if _CONTAINER_PATH not in zf.namelist():
             zf.close()
             raise OpfNotFoundError(f"Brak {_CONTAINER_PATH} — to nie jest poprawny EPUB")
@@ -234,7 +269,7 @@ class Epub:
     def opf_path(self) -> str:
         """Ścieżka pliku OPF wewnątrz archiwum (z ``container.xml``)."""
         if self._opf_path is None:
-            self._opf_path = _parse_opf_path(self.read_file(_CONTAINER_PATH))
+            self._opf_path = _parse_opf_path(self._read_xml(_CONTAINER_PATH))
         return self._opf_path
 
     @property
@@ -256,12 +291,12 @@ class Epub:
     @property
     def metadata(self) -> Metadata:
         """Metadane Dublin Core sparsowane z bieżącego OPF."""
-        return Metadata.from_opf(self.read_file(self.opf_path))
+        return Metadata.from_opf(self._read_xml(self.opf_path))
 
     @metadata.setter
     def metadata(self, value: Metadata) -> None:
         """Wpisuje metadane do OPF i utrwala zmianę na dysku (z backupem)."""
-        new_opf = value.to_opf(self.read_file(self.opf_path))
+        new_opf = value.to_opf(self._read_xml(self.opf_path))
         self.write_file(self.opf_path, new_opf)
         self.save()
 
@@ -358,7 +393,7 @@ class Epub:
         deleted = set(self._deleted)
         if output_path is not None:
             target = Path(output_path)
-            _write_epub(self.path, target, modified, deleted)
+            _write_epub(self.path, target, modified, deleted, self._limits)
             logger.debug("Zapisano EPUB jako: %s", target)
             return target
         # Nadpisanie oryginału: backup, zamknięcie uchwytu (Windows), zapis, reopen.
@@ -366,7 +401,7 @@ class Epub:
         assert self._zip is not None
         self._zip.close()
         self._zip = None
-        _write_epub(self.path, self.path, modified, deleted)
+        _write_epub(self.path, self.path, modified, deleted, self._limits)
         self._modified.clear()
         self._deleted.clear()
         self._reset_cache()
@@ -393,6 +428,26 @@ class Epub:
             raise EpubNotOpenError("EPUB nie jest otwarty — wywołaj open() lub użyj 'with'.")
         return self._zip
 
+    def _read_xml(self, internal_path: str) -> bytes:
+        """Odczyt wpisu przeznaczonego do parsowania XML/tekstu — z limitem ``max_text_size``.
+
+        Dla wpisów z dysku sprawdza rozmiar nieskompresowany na metadanych ZIP PRZED
+        odczytem, więc „duży XML” zostaje odrzucony zanim trafi do parsera lxml.
+        Bufor zapisów w pamięci (nasze własne bajty) nie jest limitowany.
+        """
+        if internal_path not in self._modified and internal_path not in self._deleted:
+            zf = self._ensure_open()
+            try:
+                info = zf.getinfo(internal_path)
+            except KeyError:
+                info = None
+            if info is not None and info.file_size > self._limits.max_text_size:
+                raise ResourceLimitError(
+                    f"Plik XML/tekst {internal_path!r} przekracza limit "
+                    f"({info.file_size} > {self._limits.max_text_size} B)."
+                )
+        return self.read_file(internal_path)
+
     def _reset_cache(self) -> None:
         """Czyści zcache'owaną ścieżkę OPF, manifest i spine."""
         self._opf_path = None
@@ -402,7 +457,7 @@ class Epub:
     def _parse_opf(self) -> None:
         """Parsuje plik OPF i wypełnia cache manifestu oraz spine."""
         try:
-            root = parse_untrusted(self.read_file(self.opf_path))
+            root = parse_untrusted(self._read_xml(self.opf_path))
         except etree.XMLSyntaxError as exc:
             raise OpfNotFoundError(f"Niepoprawny plik OPF ({self.opf_path}): {exc}") from exc
 
