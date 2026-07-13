@@ -13,8 +13,6 @@ from __future__ import annotations
 
 import contextlib
 import shutil
-import subprocess
-import sys
 import tempfile
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -26,13 +24,13 @@ from epubforge.converters.to_epub import ConversionResult
 from epubforge.core import Epub
 from epubforge.core.detection import Tool, Tools
 from epubforge.core.exceptions import ConversionError, ConverterNotFoundError
+from epubforge.core.process import run_process
 from epubforge.core.streaming import CancelCheck, LineSink
 from epubforge.fixers import CssFixOptions, fix_css
 
 MobiFormat = Literal["mobi", "azw3"]
 MobiEngine = Literal["calibre", "kindlegen", "auto"]
 
-_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 _KINDLEGEN_NOTE = (
     "NOTE: kindlegen is officially discontinued by Amazon (stuck at 2.9). "
     "Calibre ebook-convert is the recommended MOBI/AZW3 engine."
@@ -253,24 +251,21 @@ def _convert_with_kindlegen(tool: Tool, source: Path, target: Path) -> str:
 
 
 def _run(command: list[str], engine: Literal["calibre", "kindlegen"]) -> tuple[int, str]:
-    """Uruchamia proces i zwraca ``(kod_wyjścia, log)``; błędy startu jako wyjątki."""
+    """Uruchamia proces przez wspólny runner i zwraca ``(kod_wyjścia, log)``.
+
+    Błędy startu propagują jako wyjątki; timeout kończy się ``ConversionError``.
+    """
     try:
-        result = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            creationflags=_NO_WINDOW,
-            check=False,
-        )
+        result = run_process(command)
     except FileNotFoundError as exc:
         raise ConverterNotFoundError(
             f"Nie udało się uruchomić konwertera {engine}: {command[0]}"
         ) from exc
     except OSError as exc:
         raise ConversionError(f"Nie udało się uruchomić konwertera {engine}: {exc}") from exc
-    return result.returncode, _combined_log(result.stdout, result.stderr)
+    if result.timed_out:
+        raise ConversionError(f"Konwersja przez {engine} przekroczyła limit czasu.")
+    return result.returncode, result.output
 
 
 def _combined_log(*parts: str | None) -> str:

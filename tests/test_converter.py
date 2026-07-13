@@ -8,7 +8,6 @@ from __future__ import annotations
 import importlib
 from collections.abc import Callable
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -18,6 +17,7 @@ from epubforge.converters import ConversionResult, ConvertOptions, to_epub
 from epubforge.core import Metadata
 from epubforge.core.detection import Tool
 from epubforge.core.exceptions import ConversionError, ConverterNotFoundError
+from epubforge.core.process import ProcessResult
 
 converter = importlib.import_module("epubforge.converters.to_epub")
 
@@ -43,12 +43,13 @@ def _fake_run(
     stdout: str = "ok",
     stderr: str = "",
     returncode: int = 0,
-) -> Callable[..., SimpleNamespace]:
-    """Zwraca mock ``subprocess.run`` zapisujący komendę i opcje."""
+) -> Callable[..., ProcessResult]:
+    """Zwraca mock ``run_process`` zapisujący komendę i opcje."""
 
-    def run(command: list[str], **kwargs: object) -> SimpleNamespace:
+    def run(command: list[str], **kwargs: object) -> ProcessResult:
         calls.append((command, kwargs))
-        return SimpleNamespace(stdout=stdout, stderr=stderr, returncode=returncode)
+        output = "\n".join(p for p in (stdout, stderr) if p)
+        return ProcessResult(returncode=returncode, output=output)
 
     return run
 
@@ -61,7 +62,7 @@ def test_pandoc_command_with_metadata_cover_and_css(
     monkeypatch.setattr(
         converter.Tools, "pandoc", staticmethod(lambda: _tool("pandoc", "/bin/pandoc"))
     )
-    monkeypatch.setattr(converter.subprocess, "run", _fake_run(calls, stdout="pandoc log"))
+    monkeypatch.setattr(converter, "run_process", _fake_run(calls, stdout="pandoc log"))
 
     source = tmp_path / "book.md"
     target = tmp_path / "book.epub"
@@ -82,7 +83,7 @@ def test_pandoc_command_with_metadata_cover_and_css(
         engine="pandoc",
     )
 
-    command, kwargs = calls[0]
+    command, _kwargs = calls[0]
     assert result == ConversionResult(True, target, "pandoc log", "pandoc")
     assert command[:6] == [
         _path_arg("/bin/pandoc"),
@@ -100,11 +101,6 @@ def test_pandoc_command_with_metadata_cover_and_css(
     assert "author=Jan Kowalski" in command
     assert "author=Anna Nowak" in command
     assert "subject=fiction" in command
-    assert kwargs["capture_output"] is True
-    assert kwargs["text"] is True
-    assert kwargs["encoding"] == "utf-8"
-    assert kwargs["errors"] == "replace"
-    assert kwargs["check"] is False
 
 
 def test_calibre_command_with_metadata_and_cover(
@@ -117,7 +113,7 @@ def test_calibre_command_with_metadata_and_cover(
         "calibre_ebook_convert",
         staticmethod(lambda: _tool("calibre_ebook_convert", "/bin/ebook-convert")),
     )
-    monkeypatch.setattr(converter.subprocess, "run", _fake_run(calls, stdout="calibre log"))
+    monkeypatch.setattr(converter, "run_process", _fake_run(calls, stdout="calibre log"))
 
     source = tmp_path / "book.docx"
     target = tmp_path / "book.epub"
@@ -166,7 +162,7 @@ def test_auto_uses_pandoc_for_non_pdf_when_available(
     """Auto wybiera Pandoc dla nie-PDF, jeśli jest dostępny."""
     calls: list[tuple[list[str], dict[str, object]]] = []
     monkeypatch.setattr(converter.Tools, "pandoc", staticmethod(lambda: _tool("pandoc", "/p")))
-    monkeypatch.setattr(converter.subprocess, "run", _fake_run(calls))
+    monkeypatch.setattr(converter, "run_process", _fake_run(calls))
 
     result = to_epub(tmp_path / "book.html", tmp_path / "book.epub")
 
@@ -185,7 +181,7 @@ def test_auto_falls_back_to_calibre_when_pandoc_missing(
         "calibre_ebook_convert",
         staticmethod(lambda: _tool("calibre_ebook_convert", "/ebook-convert")),
     )
-    monkeypatch.setattr(converter.subprocess, "run", _fake_run(calls))
+    monkeypatch.setattr(converter, "run_process", _fake_run(calls))
 
     result = to_epub(tmp_path / "book.rtf", tmp_path / "book.epub")
 
@@ -204,7 +200,7 @@ def test_auto_pdf_uses_calibre_even_when_pandoc_available(
         "calibre_ebook_convert",
         staticmethod(lambda: _tool("calibre_ebook_convert", "/ebook-convert")),
     )
-    monkeypatch.setattr(converter.subprocess, "run", _fake_run(calls))
+    monkeypatch.setattr(converter, "run_process", _fake_run(calls))
 
     result = to_epub(tmp_path / "book.pdf", tmp_path / "book.epub")
 
@@ -227,8 +223,8 @@ def test_non_zero_exit_raises_conversion_error(
     calls: list[tuple[list[str], dict[str, object]]] = []
     monkeypatch.setattr(converter.Tools, "pandoc", staticmethod(lambda: _tool("pandoc", "/pandoc")))
     monkeypatch.setattr(
-        converter.subprocess,
-        "run",
+        converter,
+        "run_process",
         _fake_run(calls, stdout="stdout log", stderr="stderr failure", returncode=7),
     )
 
@@ -279,7 +275,7 @@ def test_mobi_routes_to_calibre(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
         "calibre_ebook_convert",
         staticmethod(lambda: _tool("calibre_ebook_convert", "/bin/ebook-convert")),
     )
-    monkeypatch.setattr(converter.subprocess, "run", _fake_run(calls, stdout="calibre log"))
+    monkeypatch.setattr(converter, "run_process", _fake_run(calls, stdout="calibre log"))
 
     result = to_epub(tmp_path / "input.mobi", tmp_path / "out.epub")
 
@@ -316,7 +312,7 @@ def test_drm_blocks_before_subprocess(tmp_path: Path, monkeypatch: pytest.Monkey
         "calibre_ebook_convert",
         staticmethod(lambda: _tool("calibre_ebook_convert", "/bin/ebook-convert")),
     )
-    monkeypatch.setattr(converter.subprocess, "run", _fake_run(calls))
+    monkeypatch.setattr(converter, "run_process", _fake_run(calls))
 
     with pytest.raises(ConversionError, match="DRM"):
         to_epub(tmp_path / "input.mobi", tmp_path / "out.epub")
@@ -333,8 +329,8 @@ def test_calibre_drm_stderr_mapped(tmp_path: Path, monkeypatch: pytest.MonkeyPat
         staticmethod(lambda: _tool("calibre_ebook_convert", "/bin/ebook-convert")),
     )
     monkeypatch.setattr(
-        converter.subprocess,
-        "run",
+        converter,
+        "run_process",
         _fake_run(calls, stderr="DRMError: This book has DRM.", returncode=1),
     )
 

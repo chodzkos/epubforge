@@ -14,22 +14,19 @@ from __future__ import annotations
 
 import json
 import re
-import subprocess
-import sys
 import tempfile
 import time
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from pathlib import Path
 from typing import Any
 
 from epubforge.core.exceptions import ValidationError
+from epubforge.core.process import DEFAULT_PROCESS_LIMITS, run_process
 from epubforge.core.streaming import CancelCheck, run_subprocess_streaming
 from epubforge.i18n import _
 
-# Flaga ukrywająca okno konsoli na Windows (pułapka #7).
-_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 _DEFAULT_TIMEOUT = 300  # sekundy
 
 # Wytnij wszystko do „<nazwa>.epub/" włącznie — zostaje ścieżka wewnątrz EPUB-a.
@@ -162,8 +159,8 @@ def run_epubcheck(
         jar: ścieżka do ``epubcheck.jar``.
         timeout: maksymalny czas walidacji w sekundach.
         should_cancel: opcjonalny predykat anulowania. Gdy podany, walidacja biegnie
-            strumieniowo (proces da się ubić); ``None`` = klasyczny ``subprocess.run``
-            (ścieżka CLI/testów, bez zmian zachowania).
+            strumieniowo (log na żywo); ``None`` = wariant synchroniczny. Oba idą
+            przez wspólny runner (``core/process.py``) — ta sama semantyka i timeout.
 
     Returns:
         :class:`ValidationReport`; ``valid`` odzwierciedla kod wyjścia EpubChecka
@@ -195,27 +192,22 @@ def run_epubcheck(
 
 
 def _run_blocking(cmd: list[str], timeout: int) -> tuple[int, str]:
-    """Uruchamia EpubCheck synchronicznie (``subprocess.run``); zwraca ``(kod, stderr)``."""
+    """Uruchamia EpubCheck synchronicznie przez wspólny runner; zwraca ``(kod, log)``.
+
+    Semantyka identyczna z wariantem strumieniowym: ten sam runner, ten sam
+    timeout ubijający całe drzewo procesu, ten sam (scalony) log jako kontekst.
+    """
     try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout,
-            creationflags=_NO_WINDOW,
-            check=False,
-        )
-    except subprocess.TimeoutExpired as exc:
-        raise ValidationError(
-            _("EpubCheck przekroczył limit czasu ({timeout}s).").format(timeout=timeout)
-        ) from exc
+        result = run_process(cmd, limits=replace(DEFAULT_PROCESS_LIMITS, timeout=timeout))
     except OSError as exc:
         raise ValidationError(
             _("Nie udało się uruchomić EpubCheck: {error}").format(error=exc)
         ) from exc
-    return result.returncode, result.stderr
+    if result.timed_out:
+        raise ValidationError(
+            _("EpubCheck przekroczył limit czasu ({timeout}s).").format(timeout=timeout)
+        )
+    return result.returncode, result.output
 
 
 def _run_cancellable(cmd: list[str], timeout: int, should_cancel: CancelCheck) -> tuple[int, str]:

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import subprocess
 import zipfile
 from pathlib import Path
 
@@ -17,6 +16,7 @@ from epubforge.core.detection import (
     _java_from_app_paths,
     _parse_java_major,
 )
+from epubforge.core.process import ProcessResult
 from epubforge.validators import Severity, parse_report, run_epubcheck
 from epubforge.validators import epubcheck as ec
 
@@ -78,19 +78,19 @@ def test_parse_report_negative_column_becomes_none() -> None:
 
 
 def _fake_run_factory(fixture: str | None, returncode: int):
-    """Buduje atrapę subprocess.run, która zapisuje fixture do pliku raportu."""
+    """Buduje atrapę wspólnego runnera, która zapisuje fixture do pliku raportu."""
 
     def fake_run(cmd, **_kwargs):
         if fixture is not None:
             Path(cmd[-1]).write_text((_FIXTURES / fixture).read_text(encoding="utf-8"))
-        return subprocess.CompletedProcess(cmd, returncode=returncode, stdout="", stderr="boom")
+        return ProcessResult(returncode=returncode, output="boom")
 
     return fake_run
 
 
 def test_run_epubcheck_ok(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Exit 0 + poprawny JSON → raport valid=True."""
-    monkeypatch.setattr(ec.subprocess, "run", _fake_run_factory("report_ok.json", 0))
+    monkeypatch.setattr(ec, "run_process", _fake_run_factory("report_ok.json", 0))
     report = run_epubcheck(tmp_path / "b.epub", Path("java"), Path("epubcheck.jar"))
     assert report.valid is True
     assert report.epubcheck_version == "5.1.0"
@@ -100,33 +100,33 @@ def test_run_epubcheck_invalid_returns_report(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """Exit != 0 z poprawnym JSON to raport valid=False, NIE wyjątek."""
-    monkeypatch.setattr(ec.subprocess, "run", _fake_run_factory("report_errors.json", 1))
+    monkeypatch.setattr(ec, "run_process", _fake_run_factory("report_errors.json", 1))
     report = run_epubcheck(tmp_path / "b.epub", Path("java"), Path("epubcheck.jar"))
     assert report.valid is False
     assert len(report.messages) == 5
 
 
 def test_run_epubcheck_timeout_raises(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """Timeout procesu → ValidationError."""
+    """Timeout procesu → ValidationError (runner zwraca ``timed_out=True``)."""
 
-    def raise_timeout(cmd, **_kwargs):
-        raise subprocess.TimeoutExpired(cmd, 1)
+    def timed_out(cmd, **_kwargs):
+        return ProcessResult(returncode=-1, timed_out=True)
 
-    monkeypatch.setattr(ec.subprocess, "run", raise_timeout)
+    monkeypatch.setattr(ec, "run_process", timed_out)
     with pytest.raises(ValidationError):
         run_epubcheck(tmp_path / "b.epub", Path("java"), Path("epubcheck.jar"))
 
 
 def test_run_epubcheck_no_json_raises(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Proces nie utworzył raportu JSON → ValidationError ze stderr."""
-    monkeypatch.setattr(ec.subprocess, "run", _fake_run_factory(None, 1))
+    monkeypatch.setattr(ec, "run_process", _fake_run_factory(None, 1))
     with pytest.raises(ValidationError, match="boom"):
         run_epubcheck(tmp_path / "b.epub", Path("java"), Path("epubcheck.jar"))
 
 
 def test_run_epubcheck_broken_json_raises(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Niepoprawny JSON → ValidationError."""
-    monkeypatch.setattr(ec.subprocess, "run", _fake_run_factory("report_broken.json", 1))
+    monkeypatch.setattr(ec, "run_process", _fake_run_factory("report_broken.json", 1))
     with pytest.raises(ValidationError):
         run_epubcheck(tmp_path / "b.epub", Path("java"), Path("epubcheck.jar"))
 

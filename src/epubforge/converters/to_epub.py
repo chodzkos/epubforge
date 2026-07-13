@@ -7,8 +7,6 @@ bez wykonywania walidacji samego EPUB-a.
 
 from __future__ import annotations
 
-import subprocess
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -18,6 +16,7 @@ from epubforge.converters.kindle_drm import has_kindle_drm
 from epubforge.core.detection import Tool, Tools
 from epubforge.core.exceptions import ConversionError, ConverterNotFoundError
 from epubforge.core.metadata import Metadata
+from epubforge.core.process import run_process
 from epubforge.core.streaming import CancelCheck, LineSink
 from epubforge.i18n import _
 
@@ -26,7 +25,6 @@ Engine = Literal["pandoc", "calibre", "auto", "pdf2md"]
 # Silnik po rozstrzygnięciu ``auto`` — zawsze konkretny (bez ``auto``).
 ResolvedEngine = Literal["pandoc", "calibre", "pdf2md"]
 
-_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 _PDF_EXTENSIONS = {".pdf"}
 # Formaty Kindle — wyłącznie Calibre (Pandoc ich nie czyta), z detekcją DRM.
 KINDLE_INPUT_EXTENSIONS = {".mobi", ".azw3", ".azw", ".prc"}
@@ -372,17 +370,9 @@ def _calibre_metadata_args(metadata: Metadata | None) -> list[str]:
 
 
 def _run_converter(command: list[str], engine: str) -> str:
-    """Uruchamia proces konwersji i zwraca połączony log stdout/stderr."""
+    """Uruchamia proces konwersji przez wspólny runner i zwraca połączony log."""
     try:
-        result = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            creationflags=_NO_WINDOW,
-            check=False,
-        )
+        result = run_process(command)
     except FileNotFoundError as exc:
         raise ConverterNotFoundError(
             f"Nie udało się uruchomić konwertera {engine}: {command[0]}"
@@ -390,7 +380,11 @@ def _run_converter(command: list[str], engine: str) -> str:
     except OSError as exc:
         raise ConversionError(f"Nie udało się uruchomić konwertera {engine}: {exc}") from exc
 
-    log = _combined_log(result.stdout, result.stderr)
+    log = result.output
+    if result.timed_out:
+        raise ConversionError(
+            _("Konwersja przez {engine} przekroczyła limit czasu.").format(engine=engine)
+        )
     if result.returncode != 0:
         if "drm" in log.lower():  # Calibre sygnalizuje DRM w stderr
             raise _drm_error()
@@ -401,10 +395,9 @@ def _run_converter(command: list[str], engine: str) -> str:
     return log
 
 
-def _combined_log(stdout: str | None, stderr: str | None) -> str:
-    """Łączy stdout i stderr, zachowując czytelny separator tylko gdy potrzebny."""
-    parts = [part.strip() for part in (stdout, stderr) if part]
-    return "\n".join(parts)
+def _combined_log(*parts: str | None) -> str:
+    """Łączy niepuste fragmenty logu (używane m.in. przez ścieżkę pdf2md)."""
+    return "\n".join(part.strip() for part in parts if part and part.strip())
 
 
 def _log_fragment(log: str, limit: int = 1000) -> str:

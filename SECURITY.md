@@ -73,6 +73,32 @@ utwardzony klient (`bookmeta/_http.py`):
   `MAX_BYTES+1`, bez cichego ucięcia), obowiązuje twardy timeout, a każdy błąd
   sieciowy kończy się `None` (nigdy wyjątkiem widocznym dla UI).
 
+## Procesy zewnętrzne i bezpieczny zapis
+
+Wszystkie konwertery i walidatory (Pandoc, Calibre, EpubCheck, Ace, Kindle
+Previewer…) uruchamiają procesy przez **jeden wspólny runner**
+(`core/process.py`). Runner:
+
+- egzekwuje **domyślne, konfigurowalne timeouty** (`ProcessLimits`) — proces w
+  zawieszeniu nie blokuje aplikacji w nieskończoność;
+- **ubija całe drzewo/grupę procesu** przy anulowaniu lub timeoucie (na POSIX
+  przez `os.killpg` na nowej sesji, na Windows przez `taskkill /T`), więc żaden
+  proces-„sierota" nie zostaje po przerwaniu;
+- **ogranicza przechowywany log** (z licznikiem uciętych bajtów) i stosuje
+  **ograniczoną kolejkę** (backpressure) — gadatliwy proces nie wyczerpie pamięci;
+- dekoduje wyjście z `errors="replace"` (odporność na błędy kodowania).
+  Tryb synchroniczny i strumieniowy mają **identyczną semantykę** (jeden silnik).
+  Tor DETEKCJI narzędzi ma osobną, celowo prostą mechanikę sond i nie korzysta z
+  tego runnera.
+
+Zapis EPUB (`Epub.save`) jest **bezpieczny dla oryginału**: nowa treść trafia do
+**unikalnego pliku tymczasowego w katalogu docelowym**, jest **fsyncowana** (plik,
+a na POSIX także katalog) i podmieniana **atomowo** (`os.replace`). Przy dowolnym
+błędzie (brak miejsca, brak uprawnień, przerwana podmiana) temp jest sprzątany, a
+**oryginał zostaje nietknięty i czytelny**. Nadpisanie oryginału (także gdy
+`output_path` wskazuje na źródło) poprzedza **rotowany backup** z konfigurowalną
+retencją, więc żaden zapis nie kasuje po cichu jedynej kopii bezpieczeństwa.
+
 ## Łańcuch dostaw i CI (least privilege)
 
 Pipeline CI trzyma się zasady **minimalnych uprawnień**, żeby kompromitacja

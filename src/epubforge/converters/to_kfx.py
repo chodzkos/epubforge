@@ -9,8 +9,6 @@ from __future__ import annotations
 
 import contextlib
 import shutil
-import subprocess
-import sys
 import tempfile
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -22,12 +20,12 @@ from epubforge.converters.to_epub import ConversionResult
 from epubforge.core import Epub
 from epubforge.core.detection import Tool, Tools
 from epubforge.core.exceptions import ConversionError, ConverterNotFoundError
+from epubforge.core.process import run_process
 from epubforge.core.streaming import CancelCheck, LineSink
 from epubforge.fixers import CssFixOptions, fix_css
 
 KfxEngine = Literal["calibre", "kindle-previewer", "auto"]
 
-_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 _KP3_WARNING = (
     "WARNING: Kindle Previewer 3 engine is EXPERIMENTAL. "
     "Calibre with KFX Output is the primary and recommended KFX engine."
@@ -225,17 +223,9 @@ def _convert_with_kindle_previewer(tool: Tool, source: Path, target: Path) -> st
 
 
 def _run_converter(command: list[str], engine: Literal["calibre", "kindle-previewer"]) -> str:
-    """Uruchamia konwerter i zwraca połączony log stdout/stderr."""
+    """Uruchamia konwerter przez wspólny runner i zwraca połączony log."""
     try:
-        result = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            creationflags=_NO_WINDOW,
-            check=False,
-        )
+        result = run_process(command)
     except FileNotFoundError as exc:
         raise ConverterNotFoundError(
             f"Nie udało się uruchomić konwertera {engine}: {command[0]}"
@@ -243,7 +233,9 @@ def _run_converter(command: list[str], engine: Literal["calibre", "kindle-previe
     except OSError as exc:
         raise ConversionError(f"Nie udało się uruchomić konwertera {engine}: {exc}") from exc
 
-    log = _combined_log(result.stdout, result.stderr)
+    log = result.output
+    if result.timed_out:
+        raise ConversionError(f"Konwersja do KFX przez {engine} przekroczyła limit czasu.")
     if result.returncode != 0:
         raise ConversionError(
             f"Konwersja do KFX przez {engine} nie powiodła się "
