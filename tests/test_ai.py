@@ -165,3 +165,61 @@ def test_api_key_from_env(monkeypatch: pytest.MonkeyPatch, taxonomy: Taxonomy) -
     )
     ai.suggest_tags("o", "t", taxonomy, config, urlopen=opener)
     assert captured["auth"] == "Bearer sekret123"
+
+
+# ── Prywatność: ujawnienie i zgoda na chmurę (F-19) ──────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("base_url", "cloud"),
+    [
+        ("http://localhost:11434/v1", False),
+        ("http://127.0.0.1:11434/v1", False),
+        ("http://192.168.1.10:11434/v1", False),
+        ("https://api.openai.com/v1", True),
+        ("https://api.deepseek.com/v1", True),
+    ],
+)
+def test_is_cloud_endpoint(base_url: str, cloud: bool) -> None:
+    """Loopback/LAN to NIE chmura; hosty publiczne to chmura."""
+    assert ai.is_cloud_endpoint(base_url) is cloud
+
+
+def test_describe_request_lists_only_sent_fields() -> None:
+    """Ujawnienie zawiera dokładnie pola, które przy danych wejściach pójdą do modelu."""
+    config = ai.AIConfig(preset="openai", base_url="https://api.openai.com/v1", model="gpt")
+    # Z opisem: opis + taksonomia; próbka NIE (bo jest opis).
+    with_desc = ai.describe_request(config, description="opis", toc="", sample_text="tekst")
+    assert with_desc.is_cloud is True
+    assert with_desc.host == "api.openai.com"
+    assert with_desc.model == "gpt"
+    assert ai.FIELD_DESCRIPTION in with_desc.fields
+    assert ai.FIELD_CONTENT_SAMPLE not in with_desc.fields
+    # Bez opisu, z próbką: próbka + taksonomia (bez opisu).
+    with_sample = ai.describe_request(config, description="", toc="", sample_text="tekst")
+    assert ai.FIELD_CONTENT_SAMPLE in with_sample.fields
+    assert ai.FIELD_DESCRIPTION not in with_sample.fields
+    # Taksonomia zawsze.
+    assert ai.FIELD_TAXONOMY in with_desc.fields and ai.FIELD_TAXONOMY in with_sample.fields
+
+
+def test_cloud_consent_roundtrip() -> None:
+    """Zgoda jest per (host, model): zapis i odczyt, zmiana modelu unieważnia."""
+    config: dict[str, object] = {}
+    assert ai.cloud_consent_granted(config, "api.openai.com", "gpt") is False
+    ai.grant_cloud_consent(config, "api.openai.com", "gpt")
+    assert ai.cloud_consent_granted(config, "api.openai.com", "gpt") is True
+    # Inny model na tym samym hoście → brak zgody (ponowne pytanie).
+    assert ai.cloud_consent_granted(config, "api.openai.com", "gpt-inny") is False
+    # Inny host → brak zgody.
+    assert ai.cloud_consent_granted(config, "api.deepseek.com", "gpt") is False
+
+
+def test_content_sample_setting_default_and_toggle() -> None:
+    """Domyślnie wolno wysyłać próbkę; ustawienie da się wyłączyć i odczytać."""
+    config: dict[str, object] = {}
+    assert ai.content_sample_enabled(config) is True  # domyślnie tak
+    ai.set_content_sample_enabled(config, False)
+    assert ai.content_sample_enabled(config) is False
+    ai.set_content_sample_enabled(config, True)
+    assert ai.content_sample_enabled(config) is True

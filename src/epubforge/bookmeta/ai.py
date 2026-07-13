@@ -24,7 +24,7 @@ import re
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, MutableMapping
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -256,6 +256,97 @@ def _api_key(config: AIConfig) -> str:
     if not config.api_key_env:
         return ""
     return os.environ.get(config.api_key_env, "")
+
+
+# ── Prywatność: ujawnienie żądania i zgoda na chmurę (F-19) ───────────────────────
+
+# Identyfikatory pól, które MOGĄ trafić do modelu — UI tłumaczy je na etykiety.
+FIELD_DESCRIPTION = "description"
+FIELD_TOC = "toc"
+FIELD_CONTENT_SAMPLE = "content_sample"
+FIELD_TAXONOMY = "taxonomy"
+
+# Klucze konfiguracji: zapisana zgoda per host oraz zgoda na wysyłkę próbki treści.
+_CONSENT_SECTION = "ai_cloud_consent"
+_CONTENT_SAMPLE_KEY = "ai_send_content_sample"
+
+
+@dataclass(frozen=True)
+class AIDisclosure:
+    """Jawne ujawnienie żądania AI do ekranu świadomej zgody.
+
+    Attributes:
+        host: host docelowy (z ``base_url``).
+        scheme: schemat (``https``/``http``).
+        model: nazwa modelu.
+        is_cloud: czy host jest publiczny (chmura) — czyli NIE loopback/LAN.
+        fields: identyfikatory pól, które przy DANYCH wejściach faktycznie pójdą.
+    """
+
+    host: str
+    scheme: str
+    model: str
+    is_cloud: bool
+    fields: tuple[str, ...]
+
+
+def is_cloud_endpoint(base_url: str) -> bool:
+    """Czy endpoint to host PUBLICZNY (chmura) — a nie loopback/adres prywatny (LAN)."""
+    return not _is_local_host(urllib.parse.urlparse(base_url).hostname)
+
+
+def describe_request(
+    config: AIConfig, *, description: str, toc: str, sample_text: str
+) -> AIDisclosure:
+    """Zwraca dokładny opis żądania: host, model i pola, które FAKTYCZNIE pójdą.
+
+    Lista pól odzwierciedla logikę :func:`_build_prompt` — pokazujemy dokładnie to,
+    co przy danych wejściach trafi do modelu (nie „potencjalnie"). Zawsze wysyłamy
+    listy taksonomii; opis/spis treści/próbkę tylko, gdy realnie są dołączane.
+    """
+    parsed = urllib.parse.urlparse(config.base_url)
+    fields = [FIELD_TAXONOMY]
+    if description:
+        fields.insert(0, FIELD_DESCRIPTION)
+    if toc:
+        fields.append(FIELD_TOC)
+    if sample_text and not description:
+        fields.append(FIELD_CONTENT_SAMPLE)
+    return AIDisclosure(
+        host=parsed.hostname or config.base_url,
+        scheme=parsed.scheme.lower(),
+        model=config.model,
+        is_cloud=is_cloud_endpoint(config.base_url),
+        fields=tuple(fields),
+    )
+
+
+def cloud_consent_granted(config: Mapping[str, Any], host: str, model: str) -> bool:
+    """Czy zapisano świadomą zgodę na wysyłkę do danej pary ``(host, model)``.
+
+    Zgoda jest per ``(host, model)`` — zmiana modelu wymaga ponownej zgody (model
+    jest jawnie ujawniany), więc użytkownik nie wysyła nieświadomie do innego celu.
+    """
+    section = config.get(_CONSENT_SECTION)
+    return isinstance(section, dict) and section.get(host) == model
+
+
+def grant_cloud_consent(config: MutableMapping[str, Any], host: str, model: str) -> None:
+    """Zapisuje zgodę na ``(host, model)`` w configu (utrwalenie należy do wołającego)."""
+    raw = config.get(_CONSENT_SECTION)
+    section = dict(raw) if isinstance(raw, dict) else {}
+    section[host] = model
+    config[_CONSENT_SECTION] = section
+
+
+def content_sample_enabled(config: Mapping[str, Any]) -> bool:
+    """Czy wolno wysyłać próbkę treści książki do modelu (domyślnie: tak)."""
+    return bool(config.get(_CONTENT_SAMPLE_KEY, True))
+
+
+def set_content_sample_enabled(config: MutableMapping[str, Any], enabled: bool) -> None:
+    """Ustawia zgodę na wysyłkę próbki treści (utrwalenie należy do wołającego)."""
+    config[_CONTENT_SAMPLE_KEY] = bool(enabled)
 
 
 # ── Budowa promptu i parsowanie odpowiedzi ────────────────────────────────────────
