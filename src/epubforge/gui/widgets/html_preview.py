@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
 )
 
 from epubforge.core import Epub, Tool
+from epubforge.core._xml_safe import parse_untrusted
 from epubforge.i18n import _
 
 # Limit rozmiaru obrazka osadzanego jako data: URI (większe → placeholder).
@@ -66,13 +67,10 @@ def inline_images(xhtml: str, resolver: ImageResolver, max_bytes: int = _MAX_IMG
         Zmodyfikowany dokument (lub oryginał, gdy nie da się sparsować).
     """
     try:
-        root = cast(
-            "etree._Element | None",
-            etree.fromstring(xhtml.encode("utf-8"), etree.XMLParser(recover=True)),
-        )
+        # Centralny utwardzony parser (recover) — bez XXE/encji/sieci/DTD.
+        root = parse_untrusted(xhtml.encode("utf-8"), recover=True)
     except (etree.XMLSyntaxError, ValueError):
-        return xhtml
-    if root is None:
+        # XmlSecurityError (limit/pusty) dziedziczy po ValueError — łapiemy oba.
         return xhtml
 
     for img in [el for el in root.iter() if _localname(el) == "img"]:

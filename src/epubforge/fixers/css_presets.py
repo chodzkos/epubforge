@@ -25,7 +25,6 @@ import posixpath
 import shutil
 import sys
 from dataclasses import dataclass
-from io import BytesIO
 from pathlib import Path
 from urllib.parse import unquote, urldefrag
 
@@ -33,6 +32,7 @@ import tinycss2
 from lxml import etree
 
 from epubforge.core import Epub
+from epubforge.core._xml_safe import parse_untrusted_tree
 from epubforge.core.config import config_dir
 from epubforge.i18n import current_language
 
@@ -370,9 +370,8 @@ def _suffix(href: str) -> str:
 
 
 def _parse_xml(data: bytes) -> etree._ElementTree:
-    """Parsuje XML/XHTML zachowując encje (bez sieci, z odzyskiem błędów)."""
-    parser = etree.XMLParser(resolve_entities=False, recover=True, no_network=True)
-    return etree.parse(BytesIO(data), parser)
+    """Parsuje XML/XHTML do drzewa (recover) przez centralne, utwardzone API."""
+    return parse_untrusted_tree(data)
 
 
 def _serialize_xml(tree: etree._ElementTree) -> bytes:

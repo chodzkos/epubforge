@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
 )
 
 from epubforge.core import Epub, Tool
+from epubforge.core._xml_safe import XmlSecurityError, parse_untrusted
 from epubforge.gui import editor_files as ef
 from epubforge.gui.tabs.editor_preview import (
     _PAGE_EDITOR,
@@ -424,8 +425,9 @@ class EditorTab(EditorPreviewMixin, QWidget):
         if ef.profile_for(internal, self._media_types.get(internal)) != ef.PROFILE_XML:
             return True
         try:
-            etree.fromstring(text.encode("utf-8"))
-        except etree.XMLSyntaxError as exc:
+            # Walidacja strict przez centralny utwardzony parser (XXE/encje off).
+            parse_untrusted(text.encode("utf-8"))
+        except (etree.XMLSyntaxError, XmlSecurityError) as exc:
             answer = QMessageBox.question(
                 self,
                 _("Niepoprawny XML"),

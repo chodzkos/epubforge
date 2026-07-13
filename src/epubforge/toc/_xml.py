@@ -14,6 +14,8 @@ from urllib.parse import unquote
 
 from lxml import etree
 
+from epubforge.core._xml_safe import parse_untrusted_document
+
 XHTML_NS = "http://www.w3.org/1999/xhtml"
 EPUB_NS = "http://www.idpf.org/2007/ops"
 NCX_NS = "http://www.daisy.org/z3986/2005/ncx/"
@@ -23,17 +25,15 @@ EPUB_TYPE = f"{{{EPUB_NS}}}type"
 
 
 def parse_xml(data: bytes) -> tuple[etree._Element, str]:
-    """Parsuje dokument (recover) i zwraca ``(root, doctype)``.
+    """Parsuje dokument (recover) i zwraca ``(root, doctype)`` przez centralne API.
+
+    Delegacja do :func:`epubforge.core._xml_safe.parse_untrusted_document` — jedno
+    utwardzone miejsce parsowania treści EPUB (XXE/encje/sieć/DTD wyłączone).
 
     Raises:
-        ValueError: gdy dokument jest pusty/nieparsowalny nawet w trybie recover.
+        XmlSecurityError: gdy dokument jest pusty/nieparsowalny albo za duży.
     """
-    parser = etree.XMLParser(recover=True, resolve_entities=False)
-    root = cast("etree._Element | None", etree.fromstring(data, parser))
-    if root is None:
-        raise ValueError("Pusty lub nieparsowalny dokument XML.")
-    doctype = getattr(root.getroottree().docinfo, "doctype", "") or ""
-    return root, doctype
+    return parse_untrusted_document(data)
 
 
 def serialize_xml(root: etree._Element, doctype: str = "") -> bytes:

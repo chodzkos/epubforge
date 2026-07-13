@@ -19,6 +19,7 @@ import pyphen
 from lxml import etree
 
 from epubforge.core import Epub, ManifestItem
+from epubforge.core._xml_safe import parse_untrusted
 
 HyphenationMethod = Literal["soft-hyphen", "css"]
 
@@ -219,9 +220,8 @@ def _inject_embedded_css(data: bytes) -> bytes:
 
 
 def _parse_xml_document(data: bytes) -> etree._Element:
-    """Parsuje XML/XHTML w trybie odzyskiwania drobnych nieścisłości."""
-    parser = etree.XMLParser(resolve_entities=False, recover=True)
-    return etree.fromstring(data, parser=parser)
+    """Parsuje XML/XHTML (recover) przez centralne, utwardzone API."""
+    return parse_untrusted(data, recover=True)
 
 
 def _serialize_xml(root: etree._Element, original: bytes) -> bytes:
