@@ -198,6 +198,16 @@ tools = detect_with_cache()             # cache w config.json, re-detekcja po 7 
 print({name: t.available for name, t in tools.items()})
 ```
 
+**Lokalizacja Javy** (warstwa kompozycji EpubForge nad `chodzkos-detection`) idzie
+w kolejności: override → `PATH` (`shutil.which`) → App Paths (rejestr Windows) →
+rejestr Eclipse Adoptium → fallback typowych katalogów instalacji.
+
+**Świeżość cache** (`last_detected` w `config.json`) jest zapisywana **zawsze w
+UTC** (aware, z offsetem). Odczyt jest odporny: timestamp bez strefy jest
+interpretowany jako UTC, a każdy przypadek wątpliwy (niepoprawny ISO 8601, zła
+strefa, data z przyszłości po cofnięciu zegara) uznaje cache za **nieświeży** i
+wymusza ponowną detekcję — zamiast wywracać start aplikacji.
+
 ---
 
 ## Wyjątki
