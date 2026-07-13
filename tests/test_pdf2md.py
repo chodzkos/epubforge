@@ -11,7 +11,6 @@ import importlib
 import shutil
 from collections.abc import Callable
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -46,15 +45,16 @@ def _fake_run(
     stdout: str = "ok",
     stderr: str = "",
     returncode: int = 0,
-) -> Callable[..., SimpleNamespace]:
-    """Mock ``subprocess.run``; przy komendzie pdf2md może utworzyć plik Markdown."""
+) -> Callable[..., ProcessResult]:
+    """Mock ``run_process``; przy komendzie pdf2md może utworzyć plik Markdown."""
 
-    def run(command: list[str], **_kwargs: object) -> SimpleNamespace:
+    def run(command: list[str], **_kwargs: object) -> ProcessResult:
         calls.append(command)
         if create_markdown and "convert" in command:
             out = Path(command[command.index("-o") + 1])
             out.write_text("# Tytuł\n\n![](book_images/rys.png)\n", encoding="utf-8")
-        return SimpleNamespace(stdout=stdout, stderr=stderr, returncode=returncode)
+        output = "\n".join(p for p in (stdout, stderr) if p)
+        return ProcessResult(returncode=returncode, output=output)
 
     return run
 
@@ -89,7 +89,7 @@ def test_pdf2md_builds_two_step_chain(tmp_path: Path, monkeypatch: pytest.Monkey
     """engine=pdf2md buduje pdf2md convert → md, a potem Pandoc md → EPUB."""
     calls: list[list[str]] = []
     _use_pdf2md(monkeypatch)
-    monkeypatch.setattr(converter.subprocess, "run", _fake_run(calls))
+    monkeypatch.setattr(converter, "run_process", _fake_run(calls))
     source = _make_pdf(tmp_path)
     target = tmp_path / "book.epub"
 
@@ -113,7 +113,7 @@ def test_pdf2md_pandoc_step_gets_resource_path(
     """Drugi krok to Pandoc na Markdownie z ``--resource-path`` na katalog obrazów."""
     calls: list[list[str]] = []
     _use_pdf2md(monkeypatch)
-    monkeypatch.setattr(converter.subprocess, "run", _fake_run(calls))
+    monkeypatch.setattr(converter, "run_process", _fake_run(calls))
     source = _make_pdf(tmp_path)
     target = tmp_path / "book.epub"
 
@@ -144,7 +144,7 @@ def test_auto_pdf_prefers_pdf2md_when_detected(
         "calibre_ebook_convert",
         staticmethod(lambda: _tool("calibre_ebook_convert", "/bin/ebook-convert")),
     )
-    monkeypatch.setattr(converter.subprocess, "run", _fake_run(calls))
+    monkeypatch.setattr(converter, "run_process", _fake_run(calls))
 
     result = to_epub(_make_pdf(tmp_path), tmp_path / "book.epub")
 
@@ -163,7 +163,7 @@ def test_auto_pdf_falls_back_to_calibre_without_pdf2md(
         "calibre_ebook_convert",
         staticmethod(lambda: _tool("calibre_ebook_convert", "/bin/ebook-convert")),
     )
-    monkeypatch.setattr(converter.subprocess, "run", _fake_run(calls))
+    monkeypatch.setattr(converter, "run_process", _fake_run(calls))
 
     result = to_epub(_make_pdf(tmp_path), tmp_path / "book.epub")
 
@@ -194,8 +194,8 @@ def test_pdf2md_nonzero_exit_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     calls: list[list[str]] = []
     _use_pdf2md(monkeypatch)
     monkeypatch.setattr(
-        converter.subprocess,
-        "run",
+        converter,
+        "run_process",
         _fake_run(calls, create_markdown=False, stderr="blad wewnetrzny silnika", returncode=3),
     )
     with pytest.raises(ConversionError, match="pdf2md"):
@@ -209,7 +209,7 @@ def test_pdf2md_without_markdown_output_raises(
     """pdf2md kończy się OK, ale nie tworzy Markdownu (brak silnika) → ConversionError."""
     calls: list[list[str]] = []
     _use_pdf2md(monkeypatch)
-    monkeypatch.setattr(converter.subprocess, "run", _fake_run(calls, create_markdown=False))
+    monkeypatch.setattr(converter, "run_process", _fake_run(calls, create_markdown=False))
     with pytest.raises(ConversionError, match="Markdown"):
         to_epub(_make_pdf(tmp_path), tmp_path / "book.epub", engine="pdf2md")
 

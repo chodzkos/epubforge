@@ -18,23 +18,20 @@ druga lista ``assertions`` z pojedynczymi naruszeniami (``earl:test`` +
 from __future__ import annotations
 
 import json
-import subprocess
-import sys
 import tempfile
 import time
 from collections import Counter
 from collections.abc import Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
 from epubforge.core.exceptions import ValidationError
+from epubforge.core.process import DEFAULT_PROCESS_LIMITS, run_process
 from epubforge.core.streaming import CancelCheck, run_subprocess_streaming
 from epubforge.i18n import _
 from epubforge.validators.epubcheck import Severity
 
-# Flaga ukrywająca okno konsoli na Windows (pułapka #7).
-_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 _DEFAULT_TIMEOUT = 600  # sekundy — Ace bywa wolniejszy niż EpubCheck
 
 # Mapowanie poziomów wpływu Ace na nasze poziomy istotności.
@@ -188,7 +185,8 @@ def run_ace(
         ace: ścieżka do pliku wykonywalnego ``ace``.
         timeout: maksymalny czas audytu w sekundach.
         should_cancel: opcjonalny predykat anulowania. Gdy podany, audyt biegnie
-            strumieniowo (proces da się ubić); ``None`` = klasyczny ``subprocess.run``.
+            strumieniowo (log na żywo); ``None`` = wariant synchroniczny. Oba idą
+            przez wspólny runner (``core/process.py``) — ta sama semantyka i timeout.
 
     Returns:
         :class:`AceReport`; ``accessible`` odzwierciedla wynik audytu. Niedostępny
@@ -223,29 +221,21 @@ def run_ace(
 
 
 def _run_blocking(cmd: list[str], timeout: int) -> str:
-    """Uruchamia Ace synchronicznie (``subprocess.run``); zwraca ``stderr``.
+    """Uruchamia Ace synchronicznie przez wspólny runner; zwraca (scalony) log.
 
     Kod wyjścia Ace ignorujemy — o dostępności decyduje raport (Ace zwraca
     niezerowy kod także dla znalezionych naruszeń, co nie jest błędem technicznym).
+    Semantyka (runner, timeout ubijający drzewo) identyczna z wariantem streamingu.
     """
     try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout,
-            creationflags=_NO_WINDOW,
-            check=False,
-        )
-    except subprocess.TimeoutExpired as exc:
-        raise ValidationError(
-            _("Ace przekroczył limit czasu ({timeout}s).").format(timeout=timeout)
-        ) from exc
+        result = run_process(cmd, limits=replace(DEFAULT_PROCESS_LIMITS, timeout=timeout))
     except OSError as exc:
         raise ValidationError(_("Nie udało się uruchomić Ace: {error}").format(error=exc)) from exc
-    return result.stderr
+    if result.timed_out:
+        raise ValidationError(
+            _("Ace przekroczył limit czasu ({timeout}s).").format(timeout=timeout)
+        )
+    return result.output
 
 
 def _run_cancellable(cmd: list[str], timeout: int, should_cancel: CancelCheck) -> str:

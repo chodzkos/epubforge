@@ -361,8 +361,21 @@ with Epub("book.epub") as ebook:
     result = replace_in_epub(ebook, "kot", "pies")
     print(result.total, result.changed_files, result.skipped)
 
-    ebook.save()  # zapisuje + tworzy backup
+    ebook.save()  # zapisuje + tworzy rotowany backup
 ```
+
+> **Bezpieczny zapis.** `Epub.save()` pisze do **unikalnego pliku tymczasowego w
+> katalogu docelowym**, fsyncuje go (na POSIX też katalog) i podmienia **atomowo**
+> (`os.replace`). Przy dowolnym błędzie (brak miejsca, brak uprawnień, przerwana
+> podmiana) temp jest sprzątany, a **oryginał zostaje nietknięty**. Nadpisanie
+> oryginału (także gdy `output_path` wskazuje na źródło) poprzedza **rotowany
+> backup** (`.bak`, `.bak.1`, …) z konfigurowalną retencją (`backup_retention=`).
+
+> **Runner procesów zewnętrznych.** Konwertery i walidatory (Pandoc, Calibre,
+> EpubCheck, Ace, KP3…) uruchamiają procesy przez jeden runner (`core/process.py`)
+> z domyślnymi/konfigurowalnymi timeoutami, limitem logu, ograniczoną kolejką i
+> **ubijaniem całego drzewa procesu** przy anulowaniu/timeoucie (Windows, Linux,
+> macOS). API synchroniczne i strumieniowe mają tę samą semantykę.
 
 ### GUI
 ```bash

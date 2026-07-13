@@ -14,7 +14,6 @@ czytników. Ten moduł respektuje wymogi specyfikacji OCF:
 from __future__ import annotations
 
 import logging
-import os
 import posixpath
 import shutil
 import zipfile
@@ -27,8 +26,12 @@ from lxml import etree
 from epubforge.core._archive import (
     DEFAULT_LIMITS,
     ArchiveLimits,
-    copy_entry_streamed,
     validate_archive,
+)
+from epubforge.core._epub_write import (
+    is_same_target,
+    rotate_backups,
+    write_epub,
 )
 from epubforge.core._xml_safe import parse_untrusted
 from epubforge.core.exceptions import (
@@ -43,28 +46,12 @@ logger = logging.getLogger(__name__)
 
 # Stałe ścieżki i przestrzenie nazw wg specyfikacji OCF/OPF.
 _CONTAINER_PATH = "META-INF/container.xml"
-_MIMETYPE_PATH = "mimetype"
-_MIMETYPE_CONTENT = b"application/epub+zip"
 _CONTAINER_NS = "urn:oasis:names:tc:opendocument:xmlns:container"
 _OPF_NS = "http://www.idpf.org/2007/opf"
 
-# Stały timestamp ZIP (1980-01-01 — minimum formatu) dla wpisów zapisywanych po nazwie.
-# ``writestr`` z gołą nazwą wstawia ``time.localtime()``, więc te same dane logiczne dawały
-# różne bajty przy kolejnych zapisach (zależnie od zegara) — łamało to reprodukowalność i
-# idempotencję (np. dwukrotny upgrade EPUB 2→3). Wpisy KOPIOWANE ze źródła zachowują swój
-# oryginalny ``date_time`` (przez ZipInfo), więc niezmieniona treść daje niezmienne bajty.
-_ZIP_EPOCH = (1980, 1, 1, 0, 0, 0)
-
-
-def _named_entry(name: str, compress_type: int) -> zipfile.ZipInfo:
-    """Buduje :class:`zipfile.ZipInfo` z **deterministycznym** ``date_time`` (:data:`_ZIP_EPOCH`).
-
-    Używane zamiast gołej nazwy w ``writestr``, by zapis był reprodukowalny (bez zegara
-    ściennego w nagłówku ZIP).
-    """
-    info = zipfile.ZipInfo(name, date_time=_ZIP_EPOCH)
-    info.compress_type = compress_type
-    return info
+# Domyślna liczba przechowywanych backupów (najnowszy + starsze rotowane).
+# Konfigurowalne per-wywołanie przez ``Epub.save(backup_retention=…)`` / ``backup``.
+DEFAULT_BACKUP_RETENTION = 5
 
 
 @dataclass(frozen=True)
@@ -94,66 +81,6 @@ class PendingChanges:
 
     modified: dict[str, bytes]
     deleted: frozenset[str]
-
-
-def _write_epub(
-    source: Path,
-    target: Path,
-    modified: dict[str, bytes],
-    deleted: set[str],
-    limits: ArchiveLimits = DEFAULT_LIMITS,
-) -> None:
-    """Zapisuje EPUB kopiując niezmienione wpisy **strumieniowo** ze źródła.
-
-    W pamięci trzymamy wyłącznie zmodyfikowane pliki (``modified``); niezmienione
-    wpisy kopiujemy strumieniowo (``zin.open`` → ``zout.open``, bufor z limitów),
-    więc pamięć szczytowa zapisu NIE rośnie z rozmiarem największego niezmienionego
-    wpisu. Źródło jest walidowane przed kopiowaniem (odrzucenie przed dekompresją).
-    Zapis jest atomowy (``.tmp`` + :func:`os.replace`); przy błędzie ``.tmp`` jest
-    sprzątany, więc oryginał nigdy nie zostaje uszkodzony.
-
-    Args:
-        source: oryginalny EPUB — źródło niezmienionych wpisów.
-        target: plik docelowy (może być identyczny z ``source``).
-        modified: zmienione/nowe pliki jako ``{ścieżka_wewnętrzna: dane}``.
-        deleted: ścieżki wpisów, których nie należy kopiować do wyjścia.
-        limits: limity bezpieczeństwa (walidacja źródła + rozmiar bufora kopii).
-    """
-    tmp = target.with_suffix(target.suffix + ".tmp")
-    written: set[str] = set()
-    operations = 0
-    try:
-        with zipfile.ZipFile(source) as zin, zipfile.ZipFile(tmp, "w") as zout:
-            # Odrzuć złośliwe źródło PRZED kosztowną dekompresją/kopiowaniem.
-            validate_archive(zin, limits)
-            # 1. mimetype PIERWSZY i BEZ kompresji (deterministyczny timestamp).
-            zout.writestr(_named_entry(_MIMETYPE_PATH, zipfile.ZIP_STORED), _MIMETYPE_CONTENT)
-            written.add(_MIMETYPE_PATH)
-            # 2. Reszta wpisów ze źródła: zmienione bierzemy z dict, inne kopiujemy.
-            for item in zin.infolist():
-                if item.filename == _MIMETYPE_PATH or item.filename in deleted:
-                    continue
-                operations += 1
-                if operations > limits.max_operations:
-                    raise ResourceLimitError("Przekroczono budżet operacji zapisu EPUB.")
-                data = modified.get(item.filename)
-                if data is None:
-                    # Niezmieniony wpis — kopia STRUMIENIOWA (stały bufor), zachowuje
-                    # compress_type źródła (STORED, np. obrazy, nie są rekompresowane).
-                    copy_entry_streamed(zin, zout, item, buffer_size=limits.copy_buffer_size)
-                else:
-                    # Zmodyfikowany wpis — nowa treść, DEFLATED, deterministyczny timestamp.
-                    zout.writestr(_named_entry(item.filename, zipfile.ZIP_DEFLATED), data)
-                written.add(item.filename)
-            # 3. Pliki dodane przez write_file, których nie ma jeszcze w źródle.
-            for name, data in modified.items():
-                if name not in deleted and name not in written:
-                    zout.writestr(_named_entry(name, zipfile.ZIP_DEFLATED), data)
-        os.replace(tmp, target)
-    except BaseException:
-        # Nie zostawiaj częściowego ``.tmp`` (oryginał ``target`` pozostaje nietknięty).
-        tmp.unlink(missing_ok=True)
-        raise
 
 
 def _parse_opf_path(container_xml: bytes) -> str:
@@ -374,13 +301,26 @@ class Epub:
 
     # ── Zapis i backup ───────────────────────────────────────────────────────
 
-    def save(self, output_path: Path | None = None) -> Path:
-        """Zapisuje EPUB z poprawną strukturą ZIP.
+    def save(
+        self,
+        output_path: Path | None = None,
+        *,
+        backup_retention: int = DEFAULT_BACKUP_RETENTION,
+    ) -> Path:
+        """Zapisuje EPUB z poprawną strukturą ZIP (atomowo, z fsync i backupem).
+
+        Zapis nadpisujący oryginał jest bezpieczny: najpierw powstaje rotowany
+        backup, potem nowa treść trafia do unikalnego tempa w katalogu docelowym,
+        jest fsyncowana i podmieniana atomowo. Przy dowolnym błędzie (brak miejsca,
+        brak uprawnień, przerwana podmiana) **oryginał zostaje nietknięty**.
 
         Args:
-            output_path: gdy ``None`` — nadpisuje oryginał (po wykonaniu
-                :meth:`backup`); w przeciwnym razie zapisuje pod wskazaną
-                ścieżką, a bieżąca sesja pozostaje otwarta na oryginale.
+            output_path: gdy ``None`` — nadpisuje oryginał (po :meth:`backup`).
+                Wskazanie ścieżki równej źródłu jest traktowane jak nadpisanie
+                oryginału (backup + reopen), NIE jako zapis „obok". Inna ścieżka
+                zapisuje kopię, a bieżąca sesja pozostaje otwarta na oryginale.
+            backup_retention: liczba przechowywanych backupów przy nadpisaniu
+                oryginału (najnowszy + starsze rotowane). ``<= 1`` = tylko najnowszy.
 
         Returns:
             Ścieżka faktycznie zapisanego pliku.
@@ -391,17 +331,20 @@ class Epub:
         self._ensure_open()
         modified = dict(self._modified)
         deleted = set(self._deleted)
-        if output_path is not None:
-            target = Path(output_path)
-            _write_epub(self.path, target, modified, deleted, self._limits)
+        target = self.path if output_path is None else Path(output_path)
+        if not is_same_target(target, self.path):
+            # Zapis „obok" — sesja zostaje otwarta na oryginale, bez backupu.
+            write_epub(self.path, target, modified, deleted, self._limits)
             logger.debug("Zapisano EPUB jako: %s", target)
             return target
-        # Nadpisanie oryginału: backup, zamknięcie uchwytu (Windows), zapis, reopen.
-        self.backup()
+        # Nadpisanie oryginału (także gdy output_path == source): backup, zamknięcie
+        # uchwytu (Windows), atomowy zapis, reopen. Backup PRZED zamknięciem uchwytu,
+        # by błąd kopiowania nie zostawił zamkniętej sesji.
+        self.backup(retention=backup_retention)
         assert self._zip is not None
         self._zip.close()
         self._zip = None
-        _write_epub(self.path, self.path, modified, deleted, self._limits)
+        write_epub(self.path, self.path, modified, deleted, self._limits)
         self._modified.clear()
         self._deleted.clear()
         self._reset_cache()
@@ -409,16 +352,26 @@ class Epub:
         logger.debug("Nadpisano EPUB: %s", self.path)
         return self.path
 
-    def backup(self) -> Path:
-        """Tworzy kopię ``.bak`` oryginału obok niego.
+    def backup(self, *, retention: int = DEFAULT_BACKUP_RETENTION) -> Path:
+        """Tworzy rotowany backup oryginału obok niego.
+
+        Najnowszy backup zawsze leży pod stabilną nazwą ``<plik>.bak``; wcześniejsze
+        są rotowane do ``<plik>.bak.1``, ``<plik>.bak.2``… aż do ``retention``
+        (starsze są usuwane). Dzięki temu żaden zapis nie nadpisuje po cichu jedynej
+        kopii bezpieczeństwa.
+
+        Args:
+            retention: łączna liczba zachowywanych backupów. ``<= 1`` = brak rotacji
+                (tylko najnowszy ``.bak``).
 
         Returns:
-            Ścieżka utworzonego pliku backupu.
+            Ścieżka najnowszego backupu (``<plik>.bak``).
         """
-        backup_path = self.path.with_suffix(self.path.suffix + ".bak")
-        shutil.copy2(self.path, backup_path)
-        logger.debug("Utworzono backup: %s", backup_path)
-        return backup_path
+        primary = self.path.with_name(self.path.name + ".bak")
+        rotate_backups(primary, retention)
+        shutil.copy2(self.path, primary)
+        logger.debug("Utworzono backup: %s (retention=%d)", primary, retention)
+        return primary
 
     # ── Wewnętrzne ────────────────────────────────────────────────────────────
 

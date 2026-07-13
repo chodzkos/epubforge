@@ -18,11 +18,16 @@ with Epub("book.epub") as ebook:
 
     html = ebook.read_file("OEBPS/text/chapter1.xhtml")
     ebook.write_file("OEBPS/text/chapter1.xhtml", html.replace(b"foo", b"bar"))
-    ebook.save()                     # nadpisuje oryginał + tworzy .bak
+    ebook.save()                     # nadpisuje oryginał + tworzy rotowany .bak
 ```
 
-`save(output_path)` zapisuje kopię pod wskazaną ścieżką (bez ruszania oryginału).
-Zapis zawsze trzyma `mimetype` jako pierwszy, nieskompresowany wpis i jest atomowy.
+`save(output_path)` zapisuje kopię pod wskazaną ścieżką (bez ruszania oryginału);
+`output_path` wskazujący na samo źródło jest traktowany jak nadpisanie oryginału.
+Zapis zawsze trzyma `mimetype` jako pierwszy, nieskompresowany wpis i jest
+**atomowy z fsync**: nowa treść idzie do unikalnego tempa w katalogu docelowym,
+jest fsyncowana (na POSIX też katalog) i podmieniana przez `os.replace`. Przy
+dowolnym błędzie oryginał zostaje nietknięty. Nadpisanie poprzedza **rotowany
+backup** (`.bak`, `.bak.1`, …) z konfigurowalną retencją (`save(backup_retention=…)`).
 
 ---
 

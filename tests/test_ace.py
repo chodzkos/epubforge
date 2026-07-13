@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import json
-import subprocess
 from pathlib import Path
 
 import pytest
 
 from epubforge.core import ValidationError
+from epubforge.core.process import ProcessResult
 from epubforge.validators import AceReport, Severity, parse_ace_report, run_ace
 from epubforge.validators import ace as ace_module
 
@@ -108,7 +108,7 @@ def test_parse_flat_assertions() -> None:
 
 
 def _fake_run_factory(fixture: str | None, returncode: int):
-    """Buduje atrapę subprocess.run, która zapisuje fixture do report.json w outdir."""
+    """Buduje atrapę run_process, która zapisuje fixture do report.json w outdir."""
 
     def fake_run(cmd, **_kwargs):
         if fixture is not None:
@@ -117,14 +117,14 @@ def _fake_run_factory(fixture: str | None, returncode: int):
             (outdir / "report.json").write_text(
                 (_FIXTURES / fixture).read_text(encoding="utf-8"), encoding="utf-8"
             )
-        return subprocess.CompletedProcess(cmd, returncode=returncode, stdout="", stderr="boom")
+        return ProcessResult(returncode=returncode, output="boom")
 
     return fake_run
 
 
 def test_run_ace_ok(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Poprawny JSON → raport dostępny."""
-    monkeypatch.setattr(ace_module.subprocess, "run", _fake_run_factory("report_ok.json", 0))
+    monkeypatch.setattr(ace_module, "run_process", _fake_run_factory("report_ok.json", 0))
     report = run_ace(tmp_path / "b.epub", Path("ace"))
     assert isinstance(report, AceReport)
     assert report.accessible is True
@@ -133,9 +133,7 @@ def test_run_ace_ok(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
 
 def test_run_ace_violations_returns_report(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Naruszenia (Ace zwraca kod != 0) to raport niedostępny, NIE wyjątek."""
-    monkeypatch.setattr(
-        ace_module.subprocess, "run", _fake_run_factory("report_violations.json", 1)
-    )
+    monkeypatch.setattr(ace_module, "run_process", _fake_run_factory("report_violations.json", 1))
     report = run_ace(tmp_path / "b.epub", Path("ace"))
     assert report.accessible is False
     assert len(report.messages) == 4
@@ -144,24 +142,24 @@ def test_run_ace_violations_returns_report(monkeypatch: pytest.MonkeyPatch, tmp_
 def test_run_ace_timeout_raises(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Timeout procesu → ValidationError."""
 
-    def raise_timeout(cmd, **_kwargs):
-        raise subprocess.TimeoutExpired(cmd, 1)
+    def fake_timeout(cmd, **_kwargs):
+        return ProcessResult(returncode=-1, timed_out=True)
 
-    monkeypatch.setattr(ace_module.subprocess, "run", raise_timeout)
+    monkeypatch.setattr(ace_module, "run_process", fake_timeout)
     with pytest.raises(ValidationError):
         run_ace(tmp_path / "b.epub", Path("ace"))
 
 
 def test_run_ace_no_json_raises(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Ace nie utworzył raportu JSON → ValidationError ze stderr."""
-    monkeypatch.setattr(ace_module.subprocess, "run", _fake_run_factory(None, 1))
+    monkeypatch.setattr(ace_module, "run_process", _fake_run_factory(None, 1))
     with pytest.raises(ValidationError, match="boom"):
         run_ace(tmp_path / "b.epub", Path("ace"))
 
 
 def test_run_ace_broken_json_raises(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Niepoprawny JSON → ValidationError."""
-    monkeypatch.setattr(ace_module.subprocess, "run", _fake_run_factory("report_broken.json", 1))
+    monkeypatch.setattr(ace_module, "run_process", _fake_run_factory("report_broken.json", 1))
     with pytest.raises(ValidationError):
         run_ace(tmp_path / "b.epub", Path("ace"))
 
@@ -172,6 +170,6 @@ def test_run_ace_missing_executable_raises(monkeypatch: pytest.MonkeyPatch, tmp_
     def raise_oserror(cmd, **_kwargs):
         raise OSError("not found")
 
-    monkeypatch.setattr(ace_module.subprocess, "run", raise_oserror)
+    monkeypatch.setattr(ace_module, "run_process", raise_oserror)
     with pytest.raises(ValidationError):
         run_ace(tmp_path / "b.epub", Path("ace"))

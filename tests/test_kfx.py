@@ -10,7 +10,6 @@ import importlib
 import shutil
 from collections.abc import Callable
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -19,6 +18,7 @@ from epubforge.cli.main import main
 from epubforge.converters import ConversionResult, KfxOptions, to_kfx
 from epubforge.core.detection import Tool
 from epubforge.core.exceptions import ConversionError, ConverterNotFoundError
+from epubforge.core.process import ProcessResult
 
 kfx_converter = importlib.import_module("epubforge.converters.to_kfx")
 
@@ -47,17 +47,18 @@ def _fake_run(
     stderr: str = "",
     returncode: int = 0,
     create_kfx: bool = False,
-) -> Callable[..., SimpleNamespace]:
-    """Zwraca mock subprocess.run zapisujący wywołania."""
+) -> Callable[..., ProcessResult]:
+    """Zwraca mock run_process zapisujący wywołania."""
 
-    def run(command: list[str], **kwargs: object) -> SimpleNamespace:
+    def run(command: list[str], **kwargs: object) -> ProcessResult:
         calls.append((command, kwargs))
         if create_kfx:
             outdir = Path(command[-1])
             nested = outdir / "output"
             nested.mkdir(parents=True)
             (nested / "book.kfx").write_bytes(b"kfx")
-        return SimpleNamespace(stdout=stdout, stderr=stderr, returncode=returncode)
+        output = "\n".join(p for p in (stdout, stderr) if p)
+        return ProcessResult(returncode=returncode, output=output)
 
     return run
 
@@ -73,20 +74,15 @@ def test_auto_uses_calibre_when_kfx_plugin_available(
         "calibre_ebook_convert",
         staticmethod(lambda: _tool("calibre_ebook_convert", "/bin/ebook-convert")),
     )
-    monkeypatch.setattr(kfx_converter.subprocess, "run", _fake_run(calls, stdout="calibre log"))
+    monkeypatch.setattr(kfx_converter, "run_process", _fake_run(calls, stdout="calibre log"))
 
     source = tmp_path / "book.epub"
     result = to_kfx(source, tmp_path / "out", KfxOptions(engine="auto", fix_epub_first=False))
 
     target = tmp_path / "out" / "book.kfx"
     assert result == ConversionResult(True, target, "calibre log", "calibre")
-    command, kwargs = calls[0]
+    command, _kwargs = calls[0]
     assert command == [_path_arg("/bin/ebook-convert"), str(source), str(target)]
-    assert kwargs["capture_output"] is True
-    assert kwargs["text"] is True
-    assert kwargs["encoding"] == "utf-8"
-    assert kwargs["errors"] == "replace"
-    assert kwargs["check"] is False
 
 
 def test_auto_falls_back_to_kindle_previewer_without_calibre_plugin(
@@ -101,8 +97,8 @@ def test_auto_falls_back_to_kindle_previewer_without_calibre_plugin(
         staticmethod(lambda: _tool("kindle_previewer", "/opt/kp3/Kindle Previewer 3")),
     )
     monkeypatch.setattr(
-        kfx_converter.subprocess,
-        "run",
+        kfx_converter,
+        "run_process",
         _fake_run(calls, stdout="kp3 log", create_kfx=True),
     )
 
@@ -132,8 +128,8 @@ def test_explicit_kindle_previewer_adds_warning(
         staticmethod(lambda: _tool("kindle_previewer", "/kp3")),
     )
     monkeypatch.setattr(
-        kfx_converter.subprocess,
-        "run",
+        kfx_converter,
+        "run_process",
         _fake_run(calls, stdout="", stderr="converted", create_kfx=True),
     )
 
@@ -175,8 +171,8 @@ def test_nonzero_subprocess_raises_conversion_error(
         staticmethod(lambda: _tool("calibre_ebook_convert", "/ebook-convert")),
     )
     monkeypatch.setattr(
-        kfx_converter.subprocess,
-        "run",
+        kfx_converter,
+        "run_process",
         _fake_run(calls, stdout="stdout", stderr="boom", returncode=2),
     )
 
@@ -194,7 +190,7 @@ def test_kindle_previewer_requires_kfx_output_file(
         "kindle_previewer",
         staticmethod(lambda: _tool("kindle_previewer", "/kp3")),
     )
-    monkeypatch.setattr(kfx_converter.subprocess, "run", _fake_run(calls, stdout="no output"))
+    monkeypatch.setattr(kfx_converter, "run_process", _fake_run(calls, stdout="no output"))
 
     with pytest.raises(ConversionError, match="nie utworzył"):
         to_kfx(
@@ -227,9 +223,9 @@ def test_fix_epub_first_runs_before_conversion(
     def fake_fix_css(epub: FakeEpub, options: object) -> None:
         events.append(f"fix:{epub.path.name}:{type(options).__name__}")
 
-    def fake_run(command: list[str], **kwargs: object) -> SimpleNamespace:
+    def fake_run(command: list[str], **kwargs: object) -> ProcessResult:
         events.append("convert")
-        return SimpleNamespace(stdout="ok", stderr="", returncode=0)
+        return ProcessResult(returncode=0, output="ok")
 
     monkeypatch.setattr(kfx_converter, "Epub", FakeEpub)
     monkeypatch.setattr(kfx_converter, "fix_css", fake_fix_css)
@@ -239,7 +235,7 @@ def test_fix_epub_first_runs_before_conversion(
         "calibre_ebook_convert",
         staticmethod(lambda: _tool("calibre_ebook_convert", "/ebook-convert")),
     )
-    monkeypatch.setattr(kfx_converter.subprocess, "run", fake_run)
+    monkeypatch.setattr(kfx_converter, "run_process", fake_run)
 
     # _fix_epub kopiuje źródło do katalogu tymczasowego (praca na kopii), więc
     # plik musi istnieć; FakeEpub i tak nie czyta jego zawartości.
@@ -266,7 +262,7 @@ def test_fix_epub_first_does_not_mutate_source(
         "calibre_ebook_convert",
         staticmethod(lambda: _tool("calibre_ebook_convert", "/bin/ebook-convert")),
     )
-    monkeypatch.setattr(kfx_converter.subprocess, "run", _fake_run(calls))
+    monkeypatch.setattr(kfx_converter, "run_process", _fake_run(calls))
 
     to_kfx(source, tmp_path / "out", KfxOptions(engine="calibre", fix_epub_first=True))
 

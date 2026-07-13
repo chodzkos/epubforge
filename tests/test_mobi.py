@@ -10,7 +10,6 @@ import importlib
 import shutil
 from collections.abc import Callable
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -18,6 +17,7 @@ from epubforge.cli.main import main
 from epubforge.converters import ConversionResult, MobiOptions, to_mobi
 from epubforge.core.detection import Tool
 from epubforge.core.exceptions import ConversionError, ConverterNotFoundError
+from epubforge.core.process import ProcessResult
 
 mobi_converter = importlib.import_module("epubforge.converters.to_mobi")
 
@@ -41,16 +41,17 @@ def _fake_run(
     stderr: str = "",
     returncode: int = 0,
     create_kindlegen: bool = False,
-) -> Callable[..., SimpleNamespace]:
-    """Zwraca mock subprocess.run zapisujący wywołania."""
+) -> Callable[..., ProcessResult]:
+    """Zwraca mock run_process zapisujący wywołania."""
 
-    def run(command: list[str], **kwargs: object) -> SimpleNamespace:
+    def run(command: list[str], **kwargs: object) -> ProcessResult:
         calls.append((command, kwargs))
         if create_kindlegen:
             source = Path(command[1])
             out_name = command[-1]
             (source.parent / out_name).write_bytes(b"mobi")
-        return SimpleNamespace(stdout=stdout, stderr=stderr, returncode=returncode)
+        output = "\n".join(p for p in (stdout, stderr) if p)
+        return ProcessResult(returncode=returncode, output=output)
 
     return run
 
@@ -63,7 +64,7 @@ def test_calibre_builds_command(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
         "calibre_ebook_convert",
         staticmethod(lambda: _tool("calibre_ebook_convert", "/bin/ebook-convert")),
     )
-    monkeypatch.setattr(mobi_converter.subprocess, "run", _fake_run(calls, stdout="calibre log"))
+    monkeypatch.setattr(mobi_converter, "run_process", _fake_run(calls, stdout="calibre log"))
 
     source = tmp_path / "book.epub"
     target = tmp_path / "out" / "book.mobi"
@@ -82,7 +83,7 @@ def test_auto_prefers_calibre(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
         "calibre_ebook_convert",
         staticmethod(lambda: _tool("calibre_ebook_convert", "/bin/ebook-convert")),
     )
-    monkeypatch.setattr(mobi_converter.subprocess, "run", _fake_run(calls))
+    monkeypatch.setattr(mobi_converter, "run_process", _fake_run(calls))
 
     result = to_mobi(
         tmp_path / "b.epub", tmp_path / "b.mobi", MobiOptions(engine="auto", fix_epub_first=False)
@@ -101,7 +102,7 @@ def test_auto_falls_back_to_kindlegen(tmp_path: Path, monkeypatch: pytest.Monkey
         "kindlegen",
         staticmethod(lambda: _tool("kindlegen", "/bin/kindlegen")),
     )
-    monkeypatch.setattr(mobi_converter.subprocess, "run", _fake_run(calls, create_kindlegen=True))
+    monkeypatch.setattr(mobi_converter, "run_process", _fake_run(calls, create_kindlegen=True))
 
     source = tmp_path / "book.epub"
     target = tmp_path / "out" / "book.mobi"
@@ -122,8 +123,8 @@ def test_kindlegen_moves_output_and_notes_deprecation(
         staticmethod(lambda: _tool("kindlegen", "/bin/kindlegen")),
     )
     monkeypatch.setattr(
-        mobi_converter.subprocess,
-        "run",
+        mobi_converter,
+        "run_process",
         _fake_run(calls, stdout="Info: build OK", returncode=1, create_kindlegen=True),
     )
 
@@ -149,7 +150,7 @@ def test_kindlegen_missing_output_raises(tmp_path: Path, monkeypatch: pytest.Mon
         staticmethod(lambda: _tool("kindlegen", "/bin/kindlegen")),
     )
     monkeypatch.setattr(
-        mobi_converter.subprocess, "run", _fake_run(calls, stderr="error", returncode=2)
+        mobi_converter, "run_process", _fake_run(calls, stderr="error", returncode=2)
     )
 
     with pytest.raises(ConversionError, match="nie utworzył"):
@@ -169,7 +170,7 @@ def test_calibre_nonzero_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
         staticmethod(lambda: _tool("calibre_ebook_convert", "/bin/ebook-convert")),
     )
     monkeypatch.setattr(
-        mobi_converter.subprocess, "run", _fake_run(calls, stderr="boom", returncode=1)
+        mobi_converter, "run_process", _fake_run(calls, stderr="boom", returncode=1)
     )
 
     with pytest.raises(ConversionError, match="boom"):
@@ -220,7 +221,7 @@ def test_fix_epub_first_does_not_mutate_source(
         "calibre_ebook_convert",
         staticmethod(lambda: _tool("calibre_ebook_convert", "/bin/ebook-convert")),
     )
-    monkeypatch.setattr(mobi_converter.subprocess, "run", _fake_run(calls))
+    monkeypatch.setattr(mobi_converter, "run_process", _fake_run(calls))
 
     target = tmp_path / "out" / "book.mobi"
     to_mobi(source, target, MobiOptions(engine="calibre", fix_epub_first=True))
