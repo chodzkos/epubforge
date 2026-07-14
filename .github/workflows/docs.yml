@@ -75,4 +75,4 @@ jobs:
       # Oficjalny mechanizm Pages: pobiera zweryfikowany artefakt z joba build
       # i publikuje go. NIE checkoutuje repo ani NIE instaluje zależności projektu,
       # więc kod zależności nigdy nie widzi tokenu z uprawnieniem do zapisu.
-      uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e  # v4.0.5
+      uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128  # v5.0.0
