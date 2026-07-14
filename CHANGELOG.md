@@ -50,6 +50,12 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
   we wszystkich parserach, bez zmiany domyślnego zachowania.
 
 ### Changed
+- **`make_scrollable` przeniesione do `chodzkos-gui-kit` 0.5.2** — lokalny
+  `gui/widgets/scroll.py` usunięty; `gui/widgets/__init__` re-eksportuje helper
+  z kitu (`qt/widgets`), więc ~7 zakładek importuje bez zmian. EpubForge był
+  wzorcem ekstrakcji tego helpera (reguła trzech: IcoForge + MediaForge miały
+  ten sam wzorzec inline). Pin `chodzkos-gui-kit` podbity do v0.5.2 (SHA
+  `12c6b30`, tag w komentarzu). Zachowanie bez zmian.
 - **Detekcja narzędzi zewnętrznych** (`epubforge.core.detection`) korzysta teraz z
   pakietu **`chodzkos-detection` 0.1.2** dla mechaniki sond (`find_tool`: PATH +
   katalogi kandydatów; `probe_tool`: obecność i wersja z timeoutem, `CREATE_NO_WINDOW`
