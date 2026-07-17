@@ -33,9 +33,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from epubforge.core import Epub, Tool
+from epubforge.core import ConfigStore, Epub, Tool
 from epubforge.core._xml_safe import XmlSecurityError, parse_untrusted
 from epubforge.gui import editor_files as ef
+from epubforge.gui.preview import PreviewSession, PreviewSettings
 from epubforge.gui.tabs.editor_preview import (
     _PAGE_EDITOR,
     _PAGE_IMAGE,
@@ -70,11 +71,18 @@ class EditorTab(EditorPreviewMixin, QWidget):
     """
 
     def __init__(
-        self, parent: QWidget | None = None, *, tools: dict[str, Tool] | None = None
+        self,
+        parent: QWidget | None = None,
+        *,
+        tools: dict[str, Tool] | None = None,
+        config: ConfigStore | None = None,
     ) -> None:
         super().__init__(parent)
         self._theme: Theme = current_theme()
         self._tools = tools if tools is not None else {}
+        # Ustawienia podglądu w istniejącym ConfigStore (bez drugiego pliku/timera);
+        # bez configu (część testów) działają na ulotnym słowniku.
+        self._preview_settings = PreviewSettings(config)
         self._epub: Epub | None = None
         self._epub_path: Path | None = None
         self._dirty: dict[str, str] = {}  # ścieżka → tekst zapisany do bufora EPUB
@@ -237,6 +245,8 @@ class EditorTab(EditorPreviewMixin, QWidget):
         self._epub = epub
         self._epub_path = path
         self.path_label.setText(str(path))
+        # Nowa publikacja → osobna sesja podglądu (origin per sesja: Prompt 2).
+        self.book_preview.set_session(PreviewSession.create(epub, path))
         self._populate_tree()
         self._refresh_actions()
         return True
@@ -355,6 +365,8 @@ class EditorTab(EditorPreviewMixin, QWidget):
             self.view_switch.setVisible(False)
             self._set_info_bar("")
         self._update_inspector()
+        # W trybie dzielonym: podgląd obok pokazuj tylko dla HTML (inaczej ukryj).
+        self._sync_split_preview()
 
     def _show_in_editor(self, internal: str, media_type: str | None, data: bytes) -> None:
         """Ładuje tekst do edytora; bajty zastępcze ⇒ wymuszony read-only."""
@@ -493,11 +505,15 @@ class EditorTab(EditorPreviewMixin, QWidget):
         return bool(self._dirty) or self.code_editor.is_modified()
 
     def set_theme(self, theme: Theme) -> None:
-        """Przekazuje motyw do edytora i inspektora CSS."""
+        """Przekazuje motyw do edytora, inspektora CSS i chrome podglądu.
+
+        Podgląd przemalowuje wyłącznie chrome — treść książki NIE jest renderowana
+        ponownie przy zmianie motywu aplikacji.
+        """
         self._theme = theme
         self.code_editor.set_theme(theme)
         self.css_inspector.set_theme(theme)
-        self.html_preview.set_theme(theme)
+        self.book_preview.set_theme(theme)
         self._update_mode_indicator()
 
     def _close_epub(self) -> None:
@@ -508,6 +524,8 @@ class EditorTab(EditorPreviewMixin, QWidget):
         self._dirty.clear()
         self._readonly_files.clear()
         self._current = None
+        # Unieważnij sesję podglądu (pełne unieważnienie origin/zasobów: Prompt 2).
+        self.book_preview.set_session(None)
 
     def _update_tree_markers(self) -> None:
         """Dokleja „*" do nazw zmodyfikowanych plików w drzewie."""

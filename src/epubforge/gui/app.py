@@ -210,7 +210,7 @@ class MainWindow(QMainWindow):
         self.converter_tab = ConverterTab(config=self.config_data, tools=self.tools)
         self.fixer_tab = FixerTab(tools=self.tools)
         self.kfx_tab = KfxTab(tools=self.tools, config=self.config_data)
-        self.editor_tab = EditorTab(tools=self.tools)
+        self.editor_tab = EditorTab(tools=self.tools, config=self.config_data)
         self.validator_tab = ValidatorTab(
             tools=self.tools, config=self.config_data, main_window=self
         )
@@ -494,6 +494,13 @@ def main() -> None:  # pragma: no cover - entry point + pętla zdarzeń Qt (app.
 
         index = sys.argv.index("--self-check")
         raise SystemExit(run_self_check(sys.argv[index + 1 :]))
+
+    # Pre-init WebEngine: rejestracja własnego schematu MUSI nastąpić wcześnie,
+    # przed utworzeniem widgetów WebEngine (idempotentnie, najwyżej raz na proces).
+    # Brak WebEngine to no-op — GUI działa dalej na lekkim podglądzie.
+    from epubforge.gui.preview import preinit_webengine
+
+    preinit_webengine()
 
     app = QApplication(sys.argv)
     app.setApplicationName("EpubForge")

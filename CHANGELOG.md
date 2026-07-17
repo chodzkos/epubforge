@@ -7,6 +7,22 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 
 ## [Unreleased]
 
+### Added
+- **Fundament dokładnego podglądu EPUB** (Prompt 1) — nowy pakiet
+  `epubforge.gui.preview` wprowadza abstrakcję backendu podglądu (`PreviewBackend`)
+  z dwoma torami: lekkim `TextDocumentPreviewBackend` (dotychczasowy `QTextBrowser`)
+  i przygotowanym `WebEnginePreviewBackend` (na tym etapie bezpieczna strona
+  testowa). Widget `BookPreview` daje selektor **Auto / Dokładny / Szybki**, status
+  aktywnego backendu i czytelny komunikat o fallbacku. Dostępność Qt WebEngine jest
+  sprawdzana lokalnie (`importlib.util.find_spec` + kontrolowany import), a **nie**
+  przez `chodzkos-detection`; brak lub awaria WebEngine zawsze prowadzi do cichego
+  przejścia na lekki podgląd (GUI i CLI działają dalej). Rejestracja własnego
+  schematu `epub-preview` odbywa się wcześnie i idempotentnie w `preinit_webengine()`
+  (wołanym w `main()`), bez ustawiania `AA_ShareOpenGLContexts` w torze Widgets.
+  Wybór backendu, tryb widoku dzielonego i profil zapisują się przez istniejący
+  `ConfigStore` (klucze `editor_preview_*`, bez drugiego pliku i timera). Import
+  `core`/CLI nie ładuje Qt, a import pakietu podglądu nie wciąga Qt WebEngine.
+
 ### Fixed
 - **Pobieranie metadanych po ISBN z e-booka** (Etap 26) — Biblioteka Narodowa nie
   znajdowała książek po ISBN wydania elektronicznego, bo katalog BN indeksuje głównie
