@@ -48,7 +48,7 @@ def test_text_backend_capture_restore_roundtrip(qtbot: QtBot) -> None:
     """Backend tekstowy zapisuje i odtwarza pozycję scrolla bez błędu."""
     backend = TextDocumentPreviewBackend()
     qtbot.addWidget(backend)
-    backend.render(PreviewSnapshot("<html><body><p>a</p></body></html>", None, None))
+    backend.render_snapshot(PreviewSnapshot("<html><body><p>a</p></body></html>", None, None))
     state = backend.capture_state()
     assert isinstance(state, PreviewState)
     backend.restore_state(state)  # nie może rzucić

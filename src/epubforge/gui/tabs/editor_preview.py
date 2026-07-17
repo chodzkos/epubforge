@@ -242,7 +242,7 @@ class EditorPreviewMixin:
         """Renderuje bieżącą treść edytora w podglądzie (z osadzeniem obrazków)."""
         if self._current is None or self._epub is None:
             return
-        self.book_preview.render(self.code_editor.get_text(), self._epub, self._current)
+        self.book_preview.render_document(self.code_editor.get_text(), self._epub, self._current)
 
     # ── Widok dzielony Kod | Podgląd ───────────────────────────────────────────
 

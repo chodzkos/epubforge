@@ -50,39 +50,26 @@ def preinit_webengine() -> bool:
         return True
     if not probe_webengine().available:
         return False
+
+    # Import Chromium bywa awaryjny — nie wywracamy startu, tylko odpuszczamy
+    # dokładny podgląd. Import + rejestracja są tu, by mypy widział realne typy
+    # QtWebEngineCore (a nie luźne ``type``).
     try:
         from PySide6.QtWebEngineCore import QWebEngineUrlScheme
-    except Exception as exc:  # import WebEngine bywa awaryjny — nie wywracamy startu
-        logger.warning("Pre-init WebEngine pominięty (import): %s", exc)
-        return False
 
-    try:
-        _register_scheme(QWebEngineUrlScheme)
-    except Exception as exc:  # rejestracja też nie może zablokować startu
-        logger.warning("Nie udało się zarejestrować schematu %s: %s", EPUB_PREVIEW_SCHEME, exc)
+        name = EPUB_PREVIEW_SCHEME.encode("ascii")
+        if not bytes(QWebEngineUrlScheme.schemeByName(name).name()):
+            scheme = QWebEngineUrlScheme(name)
+            scheme.setSyntax(QWebEngineUrlScheme.Syntax.Host)
+            # Pełny zestaw flag (SecureScheme bez LocalAccessAllowed /
+            # ServiceWorkersAllowed / CorsEnabled) doprecyzuje Prompt 2 — tu
+            # ustawiamy host + bezpieczny origin, spójne z późniejszym zaostrzeniem.
+            scheme.setFlags(QWebEngineUrlScheme.Flag.SecureScheme)
+            QWebEngineUrlScheme.registerScheme(scheme)
+    except Exception as exc:
+        logger.warning("Pre-init WebEngine pominięty: %s", exc)
         return False
 
     _registered = True
     logger.debug("Zarejestrowano schemat podglądu %s", EPUB_PREVIEW_SCHEME)
     return True
-
-
-def _register_scheme(scheme_cls: type) -> None:
-    """Rejestruje ``epub-preview`` jako bezpieczny schemat z hostem.
-
-    Pełny zestaw flag (``SecureScheme`` bez ``LocalAccessAllowed`` /
-    ``ServiceWorkersAllowed`` / ``CorsEnabled``) doprecyzuje Prompt 2; tu
-    ustawiamy syntaktykę z hostem i flagę bezpiecznego origin, żeby wczesna
-    rejestracja nie kolidowała z późniejszym zaostrzeniem.
-    """
-    # Jeżeli schemat jest już zarejestrowany (np. drugi QApplication w testach),
-    # ``schemeByName`` zwróci wpis z niepustą nazwą — nie rejestrujemy ponownie.
-    existing = scheme_cls.schemeByName(EPUB_PREVIEW_SCHEME.encode("ascii"))
-    if bytes(existing.name()):
-        return
-    scheme = scheme_cls(EPUB_PREVIEW_SCHEME.encode("ascii"))
-    flags = scheme_cls.Flag
-    syntax = scheme_cls.Syntax
-    scheme.setSyntax(syntax.Host)
-    scheme.setFlags(flags.SecureScheme)
-    scheme_cls.registerScheme(scheme)

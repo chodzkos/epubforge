@@ -17,8 +17,8 @@ from epubforge.gui.preview.webengine_backend import WebEngineInitError
 pytestmark = pytest.mark.gui
 
 
-def test_defaults_to_text_backend_without_webengine(qtbot: QtBot) -> None:
-    """Bez WebEngine (środowisko testowe) aktywny jest lekki backend tekstowy."""
+def test_auto_uses_text_backend_in_prompt1(qtbot: QtBot) -> None:
+    """Tryb auto rozstrzyga się na lekki backend (WebEngine renderuje dopiero od P3)."""
     preview = BookPreview()
     qtbot.addWidget(preview)
     assert preview.active_kind is BackendKind.TEXT
@@ -28,12 +28,15 @@ def test_render_shows_content(qtbot: QtBot) -> None:
     """Render wyświetla treść dokumentu w lekkim backendzie."""
     preview = BookPreview()
     qtbot.addWidget(preview)
-    preview.render("<html><body><h1>ZNACZNIK</h1></body></html>", None, None)
+    preview.render_document("<html><body><h1>ZNACZNIK</h1></body></html>", None, None)
     assert "ZNACZNIK" in preview.html_preview.view.toPlainText()
 
 
-def test_forced_webengine_unavailable_falls_back(qtbot: QtBot) -> None:
+def test_forced_webengine_unavailable_falls_back(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Wymuszony Dokładny bez WebEngine → lekki backend + oferta szybkiego."""
+    monkeypatch.setattr(bp_mod, "probe_webengine", lambda: WebEngineProbe(False, "brak"))
     preview = BookPreview()
     qtbot.addWidget(preview)
     preview.backend_combo.setCurrentIndex(1)  # Dokładny
@@ -75,7 +78,7 @@ def test_theme_change_does_not_rerender(qtbot: QtBot) -> None:
     """Zmiana motywu przemalowuje chrome, ale NIE renderuje ponownie książki."""
     preview = BookPreview()
     qtbot.addWidget(preview)
-    preview.render("<html><body><p>x</p></body></html>", None, None)
+    preview.render_document("<html><body><p>x</p></body></html>", None, None)
     before = preview.render_count
     preview.set_theme(DARK)
     preview.set_theme(LIGHT)

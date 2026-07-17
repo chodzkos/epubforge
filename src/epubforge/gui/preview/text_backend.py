@@ -47,7 +47,7 @@ class TextDocumentPreviewBackend(PreviewBackend):
         """Zapamiętuje sesję (lekki tor nie potrzebuje jej do renderu)."""
         self._session = session
 
-    def render(self, snapshot: PreviewSnapshot) -> None:
+    def render_snapshot(self, snapshot: PreviewSnapshot) -> None:
         """Renderuje treść snapshotu przez ``HtmlPreview.set_content``."""
         self.status_changed.emit(PreviewStatus.RENDERING)
         self.html_preview.set_content(snapshot.xhtml, snapshot.epub, snapshot.internal_path)

@@ -89,7 +89,7 @@ class WebEnginePreviewBackend(PreviewBackend):
         """Zapamiętuje sesję (origin i zasoby wprowadzi Prompt 2)."""
         self._session = session
 
-    def render(self, snapshot: PreviewSnapshot) -> None:
+    def render_snapshot(self, snapshot: PreviewSnapshot) -> None:
         """Na tym etapie utrzymuje stronę testową (realny render — Prompt 3)."""
         self.status_changed.emit(PreviewStatus.READY)
 

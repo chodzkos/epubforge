@@ -106,8 +106,12 @@ class PreviewBackend(QWidget):
         """Ustawia bieżącą sesję publikacji (tożsamość, origin — Prompt 2)."""
         raise NotImplementedError
 
-    def render(self, snapshot: PreviewSnapshot) -> None:
-        """Renderuje nieruchomy snapshot treści."""
+    def render_snapshot(self, snapshot: PreviewSnapshot) -> None:
+        """Renderuje nieruchomy snapshot treści.
+
+        Nazwa celowo nie brzmi ``render`` — ``QWidget.render`` to zajęta metoda
+        rysująca widget na ``QPaintDevice`` (inny kontrakt).
+        """
         raise NotImplementedError
 
     def capture_state(self) -> PreviewState:

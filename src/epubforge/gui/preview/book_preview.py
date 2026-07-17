@@ -175,22 +175,29 @@ class BookPreview(QWidget):
         self.backend_combo.setCurrentIndex(_BACKEND_ORDER.index("text"))
 
     def _apply_backend(self, kind: str, *, persist: bool) -> None:
-        """Ustawia aktywny backend wg wyboru, z bezpiecznym fallbackiem."""
+        """Ustawia aktywny backend wg wyboru, z bezpiecznym fallbackiem.
+
+        Uwaga (Prompt 1): tryb ``auto`` rozstrzyga się na lekki backend, bo
+        dokładny (WebEngine) nie renderuje jeszcze treści publikacji — pokazuje
+        tylko bezpieczną stronę testową, więc automatyczne przełączenie
+        pogorszyłoby podgląd. Prompt 3 przełączy ``auto`` na WebEngine, gdy będzie
+        renderować realną treść. Dokładny tor pozostaje dostępny jawnie.
+        """
         if persist:
             self._settings.backend = kind
         self.fallback_label.setVisible(False)
         self.use_fast_button.setVisible(False)
 
-        if kind == "text":
+        if kind in ("text", "auto"):
             self._set_active(self._text_backend)
             return
         backend, reason = self._ensure_webengine()
         if backend is not None:
             self._set_active(backend)
             return
-        # WebEngine niedostępny/awaria → lekki backend.
+        # WebEngine niedostępny/awaria przy jawnym wyborze → lekki backend + oferta.
         self._set_active(self._text_backend)
-        self._show_fallback(forced=kind == "webengine", reason=reason)
+        self._show_fallback(forced=True, reason=reason)
 
     def _ensure_webengine(self) -> tuple[PreviewBackend | None, str]:
         """Zwraca (dokładny backend, "") albo (None, powód) — bez wywracania GUI."""
@@ -209,12 +216,9 @@ class BookPreview(QWidget):
         return backend, ""
 
     def _show_fallback(self, *, forced: bool, reason: str) -> None:
-        """Pokazuje czytelną diagnostykę fallbacku (i ofertę przy wymuszeniu)."""
-        if forced:
-            self.fallback_label.setText(_("Nie udało się uruchomić dokładnego podglądu."))
-            self.use_fast_button.setVisible(True)
-        else:
-            self.fallback_label.setText(_("Dokładny podgląd niedostępny — użyto szybkiego."))
+        """Pokazuje czytelną diagnostykę fallbacku po nieudanym wyborze dokładnego."""
+        self.fallback_label.setText(_("Nie udało się uruchomić dokładnego podglądu."))
+        self.use_fast_button.setVisible(forced)
         self.fallback_label.setVisible(True)
         logger.info("Fallback podglądu na tor tekstowy: %s", reason or "brak WebEngine")
         self.diagnostics.emit(
@@ -238,7 +242,7 @@ class BookPreview(QWidget):
         self._update_status()
         if self._last_snapshot is not None:
             backend.set_session(self._session)
-            self._render_into(backend, self._last_snapshot)
+            self._render_snapshot_into(backend, self._last_snapshot)
 
     def _update_status(self) -> None:
         """Aktualizuje etykietę statusu aktywnego backendu."""
@@ -251,8 +255,11 @@ class BookPreview(QWidget):
 
     # ── Renderowanie / sesja ────────────────────────────────────────────────--
 
-    def render(self, xhtml: str, epub: Epub | None, internal_path: str | None) -> None:
-        """Buduje nowy snapshot (rosnąca generacja) i renderuje go w aktywnym backendzie."""
+    def render_document(self, xhtml: str, epub: Epub | None, internal_path: str | None) -> None:
+        """Buduje nowy snapshot (rosnąca generacja) i renderuje go w aktywnym backendzie.
+
+        Nazwa nie brzmi ``render`` — ``QWidget.render`` to zajęta metoda rysująca.
+        """
         self._generation += 1
         snapshot = PreviewSnapshot(
             xhtml=xhtml,
@@ -262,12 +269,12 @@ class BookPreview(QWidget):
         )
         self._last_snapshot = snapshot
         self._active.set_session(self._session)
-        self._render_into(self._active, snapshot)
+        self._render_snapshot_into(self._active, snapshot)
 
-    def _render_into(self, backend: PreviewBackend, snapshot: PreviewSnapshot) -> None:
+    def _render_snapshot_into(self, backend: PreviewBackend, snapshot: PreviewSnapshot) -> None:
         """Jedno miejsce liczenia renderów (motyw nie może go zwiększać)."""
         self._render_count += 1
-        backend.render(snapshot)
+        backend.render_snapshot(snapshot)
 
     def set_session(self, session: PreviewSession | None) -> None:
         """Ustawia bieżącą sesję i przekazuje ją do aktywnego backendu."""
