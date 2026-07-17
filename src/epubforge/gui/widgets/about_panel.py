@@ -13,7 +13,7 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
 
 from epubforge import __version__
-from epubforge.gui.help_window import HELP_TITLE, help_tabs
+from epubforge.gui.help_window import HELP_TITLE, populate_help_window
 from epubforge.i18n import _
 
 logger = logging.getLogger(__name__)
@@ -107,5 +107,11 @@ class AboutPanel(QWidget):
             logger.warning("Nie udało się otworzyć %s: %s", url, exc)
 
     def _open_help(self) -> None:
-        """Otwiera offline okno pomocy (kitowy ``HelpWindow`` + zakładki EpubForge)."""
-        HelpWindow(self, title=HELP_TITLE, tabs=help_tabs()).exec()
+        """Otwiera offline okno pomocy (kitowy ``HelpWindow`` + zakładki EpubForge).
+
+        Zakładki dokładane są po konstrukcji (Markdown z plików pakietu + HTML narzędzi)
+        przez :func:`~epubforge.gui.help_window.populate_help_window`.
+        """
+        window = HelpWindow(self, title=HELP_TITLE)
+        populate_help_window(window)
+        window.exec()

@@ -40,7 +40,7 @@ dependencies = [
     # Wspólny rdzeń GUI (paleta + config) — warstwa 0 kitu, czysty Python bez Qt;
     # core/CLI używają chodzkos_gui_kit.config i .palette. Tor Qt dokłada extra [qt].
     # Pin po pełnym SHA commitu taga (supply-chain): tag mutowalny, SHA nie. v0.5.1.
-    "chodzkos-gui-kit @ git+https://github.com/chodzkos/gui-kit@12c6b30cfa8f4c00f21b31c583cd70e70b0d1379",  # v0.5.2
+    "chodzkos-gui-kit @ git+https://github.com/chodzkos/gui-kit@bb40fa67294c5fd6632d11543902a2d9b69665db",  # v0.5.3
     # Mechanika sond detekcji (find_tool: PATH+extra_paths; probe_tool: obecność
     # i wersja z timeoutem, CREATE_NO_WINDOW, uruchamia rozwiązaną ścieżkę). EpubForge
     # zostaje właścicielem KOMPOZYCJI (warianty nazw, katalogi kandydatów per-narzędzie,
@@ -55,7 +55,7 @@ gui = [
     # (Qt 6.5+); górny luźny, by projekt instalował się też na nowszym Pythonie.
     "PySide6>=6.8,<7",
     # Pin po pełnym SHA commitu taga (supply-chain) — musi zgadzać się z torem core. v0.5.1.
-    "chodzkos-gui-kit[qt] @ git+https://github.com/chodzkos/gui-kit@12c6b30cfa8f4c00f21b31c583cd70e70b0d1379",  # v0.5.2
+    "chodzkos-gui-kit[qt] @ git+https://github.com/chodzkos/gui-kit@bb40fa67294c5fd6632d11543902a2d9b69665db",  # v0.5.3
 ]
 stats = [
     # Wykrywanie języka treści w statystykach; opcjonalne — bez niego język bierzemy

@@ -147,6 +147,14 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
   wysyłanych pól (opis / spis treści / próbka treści / listy taksonomii) i wymaga
   akceptacji (zapisywana per `host+model`); osobne ustawienie **wyłącza wysyłkę
   próbki treści** książki. Modele lokalne (loopback/LAN) nie wymagają zgody. (#121)
+- **Pomoc: audyt kompletności** (opisany komplet funkcji GUI i CLI, w tym
+  `enrich`/typografia/`hyphenate`/`a11y`/`doctor` oraz 11 narzędzi zewnętrznych) **+
+  zakładki Markdown z plików pakietu** (gui-kit 0.5.3, „jeden plik prawdy"). Treść
+  zakładek pomocy odwzorowujących GUI mieszka teraz w `src/epubforge/help_docs/*.md`
+  (dane pakietu, czytane w runtime przez `importlib.resources` — działa z koła,
+  z drzewa i po zebraniu przez PyInstaller) zamiast być duplikowana w kodzie; dodana
+  zakładka **Wiersz poleceń** (17 podkomend), a zakładka **Narzędzia zewnętrzne**
+  zostaje HTML-owa. Pin `chodzkos-gui-kit` podbity do v0.5.3 (SHA `bb40fa6`).
 
 ## [3.0.0] - 2026-07-10
 

@@ -20,6 +20,7 @@ _SRC_DIR = Path(__file__).resolve().parent.parent / "src" / "epubforge"
 _LOCALE_DIR = _SRC_DIR / "locale"
 _PRESETS_DIR = _SRC_DIR / "fixers" / "presets"
 _STOPWORDS_DIR = _SRC_DIR / "stats_stopwords"
+_HELP_DOCS_DIR = _SRC_DIR / "help_docs"
 
 
 def main() -> int:
@@ -59,6 +60,13 @@ def main() -> int:
         return 1
     if not all((_STOPWORDS_DIR / f"{lang}.txt").is_file() for lang in ("pl", "en", "de")):
         print("[BLAD] Brak stop-list statystyk (stats_stopwords/{pl,en,de}.txt).")
+        return 1
+    # Pliki prawdy pomocy (Markdown) — okno pomocy czyta je w runtime, więc frozen
+    # exe musi je wozić (help_docs w datas). Sprawdzamy przez rejestr, nie glob.
+    from epubforge.help_docs import MARKDOWN_SECTIONS
+
+    if not all((_HELP_DOCS_DIR / filename).is_file() for _title, filename in MARKDOWN_SECTIONS):
+        print("[BLAD] Brak plikow pomocy Markdown (help_docs/*.md z rejestru MARKDOWN_SECTIONS).")
         return 1
     print("[OK] Srodowisko buildu zawiera wymagane zaleznosci.")
     return 0

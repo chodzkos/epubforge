@@ -69,6 +69,25 @@ def _check_stopwords() -> str:
     return "stopwords: pl/en/de"
 
 
+def _check_help_docs() -> str:
+    """help_docs/*.md — pliki prawdy pomocy (Markdown) czytane przez okno pomocy.
+
+    Kontrakt „jeden plik prawdy": każdy plik wskazywany rejestrem
+    :data:`epubforge.help_docs.MARKDOWN_SECTIONS` musi być spakowany i niepusty —
+    inaczej zakładka pomocy w kole/exe byłaby ślepa. Czyste-core (bez Qt): czytamy
+    zasób przez ``importlib.resources``, nie przez ``HelpWindow``.
+    """
+    from importlib.resources import files
+
+    from epubforge.help_docs import MARKDOWN_SECTIONS
+
+    docs = files("epubforge.help_docs")
+    for _title, filename in MARKDOWN_SECTIONS:
+        if not (docs / filename).read_text(encoding="utf-8").strip():
+            raise RuntimeError(f"pusty plik pomocy: help_docs/{filename}")
+    return f"pomoc Markdown: {len(MARKDOWN_SECTIONS)} plików"
+
+
 def _check_locale() -> str:
     """locale/*/LC_MESSAGES/epubforge.mo — katalogi tłumaczeń gettext."""
     from epubforge.i18n import _, init_i18n
@@ -86,6 +105,7 @@ CHECKS: tuple[tuple[str, Callable[[], str]], ...] = (
     ("receptury", _check_recipes),
     ("presety", _check_presets),
     ("stopwords", _check_stopwords),
+    ("pomoc", _check_help_docs),
     ("tłumaczenia", _check_locale),
 )
 
