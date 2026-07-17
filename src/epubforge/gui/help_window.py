@@ -110,8 +110,13 @@ def _tools_tab() -> str:
     theme = _section(
         "Motyw i język interfejsu",
         _ul(
-            "<b>Motyw</b> (górny pasek) — " + _code("Automatyczny") + " / " + _code("Jasny") + " / "
-            + _code("Ciemny") + "; tryb auto podąża za systemem, na Windows zmienia się też "
+            "<b>Motyw</b> (górny pasek) — "
+            + _code("Automatyczny")
+            + " / "
+            + _code("Jasny")
+            + " / "
+            + _code("Ciemny")
+            + "; tryb auto podąża za systemem, na Windows zmienia się też "
             "kolor paska tytułu.",
             "<b>Język</b> (górny pasek) — " + _code("Polski") + " / " + _code("English") + "; "
             "treść pomocy pozostaje po polsku niezależnie od wyboru.",

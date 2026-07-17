@@ -74,8 +74,23 @@ def test_cli_help_covers_all_subcommands() -> None:
     """Zakładka „Wiersz poleceń" wymienia wszystkie podkomendy CLI (audyt kompletności)."""
     cli_md = (files("epubforge.help_docs") / "cli.md").read_text(encoding="utf-8")
     for command in (
-        "info", "doctor", "check", "a11y", "convert", "enrich", "meta", "fix",
-        "hyphenate", "typo", "upgrade", "toc", "stats", "kfx", "mobi", "presets", "run",
+        "info",
+        "doctor",
+        "check",
+        "a11y",
+        "convert",
+        "enrich",
+        "meta",
+        "fix",
+        "hyphenate",
+        "typo",
+        "upgrade",
+        "toc",
+        "stats",
+        "kfx",
+        "mobi",
+        "presets",
+        "run",
     ):
         assert command in cli_md, f"zakładka CLI nie opisuje komendy: {command}"
 
