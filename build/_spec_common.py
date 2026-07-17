@@ -40,8 +40,10 @@ HIDDEN_IMPORTS = [
 # (podkatalog w src/epubforge, ścieżka docelowa w bundlu). Zasoby czytane z
 # ``sys._MEIPASS`` przez loadery: gui/assets (okno About), locale (gettext .mo),
 # fixers/presets (presety CSS), stats_stopwords (statystyki), recipes_builtin
-# (receptury) oraz data (taxonomy_pl.toml). recipes_builtin i data były wcześniej
-# pominięte w obu specach (F-03) — bez nich tagowanie i receptury padały w .exe.
+# (receptury), data (taxonomy_pl.toml) oraz help_docs (pliki Markdown pomocy —
+# okno pomocy czyta je w runtime, więc frozen exe też musi je wozić). recipes_builtin
+# i data były wcześniej pominięte w obu specach (F-03) — bez nich tagowanie i
+# receptury padały w .exe.
 _RESOURCE_DIRS = (
     ("gui/assets", "epubforge/gui/assets"),
     ("locale", "epubforge/locale"),
@@ -49,6 +51,7 @@ _RESOURCE_DIRS = (
     ("stats_stopwords", "epubforge/stats_stopwords"),
     ("recipes_builtin", "epubforge/recipes_builtin"),
     ("data", "epubforge/data"),
+    ("help_docs", "epubforge/help_docs"),
 )
 
 # Ciężkie moduły Qt, których aplikacja nie używa — wykluczamy, by artefakt nie spuchł.

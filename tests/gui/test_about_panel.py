@@ -48,13 +48,24 @@ def test_about_open_handles_browser_error(qtbot: QtBot, monkeypatch: pytest.Monk
 def test_about_help_button_opens_offline_help(
     qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Przycisk „Pomoc" otwiera offline HelpWindow z zakładkami EpubForge."""
+    """Przycisk „Pomoc" otwiera offline HelpWindow i dokłada zakładki po konstrukcji.
+
+    W 0.5.3 zakładki (Markdown z plików + HTML narzędzi) dokładane są metodami
+    ``add_markdown_section`` / ``add_html_section`` po konstrukcji, nie przez ``tabs=``.
+    """
     captured: dict[str, object] = {}
 
     class _FakeHelp:
-        def __init__(self, parent: object, *, title: str, tabs: list[tuple[str, str]]) -> None:
+        def __init__(self, parent: object, *, title: str) -> None:
             captured["title"] = title
-            captured["tabs"] = tabs
+            captured["markdown"] = []
+            captured["html"] = []
+
+        def add_markdown_section(self, title: str, source: object) -> None:
+            captured["markdown"].append((title, source))  # type: ignore[union-attr]
+
+        def add_html_section(self, title: str, html: str) -> None:
+            captured["html"].append(title)  # type: ignore[union-attr]
 
         def exec(self) -> int:
             captured["exec"] = True
@@ -71,4 +82,6 @@ def test_about_help_button_opens_offline_help(
 
     assert captured.get("exec") is True
     assert captured.get("title") == "Pomoc — EpubForge"
-    assert isinstance(captured.get("tabs"), list) and len(captured["tabs"]) == 9
+    # 9 zakładek Markdown z plików + 1 zakładka HTML (narzędzia) = 10 sekcji.
+    assert len(captured["markdown"]) == 9  # type: ignore[arg-type]
+    assert captured["html"] == ["Narzędzia zewnętrzne"]
