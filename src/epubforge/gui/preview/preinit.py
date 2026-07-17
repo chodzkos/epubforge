@@ -58,7 +58,9 @@ def preinit_webengine() -> bool:
         from PySide6.QtWebEngineCore import QWebEngineUrlScheme
 
         name = EPUB_PREVIEW_SCHEME.encode("ascii")
-        if not bytes(QWebEngineUrlScheme.schemeByName(name).name()):
+        # Pusta nazwa = schemat jeszcze niezarejestrowany (schemeByName zwraca
+        # wtedy domyślny wpis). Niepusta = już jest — nie rejestrujemy ponownie.
+        if QWebEngineUrlScheme.schemeByName(name).name().isEmpty():
             scheme = QWebEngineUrlScheme(name)
             scheme.setSyntax(QWebEngineUrlScheme.Syntax.Host)
             # Pełny zestaw flag (SecureScheme bez LocalAccessAllowed /
