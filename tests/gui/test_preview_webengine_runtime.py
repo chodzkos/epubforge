@@ -133,6 +133,8 @@ def test_runtime_blocks_network_file_and_book_scripts(sample_epub: Path, tmp_pat
     env = dict(os.environ)
     env["QT_QPA_PLATFORM"] = "offscreen"
     env["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-gpu"
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONUTF8"] = "1"
     try:
         completed = subprocess.run(
             [sys.executable, "-c", _RUNTIME_SCRIPT, str(epub_path), secret],
