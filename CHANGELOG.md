@@ -23,6 +23,8 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
   `ConfigStore` (klucze `editor_preview_*`, bez drugiego pliku i timera). Import
   `core`/CLI nie ładuje Qt, a import pakietu podglądu nie wciąga Qt WebEngine.
 
+- **Izolowana `PreviewSession` i bezpieczny profil WebEngine (Prompt 2)** — podgląd dokładny otrzymał losowe originy per książka, niezmienne migawki generacji, ścisły resolver `epub-preview://`, dedykowany profil off-the-record bez cache i trwałych cookies, blokady sieci/plików/nawigacji/popupów/pobrań/uprawnień oraz sanitizację XHTML z restrykcyjnym CSP. Test uruchomieniowy potwierdza też dostęp diagnostyczny w `ApplicationWorld` przy wyłączonym JavaScript książki.
+
 ### Fixed
 - **Pobieranie metadanych po ISBN z e-booka** (Etap 26) — Biblioteka Narodowa nie
   znajdowała książek po ISBN wydania elektronicznego, bo katalog BN indeksuje głównie

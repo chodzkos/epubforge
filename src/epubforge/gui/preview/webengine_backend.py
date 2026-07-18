@@ -1,13 +1,4 @@
-"""Dokładny backend podglądu (Qt WebEngine) — fundament (Prompt 1).
-
-Na tym etapie backend pokazuje **bezpieczną stronę testową**: właściwe ładowanie
-zasobów publikacji (własny schemat ``epub-preview``, sesja, sanitizacja, CSP)
-wprowadzą Prompt 2 i 3. Tu chodzi o kontrakt, cykl życia widgetu i ścieżkę błędu.
-
-Import ``QtWebEngineWidgets`` następuje **leniwie w konstruktorze**, nie na
-poziomie modułu — dzięki temu sam import pakietu ``epubforge.gui.preview`` nie
-wciąga Qt WebEngine, a lekki fallback pozostaje wolny od tej zależności.
-"""
+"""Dokładny backend podglądu z izolowaną sesją i profilem Qt WebEngine."""
 
 from __future__ import annotations
 
@@ -15,10 +6,13 @@ import logging
 
 from chodzkos_gui_kit.palette import Palette
 from chodzkos_gui_kit.qt.theme import current_palette
+from PySide6.QtCore import QUrl
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
 from epubforge.gui.preview.backend import (
     BackendKind,
+    DiagnosticCategory,
+    DiagnosticEvent,
     PreviewBackend,
     PreviewSnapshot,
     PreviewState,
@@ -29,87 +23,123 @@ from epubforge.i18n import _
 
 logger = logging.getLogger(__name__)
 
-# Minimalna, statyczna strona testowa — bez zasobów sieciowych i skryptów.
-_TEST_PAGE = (
-    "<!doctype html><html><head><meta charset='utf-8'>"
-    "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; "
-    "style-src 'unsafe-inline';\">"
-    "<style>html,body{{height:100%;margin:0}}"
-    "body{{display:flex;align-items:center;justify-content:center;"
-    "font-family:sans-serif;color:#1a1a1a;background:#ffffff}}"
-    "div{{max-width:32ch;text-align:center;line-height:1.5}}</style></head>"
-    "<body><div>{message}</div></body></html>"
-)
-
 
 class WebEngineInitError(RuntimeError):
     """Sygnalizuje, że backend WebEngine nie mógł się zainicjalizować."""
 
 
 class WebEnginePreviewBackend(PreviewBackend):
-    """Backend ``QWebEngineView`` — dokładny podgląd (na tym etapie strona testowa).
-
-    Raises:
-        WebEngineInitError: gdy modułu WebEngine nie da się zaimportować albo
-            widoku nie da się utworzyć (np. brak bibliotek systemowych). Wołający
-            (``BookPreview``) łapie ten wyjątek i przechodzi na lekki backend.
-    """
+    """QWebEngineView z prywatnym profilem, handlerem i blokadą nawigacji."""
 
     def __init__(self, parent: QWidget | None = None, *, theme: Palette | None = None) -> None:
         super().__init__(parent)
         self.kind = BackendKind.WEBENGINE
         self._session: PreviewSession | None = None
         self._palette = theme if theme is not None else current_palette()
-
-        # Leniwy, kontrolowany import — awaria kończy się WebEngineInitError,
-        # nie wywróceniem aplikacji.
         try:
             from PySide6.QtWebEngineWidgets import QWebEngineView
-        except Exception as exc:  # import Chromium bywa dowolnie awaryjny
-            raise WebEngineInitError(f"Import QtWebEngineWidgets: {exc}") from exc
+
+            from epubforge.gui.preview.webengine_security import (
+                SecurePreviewPage,
+                create_secure_profile,
+                harden_page_settings,
+            )
+        except Exception as exc:
+            raise WebEngineInitError(f"Import QtWebEngine: {exc}") from exc
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         try:
+            self._profile, self._registry, self._handler, self._interceptor = create_secure_profile(
+                self
+            )
+            self._page = SecurePreviewPage(self._profile, self._registry, self)
+            harden_page_settings(self._page.settings())
+            self._page.loadFinished.connect(self._on_load_finished)
+            self._page.external_navigation.connect(self._on_external_navigation)
             self._view = QWebEngineView(self)
-        except Exception as exc:  # inicjalizacja widoku/Chromium
-            raise WebEngineInitError(f"QWebEngineView: {exc}") from exc
+            self._view.setPage(self._page)
+        except Exception as exc:
+            raise WebEngineInitError(f"Bezpieczny profil QWebEngineView: {exc}") from exc
         layout.addWidget(self._view)
-        self._show_test_page()
-
-    def _show_test_page(self) -> None:
-        """Ładuje statyczną stronę testową (placeholder do czasu Prompt 3)."""
-        message = _(
-            "Dokładny podgląd (WebEngine) jest gotowy. Renderowanie treści książki "
-            "zostanie włączone w kolejnym etapie."
-        )
-        self._view.setHtml(_TEST_PAGE.format(message=message))
 
     def set_session(self, session: PreviewSession | None) -> None:
-        """Zapamiętuje sesję (origin i zasoby wprowadzi Prompt 2)."""
+        """Ustawia sesję; brak sesji natychmiast unieważnia rejestr URL-i."""
         self._session = session
+        if session is None or session.closed:
+            self._registry.clear()
+            self._view.setUrl(QUrl("about:blank"))
 
     def render_snapshot(self, snapshot: PreviewSnapshot) -> None:
-        """Na tym etapie utrzymuje stronę testową (realny render — Prompt 3)."""
-        self.status_changed.emit(PreviewStatus.READY)
+        """Buduje nieruchomą generację i ładuje jej URL z własnego schematu."""
+        session = self._session
+        if (
+            session is None
+            or session.closed
+            or snapshot.epub is None
+            or snapshot.internal_path is None
+        ):
+            self.status_changed.emit(PreviewStatus.ERROR)
+            self.diagnostics.emit(
+                DiagnosticEvent(
+                    category=DiagnosticCategory.BOOK_ERROR,
+                    message=_("Brak aktywnej sesji publikacji dla dokładnego podglądu."),
+                )
+            )
+            return
+        try:
+            generation = session.advance(
+                snapshot.epub,
+                snapshot.internal_path,
+                {snapshot.internal_path: snapshot.xhtml},
+            )
+        except (KeyError, OSError, RuntimeError, ValueError) as exc:
+            self.status_changed.emit(PreviewStatus.ERROR)
+            self.diagnostics.emit(
+                DiagnosticEvent(
+                    category=DiagnosticCategory.BOOK_ERROR,
+                    message=_("Nie udało się przygotować migawki podglądu."),
+                    internal_path=snapshot.internal_path,
+                )
+            )
+            logger.info("Błąd migawki podglądu: %s", exc)
+            return
+        self._registry.activate(generation)
+        self.status_changed.emit(PreviewStatus.RENDERING)
+        self._view.setUrl(QUrl(generation.document_url))
 
     def capture_state(self) -> PreviewState:
-        """Brak synchronicznego dostępu do scrolla strony — stan domyślny."""
+        """Zwraca stan domyślny; odczyt scrolla przez ApplicationWorld doda Prompt 3."""
         return PreviewState()
 
     def restore_state(self, state: PreviewState) -> None:
-        """Odtwarzanie stanu strony wprowadzi Prompt 3 (skrypt aplikacji)."""
+        """Odtworzenie scrolla zostaje świadomie odłożone do Promptu 3."""
         return None
 
     def set_theme(self, palette: Palette) -> None:
-        """Przemalowuje CHROME wokół strony; NIE przeładowuje treści książki.
-
-        Kolory strony książki są danymi profilu czytnika (Prompt 6), a nie palety
-        aplikacji — dlatego zmiana motywu nie dotyka ``QWebEngineView.setHtml``.
-        """
+        """Przemalowuje chrome bez przeładowania treści publikacji."""
         self._palette = palette
         self.setStyleSheet(f"QWidget {{ background-color: {palette.bg}; }}")
 
     def dispose(self) -> None:
-        """Zwalnia widok WebEngine (osobny proces renderera)."""
+        """Unieważnia origin i zwalnia prywatny profil oraz renderer."""
+        self._registry.clear()
+        self._profile.removeUrlSchemeHandler(self._handler)
+        self._view.stop()
+        self._page.deleteLater()
         self._view.deleteLater()
+        self._profile.deleteLater()
+
+    def _on_load_finished(self, success: bool) -> None:
+        """Raportuje wynik bieżącej generacji bez obsługi spóźnionych treści."""
+        self.status_changed.emit(PreviewStatus.READY if success else PreviewStatus.ERROR)
+
+    def _on_external_navigation(self, url: str) -> None:
+        """Rejestruje blokadę linku; nigdy nie otwiera przeglądarki automatycznie."""
+        self.diagnostics.emit(
+            DiagnosticEvent(
+                category=DiagnosticCategory.SECURITY,
+                message=_("Zablokowano nawigację poza publikację."),
+                source_url=url,
+            )
+        )

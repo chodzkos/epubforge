@@ -15,8 +15,20 @@ from typing import TYPE_CHECKING, Any
 
 # Czyste moduły (bez Qt) — bezpieczne do eager-importu, dają czytelne błędy.
 from epubforge.gui.preview.availability import WebEngineProbe, probe_webengine
+from epubforge.gui.preview.paths import (
+    PreviewRequest,
+    UnsafePreviewPathError,
+    build_preview_url,
+    normalize_internal_path,
+    parse_preview_url,
+)
 from epubforge.gui.preview.preinit import EPUB_PREVIEW_SCHEME, preinit_webengine
-from epubforge.gui.preview.session import PreviewSession
+from epubforge.gui.preview.resources import (
+    ResourceProvider,
+    SnapshotResourceProvider,
+    create_resource_provider,
+)
+from epubforge.gui.preview.session import PreviewGeneration, PreviewSession, SelectionState
 from epubforge.gui.preview.settings import PreviewSettings
 
 # Nazwa → moduł, z którego ładujemy ją leniwie (import Qt dopiero przy użyciu).
@@ -62,13 +74,23 @@ __all__ = [
     "DiagnosticCategory",
     "DiagnosticEvent",
     "PreviewBackend",
+    "PreviewGeneration",
+    "PreviewRequest",
     "PreviewSession",
     "PreviewSettings",
     "PreviewSnapshot",
     "PreviewState",
     "PreviewStatus",
+    "ResourceProvider",
+    "SelectionState",
+    "SnapshotResourceProvider",
     "TextDocumentPreviewBackend",
+    "UnsafePreviewPathError",
     "WebEngineProbe",
+    "build_preview_url",
+    "create_resource_provider",
+    "normalize_internal_path",
+    "parse_preview_url",
     "preinit_webengine",
     "probe_webengine",
 ]

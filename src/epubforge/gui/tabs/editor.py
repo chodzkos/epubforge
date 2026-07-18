@@ -518,14 +518,20 @@ class EditorTab(EditorPreviewMixin, QWidget):
 
     def _close_epub(self) -> None:
         """Zamyka bieżący EPUB i czyści stan edycji."""
+        # Najpierw unieważnij origin, żeby żaden request nie przeżył zamknięcia ZIP-a.
+        self.book_preview.set_session(None)
         if self._epub is not None:
             self._epub.close()
         self._epub = None
         self._dirty.clear()
         self._readonly_files.clear()
         self._current = None
-        # Unieważnij sesję podglądu (pełne unieważnienie origin/zasobów: Prompt 2).
-        self.book_preview.set_session(None)
+
+    def dispose(self) -> None:
+        """Unieważnia sesję, zamyka EPUB i zwalnia oba backendy podglądu."""
+        self._preview_timer.stop()
+        self._close_epub()
+        self.book_preview.dispose()
 
     def _update_tree_markers(self) -> None:
         """Dokleja „*" do nazw zmodyfikowanych plików w drzewie."""
