@@ -233,6 +233,8 @@ class BookPreview(QWidget):
         if backend is self._active:
             self._update_status()
             return
+        if self._active.kind is BackendKind.WEBENGINE:
+            self._active.set_session(None)
         self._body_layout.removeWidget(self._active)
         self._active.hide()
         if self._body_layout.indexOf(backend) == -1:
@@ -278,8 +280,13 @@ class BookPreview(QWidget):
 
     def set_session(self, session: PreviewSession | None) -> None:
         """Ustawia bieżącą sesję i przekazuje ją do aktywnego backendu."""
+        previous = self._session
+        if previous is not None and previous is not session:
+            previous.close()
         self._session = session
-        self._active.set_session(session)
+        self._text_backend.set_session(session)
+        if self._webengine_backend is not None:
+            self._webengine_backend.set_session(session)
 
     # ── Motyw ──────────────────────────────────────────────────────────────────
 
@@ -298,7 +305,11 @@ class BookPreview(QWidget):
     # ── Cykl życia ─────────────────────────────────────────────────────────────
 
     def dispose(self) -> None:
-        """Zwalnia oba backendy (dokładny może trzymać proces renderera)."""
+        """Unieważnia sesję i zwalnia oba backendy podglądu."""
+        if self._session is not None:
+            self._session.close()
+            self._session = None
+        self._text_backend.set_session(None)
         self._text_backend.dispose()
         if self._webengine_backend is not None:
             self._webengine_backend.dispose()

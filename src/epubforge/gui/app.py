@@ -393,6 +393,7 @@ class MainWindow(QMainWindow):
             if answer != QMessageBox.StandardButton.Yes:
                 event.ignore()
                 return
+        self.editor_tab.dispose()
         self.config_data["theme"] = self.theme_manager.setting
         self.config_data[_GEOMETRY_KEY] = bytes(self.saveGeometry().toHex().data()).decode("ascii")
         self.config_data.save_now()
