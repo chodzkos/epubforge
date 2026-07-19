@@ -109,6 +109,4 @@ def _is_css(path: str, media_type: str | None) -> bool:
 
 def _is_xhtml(path: str, media_type: str | None) -> bool:
     """Rozpoznaje dokument wymagający ścisłej składni XML."""
-    return (media_type or "").lower() == "application/xhtml+xml" or path.lower().endswith(
-        ".xhtml"
-    )
+    return (media_type or "").lower() == "application/xhtml+xml" or path.lower().endswith(".xhtml")

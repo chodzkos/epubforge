@@ -245,6 +245,7 @@ class BookPreview(QWidget):
             details.append(_("Żądający: {path}").format(path=event.requester))
         self.fallback_label.setText("\n".join(details))
         self.fallback_label.setVisible(True)
+
     def _show_fallback(self, *, forced: bool, reason: str) -> None:
         """Pokazuje czytelną diagnostykę fallbacku po nieudanym wyborze dokładnego."""
         self.fallback_label.setText(_("Nie udało się uruchomić dokładnego podglądu."))
@@ -308,6 +309,7 @@ class BookPreview(QWidget):
         snapshot = replace(self._last_snapshot, css_only=False)
         self._last_snapshot = snapshot
         self._render_snapshot_into(self._active, snapshot)
+
     # ── Renderowanie / sesja ────────────────────────────────────────────────--
 
     def render_document(

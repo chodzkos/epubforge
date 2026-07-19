@@ -92,6 +92,7 @@ def rewrite_svg(
     _remove_xml_bases(root)
     return serialize_document(root, doctype)
 
+
 def rewrite_css(
     data: bytes,
     generation: PreviewGeneration,
@@ -189,6 +190,7 @@ def safe_source_url(value: str) -> str:
         return f"{parsed.scheme}://{host}" if host else f"{parsed.scheme}:[ukryto]"
     return value[:500]
 
+
 def _resolved_path(source_url: str, base_path: str) -> str | None:
     """Zwraca bezpieczną ścieżkę archiwum albo None."""
     parsed = urlsplit(source_url.strip())
@@ -223,6 +225,7 @@ def _remove_xml_bases(root: etree._Element) -> None:
     for element in root.iter():
         if _XML_BASE in element.attrib:
             del element.attrib[_XML_BASE]
+
 
 def _assign_node_id(element: etree._Element, root: etree._Element, requester: str) -> None:
     """Dodaje stabilny identyfikator kopii DOM do odtwarzania wyboru."""

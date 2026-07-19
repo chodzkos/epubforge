@@ -83,7 +83,9 @@ class WebEnginePreviewBackend(PreviewBackend):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         try:
-            self._profile, self._registry, self._handler, self._interceptor = create_secure_profile(self)
+            self._profile, self._registry, self._handler, self._interceptor = create_secure_profile(
+                self
+            )
             self._page = SecurePreviewPage(self._profile, self._registry, self)
             harden_page_settings(self._page.settings())
             self._page.loadFinished.connect(self._on_load_finished)
@@ -167,10 +169,12 @@ class WebEnginePreviewBackend(PreviewBackend):
             self._load_snapshot(snapshot)
             return
         expected = snapshot.generation_id
+
         def captured(value: Any) -> None:
             if expected == self._expected_generation:
                 self._last_state = _state_from_js(value, self._last_state)
                 self._load_snapshot(snapshot)
+
         self._page.runJavaScript(_CAPTURE_SCRIPT, _APP_WORLD, captured)
 
     def _load_snapshot(self, snapshot: PreviewSnapshot) -> None:
@@ -225,15 +229,18 @@ class WebEnginePreviewBackend(PreviewBackend):
                 self._fallback_full_reload(snapshot, "nie znaleziono linku arkusza")
 
         self._page.runJavaScript(script, _APP_WORLD, updated)
+
     def _fallback_full_reload(self, snapshot: PreviewSnapshot, reason: str) -> None:
         """Wykonuje kontrolowany reload po nieudanej aktualizacji częściowej."""
-        self.diagnostics.emit(DiagnosticEvent(
-            category=DiagnosticCategory.PREVIEW_LIMIT,
-            message=_("Częściowe odświeżenie CSS nie powiodło się; przeładowano dokument."),
-            problem_kind="css_reload_fallback",
-            internal_path=snapshot.changed_resource,
-            requester=snapshot.internal_path,
-        ))
+        self.diagnostics.emit(
+            DiagnosticEvent(
+                category=DiagnosticCategory.PREVIEW_LIMIT,
+                message=_("Częściowe odświeżenie CSS nie powiodło się; przeładowano dokument."),
+                problem_kind="css_reload_fallback",
+                internal_path=snapshot.changed_resource,
+                requester=snapshot.internal_path,
+            )
+        )
         logger.info("Fallback pełnego reloadu CSS: %s", reason)
         self._capture_then_load(snapshot)
 
@@ -247,22 +254,28 @@ class WebEnginePreviewBackend(PreviewBackend):
             self.status_changed.emit(PreviewStatus.READY)
         else:
             self.status_changed.emit(PreviewStatus.LAST_GOOD)
-            self.diagnostics.emit(DiagnosticEvent(
-                category=DiagnosticCategory.BOOK_ERROR,
-                message=_("Nie udało się wyrenderować nowej wersji; zachowano ostatnią poprawną."),
-                problem_kind="render_failed",
-                internal_path=snapshot.internal_path,
-                requester=snapshot.internal_path,
-            ))
+            self.diagnostics.emit(
+                DiagnosticEvent(
+                    category=DiagnosticCategory.BOOK_ERROR,
+                    message=_(
+                        "Nie udało się wyrenderować nowej wersji; zachowano ostatnią poprawną."
+                    ),
+                    problem_kind="render_failed",
+                    internal_path=snapshot.internal_path,
+                    requester=snapshot.internal_path,
+                )
+            )
 
     def _on_renderer_terminated(self, status: object, exit_code: int) -> None:
         """Odtwarza renderer raz, po kolejnej awarii żąda lekkiego fallbacku."""
         self.status_changed.emit(PreviewStatus.ERROR)
-        self.diagnostics.emit(DiagnosticEvent(
-            category=DiagnosticCategory.PREVIEW_LIMIT,
-            message=_("Proces renderera podglądu został zakończony."),
-            problem_kind="renderer_terminated",
-        ))
+        self.diagnostics.emit(
+            DiagnosticEvent(
+                category=DiagnosticCategory.PREVIEW_LIMIT,
+                message=_("Proces renderera podglądu został zakończony."),
+                problem_kind="renderer_terminated",
+            )
+        )
         logger.warning("Renderer WebEngine zakończony: %s (%d)", status, exit_code)
         if not self._renderer_recovery_used and self._last_snapshot is not None:
             self._renderer_recovery_used = True
@@ -274,16 +287,22 @@ class WebEnginePreviewBackend(PreviewBackend):
     def _emit_error(self, message: str) -> None:
         """Emituje bezpieczny błąd przygotowania podglądu."""
         self.status_changed.emit(PreviewStatus.ERROR)
-        self.diagnostics.emit(DiagnosticEvent(category=DiagnosticCategory.BOOK_ERROR, message=message, problem_kind="brak_sesji"))
+        self.diagnostics.emit(
+            DiagnosticEvent(
+                category=DiagnosticCategory.BOOK_ERROR, message=message, problem_kind="brak_sesji"
+            )
+        )
 
     def _on_external_navigation(self, url: str) -> None:
         """Rejestruje blokadę linku bez automatycznego otwierania przeglądarki."""
-        self.diagnostics.emit(DiagnosticEvent(
-            category=DiagnosticCategory.SECURITY,
-            message=_("Zablokowano nawigację poza publikację."),
-            problem_kind="zewnetrzna_nawigacja",
-            source_url=safe_source_url(url),
-        ))
+        self.diagnostics.emit(
+            DiagnosticEvent(
+                category=DiagnosticCategory.SECURITY,
+                message=_("Zablokowano nawigację poza publikację."),
+                problem_kind="zewnetrzna_nawigacja",
+                source_url=safe_source_url(url),
+            )
+        )
 
 
 def _state_from_js(value: Any, fallback: PreviewState) -> PreviewState:

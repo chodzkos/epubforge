@@ -98,6 +98,7 @@ class PreviewSchemeHandler(QWebEngineUrlSchemeHandler):
         buffer = make_reply_buffer(data, job)
         job.reply(media_type.encode("ascii", errors="strict"), buffer)
 
+
 def make_reply_buffer(data: bytes, parent: QObject) -> QBuffer:
     """Tworzy otwarty QBuffer żyjący co najmniej tak długo jak job/parent."""
     buffer = QBuffer(parent)

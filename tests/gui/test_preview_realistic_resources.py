@@ -71,9 +71,7 @@ def test_xhtml_and_css_references_use_resource_revisions(tmp_path: Path) -> None
     epub.open()
     session = PreviewSession.create(epub)
     generation = session.advance(epub, "OEBPS/text/ch.xhtml", {})
-    chapter = generation.resource_provider.read(
-        "OEBPS/text/ch.xhtml", generation.generation_id
-    )
+    chapter = generation.resource_provider.read("OEBPS/text/ch.xhtml", generation.generation_id)
     css = generation.resource_provider.read("OEBPS/styles/base.css", generation.generation_id)
     assert chapter is not None and css is not None
 
@@ -90,9 +88,10 @@ def test_xhtml_and_css_references_use_resource_revisions(tmp_path: Path) -> None
     assert "OEBPS/images/bg.webp?gen=1&rev=" in rendered_css
     extra = generation.resource_provider.read("OEBPS/styles/extra.css", 1)
     assert extra is not None
-    assert "OEBPS/styles/base.css?gen=1&rev=" in rewrite_css(
-        extra, generation, "OEBPS/styles/extra.css"
-    ).decode()
+    assert (
+        "OEBPS/styles/base.css?gen=1&rev="
+        in rewrite_css(extra, generation, "OEBPS/styles/extra.css").decode()
+    )
     assert generation.resource_provider.media_type("OEBPS/fonts/book.woff2") == "font/woff2"
     svg = generation.resource_provider.read("OEBPS/images/icon.svg", generation.generation_id)
     assert svg is not None
