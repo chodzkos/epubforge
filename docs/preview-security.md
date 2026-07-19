@@ -26,3 +26,37 @@ Test techniczny wykonany 18 lipca 2026 potwierdził, że `runJavaScript()` w
 Dlatego JavaScript publikacji pozostaje wyłączony. Przyszły kod inspektora może
 działać wyłącznie w `ApplicationWorld`; zmiana tej decyzji wymaga ponownego testu
 na przypiętej wersji Qt i przeglądu bezpieczeństwa.
+
+## Zasoby i snapshot niezapisanych zmian
+
+Adres zasobu rozdziela generację renderu (gen) od rewizji konkretnego wpisu
+(rev). PreviewController zamraża bieżący tekst edytora przed _dirty, pozostałe
+niezapisane pliki, zmiany buforowane w Epub, mapę media type i rewizje. Handler
+widzi wyłącznie nieruchomy ResourceProvider; spóźniona generacja jest odrzucana.
+
+XHTML, CSS i SVG są przepisywane tylko w kopii renderowanej. Względne odwołania,
+fragmenty, dziedziczone xml:base, CSS url(...) i @import prowadzą do
+wersjonowanych adresów aktywnej sesji. Importy nie są rozwijane rekurencyjnie po
+stronie Pythona, dlatego cykl arkuszy nie powoduje rekurencji ani ponownego odczytu
+całego ZIP-a. Aktywna treść SVG jest usuwana, a sieć i lokalne pliki pozostają
+zablokowane. EPUB nie jest rozpakowywany do katalogu tymczasowego.
+
+Diagnostyka rozróżnia błąd książki, blokadę bezpieczeństwa i ograniczenie podglądu.
+Zawiera bezpieczny URL źródłowy, rozwiązany internal path i plik żądający zasobu,
+ale redaguje file:, data:, query oraz ścieżki systemowe.
+
+## Odświeżanie i awarie
+
+Edycja jest debouncowana przez 400 ms. Zmiana XHTML tworzy nową generację i przed
+reloadem zapisuje stabilny identyfikator węzła, oryginalne id, ścieżkę DOM,
+fragment tekstu, aktywny fragment oraz względny scroll. Odtwarzanie używa tej samej
+kolejności. Niepoprawny XHTML nie zastępuje ostatniej poprawnej wersji.
+
+Zmiana pojedynczego CSS aktywuje nową generację zasobów i podmienia tylko href
+właściwego arkusza w ApplicationWorld; DOM, scroll i zaznaczenie pozostają bez
+reloadu. Gdy podmiana jest niemożliwa, wykonywany jest kontrolowany pełny reload z
+diagnostyką. Zmiana motywu przemalowuje wyłącznie chrome podglądu.
+
+Po renderProcessTerminated backend wykonuje najwyżej jedną automatyczną próbę
+odtworzenia. Kolejna awaria przełącza UI na lekki backend, nie dotykając tekstu
+CodeEditor, _dirty ani bufora Epub.

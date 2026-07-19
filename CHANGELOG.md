@@ -25,6 +25,16 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 
 - **Izolowana `PreviewSession` i bezpieczny profil WebEngine (Prompt 2)** — podgląd dokładny otrzymał losowe originy per książka, niezmienne migawki generacji, ścisły resolver `epub-preview://`, dedykowany profil off-the-record bez cache i trwałych cookies, blokady sieci/plików/nawigacji/popupów/pobrań/uprawnień oraz sanitizację XHTML z restrykcyjnym CSP. Test uruchomieniowy potwierdza też dostęp diagnostyczny w `ApplicationWorld` przy wyłączonym JavaScript książki.
 
+- **Realistyczne renderowanie zasobów i niezapisanych zmian (Prompt 3)** — dokładny
+  podgląd renderuje pełny snapshot bieżącego CodeEditor, pozostałego _dirty i
+  bufora Epub, z osobnymi generacjami oraz rewizjami zasobów. XHTML/HTML, arkusze
+  CSS i @import, obrazy PNG/JPEG/GIF/WebP/SVG, fonty TTF/OTF/WOFF/WOFF2 oraz
+  odwołania url(...), fragmenty i xml:base są rozwiązywane wewnątrz izolowanego
+  originu bez rozpakowywania EPUB-a. CSS odświeża się częściowo bez reloadu DOM;
+  pełny reload zachowuje wybór i scroll, błędny XHTML pozostawia ostatnią poprawną
+  wersję, a ponowna awaria renderera przełącza na lekki backend. UI pokazuje stan
+  renderu i oferuje „Przeładuj dokładnie”; test procesu Chromium sprawdza faktyczne
+  użycie linkowanego CSS, WOFF2 i obrazów oraz zachowanie scrolla i zaznaczenia.
 ### Fixed
 - **Pobieranie metadanych po ISBN z e-booka** (Etap 26) — Biblioteka Narodowa nie
   znajdowała książek po ISBN wydania elektronicznego, bo katalog BN indeksuje głównie

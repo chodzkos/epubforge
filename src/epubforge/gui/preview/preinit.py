@@ -38,6 +38,10 @@ EPUB_PREVIEW_SCHEME = "epub-preview"
 _registered = False
 
 
+def preview_scheme_registered() -> bool:
+    """Czy własny schemat został bezpiecznie zarejestrowany przed QApplication."""
+    return _registered
+
 def preinit_webengine() -> bool:
     """Rejestruje schemat ``epub-preview`` wcześnie, jeśli WebEngine jest dostępny.
 

@@ -20,7 +20,7 @@ from PySide6.QtWebEngineCore import (
 from epubforge.core._xml_safe import XmlSecurityError
 from epubforge.gui.preview.preinit import EPUB_PREVIEW_SCHEME
 from epubforge.gui.preview.registry import PreviewGenerationRegistry
-from epubforge.gui.preview.sanitize import sanitize_xhtml
+from epubforge.gui.preview.rewrite import rewrite_css, rewrite_svg, rewrite_xhtml
 
 logger = logging.getLogger(__name__)
 
@@ -56,27 +56,47 @@ class PreviewRequestInterceptor(QWebEngineUrlRequestInterceptor):
 class PreviewSchemeHandler(QWebEngineUrlSchemeHandler):
     """Odpowiada wyłącznie z nieruchomej generacji rejestru."""
 
+    diagnostics = Signal(object)
+
     def __init__(self, registry: PreviewGenerationRegistry, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._registry = registry
 
     def requestStarted(self, job: QWebEngineUrlRequestJob) -> None:  # noqa: N802
-        """Waliduje URL, sanityzuje XHTML i utrzymuje bufor przez parentowanie."""
-        resolved = self._registry.resolve_url(encoded_url(job.requestUrl()))
+        """Waliduje URL i przepisuje kopie XHTML/CSS do izolowanego originu."""
+        resolved = self._registry.resolve_resource(encoded_url(job.requestUrl()))
         if resolved is None:
             job.fail(QWebEngineUrlRequestJob.Error.UrlNotFound)
             return
-        data, media_type = resolved
-        if media_type in _XHTML_TYPES:
-            try:
-                data = sanitize_xhtml(data)
-            except (etree.XMLSyntaxError, XmlSecurityError, ValueError) as exc:
-                logger.info("Odrzucono niepoprawny XHTML podglądu: %s", exc)
-                job.fail(QWebEngineUrlRequestJob.Error.RequestFailed)
-                return
+        data, media_type = resolved.data, resolved.media_type
+        try:
+            if media_type in _XHTML_TYPES:
+                data = rewrite_xhtml(
+                    data,
+                    resolved.generation,
+                    resolved.request.internal_path,
+                    self.diagnostics.emit,
+                )
+            elif media_type == "image/svg+xml":
+                data = rewrite_svg(
+                    data,
+                    resolved.generation,
+                    resolved.request.internal_path,
+                    self.diagnostics.emit,
+                )
+            elif media_type == "text/css":
+                data = rewrite_css(
+                    data,
+                    resolved.generation,
+                    resolved.request.internal_path,
+                    self.diagnostics.emit,
+                )
+        except (etree.XMLSyntaxError, XmlSecurityError, ValueError) as exc:
+            logger.info("Odrzucono niepoprawny zasób podglądu: %s", exc)
+            job.fail(QWebEngineUrlRequestJob.Error.RequestFailed)
+            return
         buffer = make_reply_buffer(data, job)
         job.reply(media_type.encode("ascii", errors="strict"), buffer)
-
 
 def make_reply_buffer(data: bytes, parent: QObject) -> QBuffer:
     """Tworzy otwarty QBuffer żyjący co najmniej tak długo jak job/parent."""

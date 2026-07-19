@@ -49,7 +49,7 @@ def test_preview_url_decodes_utf8_once_and_ignores_fragment() -> None:
     """UTF-8 jest dekodowany ściśle raz, a fragment nie wybiera zasobu."""
     session_id = "0123456789abcdef0123456789abcdef"
     request = parse_preview_url(
-        f"epub-preview://{session_id}/OEBPS/za%C5%BC%C3%B3%C5%82%C4%87.xhtml?rev=7#akapit"
+        f"epub-preview://{session_id}/OEBPS/za%C5%BC%C3%B3%C5%82%C4%87.xhtml?gen=7&rev=7#akapit"
     )
     assert request.internal_path == "OEBPS/zażółć.xhtml"
     assert request.revision == 7

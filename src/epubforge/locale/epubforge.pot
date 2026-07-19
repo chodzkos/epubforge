@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-07-12 18:48+0000\n"
+"POT-Creation-Date: 2026-07-19 21:25+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,173 +17,180 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: src/epubforge/recipes.py:122
-#, python-brace-format
-msgid "Receptura {name}: niepoprawny TOML: {error}"
+#: src/epubforge/_frozen_check.py:97 src/epubforge/gui/app.py:219
+#: src/epubforge/gui/tabs/metadata.py:257
+#: src/epubforge/gui/tabs/metadata.py:279
+#: src/epubforge/gui/tabs/metadata.py:451
+msgid "Metadane"
 msgstr ""
 
-#: src/epubforge/recipes.py:129
-#, python-brace-format
-msgid "Receptura {name}: nie można wczytać pliku: {error}"
-msgstr ""
-
-#: src/epubforge/recipes.py:138
-#, python-brace-format
-msgid "Receptura {name}: pole name musi być niepustym tekstem"
-msgstr ""
-
-#: src/epubforge/recipes.py:149
-#, python-brace-format
-msgid "Receptura {name}: pole description musi być tekstem"
-msgstr ""
-
-#: src/epubforge/recipes.py:155
-#, python-brace-format
-msgid "Receptura {name}: pole steps musi zawierać co najmniej jeden krok"
-msgstr ""
-
-#: src/epubforge/recipes.py:188
-#, python-brace-format
-msgid "Nieznana receptura {name}. Dozwolone: {allowed}"
-msgstr ""
-
-#: src/epubforge/cli/doctor.py:64 src/epubforge/gui/app.py:429
-#: src/epubforge/recipes.py:190 src/epubforge/recipes.py:385
-msgid "brak"
-msgstr ""
-
-#: src/epubforge/recipes.py:220 src/epubforge/recipes.py:243
-#, python-brace-format
-msgid "Krok {index}: {op}"
-msgstr ""
-
-#: src/epubforge/recipes.py:230
-#, python-brace-format
-msgid "Zapisano EPUB: {path}"
-msgstr ""
-
-#: src/epubforge/recipes.py:232
-msgid "Dry-run: receptura nie ma kroków fixerów; nic nie zapisano"
-msgstr ""
-
-#: src/epubforge/recipes.py:247
-#, python-brace-format
-msgid "Utworzono: {path} ({engine})"
-msgstr ""
-
-#: src/epubforge/recipes.py:260
-msgid "krok musi być tabelą TOML"
-msgstr ""
-
-#: src/epubforge/recipes.py:270
-#, python-brace-format
-msgid "nieznane pola kroku: {names}"
-msgstr ""
-
-#: src/epubforge/recipes.py:279
-msgid "pole op musi być niepustym tekstem"
-msgstr ""
-
-#: src/epubforge/recipes.py:287
-#, python-brace-format
-msgid "nieznana operacja {op}"
-msgstr ""
-
-#: src/epubforge/recipes.py:296
-msgid "sekcja options musi być tabelą TOML"
-msgstr ""
-
-#: src/epubforge/recipes.py:306
-#, python-brace-format
-msgid "nieznane opcje dla {op}: {names}"
-msgstr ""
-
-#: src/epubforge/recipes.py:319
-#, python-brace-format
-msgid "niepoprawne opcje dla {op}: {error}"
-msgstr ""
-
-#: src/epubforge/recipes.py:328
-#, python-brace-format
-msgid "Operacja {op} nie jest fixerem"
-msgstr ""
-
-#: src/epubforge/recipes.py:335
+#: src/epubforge/recipes.py:163 src/epubforge/recipes.py:396
 #, python-brace-format
 msgid "Operacja {op} nie jest eksportem"
 msgstr ""
 
-#: src/epubforge/recipes.py:338
+#: src/epubforge/recipes.py:176
+#, python-brace-format
+msgid "Receptura {name}: niepoprawny TOML: {error}"
+msgstr ""
+
+#: src/epubforge/recipes.py:183
+#, python-brace-format
+msgid "Receptura {name}: nie można wczytać pliku: {error}"
+msgstr ""
+
+#: src/epubforge/recipes.py:192
+#, python-brace-format
+msgid "Receptura {name}: pole name musi być niepustym tekstem"
+msgstr ""
+
+#: src/epubforge/recipes.py:203
+#, python-brace-format
+msgid "Receptura {name}: pole description musi być tekstem"
+msgstr ""
+
+#: src/epubforge/recipes.py:209
+#, python-brace-format
+msgid "Receptura {name}: pole steps musi zawierać co najmniej jeden krok"
+msgstr ""
+
+#: src/epubforge/recipes.py:242
+#, python-brace-format
+msgid "Nieznana receptura {name}. Dozwolone: {allowed}"
+msgstr ""
+
+#: src/epubforge/cli/doctor.py:64 src/epubforge/gui/app.py:430
+#: src/epubforge/recipes.py:244 src/epubforge/recipes.py:453
+msgid "brak"
+msgstr ""
+
+#: src/epubforge/recipes.py:274 src/epubforge/recipes.py:297
+#, python-brace-format
+msgid "Krok {index}: {op}"
+msgstr ""
+
+#: src/epubforge/recipes.py:284
+#, python-brace-format
+msgid "Zapisano EPUB: {path}"
+msgstr ""
+
+#: src/epubforge/recipes.py:286
+msgid "Dry-run: receptura nie ma kroków fixerów; nic nie zapisano"
+msgstr ""
+
+#: src/epubforge/recipes.py:301
+#, python-brace-format
+msgid "Utworzono: {path} ({engine})"
+msgstr ""
+
+#: src/epubforge/recipes.py:314
+msgid "krok musi być tabelą TOML"
+msgstr ""
+
+#: src/epubforge/recipes.py:324
+#, python-brace-format
+msgid "nieznane pola kroku: {names}"
+msgstr ""
+
+#: src/epubforge/recipes.py:333
+msgid "pole op musi być niepustym tekstem"
+msgstr ""
+
+#: src/epubforge/recipes.py:341
+#, python-brace-format
+msgid "nieznana operacja {op}"
+msgstr ""
+
+#: src/epubforge/recipes.py:350
+msgid "sekcja options musi być tabelą TOML"
+msgstr ""
+
+#: src/epubforge/recipes.py:360
+#, python-brace-format
+msgid "nieznane opcje dla {op}: {names}"
+msgstr ""
+
+#: src/epubforge/recipes.py:373
+#, python-brace-format
+msgid "niepoprawne opcje dla {op}: {error}"
+msgstr ""
+
+#: src/epubforge/recipes.py:382
+#, python-brace-format
+msgid "Operacja {op} nie jest fixerem"
+msgstr ""
+
+#: src/epubforge/recipes.py:403
 #, python-brace-format
 msgid "Eksport {op} nie zwrócił wyniku konwersji"
 msgstr ""
 
-#: src/epubforge/cli/_batch.py:98 src/epubforge/recipes.py:357
+#: src/epubforge/cli/_batch.py:99 src/epubforge/recipes.py:425
 #, python-brace-format
 msgid "{modified} plików zmienionych, {deleted} usuniętych; nic nie zapisano"
 msgstr ""
 
-#: src/epubforge/recipes.py:370
+#: src/epubforge/recipes.py:438
 #, python-brace-format
 msgid "Dry-run: pominięto kroki eksportu: {ops}"
 msgstr ""
 
-#: src/epubforge/recipes.py:375
+#: src/epubforge/recipes.py:443
 msgid "Przerwano wykonywanie receptury"
 msgstr ""
 
-#: src/epubforge/recipes.py:387
+#: src/epubforge/recipes.py:455
 #, python-brace-format
 msgid "Receptura {name}, krok {index}: {message}. Dozwolone: {allowed}"
 msgstr ""
 
-#: src/epubforge/cli/_batch.py:45 src/epubforge/cli/run.py:51
+#: src/epubforge/cli/_batch.py:46 src/epubforge/cli/run.py:61
 msgid "Liczba równoległych procesów roboczych (domyślnie: 1)"
 msgstr ""
 
-#: src/epubforge/cli/_batch.py:112 src/epubforge/cli/a11y.py:55
+#: src/epubforge/cli/_batch.py:113 src/epubforge/cli/a11y.py:55
 #: src/epubforge/cli/check.py:57 src/epubforge/cli/convert.py:41
 #: src/epubforge/cli/convert.py:44 src/epubforge/cli/fix.py:132
 #: src/epubforge/cli/kfx.py:43 src/epubforge/cli/kfx.py:46
 #: src/epubforge/cli/meta.py:40 src/epubforge/cli/mobi.py:54
-#: src/epubforge/cli/mobi.py:57 src/epubforge/cli/run.py:70
-#: src/epubforge/cli/run.py:111 src/epubforge/cli/stats.py:39
+#: src/epubforge/cli/mobi.py:57 src/epubforge/cli/run.py:94
+#: src/epubforge/cli/run.py:172 src/epubforge/cli/stats.py:39
 #: src/epubforge/cli/toc.py:58 src/epubforge/cli/upgrade.py:45
 #: src/epubforge/gui/tabs/stats.py:199
 #, python-brace-format
 msgid "Błąd: {error}"
 msgstr ""
 
-#: src/epubforge/cli/_batch.py:128
+#: src/epubforge/cli/_batch.py:129
 msgid "Plik"
 msgstr ""
 
-#: src/epubforge/cli/_batch.py:129 src/epubforge/cli/doctor.py:82
+#: src/epubforge/cli/_batch.py:130 src/epubforge/cli/doctor.py:82
 msgid "Status"
 msgstr ""
 
-#: src/epubforge/cli/_batch.py:130
+#: src/epubforge/cli/_batch.py:131
 msgid "Czas"
 msgstr ""
 
-#: src/epubforge/cli/_batch.py:132
+#: src/epubforge/cli/_batch.py:133
 msgid "OK"
 msgstr ""
 
-#: src/epubforge/cli/_batch.py:132
+#: src/epubforge/cli/_batch.py:133
 msgid "FAIL"
 msgstr ""
 
-#: src/epubforge/cli/_batch.py:157 src/epubforge/cli/run.py:129
+#: src/epubforge/cli/_batch.py:158 src/epubforge/cli/run.py:190
 msgid "--jobs musi być większe od zera"
 msgstr ""
 
-#: src/epubforge/cli/_batch.py:206
+#: src/epubforge/cli/_batch.py:207
 #, python-brace-format
 msgid "{path}: plik binarny, delta rozmiaru {delta:+d} B"
 msgstr ""
 
-#: src/epubforge/cli/_batch.py:237
+#: src/epubforge/cli/_batch.py:238
 #, python-brace-format
 msgid "... skrócono diff o {count} linii; użyj --diff-full, aby zobaczyć całość"
 msgstr ""
@@ -464,7 +471,7 @@ msgid "Pokaż diff zmian bez zapisywania EPUB-a"
 msgstr ""
 
 #: src/epubforge/cli/fix.py:114 src/epubforge/cli/hyphenate.py:59
-#: src/epubforge/cli/run.py:45 src/epubforge/cli/typo.py:88
+#: src/epubforge/cli/run.py:55 src/epubforge/cli/typo.py:88
 msgid "Nie skracaj diffów w trybie --dry-run"
 msgstr ""
 
@@ -514,15 +521,15 @@ msgstr ""
 msgid "Utworzono KFX: {path}"
 msgstr ""
 
-#: src/epubforge/cli/main.py:51
+#: src/epubforge/cli/main.py:62
 msgid "Nowoczesny zestaw narzędzi do EPUB — walidacja, naprawa, konwersja."
 msgstr ""
 
-#: src/epubforge/cli/main.py:59
+#: src/epubforge/cli/main.py:70
 msgid "Dostępne komendy"
 msgstr ""
 
-#: src/epubforge/cli/main.py:60
+#: src/epubforge/cli/main.py:71
 msgid "Wyświetl informacje o wersji i wykrytych narzędziach"
 msgstr ""
 
@@ -654,49 +661,70 @@ msgstr ""
 msgid "Opis"
 msgstr ""
 
-#: src/epubforge/cli/run.py:28
+#: src/epubforge/cli/run.py:38
 msgid "Uruchom recepturę TOML na plikach EPUB"
 msgstr ""
 
-#: src/epubforge/cli/run.py:29
+#: src/epubforge/cli/run.py:39
 msgid "Nazwa receptury albo ścieżka .toml"
 msgstr ""
 
-#: src/epubforge/cli/run.py:30
+#: src/epubforge/cli/run.py:40
 msgid "Pliki EPUB do przetworzenia"
 msgstr ""
 
-#: src/epubforge/cli/run.py:31
+#: src/epubforge/cli/run.py:41
 msgid "Katalog wyników eksportu"
 msgstr ""
 
-#: src/epubforge/cli/run.py:35
+#: src/epubforge/cli/run.py:45
 msgid "Wypisz dostępne receptury i zakończ"
 msgstr ""
 
-#: src/epubforge/cli/run.py:40
+#: src/epubforge/cli/run.py:50
 msgid "Pokaż zmiany fixerów bez zapisu; kroki eksportu zostaną pominięte"
 msgstr ""
 
-#: src/epubforge/cli/run.py:61
+#: src/epubforge/cli/run.py:66
+msgid "Nadpisz istniejące pliki wyjściowe (nie dotyczy kolizji między wejściami)"
+msgstr ""
+
+#: src/epubforge/cli/run.py:73
+msgid ""
+"Układ ścieżek wyjściowych: preserve (płasko w --out-dir) albo unique "
+"(podkatalog per wejście — bez kolizji między plikami o tym samym stem)"
+msgstr ""
+
+#: src/epubforge/cli/run.py:85
 msgid "Błąd: podaj nazwę receptury albo ścieżkę .toml"
 msgstr ""
 
-#: src/epubforge/cli/run.py:64
+#: src/epubforge/cli/run.py:88
 msgid "Błąd: podaj co najmniej jeden plik EPUB"
 msgstr ""
 
-#: src/epubforge/cli/run.py:86
+#: src/epubforge/cli/run.py:126
+#, python-brace-format
+msgid "Przerwano przed zapisem — wykryto {count} kolizji ścieżek wyjściowych:"
+msgstr ""
+
+#: src/epubforge/cli/run.py:135
+msgid ""
+"Użyj --force (nadpisanie istniejących) lub --output-layout unique "
+"(rozdzielenie wyjść)."
+msgstr ""
+
+#: src/epubforge/cli/run.py:146
 #, python-brace-format
 msgid "Receptura {recipe}: {path}"
 msgstr ""
 
-#: src/epubforge/cli/run.py:103 src/epubforge/gui/tabs/fixer.py:981
+#: src/epubforge/cli/run.py:164 src/epubforge/gui/tabs/fixer.py:981
 #, python-brace-format
 msgid "Wyniki eksportu: {paths}"
 msgstr ""
 
-#: src/epubforge/cli/run.py:115
+#: src/epubforge/cli/run.py:176
 msgid "Brak dostępnych receptur"
 msgstr ""
 
@@ -923,23 +951,28 @@ msgid ""
 msgstr ""
 
 #: src/epubforge/converters/pdf2md.py:88
-#: src/epubforge/converters/to_epub.py:187
+#: src/epubforge/converters/to_epub.py:185
 #, python-brace-format
 msgid "Konwersja przez {engine} nie powiodła się (kod wyjścia {code})."
 msgstr ""
 
-#: src/epubforge/converters/to_epub.py:59
+#: src/epubforge/converters/to_epub.py:57
 msgid ""
 "Plik jest zabezpieczony DRM — konwersja niemożliwa. EpubForge nie usuwa "
 "zabezpieczeń."
 msgstr ""
 
-#: src/epubforge/converters/to_epub.py:200
+#: src/epubforge/converters/to_epub.py:198
 msgid "Pandoc nie obsługuje formatów Kindle (MOBI/AZW3/AZW/PRC) — użyj Calibre."
 msgstr ""
 
-#: src/epubforge/converters/to_epub.py:207
+#: src/epubforge/converters/to_epub.py:205
 msgid "Silnik pdf2md obsługuje wyłącznie pliki PDF."
+msgstr ""
+
+#: src/epubforge/converters/to_epub.py:386
+#, python-brace-format
+msgid "Konwersja przez {engine} przekroczyła limit czasu."
 msgstr ""
 
 #: src/epubforge/enrich/calibre.py:117
@@ -1060,12 +1093,6 @@ msgstr ""
 msgid "Język interfejsu"
 msgstr ""
 
-#: src/epubforge/gui/app.py:219 src/epubforge/gui/tabs/metadata.py:257
-#: src/epubforge/gui/tabs/metadata.py:279
-#: src/epubforge/gui/tabs/metadata.py:451
-msgid "Metadane"
-msgstr ""
-
 #: src/epubforge/gui/app.py:220
 msgid "Konwerter"
 msgstr ""
@@ -1115,8 +1142,8 @@ msgstr ""
 msgid "Język: {language}"
 msgstr ""
 
-#: src/epubforge/gui/app.py:389 src/epubforge/gui/tabs/editor.py:459
-#: src/epubforge/gui/tabs/editor.py:475
+#: src/epubforge/gui/app.py:389 src/epubforge/gui/tabs/editor.py:473
+#: src/epubforge/gui/tabs/editor.py:489
 msgid "Niezapisane zmiany"
 msgstr ""
 
@@ -1124,39 +1151,40 @@ msgstr ""
 msgid "Są niezapisane zmiany. Zamknąć mimo to?"
 msgstr ""
 
-#: src/epubforge/gui/app.py:437
+#: src/epubforge/gui/app.py:438
 msgid "Automatyczny"
 msgstr ""
 
-#: src/epubforge/gui/app.py:438 src/epubforge/gui/app.py:446
+#: src/epubforge/gui/app.py:439 src/epubforge/gui/app.py:447
 msgid "Jasny"
 msgstr ""
 
-#: src/epubforge/gui/app.py:439 src/epubforge/gui/app.py:448
+#: src/epubforge/gui/app.py:440 src/epubforge/gui/app.py:449
 msgid "Ciemny"
 msgstr ""
 
-#: src/epubforge/gui/app.py:449 src/epubforge/gui/app.py:460
+#: src/epubforge/gui/app.py:450 src/epubforge/gui/app.py:461
+#: src/epubforge/gui/preview/book_preview.py:398
 msgid "Auto"
 msgstr ""
 
-#: src/epubforge/gui/app.py:455
+#: src/epubforge/gui/app.py:456
 msgid "Polski"
 msgstr ""
 
-#: src/epubforge/gui/app.py:457
+#: src/epubforge/gui/app.py:458
 msgid "English"
 msgstr ""
 
-#: src/epubforge/gui/app.py:459
+#: src/epubforge/gui/app.py:460
 msgid "Deutsch"
 msgstr ""
 
-#: src/epubforge/gui/app.py:480
+#: src/epubforge/gui/app.py:481
 msgid "Błąd krytyczny"
 msgstr ""
 
-#: src/epubforge/gui/app.py:481
+#: src/epubforge/gui/app.py:482
 #, python-brace-format
 msgid ""
 "Wystąpił nieoczekiwany błąd:\n"
@@ -1281,93 +1309,305 @@ msgstr ""
 msgid "Ten temat jest już przypisany"
 msgstr ""
 
-#: src/epubforge/gui/tags_panel.py:99
+#: src/epubforge/gui/tags_panel.py:117
 msgid "Tagi"
 msgstr ""
 
-#: src/epubforge/gui/tags_panel.py:103
+#: src/epubforge/gui/tags_panel.py:121
 msgid "Zaproponuj tagi"
 msgstr ""
 
-#: src/epubforge/gui/tags_panel.py:105
+#: src/epubforge/gui/tags_panel.py:123
 msgid "Proponuje tagi z taksonomii (deskryptory/kategorie), opcjonalnie z AI"
 msgstr ""
 
-#: src/epubforge/gui/tags_panel.py:110
+#: src/epubforge/gui/tags_panel.py:128
 msgid "Użyj AI (opt-in)"
 msgstr ""
 
-#: src/epubforge/gui/tags_panel.py:111
+#: src/epubforge/gui/tags_panel.py:129
 msgid "Domyślnie lokalna Ollama; ustaw w „Ustawienia AI…"
 msgstr ""
 
-#: src/epubforge/gui/tags_panel.py:114
+#: src/epubforge/gui/tags_panel.py:132
 msgid "Ustawienia AI…"
 msgstr ""
 
-#: src/epubforge/gui/tags_panel.py:134
+#: src/epubforge/gui/tags_panel.py:161
 msgid "Analizuję…"
 msgstr ""
 
-#: src/epubforge/gui/tags_panel.py:153
+#: src/epubforge/gui/tags_panel.py:202
+msgid "Nie wysłano do chmury — brak zgody. Pokazuję tagi z taksonomii."
+msgstr ""
+
+#: src/epubforge/gui/tags_panel.py:216
 msgid "Nie udało się zaproponować tagów"
 msgstr ""
 
-#: src/epubforge/gui/tags_panel.py:157
+#: src/epubforge/gui/tags_panel.py:220
 #, python-brace-format
 msgid "AI niedostępne ({error}). Pokazuję tagi z taksonomii."
 msgstr ""
 
-#: src/epubforge/gui/tags_panel.py:162
+#: src/epubforge/gui/tags_panel.py:225
 msgid "Brak propozycji — dodaj opis lub metadane"
 msgstr ""
 
-#: src/epubforge/gui/tags_panel.py:174
+#: src/epubforge/gui/tags_panel.py:237
 #, python-brace-format
 msgid "Dodano {n} tagów — sprawdź i zapisz"
 msgstr ""
 
-#: src/epubforge/gui/tags_panel.py:181
+#: src/epubforge/gui/tags_panel.py:244
 #, python-brace-format
 msgid "Błąd tagowania: {error}"
 msgstr ""
 
-#: src/epubforge/gui/tags_panel.py:189
+#: src/epubforge/gui/tags_panel.py:252
 msgid "Zapisano ustawienia AI"
 msgstr ""
 
-#: src/epubforge/gui/tags_panel.py:198
+#: src/epubforge/gui/tags_panel.py:261
 msgid "Proponowane tagi"
 msgstr ""
 
-#: src/epubforge/gui/tags_panel.py:205
+#: src/epubforge/gui/tags_panel.py:268
 msgid "Zaznacz tagi do dopisania (dc:subject):"
 msgstr ""
 
-#: src/epubforge/gui/tags_panel.py:232
+#: src/epubforge/gui/tags_panel.py:293
+msgid "opis książki (dc:description)"
+msgstr ""
+
+#: src/epubforge/gui/tags_panel.py:294
+msgid "spis treści — tytuły rozdziałów"
+msgstr ""
+
+#: src/epubforge/gui/tags_panel.py:295
+msgid "próbka treści książki (fragment tekstu)"
+msgstr ""
+
+#: src/epubforge/gui/tags_panel.py:296
+msgid "lista dozwolonych tagów (taksonomia)"
+msgstr ""
+
+#: src/epubforge/gui/tags_panel.py:316
+msgid "Zgoda na wysyłkę do chmury AI"
+msgstr ""
+
+#: src/epubforge/gui/tags_panel.py:325
+msgid ""
+"Wybrany model AI działa w chmurze. Przed pierwszą wysyłką potwierdź, co i"
+" dokąd zostanie wysłane. Dane NIE są wysyłane bez Twojej zgody."
+msgstr ""
+
+#: src/epubforge/gui/tags_panel.py:333
+#, python-brace-format
+msgid ""
+"Host: {host} ({scheme})\n"
+"Model: {model}"
+msgstr ""
+
+#: src/epubforge/gui/tags_panel.py:341
+msgid "Do modelu zostaną wysłane:"
+msgstr ""
+
+#: src/epubforge/gui/tags_panel.py:345
+msgid "Wysyłaj też próbkę treści książki (fragment tekstu)"
+msgstr ""
+
+#: src/epubforge/gui/tags_panel.py:348
+msgid ""
+"Wyłącz, jeśli nie chcesz, aby jakikolwiek fragment treści książki opuścił"
+" komputer."
+msgstr ""
+
+#: src/epubforge/gui/tags_panel.py:357
+msgid "Wyślij za zgodą"
+msgstr ""
+
+#: src/epubforge/gui/tags_panel.py:372
 msgid "Ustawienia AI"
 msgstr ""
 
-#: src/epubforge/gui/tags_panel.py:248
+#: src/epubforge/gui/tags_panel.py:388
 msgid "Preset"
 msgstr ""
 
-#: src/epubforge/gui/tags_panel.py:253
+#: src/epubforge/gui/tags_panel.py:393
 msgid "Model"
 msgstr ""
 
-#: src/epubforge/gui/tags_panel.py:256
+#: src/epubforge/gui/tags_panel.py:396
 msgid "Nazwa zmiennej środowiskowej z kluczem API (nie sam klucz)"
 msgstr ""
 
-#: src/epubforge/gui/tags_panel.py:258
+#: src/epubforge/gui/tags_panel.py:398
 msgid "Zmienna z kluczem"
 msgstr ""
 
-#: src/epubforge/gui/tags_panel.py:262
+#: src/epubforge/gui/tags_panel.py:402
 msgid ""
 "Klucz API czytany jest wyłącznie ze zmiennej środowiskowej o podanej "
 "nazwie. Domyślnie: lokalna Ollama (bez klucza)."
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:115
+msgid "Podgląd:"
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:120
+msgid ""
+"Tor podglądu: Auto (dokładny, gdy dostępny), Dokładny (WebEngine), Szybki"
+" (Qt)"
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:128
+msgid "Aktualnie używany tor renderowania podglądu"
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:136
+msgid "Użyj szybkiego"
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:137
+msgid "Przełącz podgląd na szybki tor (Qt)"
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:142
+msgid "Przeładuj dokładnie"
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:143
+msgid "Wymuś pełne przeładowanie bieżącego dokumentu"
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:230
+msgid "Błąd książki"
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:231
+msgid "Blokada bezpieczeństwa"
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:232
+msgid "Ograniczenie podglądu"
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:234
+#, python-brace-format
+msgid "Kategoria: {category}"
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:236
+#, python-brace-format
+msgid "Rodzaj: {kind}"
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:238
+#, python-brace-format
+msgid "URL: {url}"
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:240
+#, python-brace-format
+msgid "Zasób: {path}"
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:242
+#, python-brace-format
+msgid "Żądający: {path}"
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:247
+msgid "Nie udało się uruchomić dokładnego podglądu."
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:254
+msgid "Użyto szybkiego podglądu zamiast dokładnego."
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:278
+#: src/epubforge/gui/preview/book_preview.py:399
+msgid "Dokładny"
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:278
+#: src/epubforge/gui/preview/book_preview.py:400
+msgid "Szybki"
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:280
+msgid "Aktualny"
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:281
+msgid "Renderowanie"
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:282
+msgid "Ostatnia poprawna wersja"
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:283
+msgid "Fallback"
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:284
+#: src/epubforge/gui/tabs/editor.py:241 src/epubforge/gui/tabs/editor.py:460
+#: src/epubforge/gui/tabs/validator.py:535
+msgid "Błąd"
+msgstr ""
+
+#: src/epubforge/gui/preview/book_preview.py:286
+#, python-brace-format
+msgid "{backend} · {status}"
+msgstr ""
+
+#: src/epubforge/gui/preview/controller.py:56
+msgid "Otwórz rozdział przed podglądem zmian CSS."
+msgstr ""
+
+#: src/epubforge/gui/preview/controller.py:78
+#, python-brace-format
+msgid "Niepoprawny XHTML: {error}"
+msgstr ""
+
+#: src/epubforge/gui/preview/rewrite.py:147
+msgid "Zablokowano odwołanie poza publikację."
+msgstr ""
+
+#: src/epubforge/gui/preview/rewrite.py:161
+msgid "Zablokowano niebezpieczną ścieżkę zasobu."
+msgstr ""
+
+#: src/epubforge/gui/preview/rewrite.py:172
+msgid "Brak zasobu wskazanego przez publikację."
+msgstr ""
+
+#: src/epubforge/gui/preview/webengine_backend.py:115
+msgid "Brak aktywnej sesji publikacji dla dokładnego podglądu."
+msgstr ""
+
+#: src/epubforge/gui/preview/webengine_backend.py:232
+msgid "Częściowe odświeżenie CSS nie powiodło się; przeładowano dokument."
+msgstr ""
+
+#: src/epubforge/gui/preview/webengine_backend.py:252
+msgid "Nie udało się wyrenderować nowej wersji; zachowano ostatnią poprawną."
+msgstr ""
+
+#: src/epubforge/gui/preview/webengine_backend.py:263
+msgid "Proces renderera podglądu został zakończony."
+msgstr ""
+
+#: src/epubforge/gui/preview/webengine_backend.py:272
+msgid "Renderer podglądu uległ ponownej awarii."
+msgstr ""
+
+#: src/epubforge/gui/preview/webengine_backend.py:283
+msgid "Zablokowano nawigację poza publikację."
 msgstr ""
 
 #: src/epubforge/gui/tabs/converter.py:99
@@ -1394,7 +1634,7 @@ msgstr ""
 msgid "Kod języka treści, np. pl, en, de"
 msgstr ""
 
-#: src/epubforge/gui/tabs/converter.py:161 src/epubforge/gui/tabs/editor.py:58
+#: src/epubforge/gui/tabs/converter.py:161 src/epubforge/gui/tabs/editor.py:60
 #: src/epubforge/gui/tabs/fixer.py:451
 msgid "Obrazy"
 msgstr ""
@@ -1594,99 +1834,94 @@ msgid ""
 "Calibre)"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:56
+#: src/epubforge/gui/tabs/editor.py:58
 msgid "Tekst"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:57
+#: src/epubforge/gui/tabs/editor.py:59
 msgid "Style"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:59
+#: src/epubforge/gui/tabs/editor.py:61
 msgid "Fonty"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:60
+#: src/epubforge/gui/tabs/editor.py:62
 msgid "Inne"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:127
+#: src/epubforge/gui/tabs/editor.py:136
 msgid "Otwórz EPUB…"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:128
+#: src/epubforge/gui/tabs/editor.py:137
 msgid "Otwórz plik EPUB do podglądu i edycji"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:132
+#: src/epubforge/gui/tabs/editor.py:141
 msgid "Nie otwarto pliku"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:136
+#: src/epubforge/gui/tabs/editor.py:145
 msgid "Włącz edycję (domyślnie tylko do odczytu)"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:142
+#: src/epubforge/gui/tabs/editor.py:151
 msgid "Inspektor CSS"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:143
+#: src/epubforge/gui/tabs/editor.py:152
 msgid "Pokaż panel reguł CSS z podglądem na żywo"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:150
+#: src/epubforge/gui/tabs/editor.py:159
 msgid "Zapisz EPUB"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:151
+#: src/epubforge/gui/tabs/editor.py:160
 msgid "Zapisuje zmiany do pliku EPUB (kopia .bak)"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:219
+#: src/epubforge/gui/tabs/editor.py:228
 msgid "Otwórz EPUB"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:219
+#: src/epubforge/gui/tabs/editor.py:228
 msgid "Pliki EPUB (*.epub)"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:232 src/epubforge/gui/tabs/editor.py:446
-#: src/epubforge/gui/tabs/validator.py:535
-msgid "Błąd"
-msgstr ""
-
-#: src/epubforge/gui/tabs/editor.py:232
+#: src/epubforge/gui/tabs/editor.py:241
 #, python-brace-format
 msgid ""
 "Nie udało się otworzyć EPUB:\n"
 "{e}"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:363
+#: src/epubforge/gui/tabs/editor.py:376
 msgid "Plik zawiera znaki nie-UTF-8 — edycja zablokowana."
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:387
+#: src/epubforge/gui/tabs/editor.py:400
 msgid "Tryb: edycja"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:387
+#: src/epubforge/gui/tabs/editor.py:400
 msgid "Tryb: tylko podgląd"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:389
+#: src/epubforge/gui/tabs/editor.py:402
 msgid "● Edycja"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:392
+#: src/epubforge/gui/tabs/editor.py:405
 msgid "● Tylko podgląd"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:431
+#: src/epubforge/gui/tabs/editor.py:445
 msgid "Niepoprawny XML"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:432
+#: src/epubforge/gui/tabs/editor.py:446
 #, python-brace-format
 msgid ""
 "Plik nie jest poprawnym XML:\n"
@@ -1695,23 +1930,23 @@ msgid ""
 "Zapisać mimo to?"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:446
+#: src/epubforge/gui/tabs/editor.py:460
 #, python-brace-format
 msgid ""
 "Nie udało się zapisać EPUB:\n"
 "{e}"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:460
+#: src/epubforge/gui/tabs/editor.py:474
 #, python-brace-format
 msgid "Plik „{name}” ma niezapisane zmiany."
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:476
+#: src/epubforge/gui/tabs/editor.py:490
 msgid "EPUB ma niezapisane zmiany. Zapisać przed zamknięciem?"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:536
+#: src/epubforge/gui/tabs/editor.py:562
 #, python-brace-format
 msgid ""
 "{name}\n"
@@ -1720,36 +1955,44 @@ msgid ""
 "Rozmiar: {size} B"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor.py:537
+#: src/epubforge/gui/tabs/editor.py:563
 msgid "nieznany"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor_preview.py:124
+#: src/epubforge/gui/tabs/editor_preview.py:147
 #: src/epubforge/gui/tabs/validator.py:216
 msgid "Kod"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor_preview.py:128
+#: src/epubforge/gui/tabs/editor_preview.py:151
 msgid "Podgląd"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor_preview.py:130
+#: src/epubforge/gui/tabs/editor_preview.py:153
 msgid "Przybliżony podgląd HTML (silnik Qt)"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor_preview.py:213
+#: src/epubforge/gui/tabs/editor_preview.py:161
+msgid "Podział"
+msgstr ""
+
+#: src/epubforge/gui/tabs/editor_preview.py:163
+msgid "Widok dzielony: Kod obok Podglądu"
+msgstr ""
+
+#: src/epubforge/gui/tabs/editor_preview.py:297
 msgid "Najpierw otwórz EPUB"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor_preview.py:218
+#: src/epubforge/gui/tabs/editor_preview.py:302
 #: src/epubforge/gui/tabs/metadata.py:375
 #: src/epubforge/gui/tabs/metadata.py:396
-#: src/epubforge/gui/widgets/html_preview.py:174
+#: src/epubforge/gui/widgets/html_preview.py:172
 #, python-brace-format
 msgid "Nie wykryto {tool}"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor_preview.py:221
+#: src/epubforge/gui/tabs/editor_preview.py:305
 #: src/epubforge/gui/tabs/metadata.py:378
 #, python-brace-format
 msgid "Nie udało się uruchomić {tool}: {error}"
@@ -3070,26 +3313,26 @@ msgstr ""
 msgid "Nieobsługiwane w podglądzie: {items}"
 msgstr ""
 
-#: src/epubforge/gui/widgets/html_preview.py:114
+#: src/epubforge/gui/widgets/html_preview.py:112
 #, python-brace-format
 msgid "[obraz: {name}]"
 msgstr ""
 
-#: src/epubforge/gui/widgets/html_preview.py:148
+#: src/epubforge/gui/widgets/html_preview.py:146
 msgid ""
 "Podgląd przybliżony (silnik Qt) — nie pokazuje pełnego CSS, fontów "
 "osadzonych ani układu czytnika. Pełny podgląd:"
 msgstr ""
 
-#: src/epubforge/gui/widgets/html_preview.py:154
+#: src/epubforge/gui/widgets/html_preview.py:152
 msgid "Sigil"
 msgstr ""
 
-#: src/epubforge/gui/widgets/html_preview.py:155
+#: src/epubforge/gui/widgets/html_preview.py:153
 msgid "Calibre Editor"
 msgstr ""
 
-#: src/epubforge/gui/widgets/html_preview.py:172
+#: src/epubforge/gui/widgets/html_preview.py:170
 #, python-brace-format
 msgid "Otwórz bieżący plik w: {tool}"
 msgstr ""
@@ -3171,64 +3414,64 @@ msgstr ""
 msgid " · pominięto {n} (nie-UTF-8)"
 msgstr ""
 
-#: src/epubforge/validators/ace.py:244 src/epubforge/validators/ace.py:265
-#, python-brace-format
-msgid "Ace przekroczył limit czasu ({timeout}s)."
-msgstr ""
-
-#: src/epubforge/validators/ace.py:247
+#: src/epubforge/validators/ace.py:233
 #, python-brace-format
 msgid "Nie udało się uruchomić Ace: {error}"
 msgstr ""
 
-#: src/epubforge/validators/ace.py:262
+#: src/epubforge/validators/ace.py:236 src/epubforge/validators/ace.py:255
+#, python-brace-format
+msgid "Ace przekroczył limit czasu ({timeout}s)."
+msgstr ""
+
+#: src/epubforge/validators/ace.py:252
 msgid "Audyt dostępności anulowano."
 msgstr ""
 
-#: src/epubforge/validators/ace.py:274
+#: src/epubforge/validators/ace.py:264
 #, python-brace-format
 msgid ""
 "Ace nie utworzył raportu JSON.\n"
 "{stderr}"
 msgstr ""
 
-#: src/epubforge/validators/ace.py:281
+#: src/epubforge/validators/ace.py:271
 #, python-brace-format
 msgid "Nie udało się odczytać raportu Ace: {error}"
 msgstr ""
 
-#: src/epubforge/validators/ace.py:284
+#: src/epubforge/validators/ace.py:274
 msgid "Raport Ace ma nieoczekiwany format."
 msgstr ""
 
-#: src/epubforge/validators/epubcheck.py:212
-#: src/epubforge/validators/epubcheck.py:240
-#, python-brace-format
-msgid "EpubCheck przekroczył limit czasu ({timeout}s)."
-msgstr ""
-
-#: src/epubforge/validators/epubcheck.py:216
+#: src/epubforge/validators/epubcheck.py:204
 #, python-brace-format
 msgid "Nie udało się uruchomić EpubCheck: {error}"
 msgstr ""
 
-#: src/epubforge/validators/epubcheck.py:237
+#: src/epubforge/validators/epubcheck.py:208
+#: src/epubforge/validators/epubcheck.py:232
+#, python-brace-format
+msgid "EpubCheck przekroczył limit czasu ({timeout}s)."
+msgstr ""
+
+#: src/epubforge/validators/epubcheck.py:229
 msgid "Walidację anulowano."
 msgstr ""
 
-#: src/epubforge/validators/epubcheck.py:249
+#: src/epubforge/validators/epubcheck.py:241
 #, python-brace-format
 msgid ""
 "EpubCheck nie utworzył raportu JSON.\n"
 "{stderr}"
 msgstr ""
 
-#: src/epubforge/validators/epubcheck.py:256
+#: src/epubforge/validators/epubcheck.py:248
 #, python-brace-format
 msgid "Nie udało się odczytać raportu EpubCheck: {error}"
 msgstr ""
 
-#: src/epubforge/validators/epubcheck.py:259
+#: src/epubforge/validators/epubcheck.py:251
 msgid "Raport EpubCheck ma nieoczekiwany format."
 msgstr ""
 

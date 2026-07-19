@@ -1,0 +1,7 @@
+preview-glyphicons.woff2
+============================
+
+Fixture testowa pochodzi z fontu Glyphicons Halflings rozpowszechnianego z Bootstrap.
+Źródło: Bootstrap 3 / Glyphicons Halflings.
+Licencja: MIT (Bootstrap), zgodna z licencją projektu.
+Plik służy wyłącznie do sprawdzenia rzeczywistego ładowania WOFF2 przez Qt WebEngine.

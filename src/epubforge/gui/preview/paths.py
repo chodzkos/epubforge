@@ -1,4 +1,4 @@
-"""Kanoniczna normalizacja ścieżek własnego schematu podglądu EPUB."""
+"""Kanoniczne i wersjonowane adresy własnego schematu podglądu EPUB."""
 
 from __future__ import annotations
 
@@ -20,20 +20,16 @@ class UnsafePreviewPathError(ValueError):
 
 @dataclass(frozen=True)
 class PreviewRequest:
-    """Zweryfikowane żądanie zasobu należącego do jednej sesji i generacji."""
+    """Zweryfikowane żądanie zasobu jednej sesji i generacji."""
 
     session_id: str
     internal_path: str
+    generation_id: int
     revision: int
 
 
 def normalize_internal_path(raw_path: str, *, percent_decode: bool = False) -> str:
-    """Normalizuje względną ścieżkę EPUB w semantyce POSIX.
-
-    Raises:
-        UnsafePreviewPathError: gdy ścieżka jest absolutna, niekanoniczna lub może
-            prowadzić poza publikację.
-    """
+    """Normalizuje względną ścieżkę EPUB w semantyce POSIX."""
     if not raw_path or raw_path.startswith(("/", "\\")):
         raise UnsafePreviewPathError("Ścieżka zasobu musi być względna")
     if "\\" in raw_path or "\x00" in raw_path or _DRIVE_RE.match(raw_path):
@@ -55,19 +51,13 @@ def normalize_internal_path(raw_path: str, *, percent_decode: bool = False) -> s
     if any(segment in ("", ".", "..") for segment in segments):
         raise UnsafePreviewPathError("Pusta lub nawigacyjna część ścieżki")
     normalized = posixpath.normpath(decoded)
-    if normalized.startswith("../") or normalized == "..":
-        raise UnsafePreviewPathError("Próba wyjścia poza publikację")
-    if normalized != decoded:
-        raise UnsafePreviewPathError("Ścieżka nie jest kanoniczna")
+    if normalized.startswith("../") or normalized == ".." or normalized != decoded:
+        raise UnsafePreviewPathError("Ścieżka wychodzi poza publikację lub nie jest kanoniczna")
     return normalized
 
 
 def parse_preview_url(url: str) -> PreviewRequest:
-    """Waliduje pełny URL ``epub-preview://<session>/<path>?rev=N``.
-
-    Fragment jest ignorowany. Query może zawierać wyłącznie pojedynczy,
-    nieujemny numer ``rev`` i nigdy nie wybiera pliku.
-    """
+    """Waliduje URL własnego schematu z parametrami gen i rev."""
     parsed = urlsplit(url)
     if parsed.scheme != EPUB_PREVIEW_SCHEME or not parsed.hostname:
         raise UnsafePreviewPathError("Niepoprawny schemat lub pusty host")
@@ -85,20 +75,34 @@ def parse_preview_url(url: str) -> PreviewRequest:
         query = parse_qs(parsed.query, keep_blank_values=True, strict_parsing=True)
     except ValueError as exc:
         raise UnsafePreviewPathError("Niepoprawne query") from exc
-    if set(query) != {"rev"} or len(query["rev"]) != 1:
-        raise UnsafePreviewPathError("Query może zawierać wyłącznie pojedyncze rev")
-    raw_revision = query["rev"][0]
-    if not raw_revision.isascii() or not raw_revision.isdecimal():
-        raise UnsafePreviewPathError("Niepoprawna rewizja zasobu")
-    return PreviewRequest(session_id, internal_path, int(raw_revision))
+    if set(query) != {"gen", "rev"} or any(len(values) != 1 for values in query.values()):
+        raise UnsafePreviewPathError("Query musi zawierać pojedyncze gen i rev")
+    values = (query["gen"][0], query["rev"][0])
+    if any(not value.isascii() or not value.isdecimal() for value in values):
+        raise UnsafePreviewPathError("Niepoprawna generacja lub rewizja")
+    return PreviewRequest(session_id, internal_path, int(values[0]), int(values[1]))
 
 
-def build_preview_url(session_id: str, internal_path: str, revision: int) -> str:
-    """Buduje kanoniczny URL zasobu aktywnej generacji."""
+def build_preview_url(
+    session_id: str,
+    internal_path: str,
+    generation_id: int,
+    revision: int | None = None,
+    *,
+    fragment: str | None = None,
+) -> str:
+    """Buduje kanoniczny URL zasobu z osobną generacją i rewizją."""
     if not _SESSION_RE.fullmatch(session_id):
         raise UnsafePreviewPathError("Niepoprawny identyfikator sesji")
     path = normalize_internal_path(internal_path)
-    if revision < 0:
-        raise UnsafePreviewPathError("Rewizja nie może być ujemna")
+    resource_revision = generation_id if revision is None else revision
+    if generation_id < 0 or resource_revision < 0:
+        raise UnsafePreviewPathError("Generacja i rewizja nie mogą być ujemne")
     encoded_path = quote(path, safe="/-._~")
-    return f"{EPUB_PREVIEW_SCHEME}://{session_id}/{encoded_path}?rev={revision}"
+    result = (
+        f"{EPUB_PREVIEW_SCHEME}://{session_id}/{encoded_path}"
+        f"?gen={generation_id}&rev={resource_revision}"
+    )
+    if fragment:
+        result += f"#{quote(fragment, safe='-._~')}"
+    return result

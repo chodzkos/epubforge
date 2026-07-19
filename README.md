@@ -81,7 +81,7 @@
 - **🔤 Subsetting fontów** — przycinanie fontów do użytych znaków (zwykle −70…−90% rozmiaru fontu); zachowuje polskie znaki, interpunkcję i efekty hyphenacji (`pip install ".[fonts]"`)
 - **🎨 CSS Fixer** — czyszczenie kolorów, fontów, justify, marginesy
 - **🎨 Presety CSS** — wbudowane szablony stylów + import własnych (dołącz / zastąp)
-- **📝 Edytor wewnętrzny** — przegląd i szybka edycja plików w EPUB z podświetlaniem XML/CSS oraz wybór podglądu Auto/Dokładny/Szybki. Opcjonalny podgląd dokładny używa izolowanej sesji Qt WebEngine dla aktualnego dokumentu, a tryb szybki pozostaje fallbackiem; szczegóły: [model bezpieczeństwa podglądu](docs/preview-security.md). Handoff do Sigil/Calibre pozostaje dostępny.
+- **📝 Edytor wewnętrzny** — przegląd i szybka edycja plików w EPUB z podświetlaniem XML/CSS oraz wybór podglądu Auto/Dokładny/Szybki. Dokładny podgląd Qt WebEngine renderuje aktualny snapshot edytora z arkuszami CSS, @import, fontami WOFF/WOFF2/TTF/OTF, obrazami i SVG — bez rozpakowywania całej książki. Zmiany CSS są podmieniane bez reloadu dokumentu, a niepoprawny XHTML pozostawia ostatnią poprawną wersję. Dostępne są widok dzielony, status renderu, pełne przeładowanie oraz bezpieczny fallback; szczegóły: [model bezpieczeństwa podglądu](docs/preview-security.md). Handoff do Sigil/Calibre pozostaje dostępny.
 - **🔎 Szukaj/Zamień w całym EPUB** — panel w Edytorze (Ctrl+Shift+F): regex, wielkość liter, całe słowa, zakres plik/EPUB; klikalne wyniki i „Zamień wszystkie"
 - **🔎 Inspektor CSS** — lista reguł arkusza z podglądem na żywo i edycją reguły (podgląd przybliżony)
 - **✅ Walidacja EpubCheck** — raport błędów/ostrzeżeń EPUB; dwuklik błędu skacze do linii w edytorze (wymaga Javy + epubcheck.jar)

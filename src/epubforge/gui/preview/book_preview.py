@@ -17,6 +17,8 @@ niezależne od motywu aplikacji (dane profilu czytnika — Prompt 6).
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
+from dataclasses import replace
 
 from chodzkos_gui_kit.palette import Palette
 from chodzkos_gui_kit.qt.theme import current_palette
@@ -38,7 +40,10 @@ from epubforge.gui.preview.backend import (
     DiagnosticEvent,
     PreviewBackend,
     PreviewSnapshot,
+    PreviewStatus,
 )
+from epubforge.gui.preview.controller import PreviewController
+from epubforge.gui.preview.preinit import preview_scheme_registered
 from epubforge.gui.preview.session import PreviewSession
 from epubforge.gui.preview.settings import PreviewSettings
 from epubforge.gui.preview.text_backend import TextDocumentPreviewBackend
@@ -79,17 +84,21 @@ class BookPreview(QWidget):
         self._palette = theme if theme is not None else current_palette()
         self._settings = settings if settings is not None else PreviewSettings()
         self._generation = 0
+        self._controller = PreviewController()
+        self._status = PreviewStatus.READY
         self._render_count = 0
         self._last_snapshot: PreviewSnapshot | None = None
         self._session: PreviewSession | None = None
         self._webengine_backend: PreviewBackend | None = None
 
         self._build_ui()
+        self.diagnostics.connect(self._show_diagnostic)
 
         # Lekki backend istnieje zawsze (fallback). Dokładny tworzymy leniwie.
         self._text_backend = TextDocumentPreviewBackend(tools=self._tools, theme=self._palette)
         self._text_backend.open_external.connect(self.open_external)
         self._text_backend.diagnostics.connect(self.diagnostics)
+        self._text_backend.status_changed.connect(self._on_status_changed)
         self._body_layout.addWidget(self._text_backend)
         self._active: PreviewBackend = self._text_backend
 
@@ -131,12 +140,18 @@ class BookPreview(QWidget):
         self.use_fast_button.setVisible(False)
         bar.addWidget(self.use_fast_button)
 
+        self.reload_button = QPushButton(_("Przeładuj dokładnie"))
+        self.reload_button.setToolTip(_("Wymuś pełne przeładowanie bieżącego dokumentu"))
+        self.reload_button.clicked.connect(self._reload_exact)
+        bar.addWidget(self.reload_button)
+
         bar.addStretch(0)
         layout.addLayout(bar)
 
         self._body = QWidget()
+        self._body.setObjectName("previewBody")
         self._body_layout = QVBoxLayout(self._body)
-        self._body_layout.setContentsMargins(0, 0, 0, 0)
+        self._body_layout.setContentsMargins(12, 12, 12, 12)
         layout.addWidget(self._body, stretch=1)
 
     # ── Kompatybilność / dostęp ────────────────────────────────────────────────
@@ -175,20 +190,13 @@ class BookPreview(QWidget):
         self.backend_combo.setCurrentIndex(_BACKEND_ORDER.index("text"))
 
     def _apply_backend(self, kind: str, *, persist: bool) -> None:
-        """Ustawia aktywny backend wg wyboru, z bezpiecznym fallbackiem.
-
-        Uwaga (Prompt 1): tryb ``auto`` rozstrzyga się na lekki backend, bo
-        dokładny (WebEngine) nie renderuje jeszcze treści publikacji — pokazuje
-        tylko bezpieczną stronę testową, więc automatyczne przełączenie
-        pogorszyłoby podgląd. Prompt 3 przełączy ``auto`` na WebEngine, gdy będzie
-        renderować realną treść. Dokładny tor pozostaje dostępny jawnie.
-        """
+        """Ustawia wybrany backend; Auto preferuje WebEngine i bezpiecznie fallbackuje."""
         if persist:
             self._settings.backend = kind
         self.fallback_label.setVisible(False)
         self.use_fast_button.setVisible(False)
 
-        if kind in ("text", "auto"):
+        if kind == "text":
             self._set_active(self._text_backend)
             return
         backend, reason = self._ensure_webengine()
@@ -197,12 +205,14 @@ class BookPreview(QWidget):
             return
         # WebEngine niedostępny/awaria przy jawnym wyborze → lekki backend + oferta.
         self._set_active(self._text_backend)
-        self._show_fallback(forced=True, reason=reason)
+        self._show_fallback(forced=kind == "webengine", reason=reason)
 
     def _ensure_webengine(self) -> tuple[PreviewBackend | None, str]:
         """Zwraca (dokładny backend, "") albo (None, powód) — bez wywracania GUI."""
         if self._webengine_backend is not None:
             return self._webengine_backend, ""
+        if not preview_scheme_registered():
+            return None, "schemat podglądu nie został zarejestrowany przed QApplication"
         probe = probe_webengine()
         if not probe.available:
             return None, probe.reason
@@ -212,9 +222,29 @@ class BookPreview(QWidget):
             return None, str(exc)
         backend.open_external.connect(self.open_external)
         backend.diagnostics.connect(self.diagnostics)
+        backend.status_changed.connect(self._on_status_changed)
+        backend.fallback_requested.connect(self._on_renderer_fallback)
         self._webengine_backend = backend
         return backend, ""
 
+    def _show_diagnostic(self, event: DiagnosticEvent) -> None:
+        """Pokazuje bezpieczne pola ostatniej diagnostyki zasobu."""
+        category = {
+            DiagnosticCategory.BOOK_ERROR: _("Błąd książki"),
+            DiagnosticCategory.SECURITY: _("Blokada bezpieczeństwa"),
+            DiagnosticCategory.PREVIEW_LIMIT: _("Ograniczenie podglądu"),
+        }[event.category]
+        details = [event.message, _("Kategoria: {category}").format(category=category)]
+        if event.problem_kind:
+            details.append(_("Rodzaj: {kind}").format(kind=event.problem_kind))
+        if event.source_url:
+            details.append(_("URL: {url}").format(url=event.source_url))
+        if event.internal_path:
+            details.append(_("Zasób: {path}").format(path=event.internal_path))
+        if event.requester:
+            details.append(_("Żądający: {path}").format(path=event.requester))
+        self.fallback_label.setText("\n".join(details))
+        self.fallback_label.setVisible(True)
     def _show_fallback(self, *, forced: bool, reason: str) -> None:
         """Pokazuje czytelną diagnostykę fallbacku po nieudanym wyborze dokładnego."""
         self.fallback_label.setText(_("Nie udało się uruchomić dokładnego podglądu."))
@@ -247,29 +277,76 @@ class BookPreview(QWidget):
             self._render_snapshot_into(backend, self._last_snapshot)
 
     def _update_status(self) -> None:
-        """Aktualizuje etykietę statusu aktywnego backendu."""
-        name = (
-            _("Dokładny (WebEngine)")
-            if self._active.kind is BackendKind.WEBENGINE
-            else _("Szybki (Qt)")
-        )
-        self.status_label.setText(_("Backend: {name}").format(name=name))
+        """Aktualizuje backend i stan bieżącego renderu."""
+        name = _("Dokładny") if self._active.kind is BackendKind.WEBENGINE else _("Szybki")
+        state = {
+            PreviewStatus.READY: _("Aktualny"),
+            PreviewStatus.RENDERING: _("Renderowanie"),
+            PreviewStatus.LAST_GOOD: _("Ostatnia poprawna wersja"),
+            PreviewStatus.FALLBACK: _("Fallback"),
+            PreviewStatus.ERROR: _("Błąd"),
+        }[self._status]
+        self.status_label.setText(_("{backend} · {status}").format(backend=name, status=state))
 
+    def _on_status_changed(self, status: PreviewStatus) -> None:
+        """Odbiera stan wyłącznie od aktywnego backendu."""
+        if self.sender() is self._active:
+            self._status = status
+            self._update_status()
+
+    def _on_renderer_fallback(self, reason: str) -> None:
+        """Przechodzi na lekki backend po ponownej awarii renderera."""
+        self._set_active(self._text_backend)
+        self._status = PreviewStatus.FALLBACK
+        self._update_status()
+        self._show_fallback(forced=False, reason=reason)
+
+    def _reload_exact(self) -> None:
+        """Wymusza pełny reload ostatniego snapshotu."""
+        if self._last_snapshot is None:
+            return
+        snapshot = replace(self._last_snapshot, css_only=False)
+        self._last_snapshot = snapshot
+        self._render_snapshot_into(self._active, snapshot)
     # ── Renderowanie / sesja ────────────────────────────────────────────────--
 
-    def render_document(self, xhtml: str, epub: Epub | None, internal_path: str | None) -> None:
-        """Buduje nowy snapshot (rosnąca generacja) i renderuje go w aktywnym backendzie.
-
-        Nazwa nie brzmi ``render`` — ``QWidget.render`` to zajęta metoda rysująca.
-        """
-        self._generation += 1
-        snapshot = PreviewSnapshot(
-            xhtml=xhtml,
+    def render_document(
+        self,
+        xhtml: str,
+        epub: Epub | None,
+        internal_path: str | None,
+        *,
+        dirty: Mapping[str, str | bytes] | None = None,
+        media_types: Mapping[str, str] | None = None,
+    ) -> None:
+        """Buduje snapshot bieżącego edytora, dirty i bufora Epub."""
+        if epub is None or internal_path is None or self._session is None:
+            self._generation += 1
+            snapshot = PreviewSnapshot(xhtml, epub, internal_path, self._generation)
+            self._last_snapshot = snapshot
+            target = self._text_backend if epub is None else self._active
+            self._render_snapshot_into(target, snapshot)
+            return
+        result = self._controller.build(
             epub=epub,
-            internal_path=internal_path,
-            generation_id=self._generation,
+            session=self._session,
+            current_path=internal_path,
+            current_text=xhtml,
+            dirty=dirty or {},
+            media_types=media_types or {},
         )
+        if result.snapshot is None:
+            self._status = PreviewStatus.LAST_GOOD
+            self._update_status()
+            if result.diagnostic is not None:
+                self.diagnostics.emit(result.diagnostic)
+                self.fallback_label.setText(result.diagnostic.message)
+                self.fallback_label.setVisible(True)
+            return
+        snapshot = result.snapshot
+        self._generation = snapshot.generation_id
         self._last_snapshot = snapshot
+        self.fallback_label.setVisible(False)
         self._active.set_session(self._session)
         self._render_snapshot_into(self._active, snapshot)
 
@@ -284,6 +361,8 @@ class BookPreview(QWidget):
         if previous is not None and previous is not session:
             previous.close()
         self._session = session
+        if previous is not session:
+            self._controller.clear()
         self._text_backend.set_session(session)
         if self._webengine_backend is not None:
             self._webengine_backend.set_session(session)
@@ -301,6 +380,7 @@ class BookPreview(QWidget):
     def _style_chrome(self) -> None:
         """Koloruje komunikat fallbacku kolorem ostrzeżenia z palety (bez hardcodu)."""
         self.fallback_label.setStyleSheet(f"QLabel {{ color: {self._palette.amber}; }}")
+        self._body.setStyleSheet(f"QWidget#previewBody {{ background: {self._palette.bg2}; }}")
 
     # ── Cykl życia ─────────────────────────────────────────────────────────────
 
