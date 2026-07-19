@@ -32,10 +32,20 @@ class PreviewGeneration:
     dirty_overlay: Mapping[str, bytes]
     selection_state: SelectionState
 
+    def resource_url(self, path: str, fragment: str | None = None) -> str:
+        """Buduje URL zasobu z jego własną rewizją."""
+        return build_preview_url(
+            self.session_id,
+            path,
+            self.generation_id,
+            self.resource_provider.revision(path),
+            fragment=fragment,
+        )
+
     @property
     def document_url(self) -> str:
         """Kanoniczny URL bieżącego dokumentu tej generacji."""
-        return build_preview_url(self.session_id, self.current_document, self.generation_id)
+        return self.resource_url(self.current_document)
 
 
 @dataclass
@@ -73,12 +83,13 @@ class PreviewSession:
         epub: Epub,
         current_document: str,
         dirty_overlay: Mapping[str, str | bytes],
+        media_types: Mapping[str, str] | None = None,
     ) -> PreviewGeneration:
         """Tworzy i aktywuje kolejną nieruchomą generację zasobów."""
         if self.closed:
             raise RuntimeError("Sesja podglądu jest zamknięta")
         generation_id = self.generation_id + 1
-        provider = create_resource_provider(epub, generation_id, dirty_overlay)
+        provider = create_resource_provider(epub, generation_id, dirty_overlay, media_types)
         frozen_overlay = MappingProxyType(
             {
                 path: value.encode("utf-8") if isinstance(value, str) else bytes(value)
@@ -105,10 +116,10 @@ class PreviewSession:
             self.closed
             or provider is None
             or request.session_id != self.session_id
-            or request.revision != self.generation_id
+            or request.generation_id != self.generation_id
         ):
             return None
-        data = provider.read(request.internal_path, request.revision)
+        data = provider.read(request.internal_path, request.generation_id)
         if data is None:
             return None
         return data, provider.media_type(request.internal_path)

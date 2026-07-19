@@ -54,6 +54,20 @@ gc.collect()
 assert reference() is not None
 assert reference() is not None and reference().parent() is parent
 assert reference() is not None and bytes(reference().readAll()) == b"sekret"
+
+from epubforge.gui.preview.backend import PreviewSnapshot
+from epubforge.gui.preview.webengine_backend import WebEnginePreviewBackend
+
+backend = WebEnginePreviewBackend()
+backend._last_snapshot = PreviewSnapshot("", None, None)
+fallbacks = []
+backend.fallback_requested.connect(fallbacks.append)
+status = backend._page.RenderProcessTerminationStatus.CrashedTerminationStatus
+backend._on_renderer_terminated(status, 1)
+assert fallbacks == []
+backend._on_renderer_terminated(status, 1)
+assert len(fallbacks) == 1
+backend.dispose()
 """
 
 

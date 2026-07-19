@@ -23,7 +23,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QWidget
 
 from epubforge.core import Epub
-from epubforge.gui.preview.session import PreviewSession
+from epubforge.gui.preview.session import PreviewGeneration, PreviewSession
 
 
 class BackendKind(Enum):
@@ -59,6 +59,8 @@ class DiagnosticEvent:
     message: str
     source_url: str | None = None
     internal_path: str | None = None
+    problem_kind: str | None = None
+    requester: str | None = None
 
 
 @dataclass(frozen=True)
@@ -73,6 +75,9 @@ class PreviewSnapshot:
     epub: Epub | None
     internal_path: str | None
     generation_id: int = 0
+    generation: PreviewGeneration | None = None
+    changed_resource: str | None = None
+    css_only: bool = False
 
 
 @dataclass(frozen=True)
@@ -83,6 +88,11 @@ class PreviewState:
     """
 
     scroll_ratio: float = 0.0
+    active_fragment: str | None = None
+    node_id: str | None = None
+    original_id: str | None = None
+    dom_path: str | None = None
+    text_fragment: str | None = None
 
 
 class PreviewBackend(QWidget):
@@ -99,6 +109,8 @@ class PreviewBackend(QWidget):
     diagnostics = Signal(object)
     #: Żądanie otwarcia bieżącego pliku w narzędziu zewnętrznym (klucz narzędzia).
     open_external = Signal(str)
+    #: Żądanie przejścia na lekki backend po trwałej awarii renderera.
+    fallback_requested = Signal(str)
 
     kind: BackendKind
 

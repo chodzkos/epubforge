@@ -1,12 +1,14 @@
-"""Dokładny backend podglądu z izolowaną sesją i profilem Qt WebEngine."""
+"""Dokładny backend podglądu z pełnymi zasobami i odpornym rendererem."""
 
 from __future__ import annotations
 
+import json
 import logging
+from typing import Any
 
 from chodzkos_gui_kit.palette import Palette
 from chodzkos_gui_kit.qt.theme import current_palette
-from PySide6.QtCore import QUrl
+from PySide6.QtCore import QTimer, QUrl
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
 from epubforge.gui.preview.backend import (
@@ -18,10 +20,38 @@ from epubforge.gui.preview.backend import (
     PreviewState,
     PreviewStatus,
 )
+from epubforge.gui.preview.rewrite import safe_source_url
 from epubforge.gui.preview.session import PreviewSession
 from epubforge.i18n import _
 
 logger = logging.getLogger(__name__)
+_APP_WORLD = 1  # ApplicationWorld; bez importu WebEngine przy imporcie pakietu
+_CAPTURE_SCRIPT = r"""
+(() => {
+  const selection = window.getSelection();
+  let node = selection && selection.anchorNode;
+  if (node && node.nodeType !== Node.ELEMENT_NODE) node = node.parentElement;
+  if (!node) node = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+  const path = (element) => {
+    const parts = [];
+    while (element && element !== document.documentElement) {
+      const siblings = Array.from(element.parentElement ? element.parentElement.children : []);
+      parts.unshift(element.localName + ':nth-child(' + (siblings.indexOf(element) + 1) + ')');
+      element = element.parentElement;
+    }
+    return parts.join(' > ');
+  };
+  const max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
+  return {
+    scroll_ratio: scrollY / max,
+    active_fragment: location.hash ? location.hash.slice(1) : null,
+    node_id: node ? node.getAttribute('data-epubforge-node-id') : null,
+    original_id: node ? node.id || null : null,
+    dom_path: node ? path(node) : null,
+    text_fragment: node ? (node.textContent || '').trim().slice(0, 120) : null
+  };
+})()
+"""
 
 
 class WebEngineInitError(RuntimeError):
@@ -29,13 +59,17 @@ class WebEngineInitError(RuntimeError):
 
 
 class WebEnginePreviewBackend(PreviewBackend):
-    """QWebEngineView z prywatnym profilem, handlerem i blokadą nawigacji."""
+    """QWebEngineView z wersjonowanymi zasobami i bezpiecznym fallbackiem."""
 
     def __init__(self, parent: QWidget | None = None, *, theme: Palette | None = None) -> None:
         super().__init__(parent)
         self.kind = BackendKind.WEBENGINE
         self._session: PreviewSession | None = None
         self._palette = theme if theme is not None else current_palette()
+        self._last_snapshot: PreviewSnapshot | None = None
+        self._last_state = PreviewState()
+        self._expected_generation = 0
+        self._renderer_recovery_used = False
         try:
             from PySide6.QtWebEngineWidgets import QWebEngineView
 
@@ -46,7 +80,6 @@ class WebEnginePreviewBackend(PreviewBackend):
             )
         except Exception as exc:
             raise WebEngineInitError(f"Import QtWebEngine: {exc}") from exc
-
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         try:
@@ -56,7 +89,9 @@ class WebEnginePreviewBackend(PreviewBackend):
             self._page = SecurePreviewPage(self._profile, self._registry, self)
             harden_page_settings(self._page.settings())
             self._page.loadFinished.connect(self._on_load_finished)
+            self._page.renderProcessTerminated.connect(self._on_renderer_terminated)
             self._page.external_navigation.connect(self._on_external_navigation)
+            self._handler.diagnostics.connect(self.diagnostics)
             self._view = QWebEngineView(self)
             self._view.setPage(self._page)
         except Exception as exc:
@@ -64,62 +99,60 @@ class WebEnginePreviewBackend(PreviewBackend):
         layout.addWidget(self._view)
 
     def set_session(self, session: PreviewSession | None) -> None:
-        """Ustawia sesję; brak sesji natychmiast unieważnia rejestr URL-i."""
+        """Ustawia sesję i czyści cache po zamknięciu lub zmianie książki."""
+        changed = session is not self._session
         self._session = session
+        if changed:
+            self._renderer_recovery_used = False
+            self._last_snapshot = None
+            self._last_state = PreviewState()
         if session is None or session.closed:
             self._registry.clear()
             self._view.setUrl(QUrl("about:blank"))
 
     def render_snapshot(self, snapshot: PreviewSnapshot) -> None:
-        """Buduje nieruchomą generację i ładuje jej URL z własnego schematu."""
-        session = self._session
-        if (
-            session is None
-            or session.closed
-            or snapshot.epub is None
-            or snapshot.internal_path is None
-        ):
-            self.status_changed.emit(PreviewStatus.ERROR)
-            self.diagnostics.emit(
-                DiagnosticEvent(
-                    category=DiagnosticCategory.BOOK_ERROR,
-                    message=_("Brak aktywnej sesji publikacji dla dokładnego podglądu."),
-                )
-            )
-            return
-        try:
-            generation = session.advance(
-                snapshot.epub,
-                snapshot.internal_path,
-                {snapshot.internal_path: snapshot.xhtml},
-            )
-        except (KeyError, OSError, RuntimeError, ValueError) as exc:
-            self.status_changed.emit(PreviewStatus.ERROR)
-            self.diagnostics.emit(
-                DiagnosticEvent(
-                    category=DiagnosticCategory.BOOK_ERROR,
-                    message=_("Nie udało się przygotować migawki podglądu."),
-                    internal_path=snapshot.internal_path,
-                )
-            )
-            logger.info("Błąd migawki podglądu: %s", exc)
+        """Aktywuje gotową generację; CSS podmienia bez przeładowania dokumentu."""
+        generation = snapshot.generation
+        if self._session is None or self._session.closed or generation is None:
+            self._emit_error(_("Brak aktywnej sesji publikacji dla dokładnego podglądu."))
             return
         self._registry.activate(generation)
+        self._expected_generation = generation.generation_id
         self.status_changed.emit(PreviewStatus.RENDERING)
-        self._view.setUrl(QUrl(generation.document_url))
+        if snapshot.css_only and self._last_snapshot is not None and snapshot.changed_resource:
+            self._update_stylesheet(snapshot)
+        else:
+            self._capture_then_load(snapshot)
 
     def capture_state(self) -> PreviewState:
-        """Zwraca stan domyślny; odczyt scrolla przez ApplicationWorld doda Prompt 3."""
-        return PreviewState()
+        """Zwraca ostatni asynchronicznie zapamiętany stan DOM i scrolla."""
+        return self._last_state
 
     def restore_state(self, state: PreviewState) -> None:
-        """Odtworzenie scrolla zostaje świadomie odłożone do Promptu 3."""
-        return None
+        """Odtwarza node/id/ścieżkę/tekst/fragment/scroll w ustalonej kolejności."""
+        self._last_state = state
+        payload = json.dumps(state.__dict__)
+        script = f"""
+        (() => {{
+          const s = {payload};
+          let n = s.node_id && document.querySelector('[data-epubforge-node-id="' + CSS.escape(s.node_id) + '"]');
+          if (!n && s.original_id) n = document.getElementById(s.original_id);
+          if (!n && s.dom_path) {{ try {{ n = document.querySelector(s.dom_path); }} catch (_) {{}} }}
+          if (!n && s.text_fragment) n = Array.from(document.querySelectorAll('body *')).find(e => (e.textContent || '').includes(s.text_fragment));
+          if (!n && s.active_fragment) n = document.getElementById(s.active_fragment);
+          if (n) n.scrollIntoView({{block: 'center'}});
+          else {{
+            const max = Math.max(0, document.documentElement.scrollHeight - innerHeight);
+            scrollTo(0, max * Math.max(0, Math.min(1, s.scroll_ratio || 0)));
+          }}
+        }})()
+        """
+        self._page.runJavaScript(script, _APP_WORLD)
 
     def set_theme(self, palette: Palette) -> None:
-        """Przemalowuje chrome bez przeładowania treści publikacji."""
+        """Przemalowuje wyłącznie neutralne otoczenie, bez reloadu książki."""
         self._palette = palette
-        self.setStyleSheet(f"QWidget {{ background-color: {palette.bg}; }}")
+        self.setStyleSheet(f"WebEnginePreviewBackend {{ background-color: {palette.bg}; }}")
 
     def dispose(self) -> None:
         """Unieważnia origin i zwalnia prywatny profil oraz renderer."""
@@ -130,16 +163,163 @@ class WebEnginePreviewBackend(PreviewBackend):
         self._view.deleteLater()
         self._profile.deleteLater()
 
+    def _capture_then_load(self, snapshot: PreviewSnapshot) -> None:
+        """Zapisuje stan starej strony, a następnie ładuje nową generację."""
+        if self._last_snapshot is None:
+            self._load_snapshot(snapshot)
+            return
+        expected = snapshot.generation_id
+
+        def captured(value: Any) -> None:
+            if expected == self._expected_generation:
+                self._last_state = _state_from_js(value, self._last_state)
+                self._load_snapshot(snapshot)
+
+        self._page.runJavaScript(_CAPTURE_SCRIPT, _APP_WORLD, captured)
+
+    def _load_snapshot(self, snapshot: PreviewSnapshot) -> None:
+        """Ładuje dokument tylko, jeśli snapshot nadal jest najnowszy."""
+        generation = snapshot.generation
+        if generation is None or generation.generation_id != self._expected_generation:
+            return
+        self._last_snapshot = snapshot
+        self._view.setUrl(QUrl(generation.document_url))
+
+    def _update_stylesheet(self, snapshot: PreviewSnapshot) -> None:
+        """Zapamiętuje stan i podmienia jeden arkusz bez reloadu DOM."""
+        generation, path = snapshot.generation, snapshot.changed_resource
+        if generation is None or path is None:
+            self._fallback_full_reload(snapshot, "brak danych arkusza")
+            return
+        expected = generation.generation_id
+
+        def captured(value: Any) -> None:
+            if expected != self._expected_generation:
+                return
+            self._last_state = _state_from_js(value, self._last_state)
+            self._swap_stylesheet(snapshot)
+
+        self._page.runJavaScript(_CAPTURE_SCRIPT, _APP_WORLD, captured)
+
+    def _swap_stylesheet(self, snapshot: PreviewSnapshot) -> None:
+        """Podmienia wersjonowany href po zapisaniu scrolla i zaznaczenia."""
+        generation, path = snapshot.generation, snapshot.changed_resource
+        if generation is None or path is None:
+            self._fallback_full_reload(snapshot, "brak danych arkusza")
+            return
+        script = f"""
+        (() => {{
+          const path = {json.dumps(path)};
+          const href = {json.dumps(generation.resource_url(path))};
+          const link = Array.from(document.querySelectorAll('link[rel~="stylesheet"]')).find(item => item.dataset.epubforgePath === path);
+          if (!link) return false;
+          link.href = href;
+          return true;
+        }})()
+        """
+        expected = generation.generation_id
+
+        def updated(success: Any) -> None:
+            if expected != self._expected_generation:
+                return
+            if success:
+                self._last_snapshot = snapshot
+                self.status_changed.emit(PreviewStatus.READY)
+            else:
+                self._fallback_full_reload(snapshot, "nie znaleziono linku arkusza")
+
+        self._page.runJavaScript(script, _APP_WORLD, updated)
+
+    def _fallback_full_reload(self, snapshot: PreviewSnapshot, reason: str) -> None:
+        """Wykonuje kontrolowany reload po nieudanej aktualizacji częściowej."""
+        self.diagnostics.emit(
+            DiagnosticEvent(
+                category=DiagnosticCategory.PREVIEW_LIMIT,
+                message=_("Częściowe odświeżenie CSS nie powiodło się; przeładowano dokument."),
+                problem_kind="css_reload_fallback",
+                internal_path=snapshot.changed_resource,
+                requester=snapshot.internal_path,
+            )
+        )
+        logger.info("Fallback pełnego reloadu CSS: %s", reason)
+        self._capture_then_load(snapshot)
+
     def _on_load_finished(self, success: bool) -> None:
-        """Raportuje wynik bieżącej generacji bez obsługi spóźnionych treści."""
-        self.status_changed.emit(PreviewStatus.READY if success else PreviewStatus.ERROR)
+        """Ignoruje spóźniony wynik i odtwarza stan po aktualnej generacji."""
+        snapshot = self._last_snapshot
+        if snapshot is None or snapshot.generation_id != self._expected_generation:
+            return
+        if success:
+            self.restore_state(self._last_state)
+            self.status_changed.emit(PreviewStatus.READY)
+        else:
+            self.status_changed.emit(PreviewStatus.LAST_GOOD)
+            self.diagnostics.emit(
+                DiagnosticEvent(
+                    category=DiagnosticCategory.BOOK_ERROR,
+                    message=_(
+                        "Nie udało się wyrenderować nowej wersji; zachowano ostatnią poprawną."
+                    ),
+                    problem_kind="render_failed",
+                    internal_path=snapshot.internal_path,
+                    requester=snapshot.internal_path,
+                )
+            )
+
+    def _on_renderer_terminated(self, status: object, exit_code: int) -> None:
+        """Odtwarza renderer raz, po kolejnej awarii żąda lekkiego fallbacku."""
+        self.status_changed.emit(PreviewStatus.ERROR)
+        self.diagnostics.emit(
+            DiagnosticEvent(
+                category=DiagnosticCategory.PREVIEW_LIMIT,
+                message=_("Proces renderera podglądu został zakończony."),
+                problem_kind="renderer_terminated",
+            )
+        )
+        logger.warning("Renderer WebEngine zakończony: %s (%d)", status, exit_code)
+        if not self._renderer_recovery_used and self._last_snapshot is not None:
+            self._renderer_recovery_used = True
+            QTimer.singleShot(0, lambda: self._load_snapshot(self._last_snapshot))  # type: ignore[arg-type]
+        else:
+            self.status_changed.emit(PreviewStatus.FALLBACK)
+            self.fallback_requested.emit(_("Renderer podglądu uległ ponownej awarii."))
+
+    def _emit_error(self, message: str) -> None:
+        """Emituje bezpieczny błąd przygotowania podglądu."""
+        self.status_changed.emit(PreviewStatus.ERROR)
+        self.diagnostics.emit(
+            DiagnosticEvent(
+                category=DiagnosticCategory.BOOK_ERROR, message=message, problem_kind="brak_sesji"
+            )
+        )
 
     def _on_external_navigation(self, url: str) -> None:
-        """Rejestruje blokadę linku; nigdy nie otwiera przeglądarki automatycznie."""
+        """Rejestruje blokadę linku bez automatycznego otwierania przeglądarki."""
         self.diagnostics.emit(
             DiagnosticEvent(
                 category=DiagnosticCategory.SECURITY,
                 message=_("Zablokowano nawigację poza publikację."),
-                source_url=url,
+                problem_kind="zewnetrzna_nawigacja",
+                source_url=safe_source_url(url),
             )
         )
+
+
+def _state_from_js(value: Any, fallback: PreviewState) -> PreviewState:
+    """Konwertuje wynik ApplicationWorld bez zaufania jego typom."""
+    if not isinstance(value, dict):
+        return fallback
+    ratio = value.get("scroll_ratio", fallback.scroll_ratio)
+    return PreviewState(
+        scroll_ratio=float(ratio) if isinstance(ratio, (int, float)) else fallback.scroll_ratio,
+        active_fragment=_optional_text(value.get("active_fragment")),
+        node_id=_optional_text(value.get("node_id")),
+        original_id=_optional_text(value.get("original_id")),
+        dom_path=_optional_text(value.get("dom_path")),
+        text_fragment=_optional_text(value.get("text_fragment")),
+    )
+
+
+def _optional_text(value: Any) -> str | None:
+    """Przyjmuje wyłącznie krótki tekst stanu DOM."""
+    return value[:240] if isinstance(value, str) and value else None

@@ -40,6 +40,6 @@ def test_registry_forces_xhtml_for_current_document() -> None:
     )
     registry = PreviewGenerationRegistry()
     registry.activate(generation)
-    resolved = registry.resolve_url(f"epub-preview://{session_id}/OEBPS/ch.xhtml?rev=1")
+    resolved = registry.resolve_url(f"epub-preview://{session_id}/OEBPS/ch.xhtml?gen=1&rev=1")
     assert resolved is not None
     assert resolved[1] == "application/xhtml+xml"

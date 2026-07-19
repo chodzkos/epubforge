@@ -135,6 +135,7 @@ def create_resource_provider(
     epub: Epub,
     generation_id: int,
     dirty_overlay: Mapping[str, str | bytes],
+    media_types: Mapping[str, str] | None = None,
 ) -> SnapshotResourceProvider:
     """Buduje nieruchomą migawkę logicznej zawartości otwartego EPUB-a."""
     dirty = {
@@ -150,6 +151,14 @@ def create_resource_provider(
     deleted = frozenset(normalize_internal_path(path) for path in pending.deleted)
     files = frozenset(normalize_internal_path(path) for path in epub.list_files())
     manifest_types = _manifest_media_types(epub)
+    if media_types is not None:
+        for path, media_type in media_types.items():
+            try:
+                normalized = normalize_internal_path(path)
+            except UnsafePreviewPathError:
+                continue
+            if media_type.strip().lower() in _SAFE_DECLARED_MIME:
+                manifest_types[normalized] = media_type.strip().lower()
     revisions = _resource_revisions(epub.path, files, buffered, dirty)
     return SnapshotResourceProvider(
         epub.path,

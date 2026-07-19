@@ -55,6 +55,7 @@ class EditorPreviewMixin:
     _epub_path: Path | None
     _current: str | None
     _media_types: dict[str, str]
+    _dirty: dict[str, str]
     _preview_settings: PreviewSettings
     code_editor: CodeEditor
     _set_info_bar: Callable[[str], None]
@@ -214,7 +215,7 @@ class EditorPreviewMixin:
     def _preview_active(self) -> bool:
         """Czy podgląd HTML jest aktualnie pokazany (strona stosu albo widok dzielony)."""
         if self._split_active:
-            return self._current_is_html()
+            return self._current_is_html() or self._current_is_css()
         return self.stack.currentIndex() == _PAGE_HTML
 
     def _update_view_switch(self, internal: str, media_type: str | None) -> None:
@@ -242,7 +243,13 @@ class EditorPreviewMixin:
         """Renderuje bieżącą treść edytora w podglądzie (z osadzeniem obrazków)."""
         if self._current is None or self._epub is None:
             return
-        self.book_preview.render_document(self.code_editor.get_text(), self._epub, self._current)
+        self.book_preview.render_document(
+            self.code_editor.get_text(),
+            self._epub,
+            self._current,
+            dirty=self._dirty,
+            media_types=self._media_types,
+        )
 
     # ── Widok dzielony Kod | Podgląd ───────────────────────────────────────────
 
@@ -278,7 +285,7 @@ class EditorPreviewMixin:
         """W trybie dzielonym pokazuje podgląd tylko dla HTML i odświeża go."""
         if not self._split_active:
             return
-        is_html = self._current_is_html()
+        is_html = self._current_is_html() or self._current_is_css()
         self.book_preview.setVisible(is_html)
         if is_html:
             self._render_html_preview()
