@@ -58,6 +58,7 @@ _CAPTURE_SCRIPT = r"""
 })()
 """
 
+
 class WebEngineInitError(RuntimeError):
     """Sygnalizuje, że backend WebEngine nie mógł się zainicjalizować."""
 
