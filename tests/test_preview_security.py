@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import gc
 import weakref
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -89,6 +90,31 @@ def test_snapshot_precedence_and_generation_isolation(sample_epub: Path) -> None
     assert registry.resolve_url(first.document_url) is None
     assert registry.resolve_url(second.document_url) is not None
     epub.close()
+
+
+def test_snapshot_ignores_explicit_directory_entries(sample_epub: Path, tmp_path: Path) -> None:
+    """Jawne wpisy katalogów ZIP nie są traktowane jak zasoby podglądu."""
+    epub_path = tmp_path / "directory-entries.epub"
+    with zipfile.ZipFile(sample_epub) as source, zipfile.ZipFile(epub_path, "w") as target:
+        for info in source.infolist():
+            target.writestr(info, source.read(info))
+        target.writestr("OEBPS/", b"")
+        target.writestr("OEBPS/text/", b"")
+
+    epub = Epub(epub_path)
+    epub.open()
+    session = PreviewSession.create(epub, epub_path)
+    try:
+        generation = session.advance(
+            epub,
+            _CHAPTER,
+            {_CHAPTER: epub.read_file(_CHAPTER)},
+        )
+        assert generation.resource_provider.exists(_CHAPTER)
+        assert not generation.resource_provider.exists("OEBPS/")
+    finally:
+        session.close()
+        epub.close()
 
 
 def test_closed_session_releases_epub_and_invalidates_urls(sample_epub: Path) -> None:

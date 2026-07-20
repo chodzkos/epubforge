@@ -149,7 +149,9 @@ def create_resource_provider(
         normalize_internal_path(path): bytes(value) for path, value in pending.modified.items()
     }
     deleted = frozenset(normalize_internal_path(path) for path in pending.deleted)
-    files = frozenset(normalize_internal_path(path) for path in epub.list_files())
+    files = frozenset(
+        normalize_internal_path(path) for path in epub.list_files() if not path.endswith("/")
+    )
     manifest_types = _manifest_media_types(epub)
     if media_types is not None:
         for path, media_type in media_types.items():
