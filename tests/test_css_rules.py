@@ -66,6 +66,24 @@ def test_parse_media_sets_media() -> None:
     assert src[rules[0].span[0] : rules[0].span[1]] == "h1 { color: black }"
 
 
+def test_duplicate_selector_has_distinct_tree_paths() -> None:
+    """Selektor nie jest identyfikatorem: wystąpienia mają różne ścieżki CSSOM."""
+    src = ".x { color: blue } @media screen { .x { color: red } }"
+    first, second = parse_rules(src)
+    assert first.selector == second.selector == ".x"
+    assert first.rule_path == (0,)
+    assert second.rule_path == (1, 0)
+    assert second.contexts == ("@media screen",)
+
+
+def test_nested_supports_and_media_keep_full_context() -> None:
+    """Zagnieżdżony kontekst nie znika z mapy źródłowej reguły."""
+    src = "@supports (display:grid) { @media screen { p { display:grid } } }"
+    (rule,) = parse_rules(src)
+    assert rule.rule_path == (0, 0, 0)
+    assert rule.contexts == ("@supports (display:grid)", "@media screen")
+
+
 def test_parse_font_face_not_previewable() -> None:
     """@font-face → previewable=False."""
     (rule,) = parse_rules('@font-face { font-family: Foo; src: url("x.ttf") }')
@@ -204,3 +222,10 @@ def test_parse_single_rule_errors() -> None:
     result = parse_single_rule("p { color: }")
     assert isinstance(result, list)
     assert result  # niepusta lista komunikatów
+
+
+def test_parse_single_rule_rejects_second_rule() -> None:
+    """Warstwa preview nie może przemycić drugiej reguły poza edytowany span."""
+    result = parse_single_rule("p { color: red } a { color: blue }")
+    assert isinstance(result, list)
+    assert any("dokładnie jedną" in error for error in result)

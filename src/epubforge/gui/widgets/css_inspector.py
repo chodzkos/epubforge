@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QPushButton,
     QSplitter,
+    QTabWidget,
     QTextEdit,
     QTreeWidget,
     QTreeWidgetItem,
@@ -35,7 +36,14 @@ from epubforge.fixers.css_rules import (
     parse_rules,
     parse_single_rule,
 )
+from epubforge.gui.css_inspection import (
+    RuleIdentity,
+    SourceProvider,
+    content_revision,
+    map_element_report,
+)
 from epubforge.gui.widgets.code_editor import CodeEditor
+from epubforge.gui.widgets.css_element_panel import CssElementPanel
 from epubforge.i18n import _
 
 # Kolory „papieru" podglądu — CELOWO niezależne od motywu aplikacji (symulacja
@@ -60,30 +68,66 @@ class CssInspector(QWidget):
         apply_replacement: Callable[[int, int, str], None] | None = None,
         theme: Theme | None = None,
         parent: QWidget | None = None,
+        *,
+        source_provider: SourceProvider | None = None,
+        generation_provider: Callable[[], int] | None = None,
+        preview_rule: Callable[[str, str, bool], None] | None = None,
+        apply_mapped_rule: Callable[[RuleIdentity, str], bool] | None = None,
+        jump_rule: Callable[[RuleIdentity], None] | None = None,
+        show_element_source: Callable[[str], None] | None = None,
+        create_rule: Callable[[str, str | None], None] | None = None,
+        highlight_matches: Callable[[str], None] | None = None,
     ) -> None:
         super().__init__(parent)
         self._get_source = get_source
         self._apply = apply_replacement  # None → tryb tylko do odczytu
         self._theme = theme if theme is not None else current_theme()
+        self._source_provider = source_provider
+        self._generation_provider = generation_provider or (lambda: 0)
+        self._mapped_apply = apply_mapped_rule or (lambda _identity, _text: False)
         self._rules: list[CssRuleInfo] = []
         self._source = ""
         self._index = -1
         self._last_good_html = ""
+        self._source_revision = 0
 
         self._preview_timer = _single_shot(self, _PREVIEW_DEBOUNCE_MS, self._update_preview)
         self._refresh_timer = _single_shot(self, _REFRESH_DEBOUNCE_MS, self.refresh)
 
-        self._build_ui()
+        self._build_ui(
+            preview_rule=preview_rule or (lambda _selector, _text, _current: None),
+            jump_rule=jump_rule or (lambda _identity: None),
+            show_element_source=show_element_source or (lambda _node: None),
+            create_rule=create_rule or (lambda _selector, _path: None),
+            highlight_matches=highlight_matches or (lambda _selector: None),
+        )
         self._style_preview()
         self.refresh()
 
     # ── Budowa UI ─────────────────────────────────────────────────────────────
 
-    def _build_ui(self) -> None:
+    def _build_ui(
+        self,
+        *,
+        preview_rule: Callable[[str, str, bool], None],
+        jump_rule: Callable[[RuleIdentity], None],
+        show_element_source: Callable[[str], None],
+        create_rule: Callable[[str, str | None], None],
+        highlight_matches: Callable[[str], None],
+    ) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        self.mode_tabs = QTabWidget()
+        self.mode_tabs.setToolTip(
+            _("Tryb inspektora: arkusz źródłowy albo rzeczywisty element DOM")
+        )
+        layout.addWidget(self.mode_tabs)
+
+        sheet = QWidget()
+        sheet_layout = QVBoxLayout(sheet)
+        sheet_layout.setContentsMargins(0, 0, 0, 0)
         splitter = QSplitter(Qt.Orientation.Vertical)
-        layout.addWidget(splitter)
+        sheet_layout.addWidget(splitter)
 
         self.tree = QTreeWidget()
         self.tree.setHeaderLabels([_("Selektor"), _("Deklaracje"), _("@media")])
@@ -110,7 +154,21 @@ class CssInspector(QWidget):
         buttons.addWidget(self.apply_button)
         self.apply_button.setVisible(not read_only)
         self.revert_button.setVisible(not read_only)
-        layout.addLayout(buttons)
+        sheet_layout.addLayout(buttons)
+        self.mode_tabs.addTab(sheet, _("Arkusz"))
+
+        self.element_panel = CssElementPanel(
+            source_text=self._mapped_rule_text,
+            revision_matches=self._revision_matches,
+            preview_rule=preview_rule,
+            apply_rule=self._mapped_apply,
+            jump_rule=jump_rule,
+            show_element_source=show_element_source,
+            create_rule=create_rule,
+            highlight_matches=highlight_matches,
+        )
+        self.mode_tabs.addTab(self.element_panel, _("Element"))
+        self.mode_tabs.setTabEnabled(1, False)
 
     def _build_preview_pane(self) -> QWidget:
         pane = QWidget()
@@ -138,11 +196,14 @@ class CssInspector(QWidget):
     # ── Odświeżanie listy ─────────────────────────────────────────────────────
 
     def refresh(self) -> None:
-        """Re-parsuje źródło i odbudowuje listę reguł (zaznaczenie po selektorze)."""
-        previous_selector = (
-            self._rules[self._index].selector if 0 <= self._index < len(self._rules) else None
+        """Re-parsuje źródło i zachowuje wybór po ścieżce/spanie, nie selektorze."""
+        previous_key = (
+            (self._rules[self._index].rule_path, self._rules[self._index].span)
+            if 0 <= self._index < len(self._rules)
+            else None
         )
         self._source = self._get_source()
+        self._source_revision = content_revision(self._source)
         self._rules = parse_rules(self._source)
 
         self.tree.setUpdatesEnabled(False)
@@ -159,7 +220,7 @@ class CssInspector(QWidget):
         self.tree.addTopLevelItems(items)
         self.tree.setUpdatesEnabled(True)
 
-        target = _index_for_selector(self._rules, previous_selector)
+        target = _index_for_rule_key(self._rules, previous_key)
         selected = self.tree.topLevelItem(target) if target is not None else None
         if selected is not None:
             self.tree.setCurrentItem(selected)
@@ -218,6 +279,9 @@ class CssInspector(QWidget):
         text = self.rule_editor.get_text()
         if isinstance(parse_single_rule(text), list):
             return  # niepoprawny CSS — nie zapisujemy
+        if content_revision(self._get_source()) != self._source_revision:
+            self._show_error([_("Konflikt revision: źródło zmieniło się; niczego nie nadpisano.")])
+            return
         start, end = self._rules[self._index].span
         self._apply(start, end, text)
         self.refresh()
@@ -236,10 +300,37 @@ class CssInspector(QWidget):
         """Planuje odświeżenie po edycji w głównym edytorze (debounce)."""
         self._refresh_timer.start()
 
+    def set_element_report(self, report: object) -> None:
+        """Mapuje raport Chromium na aktualne spany i włącza tryb Element."""
+        provider = self._source_provider or (lambda _path: None)
+        inspection = map_element_report(report, provider, generation=self._generation_provider())
+        self.element_panel.set_inspection(inspection)
+        self.mode_tabs.setTabEnabled(1, True)
+        if inspection.available:
+            self.mode_tabs.setCurrentIndex(1)
+
+    def set_context(self, *, sheet: bool, element: bool) -> None:
+        """Włącza tryby właściwe dla bieżącego pliku i aktywnego backendu."""
+        self.mode_tabs.setTabEnabled(0, sheet)
+        self.mode_tabs.setTabEnabled(1, element)
+        if element and not sheet:
+            self.mode_tabs.setCurrentIndex(1)
+        elif sheet:
+            self.mode_tabs.setCurrentIndex(0)
+
+    def set_preview_result(self, result: object) -> None:
+        """Przekazuje asynchroniczny wynik warstwy preview do trybu Element."""
+        self.element_panel.set_preview_result(result)
+
+    def show_sheet_mode(self) -> None:
+        """Przełącza na kompatybilny tryb Arkusz."""
+        self.mode_tabs.setCurrentIndex(0)
+
     def set_theme(self, theme: Theme) -> None:
         """Aktualizuje motyw (edytor reguły, kolor wyszarzenia, ramka podglądu)."""
         self._theme = theme
         self.rule_editor.set_theme(theme)
+        self.element_panel.rule_editor.set_theme(theme)
         self._style_preview()
         self.refresh()
 
@@ -250,6 +341,24 @@ class CssInspector(QWidget):
             f"QTextEdit {{ background-color: {_PAPER_BG}; color: {_PAPER_FG}; "
             f"border: 1px solid {border}; }}"
         )
+
+    def _mapped_rule_text(self, identity: RuleIdentity) -> str | None:
+        """Czyta dokładny span wyłącznie z rewizji wskazanej przez tożsamość."""
+        if self._source_provider is None:
+            return None
+        snapshot = self._source_provider(identity.stylesheet_path)
+        if snapshot is None or snapshot[1] != identity.revision:
+            return None
+        source = snapshot[0]
+        start, end = identity.span
+        return source[start:end] if 0 <= start <= end <= len(source) else None
+
+    def _revision_matches(self, identity: RuleIdentity) -> bool:
+        """Chroni Zastosuj przed nadpisaniem nowszej treści arkusza."""
+        if self._source_provider is None:
+            return False
+        snapshot = self._source_provider(identity.stylesheet_path)
+        return snapshot is not None and snapshot[1] == identity.revision
 
 
 def _single_shot(parent: QWidget, interval: int, slot: Callable[[], None]) -> QTimer:
@@ -274,5 +383,18 @@ def _index_for_selector(rules: list[CssRuleInfo], selector: str | None) -> int |
     if selector is not None:
         for index, rule in enumerate(rules):
             if rule.selector == selector:
+                return index
+    return 0
+
+
+def _index_for_rule_key(
+    rules: list[CssRuleInfo], key: tuple[tuple[int, ...], tuple[int, int]] | None
+) -> int | None:
+    """Odtwarza zaznaczenie konkretnego wystąpienia, także przy duplikatach selektora."""
+    if not rules:
+        return None
+    if key is not None:
+        for index, rule in enumerate(rules):
+            if (rule.rule_path, rule.span) == key:
                 return index
     return 0

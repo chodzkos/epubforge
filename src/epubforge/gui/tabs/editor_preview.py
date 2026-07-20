@@ -27,8 +27,9 @@ from PySide6.QtWidgets import (
 
 from epubforge.core import Epub, Tool
 from epubforge.gui import editor_files as ef
+from epubforge.gui.css_inspection import RuleIdentity, content_revision
 from epubforge.gui.external_tools import ToolUnavailableError, launch_tool
-from epubforge.gui.preview import BookPreview, PreviewSettings
+from epubforge.gui.preview import BackendKind, BookPreview, PreviewSettings
 from epubforge.gui.preview.dom_mapping import SourceLocation
 from epubforge.gui.widgets.code_editor import CodeEditor
 from epubforge.gui.widgets.css_inspector import CssInspector
@@ -128,7 +129,20 @@ class EditorPreviewMixin:
             get_source=self.code_editor.get_text,
             apply_replacement=self._apply_css_replacement,
             theme=self._theme,
+            source_provider=self._css_source_snapshot,
+            generation_provider=lambda: self.book_preview.generation_id,
+            preview_rule=lambda selector, text, current: self.book_preview.preview_css_rule(
+                selector, text, current_element=current
+            ),
+            apply_mapped_rule=self._apply_inspector_rule,
+            jump_rule=self._jump_to_css_rule,
+            show_element_source=self._show_element_source,
+            create_rule=self._create_css_rule,
+            highlight_matches=self.book_preview.highlight_matches,
         )
+        self.book_preview.element_inspected.connect(self.css_inspector.set_element_report)
+        self.book_preview.css_preview_result.connect(self.css_inspector.set_preview_result)
+        self.book_preview.backend_changed.connect(lambda _kind: self._update_inspector())
         self.css_inspector.setVisible(False)
         right.addWidget(self.css_inspector)
         right.setStretchFactor(0, 3)
@@ -189,13 +203,23 @@ class EditorPreviewMixin:
         )
 
     def _update_inspector(self) -> None:
-        """Pokazuje inspektor tylko dla CSS i gdy toggle włączony; odświeża go."""
+        """Pokazuje Arkusz dla CSS, a Element dla XHTML w dokładnym podglądzie."""
         is_css = self._current_is_css()
-        self.inspector_toggle.setEnabled(is_css)  # type: ignore[attr-defined]
-        visible = is_css and self.inspector_toggle.isChecked()  # type: ignore[attr-defined]
+        is_element = (
+            self._current_is_html()
+            and self.book_preview.active_kind is BackendKind.WEBENGINE
+            and self.book_preview.current_document == self._current
+        )
+        eligible = is_css or is_element
+        self.inspector_toggle.setEnabled(eligible)  # type: ignore[attr-defined]
+        visible = eligible and self.inspector_toggle.isChecked()  # type: ignore[attr-defined]
         self.css_inspector.setVisible(visible)
+        self.css_inspector.set_context(sheet=is_css, element=is_element)
         if visible:
-            self.css_inspector.refresh()
+            if is_css:
+                self.css_inspector.refresh()
+            elif is_element:
+                self.book_preview.inspect_element()
 
     def _on_main_editor_changed(self) -> None:
         """Edycja → odroczone odświeżenie inspektora CSS i podglądu HTML (gdy aktywne)."""
@@ -212,6 +236,82 @@ class EditorPreviewMixin:
         cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
         cursor.insertText(new_text)
         editor.setTextCursor(cursor)
+
+    def _css_source_snapshot(self, internal_path: str) -> tuple[str, int] | None:
+        """Czyta bieżącą treść CSS z edytora, dirty albo nieruchomego bufora EPUB."""
+        if self._epub is None:
+            return None
+        if internal_path == self._current:
+            text = self.code_editor.get_text()
+        elif internal_path in self._dirty:
+            text = self._dirty[internal_path]
+        else:
+            try:
+                text, replaced = ef.decode_text(self._epub.read_file(internal_path))
+            except (KeyError, OSError):
+                return None
+            if replaced:
+                return None
+        return text, content_revision(text)
+
+    def _jump_to_css_rule(self, identity: RuleIdentity) -> None:
+        """Otwiera właściwy arkusz i ustawia kursor na początku dokładnego spanu."""
+        self._select_path(identity.stylesheet_path)  # type: ignore[attr-defined]
+        if self._current != identity.stylesheet_path:
+            return
+        cursor = self.code_editor.editor.textCursor()
+        cursor.setPosition(identity.span[0])
+        cursor.setPosition(identity.span[1], QTextCursor.MoveMode.KeepAnchor)
+        self.code_editor.editor.setTextCursor(cursor)
+
+    def _apply_inspector_rule(self, identity: RuleIdentity, text: str) -> bool:
+        """Sprawdza revision ponownie i zapisuje span jako jeden krok Undo."""
+        snapshot = self._css_source_snapshot(identity.stylesheet_path)
+        if snapshot is None or snapshot[1] != identity.revision:
+            return False
+        self._select_path(identity.stylesheet_path)  # type: ignore[attr-defined]
+        if self._current != identity.stylesheet_path or self.code_editor.read_only:
+            return False
+        self._apply_css_replacement(identity.span[0], identity.span[1], text)
+        self.book_preview.clear_css_preview()
+        self.css_inspector.refresh()
+        self.css_inspector.rule_applied.emit()
+        self._render_html_preview()
+        return True
+
+    def _show_element_source(self, node_id: str) -> None:
+        """Przechodzi do przybliżonej linii elementu z mapy aktualnej generacji."""
+        location = self.book_preview.source_location_for_node(node_id)
+        if location is not None:
+            self._on_preview_source_requested(location)
+
+    def _create_css_rule(self, selector: str, preferred_path: str | None) -> None:
+        """Dodaje nową regułę do wybranego arkusza bez zapisu całego EPUB-a."""
+        path = preferred_path or next(
+            (
+                item
+                for item, media_type in self._media_types.items()
+                if ef.profile_for(item, media_type) == ef.PROFILE_CSS
+            ),
+            None,
+        )
+        if path is None:
+            self._set_info_bar(_("Brak arkusza CSS, do którego można dodać regułę."))
+            return
+        self._select_path(path)  # type: ignore[attr-defined]
+        if self._current != path or self.code_editor.read_only:
+            return
+        editor = self.code_editor.editor
+        cursor = editor.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        prefix = (
+            "\n"
+            if self.code_editor.get_text() and not self.code_editor.get_text().endswith("\n")
+            else ""
+        )
+        cursor.insertText(f"{prefix}{selector} {{\n  \n}}\n")
+        editor.setTextCursor(cursor)
+        self._render_html_preview()
 
     # ── Podgląd HTML ──────────────────────────────────────────────────────────
 
@@ -245,6 +345,7 @@ class EditorPreviewMixin:
         if active:
             self._render_html_preview()
             self.stack.setCurrentIndex(_PAGE_HTML)
+            self._update_inspector()
         elif self.stack.currentIndex() == _PAGE_HTML:
             self.stack.setCurrentIndex(_PAGE_EDITOR)
 
@@ -323,6 +424,7 @@ class EditorPreviewMixin:
         self.book_preview.setVisible(is_html)
         if is_html:
             self._render_html_preview()
+            self._update_inspector()
 
     def _launch_external_tool(self, key: str) -> None:
         """Otwiera bieżący EPUB w narzędziu zewnętrznym (Sigil/Calibre Editor)."""

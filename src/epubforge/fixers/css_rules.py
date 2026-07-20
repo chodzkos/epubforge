@@ -75,6 +75,12 @@ class CssRuleInfo:
     media: str | None = None
     previewable: bool = True
     parse_errors: list[str] = field(default_factory=list)
+    # Indeksy reguł w kolejnych ``CSSRuleList``. Tożsamość nie opiera się na
+    # selektorze: ten sam selektor może legalnie wystąpić wiele razy.
+    rule_path: tuple[int, ...] = ()
+    contexts: tuple[str, ...] = ()
+    source_line: int = 1
+    source_column: int = 1
 
 
 # ── Parsowanie arkusza ──────────────────────────────────────────────────────
@@ -85,30 +91,92 @@ def parse_rules(source: str) -> list[CssRuleInfo]:
     line_starts = _line_starts(source)
     nodes = tinycss2.parse_stylesheet(source, skip_comments=False, skip_whitespace=False)
     rules: list[CssRuleInfo] = []
+    rule_index = 0
     for node in nodes:
-        _collect(node, source, line_starts, media=None, out=rules)
+        if getattr(node, "type", "") in {"whitespace", "comment", "error"}:
+            continue
+        _collect(
+            node,
+            source,
+            line_starts,
+            media=None,
+            out=rules,
+            rule_path=(rule_index,),
+            contexts=(),
+        )
+        rule_index += 1
     return rules
 
 
 def _collect(
-    node: object, source: str, line_starts: list[int], media: str | None, out: list[CssRuleInfo]
+    node: object,
+    source: str,
+    line_starts: list[int],
+    media: str | None,
+    out: list[CssRuleInfo],
+    rule_path: tuple[int, ...],
+    contexts: tuple[str, ...],
 ) -> None:
     """Dokłada regułę (lub rekurencyjnie reguły z ``@media``) do listy wynikowej."""
     node_type = getattr(node, "type", "")
     if node_type == "qualified-rule":
-        out.append(_rule_info(node, source, line_starts, media=media, previewable=True))
+        out.append(
+            _rule_info(
+                node,
+                source,
+                line_starts,
+                media=media,
+                previewable=True,
+                rule_path=rule_path,
+                contexts=contexts,
+            )
+        )
     elif node_type == "at-rule":
         keyword = str(getattr(node, "lower_at_keyword", "") or "")
-        if keyword == "media":
-            prelude = _serialize(node.prelude).strip()  # type: ignore[attr-defined]
+        prelude = _serialize(node.prelude).strip()  # type: ignore[attr-defined]
+        context = f"@{keyword} {prelude}".strip()
+        # Grupujące at-reguły mają własne CSSRuleList. Parser zachowuje je także
+        # dla przypadków ograniczonych w v1, aby żadna reguła nie zniknęła po cichu.
+        if (
+            keyword in {"media", "supports", "layer", "container", "scope"}
+            and getattr(node, "content", None) is not None
+        ):
+            child_index = 0
             for inner in tinycss2.parse_rule_list(node.content or []):  # type: ignore[attr-defined]
-                _collect(inner, source, line_starts, media=prelude, out=out)
+                if getattr(inner, "type", "") in {"whitespace", "comment", "error"}:
+                    continue
+                _collect(
+                    inner,
+                    source,
+                    line_starts,
+                    media=prelude if keyword == "media" else media,
+                    out=out,
+                    rule_path=(*rule_path, child_index),
+                    contexts=(*contexts, context),
+                )
+                child_index += 1
         else:
-            out.append(_rule_info(node, source, line_starts, media=media, previewable=False))
+            out.append(
+                _rule_info(
+                    node,
+                    source,
+                    line_starts,
+                    media=media,
+                    previewable=False,
+                    rule_path=rule_path,
+                    contexts=contexts,
+                )
+            )
 
 
 def _rule_info(
-    node: object, source: str, line_starts: list[int], media: str | None, previewable: bool
+    node: object,
+    source: str,
+    line_starts: list[int],
+    media: str | None,
+    previewable: bool,
+    rule_path: tuple[int, ...],
+    contexts: tuple[str, ...],
 ) -> CssRuleInfo:
     """Buduje :class:`CssRuleInfo` dla węzła qualified-rule/at-rule."""
     start = _offset(node.source_line, node.source_column, line_starts)  # type: ignore[attr-defined]
@@ -122,6 +190,10 @@ def _rule_info(
         media=media,
         previewable=previewable,
         parse_errors=errors,
+        rule_path=rule_path,
+        contexts=contexts,
+        source_line=int(getattr(node, "source_line", 1) or 1),
+        source_column=int(getattr(node, "source_column", 1) or 1),
     )
 
 
@@ -189,6 +261,8 @@ def parse_single_rule(text: str) -> CssRuleInfo | list[str]:
         errors.extend(rule.parse_errors)
     if not rules:
         errors.append("Brak reguły CSS")
+    elif len(rules) != 1:
+        errors.append("Edytor reguły przyjmuje dokładnie jedną regułę CSS")
     if errors:
         return errors
     return rules[0]

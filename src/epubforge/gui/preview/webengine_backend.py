@@ -22,6 +22,7 @@ from epubforge.gui.preview.backend import (
     PreviewState,
     PreviewStatus,
 )
+from epubforge.gui.preview.css_bridge import INSPECT_SCRIPT
 from epubforge.gui.preview.dom_mapping import NODE_ATTRIBUTE, source_location
 from epubforge.gui.preview.rewrite import safe_source_url
 from epubforge.gui.preview.session import PreviewSession
@@ -56,7 +57,6 @@ _CAPTURE_SCRIPT = r"""
   };
 })()
 """
-
 
 class WebEngineInitError(RuntimeError):
     """Sygnalizuje, że backend WebEngine nie mógł się zainicjalizować."""
@@ -174,6 +174,78 @@ class WebEnginePreviewBackend(PreviewBackend):
           n.setAttribute('{_ACTIVE_ATTRIBUTE}', '');
           n.scrollIntoView({{block: 'center', behavior: 'auto'}});
           return true;
+        }})()
+        """
+        self._page.runJavaScript(script, _APP_WORLD)
+
+    def inspect_element(self, node_id: str | None = None) -> None:
+        """Zwraca CSSOM, computed style i box model aktualnej generacji."""
+        expected = self._expected_generation
+        script = f"{INSPECT_SCRIPT}({json.dumps(node_id)})"
+
+        def inspected(value: Any) -> None:
+            if expected == self._expected_generation:
+                self.element_inspected.emit(value)
+
+        self._page.runJavaScript(script, _APP_WORLD, inspected)
+
+    def preview_css_rule(
+        self, selector: str, rule_text: str, *, current_element: bool = False
+    ) -> None:
+        """Waliduje regułę w CSSOM i dopiero potem podmienia ostatnią dobrą warstwę."""
+        expected = self._expected_generation
+        script = f"""
+        (() => {{
+          const originalSelector = {json.dumps(selector)};
+          const input = {json.dumps(rule_text)};
+          const selected = document.querySelector('[{_ACTIVE_ATTRIBUTE}]');
+          const open = input.indexOf('{{'), close = input.lastIndexOf('}}');
+          if (open < 0 || close <= open) return {{ok:false, error:'Niepełna reguła CSS.'}};
+          const selector = {str(current_element).lower()}
+            ? (selected ? '[{NODE_ATTRIBUTE}="' + selected.getAttribute('{NODE_ATTRIBUTE}') + '"]' : '')
+            : originalSelector;
+          if (!selector) return {{ok:false, error:'Nie zaznaczono bieżącego elementu.'}};
+          const candidate = selector + ' {{' + input.slice(open + 1, close) + '}}';
+          const probe = document.createElement('style');
+          probe.setAttribute('data-epubforge-preview-probe', '');
+          document.head.appendChild(probe);
+          try {{ probe.sheet.insertRule(candidate, 0); }}
+          catch (error) {{ probe.remove(); return {{ok:false, error:String(error)}}; }}
+          probe.remove();
+          let layer = document.getElementById('epubforge-css-preview-layer');
+          if (!layer) {{ layer = document.createElement('style'); layer.id = 'epubforge-css-preview-layer'; document.head.appendChild(layer); }}
+          layer.textContent = candidate;
+          let matches = 0;
+          try {{ matches = document.querySelectorAll(selector).length; }} catch (_) {{}}
+          return {{ok:true, matches, selector, order_warning:true, current_element:{str(current_element).lower()}}};
+        }})()
+        """
+
+        def previewed(value: Any) -> None:
+            if expected == self._expected_generation:
+                self.css_preview_result.emit(value)
+                if isinstance(value, dict) and value.get("ok"):
+                    self.inspect_element()
+
+        self._page.runJavaScript(script, _APP_WORLD, previewed)
+
+    def clear_css_preview(self) -> None:
+        """Usuwa warstwę edycji tymczasowej bez dotykania źródła EPUB."""
+        self._page.runJavaScript(
+            "document.getElementById('epubforge-css-preview-layer')?.remove()", _APP_WORLD
+        )
+
+    def highlight_matches(self, selector: str) -> None:
+        """Podświetla wszystkie dopasowania selektora w kopii renderowanej."""
+        accent = json.dumps(self._palette.accent)
+        script = f"""
+        (() => {{
+          document.querySelectorAll('[data-epubforge-css-match]').forEach(e => e.removeAttribute('data-epubforge-css-match'));
+          let style = document.getElementById('epubforge-css-match-style');
+          if (!style) {{ style = document.createElement('style'); style.id = 'epubforge-css-match-style'; document.head.appendChild(style); }}
+          style.textContent = '[data-epubforge-css-match] {{ outline: 2px dashed ' + {accent} + ' !important; }}';
+          try {{ const nodes = document.querySelectorAll({json.dumps(selector)}); nodes.forEach(e => e.setAttribute('data-epubforge-css-match','')); return nodes.length; }}
+          catch (_) {{ return 0; }}
         }})()
         """
         self._page.runJavaScript(script, _APP_WORLD)
@@ -313,6 +385,8 @@ class WebEnginePreviewBackend(PreviewBackend):
         if success:
             self._install_dom_bridge()
             self.restore_state(self._last_state)
+            if self._last_state.node_id:
+                self.inspect_element(self._last_state.node_id)
             self.status_changed.emit(PreviewStatus.READY)
         else:
             self.status_changed.emit(PreviewStatus.LAST_GOOD)
@@ -367,6 +441,7 @@ class WebEnginePreviewBackend(PreviewBackend):
         if self._session is not None:
             self._session.select(node.internal_path, node_id)
         self._last_state = replace(self._last_state, node_id=node_id)
+        self.inspect_element(node_id)
         self.source_requested.emit(source_location(node))
 
     def _on_external_navigation(self, url: str) -> None:
