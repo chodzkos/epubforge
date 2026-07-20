@@ -29,6 +29,7 @@ from epubforge.core import Epub, Tool
 from epubforge.gui import editor_files as ef
 from epubforge.gui.external_tools import ToolUnavailableError, launch_tool
 from epubforge.gui.preview import BookPreview, PreviewSettings
+from epubforge.gui.preview.dom_mapping import SourceLocation
 from epubforge.gui.widgets.code_editor import CodeEditor
 from epubforge.gui.widgets.css_inspector import CssInspector
 from epubforge.gui.widgets.html_preview import HtmlPreview
@@ -59,6 +60,7 @@ class EditorPreviewMixin:
     _preview_settings: PreviewSettings
     code_editor: CodeEditor
     _set_info_bar: Callable[[str], None]
+    jump_to_hit: Callable[[str, int, int], None]
 
     # Widgety tworzone w tym mixinie.
     stack: QStackedWidget
@@ -74,6 +76,7 @@ class EditorPreviewMixin:
     split_view_button: QToolButton
     preview_split: QSplitter
     _split_active: bool
+    _cursor_sync_timer: QTimer
 
     # ── Budowa prawego panelu ─────────────────────────────────────────────────
 
@@ -97,6 +100,11 @@ class EditorPreviewMixin:
             tools=self._tools, theme=self._theme, settings=self._preview_settings
         )
         self.book_preview.open_external.connect(self._launch_external_tool)
+        self.book_preview.source_requested.connect(self._on_preview_source_requested)
+        self._cursor_sync_timer = QTimer(self)  # type: ignore[arg-type]
+        self._cursor_sync_timer.setSingleShot(True)
+        self._cursor_sync_timer.setInterval(80)
+        self._cursor_sync_timer.timeout.connect(self._sync_cursor_to_preview)
         # Alias zachowujący dotychczasowy dostęp do QTextBrowser lekkiego backendu.
         self.html_preview = self.book_preview.html_preview
         self.stack.addWidget(self.code_editor)
@@ -126,6 +134,7 @@ class EditorPreviewMixin:
         right.setStretchFactor(0, 3)
         right.setStretchFactor(1, 2)
         self.code_editor.editor.textChanged.connect(self._on_main_editor_changed)
+        self.code_editor.editor.cursorPositionChanged.connect(self._schedule_source_sync)
 
         self._split_active = False
         if self._preview_settings.split_view:
@@ -250,6 +259,31 @@ class EditorPreviewMixin:
             dirty=self._dirty,
             media_types=self._media_types,
         )
+
+    def _schedule_source_sync(self) -> None:
+        """Debounce synchronizacji kursora, bez ponownego renderowania dokumentu."""
+        if self._preview_active() and self._current_is_html():
+            self._cursor_sync_timer.start()
+
+    def _sync_cursor_to_preview(self) -> None:
+        """Wyróżnia w podglądzie element najbliższy bieżącej linii kursora."""
+        if self._current is None or not self._preview_active():
+            return
+        cursor = self.code_editor.editor.textCursor()
+        self.book_preview.focus_source_line(self._current, cursor.blockNumber() + 1)
+
+    def _on_preview_source_requested(self, location: SourceLocation) -> None:
+        """Przechodzi z dokładnego elementu DOM do przybliżonej linii źródła."""
+        if location.line is None:
+            return
+        if not self._split_active:
+            self.code_view_button.setChecked(True)
+            self.stack.setCurrentIndex(_PAGE_EDITOR)
+        self.jump_to_hit(location.internal_path, location.line, 1)
+        message = _("Element {label}; przybliżona pozycja w kodzie: linia {line}.").format(
+            label=location.label, line=location.line
+        )
+        self._set_info_bar(message)
 
     # ── Widok dzielony Kod | Podgląd ───────────────────────────────────────────
 

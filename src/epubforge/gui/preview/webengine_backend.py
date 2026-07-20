@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
+import secrets
+from dataclasses import replace
 from typing import Any
 
 from chodzkos_gui_kit.palette import Palette
@@ -20,11 +22,13 @@ from epubforge.gui.preview.backend import (
     PreviewState,
     PreviewStatus,
 )
+from epubforge.gui.preview.dom_mapping import NODE_ATTRIBUTE, source_location
 from epubforge.gui.preview.rewrite import safe_source_url
 from epubforge.gui.preview.session import PreviewSession
 from epubforge.i18n import _
 
 logger = logging.getLogger(__name__)
+_ACTIVE_ATTRIBUTE = "data-epubforge-active-node"
 _APP_WORLD = 1  # ApplicationWorld; bez importu WebEngine przy imporcie pakietu
 _CAPTURE_SCRIPT = r"""
 (() => {
@@ -70,6 +74,7 @@ class WebEnginePreviewBackend(PreviewBackend):
         self._last_state = PreviewState()
         self._expected_generation = 0
         self._renderer_recovery_used = False
+        self._bridge_token = secrets.token_hex(16)
         try:
             from PySide6.QtWebEngineWidgets import QWebEngineView
 
@@ -86,12 +91,15 @@ class WebEnginePreviewBackend(PreviewBackend):
             self._profile, self._registry, self._handler, self._interceptor = create_secure_profile(
                 self
             )
-            self._page = SecurePreviewPage(self._profile, self._registry, self)
+            self._page = SecurePreviewPage(
+                self._profile, self._registry, self, bridge_token=self._bridge_token
+            )
             harden_page_settings(self._page.settings())
             self._page.loadFinished.connect(self._on_load_finished)
             self._page.renderProcessTerminated.connect(self._on_renderer_terminated)
             self._page.external_navigation.connect(self._on_external_navigation)
             self._handler.diagnostics.connect(self.diagnostics)
+            self._page.dom_node_activated.connect(self._on_dom_node_activated)
             self._view = QWebEngineView(self)
             self._view.setPage(self._page)
         except Exception as exc:
@@ -149,10 +157,32 @@ class WebEnginePreviewBackend(PreviewBackend):
         """
         self._page.runJavaScript(script, _APP_WORLD)
 
+    def focus_node(self, node_id: str) -> None:
+        """Przewija podgląd do elementu wskazanego przez kursor edytora."""
+        snapshot = self._last_snapshot
+        generation = snapshot.generation if snapshot is not None else None
+        if generation is None or node_id not in generation.source_map:
+            return
+        if self._session is not None:
+            self._session.select(generation.current_document, node_id)
+        self._last_state = replace(self._last_state, node_id=node_id)
+        script = f"""
+        (() => {{
+          const n = document.querySelector('[{NODE_ATTRIBUTE}="' + CSS.escape({json.dumps(node_id)}) + '"]');
+          if (!n) return false;
+          document.querySelectorAll('[{_ACTIVE_ATTRIBUTE}]').forEach(e => e.removeAttribute('{_ACTIVE_ATTRIBUTE}'));
+          n.setAttribute('{_ACTIVE_ATTRIBUTE}', '');
+          n.scrollIntoView({{block: 'center', behavior: 'auto'}});
+          return true;
+        }})()
+        """
+        self._page.runJavaScript(script, _APP_WORLD)
+
     def set_theme(self, palette: Palette) -> None:
         """Przemalowuje wyłącznie neutralne otoczenie, bez reloadu książki."""
         self._palette = palette
         self.setStyleSheet(f"WebEnginePreviewBackend {{ background-color: {palette.bg}; }}")
+        self._install_dom_bridge()
 
     def dispose(self) -> None:
         """Unieważnia origin i zwalnia prywatny profil oraz renderer."""
@@ -244,12 +274,44 @@ class WebEnginePreviewBackend(PreviewBackend):
         logger.info("Fallback pełnego reloadu CSS: %s", reason)
         self._capture_then_load(snapshot)
 
+    def _install_dom_bridge(self) -> None:
+        """Instaluje idempotentny listener kliknięć i styl technicznego wyboru."""
+        token = json.dumps(self._bridge_token)
+        accent = json.dumps(self._palette.accent)
+        script = f"""
+        (() => {{
+          let style = document.getElementById('epubforge-dom-selection-style');
+          if (!style) {{
+            style = document.createElement('style');
+            style.id = 'epubforge-dom-selection-style';
+            document.head.appendChild(style);
+          }}
+          style.textContent = '[{_ACTIVE_ATTRIBUTE}] {{ outline: 2px solid ' + {accent} + ' !important; outline-offset: 2px !important; }}';
+          if (!window.__epubforgeNodeBridge) {{
+            document.addEventListener('click', event => {{
+              const target = event.target instanceof Element ? event.target : null;
+              const node = target && target.closest('[{NODE_ATTRIBUTE}]');
+              if (!node) return;
+              const nodeId = node.getAttribute('{NODE_ATTRIBUTE}');
+              if (!nodeId) return;
+              document.querySelectorAll('[{_ACTIVE_ATTRIBUTE}]').forEach(e => e.removeAttribute('{_ACTIVE_ATTRIBUTE}'));
+              node.setAttribute('{_ACTIVE_ATTRIBUTE}', '');
+              console.info('epubforge-node:' + {token} + ':' + nodeId);
+            }}, true);
+            window.__epubforgeNodeBridge = true;
+          }}
+          return true;
+        }})()
+        """
+        self._page.runJavaScript(script, _APP_WORLD)
+
     def _on_load_finished(self, success: bool) -> None:
         """Ignoruje spóźniony wynik i odtwarza stan po aktualnej generacji."""
         snapshot = self._last_snapshot
         if snapshot is None or snapshot.generation_id != self._expected_generation:
             return
         if success:
+            self._install_dom_bridge()
             self.restore_state(self._last_state)
             self.status_changed.emit(PreviewStatus.READY)
         else:
@@ -292,6 +354,20 @@ class WebEnginePreviewBackend(PreviewBackend):
                 category=DiagnosticCategory.BOOK_ERROR, message=message, problem_kind="brak_sesji"
             )
         )
+
+    def _on_dom_node_activated(self, node_id: str) -> None:
+        """Rozwiązuje identyfikator wyłącznie w mapie aktualnej generacji."""
+        snapshot = self._last_snapshot
+        generation = snapshot.generation if snapshot is not None else None
+        if generation is None:
+            return
+        node = generation.source_map.get(node_id)
+        if node is None:
+            return
+        if self._session is not None:
+            self._session.select(node.internal_path, node_id)
+        self._last_state = replace(self._last_state, node_id=node_id)
+        self.source_requested.emit(source_location(node))
 
     def _on_external_navigation(self, url: str) -> None:
         """Rejestruje blokadę linku bez automatycznego otwierania przeglądarki."""

@@ -43,6 +43,7 @@ from epubforge.gui.preview.backend import (
     PreviewStatus,
 )
 from epubforge.gui.preview.controller import PreviewController
+from epubforge.gui.preview.dom_mapping import nearest_node_for_line
 from epubforge.gui.preview.preinit import preview_scheme_registered
 from epubforge.gui.preview.session import PreviewSession
 from epubforge.gui.preview.settings import PreviewSettings
@@ -70,6 +71,7 @@ class BookPreview(QWidget):
 
     open_external = Signal(str)
     diagnostics = Signal(object)
+    source_requested = Signal(object)
 
     def __init__(
         self,
@@ -97,6 +99,7 @@ class BookPreview(QWidget):
         # Lekki backend istnieje zawsze (fallback). Dokładny tworzymy leniwie.
         self._text_backend = TextDocumentPreviewBackend(tools=self._tools, theme=self._palette)
         self._text_backend.open_external.connect(self.open_external)
+        self._text_backend.source_requested.connect(self.source_requested)
         self._text_backend.diagnostics.connect(self.diagnostics)
         self._text_backend.status_changed.connect(self._on_status_changed)
         self._body_layout.addWidget(self._text_backend)
@@ -221,6 +224,7 @@ class BookPreview(QWidget):
         except WebEngineInitError as exc:
             return None, str(exc)
         backend.open_external.connect(self.open_external)
+        backend.source_requested.connect(self.source_requested)
         backend.diagnostics.connect(self.diagnostics)
         backend.status_changed.connect(self._on_status_changed)
         backend.fallback_requested.connect(self._on_renderer_fallback)
@@ -356,6 +360,19 @@ class BookPreview(QWidget):
         """Jedno miejsce liczenia renderów (motyw nie może go zwiększać)."""
         self._render_count += 1
         backend.render_snapshot(snapshot)
+
+    def focus_source_line(self, internal_path: str, line: int) -> None:
+        """Mapuje linię kursora na najgłębszy element aktualnej generacji."""
+        snapshot = self._last_snapshot
+        generation = snapshot.generation if snapshot is not None else None
+        if generation is None:
+            return
+        node = nearest_node_for_line(generation.source_map, internal_path, line)
+        if node is None:
+            return
+        if self._session is not None:
+            self._session.select(internal_path, node.node_id)
+        self._active.focus_node(node.node_id)
 
     def set_session(self, session: PreviewSession | None) -> None:
         """Ustawia bieżącą sesję i przekazuje ją do aktywnego backendu."""
