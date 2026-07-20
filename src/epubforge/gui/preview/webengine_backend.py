@@ -6,7 +6,7 @@ import json
 import logging
 import secrets
 from dataclasses import replace
-from typing import Any
+from typing import Any, cast
 
 from chodzkos_gui_kit.palette import Palette
 from chodzkos_gui_kit.qt.theme import current_palette
@@ -57,6 +57,18 @@ _CAPTURE_SCRIPT = r"""
   };
 })()
 """
+
+
+def _decode_json_object(value: Any) -> dict[str, Any]:
+    """Dekoduje stabilny transport obiektów JS niezależnie od konwersji QVariant."""
+    if isinstance(value, dict):
+        return cast(dict[str, Any], value)
+    if not isinstance(value, str):
+        raise TypeError(f"oczekiwano JSON string, otrzymano {type(value).__name__}")
+    decoded: Any = json.loads(value)
+    if not isinstance(decoded, dict):
+        raise ValueError("odpowiedź JSON nie jest obiektem")
+    return cast(dict[str, Any], decoded)
 
 
 class WebEngineInitError(RuntimeError):
@@ -182,11 +194,17 @@ class WebEnginePreviewBackend(PreviewBackend):
     def inspect_element(self, node_id: str | None = None) -> None:
         """Zwraca CSSOM, computed style i box model aktualnej generacji."""
         expected = self._expected_generation
-        script = f"{INSPECT_SCRIPT}({json.dumps(node_id)})"
+        script = f"JSON.stringify({INSPECT_SCRIPT}({json.dumps(node_id)}))"
 
         def inspected(value: Any) -> None:
-            if expected == self._expected_generation:
-                self.element_inspected.emit(value)
+            if expected != self._expected_generation:
+                return
+            try:
+                payload = _decode_json_object(value)
+            except (TypeError, ValueError) as exc:
+                logger.warning("Niepoprawny raport JSON inspektora WebEngine: %s", exc)
+                payload = {"available": False, "error": f"WebEngine JSON: {exc}"}
+            self.element_inspected.emit(payload)
 
         self._page.runJavaScript(script, _APP_WORLD, inspected)
 
@@ -196,7 +214,7 @@ class WebEnginePreviewBackend(PreviewBackend):
         """Waliduje regułę w CSSOM i dopiero potem podmienia ostatnią dobrą warstwę."""
         expected = self._expected_generation
         script = f"""
-        (() => {{
+        JSON.stringify((() => {{
           const originalSelector = {json.dumps(selector)};
           const input = {json.dumps(rule_text)};
           const selected = document.querySelector('[{_ACTIVE_ATTRIBUTE}]');
@@ -219,14 +237,20 @@ class WebEnginePreviewBackend(PreviewBackend):
           let matches = 0;
           try {{ matches = document.querySelectorAll(selector).length; }} catch (_) {{}}
           return {{ok:true, matches, selector, order_warning:true, current_element:{str(current_element).lower()}}};
-        }})()
+        }})())
         """
 
         def previewed(value: Any) -> None:
-            if expected == self._expected_generation:
-                self.css_preview_result.emit(value)
-                if isinstance(value, dict) and value.get("ok"):
-                    self.inspect_element()
+            if expected != self._expected_generation:
+                return
+            try:
+                payload = _decode_json_object(value)
+            except (TypeError, ValueError) as exc:
+                logger.warning("Niepoprawny wynik JSON podglądu CSS WebEngine: %s", exc)
+                payload = {"ok": False, "error": f"WebEngine JSON: {exc}"}
+            self.css_preview_result.emit(payload)
+            if payload.get("ok"):
+                self.inspect_element()
 
         self._page.runJavaScript(script, _APP_WORLD, previewed)
 

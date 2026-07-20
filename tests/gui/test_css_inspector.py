@@ -11,12 +11,20 @@ from pytestqt.qtbot import QtBot
 
 from epubforge.fixers.css_rules import parse_rules
 from epubforge.gui.css_inspection import RuleIdentity, content_revision
+from epubforge.gui.preview.webengine_backend import _decode_json_object
 from epubforge.gui.tabs.editor import EditorTab
 from epubforge.gui.widgets.css_inspector import CssInspector
 
 pytestmark = pytest.mark.gui
 
 _CSS = "h1 { color: red }\np { font-size: 12pt; letter-spacing: 2px }\n"
+
+
+def test_webengine_json_transport_decodes_objects() -> None:
+    """Złożone wyniki Chromium są dekodowane ze stabilnego transportu JSON."""
+    assert _decode_json_object('{"ok":true,"matches":1}') == {"ok": True, "matches": 1}
+    with pytest.raises(ValueError, match="nie jest obiektem"):
+        _decode_json_object("[]")
 
 
 def _make_css_epub(path: Path, css: str = _CSS) -> None:
