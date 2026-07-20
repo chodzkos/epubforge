@@ -35,6 +35,15 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
   wersję, a ponowna awaria renderera przełącza na lekki backend. UI pokazuje stan
   renderu i oferuje „Przeładuj dokładnie”; test procesu Chromium sprawdza faktyczne
   użycie linkowanego CSS, WOFF2 i obrazów oraz zachowanie scrolla i zaznaczenia.
+
+- **Dwukierunkowe mapowanie DOM ↔ źródło XHTML (Prompt 4)** — dokładny podgląd
+  nadaje techniczne identyfikatory wyłącznie sanityzowanej kopii renderowanej i
+  przechowuje w pamięci sesji mapę do oryginalnych linii. Kliknięcie elementu
+  przełącza edytor na przybliżoną linię jego znacznika, a ruch kursora wyróżnia i
+  centruje najbliższy element podglądu bez ponownego renderowania. Prywatny kanał
+  ApplicationWorld przekazuje tylko uwierzytelniony 16-znakowy identyfikator —
+  nigdy tekst książki — a zmiany techniczne nie trafiają do zapisywanego EPUB-a.
+
 ### Fixed
 - **Pobieranie metadanych po ISBN z e-booka** (Etap 26) — Biblioteka Narodowa nie
   znajdowała książek po ISBN wydania elektronicznego, bo katalog BN indeksuje głównie

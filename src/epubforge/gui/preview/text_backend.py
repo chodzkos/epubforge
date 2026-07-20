@@ -65,6 +65,10 @@ class TextDocumentPreviewBackend(PreviewBackend):
         bar = self.html_preview.view.verticalScrollBar()
         bar.setValue(round(state.scroll_ratio * bar.maximum()))
 
+    def focus_node(self, node_id: str) -> None:
+        """Lekki backend nie udostępnia mapowania elementów DOM."""
+        return None
+
     def set_theme(self, palette: Palette) -> None:
         """Przemalowuje ramkę „papieru"; tło pozostaje białe (jak dotąd)."""
         self.html_preview.set_theme(palette)

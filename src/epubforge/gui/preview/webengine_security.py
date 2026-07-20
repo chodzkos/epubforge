@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 from lxml import etree
 from PySide6.QtCore import QBuffer, QIODevice, QObject, QUrl, Signal
@@ -111,18 +112,34 @@ class SecurePreviewPage(QWebEnginePage):
     """Strona bez popupów i nawigacji poza aktywny origin."""
 
     external_navigation = Signal(str)
+    dom_node_activated = Signal(str)
 
     def __init__(
         self,
         profile: QWebEngineProfile,
         registry: PreviewGenerationRegistry,
         parent: QObject | None = None,
+        *,
+        bridge_token: str = "",
     ) -> None:
         super().__init__(profile, parent)
         self._registry = registry
         self.featurePermissionRequested.connect(self._deny_legacy_permission)
+        self._bridge_token = bridge_token
         if hasattr(self, "permissionRequested"):
             self.permissionRequested.connect(lambda permission: permission.deny())
+
+    def javaScriptConsoleMessage(  # noqa: N802
+        self, level: object, message: str, line_number: int, source_id: str
+    ) -> None:
+        """Przepuszcza tylko uwierzytelniony identyfikator, nigdy treść publikacji."""
+        del level, line_number, source_id
+        prefix = f"epubforge-node:{self._bridge_token}:"
+        if not self._bridge_token or not message.startswith(prefix):
+            return
+        node_id = message[len(prefix) :]
+        if re.fullmatch(r"[0-9a-f]{16}", node_id):
+            self.dom_node_activated.emit(node_id)
 
     def acceptNavigationRequest(  # noqa: N802
         self,

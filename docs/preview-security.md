@@ -45,6 +45,18 @@ Diagnostyka rozróżnia błąd książki, blokadę bezpieczeństwa i ograniczeni
 Zawiera bezpieczny URL źródłowy, rozwiązany internal path i plik żądający zasobu,
 ale redaguje file:, data:, query oraz ścieżki systemowe.
 
+
+## Mapowanie DOM do źródła
+
+Każda generacja buduje w pamięci mapę elementów bieżącego XHTML do linii
+oryginału. Identyfikatory są deterministyczne, ale trafiają wyłącznie do kopii
+renderowanej przed sanitizacją; bufor `Epub` i tekst `CodeEditor` pozostają
+niezmienione. Linia wskazuje początek elementu i jest jawnie opisana jako
+przybliżona, ponieważ parser XML nie udostępnia dokładnego zakresu znacznika.
+
+Listener w `ApplicationWorld` wysyła przez prywatny, losowy token tylko 16-znakowy
+identyfikator. Backend odrzuca pozostałe komunikaty konsoli i rozwiązuje ID
+wyłącznie w mapie aktywnej generacji, bez logowania treści publikacji.
 ## Odświeżanie i awarie
 
 Edycja jest debouncowana przez 400 ms. Zmiana XHTML tworzy nową generację i przed

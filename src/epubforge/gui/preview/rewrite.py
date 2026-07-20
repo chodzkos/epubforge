@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import posixpath
 import re
 from collections.abc import Callable
@@ -13,6 +12,7 @@ from lxml import etree
 
 from epubforge.core._xml_safe import parse_untrusted_document, serialize_document
 from epubforge.gui.preview.backend import DiagnosticCategory, DiagnosticEvent
+from epubforge.gui.preview.dom_mapping import assign_render_node_ids
 from epubforge.gui.preview.paths import UnsafePreviewPathError, normalize_internal_path
 from epubforge.gui.preview.sanitize import sanitize_xhtml
 from epubforge.gui.preview.session import PreviewGeneration
@@ -33,11 +33,12 @@ def rewrite_xhtml(
     report: DiagnosticSink | None = None,
 ) -> bytes:
     """Sanityzuje XHTML i wersjonuje wszystkie bezpieczne odwołania względne."""
-    clean = sanitize_xhtml(data)
+    source_root, source_doctype = parse_untrusted_document(data)
+    assign_render_node_ids(source_root, requester)
+    clean = sanitize_xhtml(serialize_document(source_root, source_doctype))
     root, doctype = parse_untrusted_document(clean)
     for element in root.iter():
         base = _element_base(element, requester)
-        _assign_node_id(element, root, requester)
         for attribute in list(element.attrib):
             local = etree.QName(attribute).localname.lower()
             if local in _URL_ATTRIBUTES or attribute == _XLINK_HREF:
@@ -225,14 +226,6 @@ def _remove_xml_bases(root: etree._Element) -> None:
     for element in root.iter():
         if _XML_BASE in element.attrib:
             del element.attrib[_XML_BASE]
-
-
-def _assign_node_id(element: etree._Element, root: etree._Element, requester: str) -> None:
-    """Dodaje stabilny identyfikator kopii DOM do odtwarzania wyboru."""
-    tree = root.getroottree()
-    key = f"{requester}:{element.get('id', '')}:{tree.getpath(element)}"
-    digest = hashlib.blake2s(key.encode("utf-8"), digest_size=8).hexdigest()
-    element.set("data-epubforge-node-id", digest)
 
 
 def _report(

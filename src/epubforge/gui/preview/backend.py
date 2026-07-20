@@ -107,6 +107,8 @@ class PreviewBackend(QWidget):
     status_changed = Signal(object)
     #: Zdarzenie diagnostyczne (przekazuje :class:`DiagnosticEvent`).
     diagnostics = Signal(object)
+    #: Żądanie przejścia do elementu źródłowego (:class:`SourceLocation`).
+    source_requested = Signal(object)
     #: Żądanie otwarcia bieżącego pliku w narzędziu zewnętrznym (klucz narzędzia).
     open_external = Signal(str)
     #: Żądanie przejścia na lekki backend po trwałej awarii renderera.
@@ -132,6 +134,10 @@ class PreviewBackend(QWidget):
 
     def restore_state(self, state: PreviewState) -> None:
         """Odtwarza zapamiętany stan podglądu po ponownym renderze."""
+        raise NotImplementedError
+
+    def focus_node(self, node_id: str) -> None:
+        """Wyróżnia element technicznym identyfikatorem, jeśli backend to obsługuje."""
         raise NotImplementedError
 
     def set_theme(self, palette: Palette) -> None:
