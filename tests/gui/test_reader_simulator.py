@@ -223,7 +223,7 @@ def test_reader_layers_are_inert_until_explicitly_enabled() -> None:
 
     host._apply_reader_layers()
 
-    assert host.restored == [PreviewState()]
+    assert host.restored == []
     assert not any("epubforge-reader-simulator-layer" in script for script in host._page.scripts)
     assert host.reader_state_changed.values[-1]["enabled"] is False
     assert host.reader_state_changed.values[-1]["columns_enabled"] is False

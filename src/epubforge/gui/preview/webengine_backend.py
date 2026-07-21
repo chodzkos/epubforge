@@ -401,7 +401,11 @@ class WebEnginePreviewBackend(ReaderWebEngineMixin, PreviewBackend):
             return
         if success:
             self._install_dom_bridge()
-            self._apply_reader_layers()
+            if self._reader_simulation_enabled:
+                self._apply_reader_layers()
+            else:
+                self.restore_state(self._last_state)
+                self._emit_reader_state()
             if self._last_state.node_id:
                 self.inspect_element(self._last_state.node_id)
             self.status_changed.emit(PreviewStatus.READY)

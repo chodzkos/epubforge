@@ -168,7 +168,6 @@ class ReaderWebEngineMixin:
 
     def _apply_reader_layers(self) -> None:
         if not self._reader_simulation_enabled:
-            self.restore_state(self._last_state)
             self._emit_reader_state()
             return
         layers = build_reader_layers(
