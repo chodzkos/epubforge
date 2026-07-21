@@ -22,7 +22,15 @@ from dataclasses import replace
 from chodzkos_gui_kit.palette import Palette
 from chodzkos_gui_kit.qt.theme import current_palette
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QComboBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
 
 from epubforge.core import Tool
 from epubforge.gui.preview.availability import probe_webengine
@@ -45,6 +53,7 @@ from epubforge.gui.preview.webengine_backend import (
     WebEngineInitError,
     WebEnginePreviewBackend,
 )
+from epubforge.gui.widgets.horizontal_strip import HorizontalStrip
 from epubforge.gui.widgets.html_preview import HtmlPreview
 from epubforge.i18n import _
 
@@ -68,6 +77,7 @@ class BookPreview(SnapshotWorkerMixin, ReaderUiMixin, QWidget):
     element_inspected = Signal(object)
     css_preview_result = Signal(object)
     backend_changed = Signal(object)
+    document_ready = Signal(str)
 
     def __init__(
         self,
@@ -89,6 +99,7 @@ class BookPreview(SnapshotWorkerMixin, ReaderUiMixin, QWidget):
         self._last_snapshot: PreviewSnapshot | None = None
         self._session: PreviewSession | None = None
         self._webengine_backend: PreviewBackend | None = None
+        self._ready_document: str | None = None
         self._init_reader_ui_state()
 
         self._build_ui()
@@ -105,6 +116,7 @@ class BookPreview(SnapshotWorkerMixin, ReaderUiMixin, QWidget):
         self._text_backend.reader_state_changed.connect(self._on_reader_state)
         self._text_backend.quality_diagnostics.connect(self._on_quality_diagnostics)
         self._text_backend.cache_changed.connect(self._on_cache_changed)
+        self._text_backend.document_ready.connect(self._on_document_ready)
         self._body_layout.addWidget(self._text_backend)
         self._active: PreviewBackend = self._text_backend
 
@@ -118,9 +130,9 @@ class BookPreview(SnapshotWorkerMixin, ReaderUiMixin, QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        bar = QHBoxLayout()
+        bar = HorizontalStrip()
         label = QLabel(_("Podgląd:"))
-        bar.addWidget(label)
+        bar.row.addWidget(label)
 
         self.backend_combo = QComboBox()
         self.backend_combo.setToolTip(
@@ -129,30 +141,33 @@ class BookPreview(SnapshotWorkerMixin, ReaderUiMixin, QWidget):
         for value in _BACKEND_ORDER:
             self.backend_combo.addItem(_backend_label(value), value)
         self.backend_combo.currentIndexChanged.connect(self._on_backend_selected)
-        bar.addWidget(self.backend_combo)
+        bar.row.addWidget(self.backend_combo)
 
         self.status_label = QLabel()
         self.status_label.setToolTip(_("Aktualnie używany tor renderowania podglądu"))
-        bar.addWidget(self.status_label)
+        bar.row.addWidget(self.status_label)
 
         self.fallback_label = QLabel()
         self.fallback_label.setWordWrap(True)
+        self.fallback_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.fallback_label.setVisible(False)
-        bar.addWidget(self.fallback_label, stretch=1)
+        bar.row.addWidget(self.fallback_label, stretch=1)
 
         self.use_fast_button = QPushButton(_("Użyj szybkiego"))
         self.use_fast_button.setToolTip(_("Przełącz podgląd na szybki tor (Qt)"))
         self.use_fast_button.clicked.connect(self._on_use_fast_clicked)
         self.use_fast_button.setVisible(False)
-        bar.addWidget(self.use_fast_button)
+        bar.row.addWidget(self.use_fast_button)
 
         self.reload_button = QPushButton(_("Przeładuj dokładnie"))
         self.reload_button.setToolTip(_("Wymuś pełne przeładowanie bieżącego dokumentu"))
         self.reload_button.clicked.connect(self._reload_exact)
-        bar.addWidget(self.reload_button)
+        bar.row.addWidget(self.reload_button)
 
-        bar.addStretch(0)
-        layout.addLayout(bar)
+        bar.row.addStretch(1)
+        bar.finish()
+        self.preview_toolbar = bar
+        layout.addWidget(bar)
 
         self._build_reader_ui(layout)
 
@@ -188,6 +203,11 @@ class BookPreview(SnapshotWorkerMixin, ReaderUiMixin, QWidget):
     def current_document(self) -> str | None:
         """Dokument ostatniego poprawnie zbudowanego snapshotu podglądu."""
         return self._last_snapshot.internal_path if self._last_snapshot is not None else None
+
+    @property
+    def ready_document(self) -> str | None:
+        """Dokument ukończony przez aktywny backend i gotowy do zapytań DOM."""
+        return self._ready_document
 
     # ── Wybór backendu ─────────────────────────────────────────────────────────
 
@@ -248,6 +268,7 @@ class BookPreview(SnapshotWorkerMixin, ReaderUiMixin, QWidget):
         backend.reader_state_changed.connect(self._on_reader_state)
         backend.quality_diagnostics.connect(self._on_quality_diagnostics)
         backend.cache_changed.connect(self._on_cache_changed)
+        backend.document_ready.connect(self._on_document_ready)
         backend.set_reader_simulation(self._reader_profile, self._user_style, self._comparison)
         self._webengine_backend = backend
         return backend, ""
@@ -300,6 +321,7 @@ class BookPreview(SnapshotWorkerMixin, ReaderUiMixin, QWidget):
         if self._body_layout.indexOf(backend) == -1:
             self._body_layout.addWidget(backend)
         self._active = backend
+        self._ready_document = None
         backend.show()
         if backend.kind is BackendKind.WEBENGINE:
             backend.set_reader_simulation(self._reader_profile, self._user_style, self._comparison)
@@ -308,6 +330,12 @@ class BookPreview(SnapshotWorkerMixin, ReaderUiMixin, QWidget):
         if self._last_snapshot is not None:
             backend.set_session(self._session)
             self._render_snapshot_into(backend, self._last_snapshot)
+
+    def _on_document_ready(self, internal_path: str) -> None:
+        """Przepuszcza gotowość tylko z aktywnego toru renderowania."""
+        if self.sender() is self._active:
+            self._ready_document = internal_path
+            self.document_ready.emit(internal_path)
 
     def _update_status(self) -> None:
         """Aktualizuje backend i stan bieżącego renderu."""
@@ -396,6 +424,8 @@ class BookPreview(SnapshotWorkerMixin, ReaderUiMixin, QWidget):
             self._cancel_snapshot_pipeline()
             previous.close()
         self._session = session
+        if previous is not session:
+            self._ready_document = None
         if previous is not session:
             self._controller.clear()
         self._text_backend.set_session(session)

@@ -344,6 +344,8 @@ class WebEnginePreviewBackend(ReaderWebEngineMixin, PreviewBackend):
                 self._last_snapshot = snapshot
                 self._apply_reader_layers()
                 self.status_changed.emit(PreviewStatus.READY)
+                if snapshot.internal_path is not None:
+                    self.document_ready.emit(snapshot.internal_path)
             else:
                 self._fallback_full_reload(snapshot, "nie znaleziono linku arkusza")
 
@@ -409,6 +411,8 @@ class WebEnginePreviewBackend(ReaderWebEngineMixin, PreviewBackend):
             if self._last_state.node_id:
                 self.inspect_element(self._last_state.node_id)
             self.status_changed.emit(PreviewStatus.READY)
+            if snapshot.internal_path is not None:
+                self.document_ready.emit(snapshot.internal_path)
             stats = self._session.cache_stats() if self._session is not None else None
             self.cache_changed.emit(
                 {

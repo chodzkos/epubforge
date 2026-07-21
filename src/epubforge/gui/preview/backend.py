@@ -132,6 +132,8 @@ class PreviewBackend(QWidget):
     quality_diagnostics = Signal(object)
     #: Licznik zasobów aktywnej migawki (nie jest cache HTTP Chromium).
     cache_changed = Signal(object)
+    #: Dokument ukończył render i można bezpiecznie pytać o jego DOM.
+    document_ready = Signal(str)
 
     kind: BackendKind
 

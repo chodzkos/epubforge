@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EpubForge 1.0.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-07-21 00:10+0200\n"
+"POT-Creation-Date: 2026-07-22 01:12+0200\n"
 "PO-Revision-Date: 2026-06-12 13:30+0200\n"
 "Last-Translator: EpubForge translators <noreply@example.com>\n"
 "Language: pl\n"
@@ -19,7 +19,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: src/epubforge/_frozen_check.py:97 src/epubforge/gui/app.py:219
+#: src/epubforge/_frozen_check.py:99 src/epubforge/gui/app.py:219
 #: src/epubforge/gui/tabs/metadata.py:257
 #: src/epubforge/gui/tabs/metadata.py:279
 #: src/epubforge/gui/tabs/metadata.py:451
@@ -328,11 +328,11 @@ msgid "System"
 msgstr "System"
 
 #: src/epubforge/cli/doctor.py:74
-#: src/epubforge/gui/widgets/css_inspector.py:170
+#: src/epubforge/gui/widgets/css_inspector.py:183
 msgid "Element"
 msgstr "Element"
 
-#: src/epubforge/cli/doctor.py:75
+#: src/epubforge/cli/doctor.py:75 src/epubforge/gui/preview/reader_ui.py:146
 msgid "Wartość"
 msgstr "Wartość"
 
@@ -1124,7 +1124,7 @@ msgid "O programie"
 msgstr "O programie"
 
 #: src/epubforge/gui/app.py:79 src/epubforge/gui/tabs/fixer.py:130
-#: src/epubforge/gui/widgets/search_panel.py:123
+#: src/epubforge/gui/widgets/search_panel.py:132
 msgid "Zamknij"
 msgstr "Zamknij"
 
@@ -1185,8 +1185,8 @@ msgstr "Zmiana języka zadziała po ponownym uruchomieniu aplikacji."
 msgid "Język: {language}"
 msgstr "Język: {language}"
 
-#: src/epubforge/gui/app.py:389 src/epubforge/gui/tabs/editor.py:473
-#: src/epubforge/gui/tabs/editor.py:489
+#: src/epubforge/gui/app.py:389 src/epubforge/gui/tabs/editor.py:404
+#: src/epubforge/gui/tabs/editor.py:420
 msgid "Niezapisane zmiany"
 msgstr "Niezapisane zmiany"
 
@@ -1207,7 +1207,7 @@ msgid "Ciemny"
 msgstr "Ciemny"
 
 #: src/epubforge/gui/app.py:450 src/epubforge/gui/app.py:461
-#: src/epubforge/gui/preview/book_preview.py:463
+#: src/epubforge/gui/preview/book_preview.py:473
 msgid "Auto"
 msgstr "Auto"
 
@@ -1268,7 +1268,7 @@ msgid "ISBN książki (10 lub 13 cyfr)"
 msgstr "ISBN książki (10 lub 13 cyfr)"
 
 #: src/epubforge/gui/metadata_fetch.py:143
-#: src/epubforge/gui/widgets/search_panel.py:112
+#: src/epubforge/gui/widgets/search_panel.py:116
 msgid "Szukaj"
 msgstr "Szukaj"
 
@@ -1299,7 +1299,7 @@ msgstr "Podaj ISBN"
 
 #: src/epubforge/gui/metadata_fetch.py:216
 #: src/epubforge/gui/metadata_fetch.py:281
-#: src/epubforge/gui/widgets/search_panel.py:208
+#: src/epubforge/gui/widgets/search_panel.py:218
 msgid "Szukam…"
 msgstr "Szukam…"
 
@@ -1509,131 +1509,442 @@ msgstr ""
 "Klucz API czytany jest wyłącznie ze zmiennej środowiskowej o podanej "
 "nazwie. Domyślnie: lokalna Ollama (bez klucza)."
 
-#: src/epubforge/gui/preview/book_preview.py:124
+#: src/epubforge/gui/preview/book_preview.py:134
 #, fuzzy
 msgid "Podgląd:"
 msgstr "Podgląd"
 
-#: src/epubforge/gui/preview/book_preview.py:129
+#: src/epubforge/gui/preview/book_preview.py:139
 msgid ""
 "Tor podglądu: Auto (dokładny, gdy dostępny), Dokładny (WebEngine), Szybki"
 " (Qt)"
 msgstr ""
 
-#: src/epubforge/gui/preview/book_preview.py:137
+#: src/epubforge/gui/preview/book_preview.py:147
 msgid "Aktualnie używany tor renderowania podglądu"
 msgstr ""
 
-#: src/epubforge/gui/preview/book_preview.py:145
+#: src/epubforge/gui/preview/book_preview.py:156
 msgid "Użyj szybkiego"
 msgstr ""
 
-#: src/epubforge/gui/preview/book_preview.py:146
+#: src/epubforge/gui/preview/book_preview.py:157
 msgid "Przełącz podgląd na szybki tor (Qt)"
 msgstr ""
 
-#: src/epubforge/gui/preview/book_preview.py:151
+#: src/epubforge/gui/preview/book_preview.py:162
 msgid "Przeładuj dokładnie"
 msgstr ""
 
-#: src/epubforge/gui/preview/book_preview.py:152
+#: src/epubforge/gui/preview/book_preview.py:163
 msgid "Wymuś pełne przeładowanie bieżącego dokumentu"
 msgstr ""
 
-#: src/epubforge/gui/preview/book_preview.py:254
+#: src/epubforge/gui/preview/book_preview.py:279
 msgid "Błąd książki"
 msgstr ""
 
-#: src/epubforge/gui/preview/book_preview.py:255
+#: src/epubforge/gui/preview/book_preview.py:280
 msgid "Blokada bezpieczeństwa"
 msgstr ""
 
-#: src/epubforge/gui/preview/book_preview.py:256
+#: src/epubforge/gui/preview/book_preview.py:281
 #, fuzzy
 msgid "Ograniczenie podglądu"
 msgstr "Brak podglądu"
 
-#: src/epubforge/gui/preview/book_preview.py:258
+#: src/epubforge/gui/preview/book_preview.py:282
+#, fuzzy
+msgid "Ograniczenie symulatora"
+msgstr "Brak podglądu"
+
+#: src/epubforge/gui/preview/book_preview.py:283
+#, fuzzy
+msgid "Ostrzeżenie jakości"
+msgstr "Ostrzeżenie"
+
+#: src/epubforge/gui/preview/book_preview.py:285
 #, python-brace-format
 msgid "Kategoria: {category}"
 msgstr ""
 
-#: src/epubforge/gui/preview/book_preview.py:260
+#: src/epubforge/gui/preview/book_preview.py:287
 #, fuzzy, python-brace-format
 msgid "Rodzaj: {kind}"
 msgstr "Rozdziały: {n}"
 
-#: src/epubforge/gui/preview/book_preview.py:262
+#: src/epubforge/gui/preview/book_preview.py:289
 #, python-brace-format
 msgid "URL: {url}"
 msgstr ""
 
-#: src/epubforge/gui/preview/book_preview.py:264
+#: src/epubforge/gui/preview/book_preview.py:291
 #, fuzzy, python-brace-format
 msgid "Zasób: {path}"
 msgstr "EPUB: {path}"
 
-#: src/epubforge/gui/preview/book_preview.py:266
+#: src/epubforge/gui/preview/book_preview.py:293
 #, fuzzy, python-brace-format
 msgid "Żądający: {path}"
 msgstr "OK: {path}"
 
-#: src/epubforge/gui/preview/book_preview.py:272
+#: src/epubforge/gui/preview/book_preview.py:299
 #, fuzzy
 msgid "Nie udało się uruchomić dokładnego podglądu."
 msgstr "Nie udało się uruchomić Ace: {error}"
 
-#: src/epubforge/gui/preview/book_preview.py:279
+#: src/epubforge/gui/preview/book_preview.py:306
 msgid "Użyto szybkiego podglądu zamiast dokładnego."
 msgstr ""
 
-#: src/epubforge/gui/preview/book_preview.py:304
-#: src/epubforge/gui/preview/book_preview.py:464
+#: src/epubforge/gui/preview/book_preview.py:342
+#: src/epubforge/gui/preview/book_preview.py:474
 #, fuzzy
 msgid "Dokładny"
 msgstr "Okładka"
 
-#: src/epubforge/gui/preview/book_preview.py:304
-#: src/epubforge/gui/preview/book_preview.py:465
+#: src/epubforge/gui/preview/book_preview.py:342
+#: src/epubforge/gui/preview/book_preview.py:475
 msgid "Szybki"
 msgstr ""
 
-#: src/epubforge/gui/preview/book_preview.py:306
+#: src/epubforge/gui/preview/book_preview.py:344
 msgid "Aktualny"
 msgstr ""
 
-#: src/epubforge/gui/preview/book_preview.py:307
+#: src/epubforge/gui/preview/book_preview.py:345
 #, fuzzy
 msgid "Renderowanie"
 msgstr "Konwertowanie..."
 
-#: src/epubforge/gui/preview/book_preview.py:308
+#: src/epubforge/gui/preview/book_preview.py:346
 msgid "Ostatnia poprawna wersja"
 msgstr ""
 
-#: src/epubforge/gui/preview/book_preview.py:309
+#: src/epubforge/gui/preview/book_preview.py:347
 msgid "Fallback"
 msgstr ""
 
-#: src/epubforge/gui/preview/book_preview.py:310
-#: src/epubforge/gui/tabs/editor.py:241 src/epubforge/gui/tabs/editor.py:460
+#: src/epubforge/gui/preview/book_preview.py:348
+#: src/epubforge/gui/tabs/editor.py:168 src/epubforge/gui/tabs/editor.py:391
 #: src/epubforge/gui/tabs/validator.py:535
 msgid "Błąd"
 msgstr "Błąd"
 
-#: src/epubforge/gui/preview/book_preview.py:312
+#: src/epubforge/gui/preview/book_preview.py:350
 #, python-brace-format
 msgid "{backend} · {status}"
 msgstr ""
 
-#: src/epubforge/gui/preview/controller.py:56
+#: src/epubforge/gui/preview/controller.py:81
 msgid "Otwórz rozdział przed podglądem zmian CSS."
 msgstr ""
 
-#: src/epubforge/gui/preview/controller.py:78
+#: src/epubforge/gui/preview/controller.py:104
 #, fuzzy, python-brace-format
 msgid "Niepoprawny XHTML: {error}"
 msgstr "Niepoprawny XML"
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:49
+msgid "Aktywna warstwa użytkownika"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:51
+msgid "Włącz lub wyłącz wszystkie odwracalne nadpisania użytkownika"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:55
+msgid "Bazowy rozmiar tekstu warstwy użytkownika"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:58
+msgid "Wysokość linii warstwy użytkownika"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:61
+msgid "Margines strony narzucony przez użytkownika"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:65
+msgid "Rozmiar tekstu"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:67
+#, fuzzy
+msgid "Marginesy"
+msgstr "Margines książki"
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:83
+msgid "Rodzina fontu lub uporządkowana lista fallbacków oddzielona przecinkami"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:86
+msgid "Font / fallback"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:88
+#, fuzzy
+msgid "Wymuś font"
+msgstr "Usuń fonty"
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:89
+msgid "Wyłącz fonty osadzone"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:90
+msgid "Wyłącz CSS wydawcy"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:91
+msgid "Nadaj wybranemu fontowi priorytet nad CSS wydawcy"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:92
+msgid "Nie używaj fontów dołączonych do publikacji"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:94
+msgid "Wyłącz style wydawcy w kopii renderowanej; nie zmienia to źródła EPUB"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:103
+msgid "Porównaj CSS wydawcy, CSS z ustawieniami użytkownika albo tekst bez stylów"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:105
+#, fuzzy
+msgid "CSS wydawcy"
+msgstr "Wydawca"
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:107
+msgid "CSS wydawcy + ustawienia użytkownika"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:109
+msgid "Tekst bez stylów wydawcy"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:117
+msgid "Kolor strony w warstwie symulatora, np. #ffffff"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:118
+msgid "Kolor tekstu w warstwie symulatora, np. #1a1a1a"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:123
+#, fuzzy
+msgid "Kolor strony"
+msgstr "Usuń kolory"
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:125
+msgid "Kolor tekstu"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:129
+msgid "Szerokość własnego viewportu w CSS px"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:130
+msgid "Wysokość własnego viewportu w CSS px"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:135
+msgid "Własny viewport"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:142
+msgid "Cache: 0 wpisów / 0 B (HTTP wyłączony)"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:145
+#, fuzzy
+msgid "Wyczyść cache"
+msgstr "Wyczyść"
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:146
+msgid "Usuń pamięciowy cache dokumentów, CSS, obrazów i fontów bieżącej sesji"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:153
+#, fuzzy
+msgid "Font elementu: —"
+msgstr "Element"
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:157
+msgid "Wybierz drugi neutralny profil do porównania"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:163
+msgid "Drugi profil"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:166
+msgid "Porównaj obok siebie"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_settings_ui.py:167
+msgid "Pokaż lub ukryj drugi viewport; funkcja wymaga dokładnego podglądu"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_ui.py:74
+msgid "Profil czytnika:"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_ui.py:77
+msgid ""
+"Wybierz neutralny profil viewportu; nazwy nie udają silnika konkretnego "
+"urządzenia"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_ui.py:85
+msgid ""
+"Wybierz przewijanie albo kontrolowane strony podglądu oparte na CSS "
+"columns"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_ui.py:87
+#, fuzzy
+msgid "Przewijanie"
+msgstr "Naprawianie..."
+
+#: src/epubforge/gui/preview/reader_ui.py:88
+#, fuzzy
+msgid "Strony podglądu"
+msgstr "Brak podglądu"
+
+#: src/epubforge/gui/preview/reader_ui.py:92
+#, fuzzy
+msgid "Poprzednia"
+msgstr "Poprzedni"
+
+#: src/epubforge/gui/preview/reader_ui.py:93
+msgid "Przejdź do poprzedniej strony podglądu w trybie stron"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_ui.py:97
+#, fuzzy
+msgid "Następna"
+msgstr "Następny"
+
+#: src/epubforge/gui/preview/reader_ui.py:98
+msgid "Przejdź do następnej strony podglądu w trybie stron"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_ui.py:102
+#, fuzzy
+msgid "Do elementu"
+msgstr "Element"
+
+#: src/epubforge/gui/preview/reader_ui.py:103
+msgid "Przejdź do strony podglądu zawierającej aktualnie zaznaczony element"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_ui.py:112
+#: src/epubforge/gui/preview/reader_ui.py:162
+#, fuzzy
+msgid "strona podglądu —"
+msgstr "Brak podglądu"
+
+#: src/epubforge/gui/preview/reader_ui.py:114
+msgid "Numer technicznej strony podglądu; nie jest to numer strony książki"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_ui.py:118
+#, fuzzy
+msgid "Ustawienia użytkownika"
+msgstr "Ustawienia AI"
+
+#: src/epubforge/gui/preview/reader_ui.py:119
+msgid "Pokaż lub ukryj oddzielną, odwracalną warstwę ustawień czytelnika"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_ui.py:125
+msgid "Diagnostyka"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_ui.py:126
+msgid "Pokaż lub ukryj diagnostykę jakości aktywnego layoutu i zasobów"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_ui.py:131
+msgid "Screenshot"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_ui.py:132
+msgid "Eksportuj obraz samego viewportu bez nakładki inspektora"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_ui.py:146
+msgid "Kategoria"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_ui.py:146
+msgid "Problem"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_ui.py:148
+msgid ""
+"Dwuklik problemu przenosi do elementu i źródła, gdy lokalizacja jest "
+"dostępna"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_ui.py:160
+#, python-brace-format
+msgid "strona podglądu {page}/{pages}"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_ui.py:167
+#, python-brace-format
+msgid "Font elementu: {family} · {size} · line-height {line} · {status}"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_ui.py:204
+#: src/epubforge/gui/tabs/validator.py:537
+msgid "Informacja"
+msgstr "Informacja"
+
+#: src/epubforge/gui/preview/reader_ui.py:204
+msgid "Nie wykryto problemów jakości."
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_ui.py:217
+#, fuzzy
+msgid "Eksport viewportu"
+msgstr "Eksport raportu"
+
+#: src/epubforge/gui/preview/reader_ui.py:217
+msgid "PNG (*.png)"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_ui.py:223
+msgid "Eksport screenshotu wymaga dokładnego podglądu WebEngine."
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_ui.py:231
+#, python-brace-format
+msgid "Cache: {entries} wpisów / {bytes} B (HTTP {http})"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_ui.py:255
+#, fuzzy
+msgid "Porównanie wymaga dokładnego podglądu."
+msgstr "Nie udało się uruchomić Ace: {error}"
+
+#: src/epubforge/gui/preview/reader_ui.py:273
+#: src/epubforge/gui/preview/reader_ui.py:284
+#, python-brace-format
+msgid "Porównanie: {first} | {second}"
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_webengine.py:81
+msgid "Nawigacja stron podglądu dotyczy tylko reflowable pages."
+msgstr ""
+
+#: src/epubforge/gui/preview/reader_webengine.py:167
+#, python-brace-format
+msgid "Viewport {width}x{height} CSS px · DPR {dpr} (symulacyjne)"
+msgstr ""
 
 #: src/epubforge/gui/preview/rewrite.py:149
 msgid "Zablokowano odwołanie poza publikację."
@@ -1647,27 +1958,32 @@ msgstr ""
 msgid "Brak zasobu wskazanego przez publikację."
 msgstr ""
 
-#: src/epubforge/gui/preview/webengine_backend.py:125
+#: src/epubforge/gui/preview/snapshot_worker.py:158
+#, fuzzy, python-brace-format
+msgid "Nie udało się przygotować podglądu: {error}"
+msgstr "BŁĄD: Nie udało się otworzyć podglądu: {error}"
+
+#: src/epubforge/gui/preview/webengine_backend.py:127
 msgid "Brak aktywnej sesji publikacji dla dokładnego podglądu."
 msgstr ""
 
-#: src/epubforge/gui/preview/webengine_backend.py:340
+#: src/epubforge/gui/preview/webengine_backend.py:359
 msgid "Częściowe odświeżenie CSS nie powiodło się; przeładowano dokument."
 msgstr ""
 
-#: src/epubforge/gui/preview/webengine_backend.py:397
+#: src/epubforge/gui/preview/webengine_backend.py:431
 msgid "Nie udało się wyrenderować nowej wersji; zachowano ostatnią poprawną."
 msgstr ""
 
-#: src/epubforge/gui/preview/webengine_backend.py:411
+#: src/epubforge/gui/preview/webengine_backend.py:445
 msgid "Proces renderera podglądu został zakończony."
 msgstr ""
 
-#: src/epubforge/gui/preview/webengine_backend.py:421
+#: src/epubforge/gui/preview/webengine_backend.py:455
 msgid "Renderer podglądu uległ ponownej awarii."
 msgstr ""
 
-#: src/epubforge/gui/preview/webengine_backend.py:452
+#: src/epubforge/gui/preview/webengine_backend.py:486
 msgid "Zablokowano nawigację poza publikację."
 msgstr ""
 
@@ -1695,7 +2011,7 @@ msgstr "Autor; zalecany format: Nazwisko, Imię (opcjonalny)"
 msgid "Kod języka treści, np. pl, en, de"
 msgstr "Kod języka treści, np. pl, en, de"
 
-#: src/epubforge/gui/tabs/converter.py:161 src/epubforge/gui/tabs/editor.py:60
+#: src/epubforge/gui/tabs/converter.py:161 src/epubforge/gui/tabs/editor.py:52
 #: src/epubforge/gui/tabs/fixer.py:451
 msgid "Obrazy"
 msgstr "Obrazy"
@@ -1742,7 +2058,7 @@ msgstr ""
 
 #: src/epubforge/gui/tabs/converter.py:195 src/epubforge/gui/tabs/kfx.py:253
 #: src/epubforge/gui/tabs/validator.py:177
-#: src/epubforge/gui/widgets/search_panel.py:118
+#: src/epubforge/gui/widgets/search_panel.py:126
 msgid "Anuluj"
 msgstr "Anuluj"
 
@@ -1860,7 +2176,7 @@ msgstr "Zakończono: {done}/{total} OK"
 #: src/epubforge/gui/tabs/converter.py:439
 #: src/epubforge/gui/tabs/converter.py:440 src/epubforge/gui/tabs/kfx.py:406
 #: src/epubforge/gui/tabs/kfx.py:407 src/epubforge/gui/tabs/validator.py:422
-#: src/epubforge/gui/widgets/search_panel.py:235
+#: src/epubforge/gui/widgets/search_panel.py:245
 msgid "Anulowano"
 msgstr "Anulowano"
 
@@ -1908,63 +2224,31 @@ msgstr ""
 "Auto: PDF → pdf2md (fallback Calibre), pozostałe → Pandoc (fallback "
 "Calibre)"
 
-#: src/epubforge/gui/tabs/editor.py:58
+#: src/epubforge/gui/tabs/editor.py:50
 msgid "Tekst"
 msgstr "Tekst"
 
-#: src/epubforge/gui/tabs/editor.py:59
+#: src/epubforge/gui/tabs/editor.py:51
 msgid "Style"
 msgstr "Style"
 
-#: src/epubforge/gui/tabs/editor.py:61
+#: src/epubforge/gui/tabs/editor.py:53
 msgid "Fonty"
 msgstr "Fonty"
 
-#: src/epubforge/gui/tabs/editor.py:62
+#: src/epubforge/gui/tabs/editor.py:54
 msgid "Inne"
 msgstr "Inne"
 
-#: src/epubforge/gui/tabs/editor.py:136
-msgid "Otwórz EPUB…"
-msgstr "Otwórz EPUB…"
-
-#: src/epubforge/gui/tabs/editor.py:137
-msgid "Otwórz plik EPUB do podglądu i edycji"
-msgstr "Otwórz plik EPUB do podglądu i edycji"
-
-#: src/epubforge/gui/tabs/editor.py:141
-msgid "Nie otwarto pliku"
-msgstr "Nie otwarto pliku"
-
-#: src/epubforge/gui/tabs/editor.py:145
-msgid "Włącz edycję (domyślnie tylko do odczytu)"
-msgstr "Włącz edycję (domyślnie tylko do odczytu)"
-
-#: src/epubforge/gui/tabs/editor.py:151
-msgid "Inspektor CSS"
-msgstr "Inspektor CSS"
-
-#: src/epubforge/gui/tabs/editor.py:152
-msgid "Pokaż panel reguł CSS z podglądem na żywo"
-msgstr "Pokaż panel reguł CSS z podglądem na żywo"
-
-#: src/epubforge/gui/tabs/editor.py:159
-msgid "Zapisz EPUB"
-msgstr "Zapisz EPUB"
-
-#: src/epubforge/gui/tabs/editor.py:160
-msgid "Zapisuje zmiany do pliku EPUB (kopia .bak)"
-msgstr "Zapisuje zmiany do pliku EPUB (kopia .bak)"
-
-#: src/epubforge/gui/tabs/editor.py:228
+#: src/epubforge/gui/tabs/editor.py:155
 msgid "Otwórz EPUB"
 msgstr "Otwórz EPUB"
 
-#: src/epubforge/gui/tabs/editor.py:228
+#: src/epubforge/gui/tabs/editor.py:155
 msgid "Pliki EPUB (*.epub)"
 msgstr "Pliki EPUB (*.epub)"
 
-#: src/epubforge/gui/tabs/editor.py:241
+#: src/epubforge/gui/tabs/editor.py:168
 #, python-brace-format
 msgid ""
 "Nie udało się otworzyć EPUB:\n"
@@ -1973,31 +2257,31 @@ msgstr ""
 "Nie udało się otworzyć EPUB:\n"
 "{e}"
 
-#: src/epubforge/gui/tabs/editor.py:376
+#: src/epubforge/gui/tabs/editor.py:307
 msgid "Plik zawiera znaki nie-UTF-8 — edycja zablokowana."
 msgstr "Plik zawiera znaki nie-UTF-8 — edycja zablokowana."
 
-#: src/epubforge/gui/tabs/editor.py:400
+#: src/epubforge/gui/tabs/editor.py:331
 msgid "Tryb: edycja"
 msgstr "Tryb: edycja"
 
-#: src/epubforge/gui/tabs/editor.py:400
+#: src/epubforge/gui/tabs/editor.py:331
 msgid "Tryb: tylko podgląd"
 msgstr "Tryb: tylko podgląd"
 
-#: src/epubforge/gui/tabs/editor.py:402
+#: src/epubforge/gui/tabs/editor.py:333
 msgid "● Edycja"
 msgstr "● Edycja"
 
-#: src/epubforge/gui/tabs/editor.py:405
+#: src/epubforge/gui/tabs/editor.py:336
 msgid "● Tylko podgląd"
 msgstr "● Tylko podgląd"
 
-#: src/epubforge/gui/tabs/editor.py:445
+#: src/epubforge/gui/tabs/editor.py:376
 msgid "Niepoprawny XML"
 msgstr "Niepoprawny XML"
 
-#: src/epubforge/gui/tabs/editor.py:446
+#: src/epubforge/gui/tabs/editor.py:377
 #, python-brace-format
 msgid ""
 "Plik nie jest poprawnym XML:\n"
@@ -2010,7 +2294,7 @@ msgstr ""
 "\n"
 "Zapisać mimo to?"
 
-#: src/epubforge/gui/tabs/editor.py:460
+#: src/epubforge/gui/tabs/editor.py:391
 #, python-brace-format
 msgid ""
 "Nie udało się zapisać EPUB:\n"
@@ -2019,16 +2303,16 @@ msgstr ""
 "Nie udało się zapisać EPUB:\n"
 "{e}"
 
-#: src/epubforge/gui/tabs/editor.py:474
+#: src/epubforge/gui/tabs/editor.py:405
 #, python-brace-format
 msgid "Plik „{name}” ma niezapisane zmiany."
 msgstr "Plik „{name}” ma niezapisane zmiany."
 
-#: src/epubforge/gui/tabs/editor.py:490
+#: src/epubforge/gui/tabs/editor.py:421
 msgid "EPUB ma niezapisane zmiany. Zapisać przed zamknięciem?"
 msgstr "EPUB ma niezapisane zmiany. Zapisać przed zamknięciem?"
 
-#: src/epubforge/gui/tabs/editor.py:562
+#: src/epubforge/gui/tabs/editor.py:494
 #, python-brace-format
 msgid ""
 "{name}\n"
@@ -2041,46 +2325,125 @@ msgstr ""
 "Typ: {mtype}\n"
 "Rozmiar: {size} B"
 
-#: src/epubforge/gui/tabs/editor.py:563
+#: src/epubforge/gui/tabs/editor.py:495
 msgid "nieznany"
 msgstr "nieznany"
 
-#: src/epubforge/gui/tabs/editor_preview.py:170
+#: src/epubforge/gui/tabs/editor_layout.py:82
+msgid "Otwórz EPUB…"
+msgstr "Otwórz EPUB…"
+
+#: src/epubforge/gui/tabs/editor_layout.py:84
+#, fuzzy
+msgid "Otwórz plik EPUB do bezpiecznego podglądu i edycji jego zawartości"
+msgstr "Otwórz plik EPUB do podglądu i edycji"
+
+#: src/epubforge/gui/tabs/editor_layout.py:89
+msgid "Nie otwarto pliku"
+msgstr "Nie otwarto pliku"
+
+#: src/epubforge/gui/tabs/editor_layout.py:90
+#, fuzzy
+msgid "Ścieżka aktualnie otwartego pliku EPUB"
+msgstr "Nie otwarto pliku"
+
+#: src/epubforge/gui/tabs/editor_layout.py:98
+msgid "Włącz lub wyłącz edycję plików; startowo zawartość jest tylko do odczytu"
+msgstr ""
+
+#: src/epubforge/gui/tabs/editor_layout.py:105
+msgid "Inspektor CSS"
+msgstr "Inspektor CSS"
+
+#: src/epubforge/gui/tabs/editor_layout.py:107
+msgid ""
+"Pokaż lub ukryj analizę arkusza CSS albo kaskady elementu w dokładnym "
+"podglądzie"
+msgstr ""
+
+#: src/epubforge/gui/tabs/editor_layout.py:118
+msgid "Resetuj układ"
+msgstr ""
+
+#: src/epubforge/gui/tabs/editor_layout.py:124
+msgid "Przywróć podstawowy układ paneli po dodatkowym potwierdzeniu"
+msgstr ""
+
+#: src/epubforge/gui/tabs/editor_layout.py:129
+msgid "Zapisz EPUB"
+msgstr "Zapisz EPUB"
+
+#: src/epubforge/gui/tabs/editor_layout.py:131
+#, fuzzy
+msgid "Zapisz zmiany całej publikacji na dysku i utwórz kopię .bak"
+msgstr "Zapisuje zmiany do pliku EPUB (kopia .bak)"
+
+#: src/epubforge/gui/tabs/editor_layout.py:158
+msgid "Reset układu edytora"
+msgstr ""
+
+#: src/epubforge/gui/tabs/editor_layout.py:160
+msgid ""
+"Przywrócić podstawowy układ paneli? Zostaną zamknięte dodatkowe panele, "
+"ale treść EPUB-a i niezapisane zmiany pozostaną bez zmian."
+msgstr ""
+
+#: src/epubforge/gui/tabs/editor_preview.py:175
 #: src/epubforge/gui/tabs/validator.py:216
 msgid "Kod"
 msgstr "Kod"
 
-#: src/epubforge/gui/tabs/editor_preview.py:174
+#: src/epubforge/gui/tabs/editor_preview.py:176
+msgid "Pokaż kod źródłowy bieżącego dokumentu HTML"
+msgstr ""
+
+#: src/epubforge/gui/tabs/editor_preview.py:180
 msgid "Podgląd"
 msgstr "Podgląd"
 
-#: src/epubforge/gui/tabs/editor_preview.py:176
+#: src/epubforge/gui/tabs/editor_preview.py:182
 msgid "Przybliżony podgląd HTML (silnik Qt)"
 msgstr "Przybliżony podgląd HTML (silnik Qt)"
 
-#: src/epubforge/gui/tabs/editor_preview.py:184
+#: src/epubforge/gui/tabs/editor_preview.py:190
 #, fuzzy
 msgid "Podział"
 msgstr "Rozdziały"
 
-#: src/epubforge/gui/tabs/editor_preview.py:186
+#: src/epubforge/gui/tabs/editor_preview.py:192
 msgid "Widok dzielony: Kod obok Podglądu"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor_preview.py:299
+#: src/epubforge/gui/tabs/editor_preview.py:240
+msgid "Pokaż lub ukryj listę reguł i edycję bieżącego arkusza CSS"
+msgstr ""
+
+#: src/epubforge/gui/tabs/editor_preview.py:242
+msgid "Pokaż lub ukryj rzeczywistą kaskadę zaznaczonego elementu HTML"
+msgstr ""
+
+#: src/epubforge/gui/tabs/editor_preview.py:244
+msgid "Inspektor elementu HTML wymaga dokładnego podglądu WebEngine"
+msgstr ""
+
+#: src/epubforge/gui/tabs/editor_preview.py:246
+msgid "Inspektor jest dostępny dla arkuszy CSS oraz HTML w trybie dokładnym"
+msgstr ""
+
+#: src/epubforge/gui/tabs/editor_preview.py:335
 msgid "Brak arkusza CSS, do którego można dodać regułę."
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor_preview.py:384
+#: src/epubforge/gui/tabs/editor_preview.py:420
 #, fuzzy, python-brace-format
 msgid "Element {label}; przybliżona pozycja w kodzie: linia {line}."
 msgstr "Element {label}; przybli?ona pozycja w kodzie: linia {line}."
 
-#: src/epubforge/gui/tabs/editor_preview.py:433
+#: src/epubforge/gui/tabs/editor_preview.py:470
 msgid "Najpierw otwórz EPUB"
 msgstr "Najpierw otwórz EPUB"
 
-#: src/epubforge/gui/tabs/editor_preview.py:438
+#: src/epubforge/gui/tabs/editor_preview.py:475
 #: src/epubforge/gui/tabs/metadata.py:375
 #: src/epubforge/gui/tabs/metadata.py:396
 #: src/epubforge/gui/widgets/html_preview.py:172
@@ -2088,7 +2451,7 @@ msgstr "Najpierw otwórz EPUB"
 msgid "Nie wykryto {tool}"
 msgstr "Nie wykryto {tool}"
 
-#: src/epubforge/gui/tabs/editor_preview.py:441
+#: src/epubforge/gui/tabs/editor_preview.py:478
 #: src/epubforge/gui/tabs/metadata.py:378
 #, python-brace-format
 msgid "Nie udało się uruchomić {tool}: {error}"
@@ -2229,7 +2592,7 @@ msgid "Szerokość marginesu strony w pikselach (0-120)"
 msgstr "Szerokość marginesu strony w pikselach (0-120)"
 
 #: src/epubforge/gui/tabs/fixer.py:392
-#: src/epubforge/gui/widgets/css_element_panel.py:116
+#: src/epubforge/gui/widgets/css_element_panel.py:126
 msgid "Typografia"
 msgstr "Typografia"
 
@@ -3298,10 +3661,6 @@ msgstr "Krytyczny"
 msgid "Ostrzeżenie"
 msgstr "Ostrzeżenie"
 
-#: src/epubforge/gui/tabs/validator.py:537
-msgid "Informacja"
-msgstr "Informacja"
-
 #: src/epubforge/gui/widgets/__init__.py:54
 #: src/epubforge/gui/widgets/__init__.py:57
 msgid "Wybierz folder"
@@ -3400,7 +3759,7 @@ msgid "Otwórz w przeglądarce: {url}"
 msgstr "Otwórz w przeglądarce: {url}"
 
 #: src/epubforge/gui/widgets/code_editor.py:156
-#: src/epubforge/gui/widgets/code_editor.py:355
+#: src/epubforge/gui/widgets/code_editor.py:358
 #, python-brace-format
 msgid "Wiersz {line}, kolumna {col}"
 msgstr "Wiersz {line}, kolumna {col}"
@@ -3410,271 +3769,354 @@ msgstr "Wiersz {line}, kolumna {col}"
 msgid "Szukaj…"
 msgstr "Szukaj…"
 
-#: src/epubforge/gui/widgets/code_editor.py:171
+#: src/epubforge/gui/widgets/code_editor.py:166
+msgid "Wyszukaj tekst w bieżącym edytorze (Ctrl+F)"
+msgstr ""
+
+#: src/epubforge/gui/widgets/code_editor.py:172
 msgid "Poprzedni"
 msgstr "Poprzedni"
 
-#: src/epubforge/gui/widgets/code_editor.py:174
+#: src/epubforge/gui/widgets/code_editor.py:173
+msgid "Przejdź do poprzedniego trafienia (Shift+F3)"
+msgstr ""
+
+#: src/epubforge/gui/widgets/code_editor.py:176
 msgid "Następny"
 msgstr "Następny"
 
-#: src/epubforge/gui/widgets/css_element_panel.py:110
-msgid "Szukaj właściwości…"
+#: src/epubforge/gui/widgets/code_editor.py:177
+msgid "Przejdź do następnego trafienia (F3)"
 msgstr ""
 
-#: src/epubforge/gui/widgets/css_element_panel.py:111
-msgid "Filtruj deklaracje po nazwie właściwości"
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:117
-#, fuzzy
-msgid "Layout"
-msgstr "Auto"
-
-#: src/epubforge/gui/widgets/css_element_panel.py:118
-#, fuzzy
-msgid "Kolory"
-msgstr "Usuń kolory"
-
-#: src/epubforge/gui/widgets/css_element_panel.py:119
-#, fuzzy
-msgid "Box model"
-msgstr "Model"
-
-#: src/epubforge/gui/widgets/css_element_panel.py:120
-#, fuzzy
-msgid "Nadpisane"
-msgstr "Naprawianie..."
-
-#: src/epubforge/gui/widgets/css_element_panel.py:123
-#, python-brace-format
-msgid "Włącz filtr: {name}"
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:132
-msgid "Właściwość / reguła"
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:132
-#, fuzzy
-msgid "Zadeklarowana"
-msgstr "Deklaracje"
-
-#: src/epubforge/gui/widgets/css_element_panel.py:132
-msgid "Computed"
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:132
-#, fuzzy
-msgid "Stan"
-msgstr "Status"
-
-#: src/epubforge/gui/widgets/css_element_panel.py:132
-msgid "Źródło"
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:144
-msgid "Zakres tymczasowej warstwy CSS"
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:145
-#, fuzzy
-msgid "Bieżący element"
-msgstr "Bieżący plik"
-
-#: src/epubforge/gui/widgets/css_element_panel.py:146
-#, fuzzy
-msgid "Wszystkie dopasowania"
-msgstr "Wszystkie pliki"
-
-#: src/epubforge/gui/widgets/css_element_panel.py:147
-msgid "Reprezentatywne rozdziały — później"
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:159
-msgid "Przejdź do reguły"
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:160
-msgid "Pokaż źródło elementu"
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:161
-msgid "Utwórz regułę dla elementu"
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:162
-#, fuzzy
-msgid "Kopiuj selektor"
-msgstr "Selektor"
-
-#: src/epubforge/gui/widgets/css_element_panel.py:163
-msgid "Podświetl wszystkie dopasowania"
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:164
-#, fuzzy
-msgid "Zastosuj"
-msgstr "Zastosuj preset"
-
-#: src/epubforge/gui/widgets/css_element_panel.py:192
-msgid "Wybierz element w dokładnym podglądzie."
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:199
-#, fuzzy, python-brace-format
-msgid "DOM: {path}"
-msgstr "OK: {path}"
-
-#: src/epubforge/gui/widgets/css_element_panel.py:203
-#, python-brace-format
-msgid ""
-"Element: {tag}  id={id}  klasy={classes}\n"
-"{text}"
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:213
-#, python-brace-format
-msgid "Ograniczenia: {items}"
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:226
-#, python-brace-format
-msgid ""
-"Preview: {count} dopasowań. Uwaga: warstwa na końcu dokumentu może mieć "
-"inną kolejność niż źródło."
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:231
-#, python-brace-format
-msgid "Błąd preview: {error} — zachowano ostatnią poprawną warstwę."
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:249
-#, fuzzy
-msgid "inline"
-msgstr "Inne"
-
-#: src/epubforge/gui/widgets/css_element_panel.py:254
-msgid "aktywna"
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:254
-#: src/epubforge/gui/widgets/css_element_panel.py:461
-msgid "nieaktywna"
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:281
-msgid "Właściwości dziedziczone"
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:281
-#: src/epubforge/gui/widgets/css_element_panel.py:291
-msgid "dziedziczona"
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:329
-msgid "/* Reguła tylko do odczytu: brak wiarygodnego spanu źródła. */"
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:342
-msgid "Błąd CSS — zachowano ostatnią poprawną warstwę."
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:357
-msgid "Konflikt revision: źródło zmieniło się. Niczego nie nadpisano."
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:364
-msgid "Zastosowano jako jedną operację Undo."
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:367
-msgid "Nie zastosowano zmiany. Sprawdź tryb edycji i aktualność źródła."
-msgstr ""
-
-#: src/epubforge/gui/widgets/css_element_panel.py:435
+#: src/epubforge/gui/widgets/css_element_format.py:29
 #, python-brace-format
 msgid ""
 "Box: margin {margin} · border {border} · padding {padding} · content "
 "{content}"
 msgstr ""
 
-#: src/epubforge/gui/widgets/css_element_panel.py:446
+#: src/epubforge/gui/widgets/css_element_format.py:41
 #, python-brace-format
 msgid ""
 "Font: {used} · computed {computed} · osadzony {embedded} ({status}) · "
 "fallback {fallback}"
 msgstr ""
 
-#: src/epubforge/gui/widgets/css_element_panel.py:450
+#: src/epubforge/gui/widgets/css_element_format.py:45
 msgid "tak"
 msgstr ""
 
-#: src/epubforge/gui/widgets/css_element_panel.py:450
+#: src/epubforge/gui/widgets/css_element_format.py:45
 msgid "nie"
 msgstr ""
 
-#: src/epubforge/gui/widgets/css_element_panel.py:458
+#: src/epubforge/gui/widgets/css_element_format.py:54
 msgid "zwycięska"
 msgstr ""
 
-#: src/epubforge/gui/widgets/css_element_panel.py:459
+#: src/epubforge/gui/widgets/css_element_format.py:55
 msgid "częściowo nadpisana"
 msgstr ""
 
-#: src/epubforge/gui/widgets/css_element_panel.py:460
+#: src/epubforge/gui/widgets/css_element_format.py:56
 msgid "przegrana"
 msgstr ""
 
-#: src/epubforge/gui/widgets/css_element_panel.py:467
+#: src/epubforge/gui/widgets/css_element_format.py:57
+#: src/epubforge/gui/widgets/css_element_panel.py:313
+msgid "nieaktywna"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_format.py:63
 msgid "wygrywa"
 msgstr ""
 
-#: src/epubforge/gui/widgets/css_inspector.py:122
+#: src/epubforge/gui/widgets/css_element_panel.py:120
+msgid "Szukaj właściwości…"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:121
+msgid "Filtruj deklaracje po nazwie właściwości"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:127
+#, fuzzy
+msgid "Layout"
+msgstr "Auto"
+
+#: src/epubforge/gui/widgets/css_element_panel.py:128
+#, fuzzy
+msgid "Kolory"
+msgstr "Usuń kolory"
+
+#: src/epubforge/gui/widgets/css_element_panel.py:129
+#, fuzzy
+msgid "Box model"
+msgstr "Model"
+
+#: src/epubforge/gui/widgets/css_element_panel.py:130
+#, fuzzy
+msgid "Nadpisane"
+msgstr "Naprawianie..."
+
+#: src/epubforge/gui/widgets/css_element_panel.py:133
+#, python-brace-format
+msgid "Włącz filtr: {name}"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:147
+msgid "Właściwość / reguła"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:147
+#, fuzzy
+msgid "Zadeklarowana"
+msgstr "Deklaracje"
+
+#: src/epubforge/gui/widgets/css_element_panel.py:147
+msgid "Computed"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:147
+#, fuzzy
+msgid "Stan"
+msgstr "Status"
+
+#: src/epubforge/gui/widgets/css_element_panel.py:147
+msgid "Źródło"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:150
+msgid ""
+"Dopasowane, inline, dziedziczone i nieaktywne deklaracje rzeczywistego "
+"elementu"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:157
+msgid "Źródło wybranej reguły; poprawna edycja najpierw trafia do warstwy preview"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:165
+msgid "Zakres tymczasowej warstwy CSS"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:166
+#, fuzzy
+msgid "Bieżący element"
+msgstr "Bieżący plik"
+
+#: src/epubforge/gui/widgets/css_element_panel.py:167
+#, fuzzy
+msgid "Wszystkie dopasowania"
+msgstr "Wszystkie pliki"
+
+#: src/epubforge/gui/widgets/css_element_panel.py:168
+msgid "Reprezentatywne rozdziały — później"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:181
+msgid "Przejdź do reguły"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:182
+msgid "Otwórz właściwy arkusz i zaznacz dokładny span tej reguły"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:186
+msgid "Pokaż źródło elementu"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:187
+msgid "Otwórz dokument HTML i przejdź do przybliżonej linii elementu"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:191
+msgid "Utwórz regułę dla elementu"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:192
+msgid "Dodaj nową regułę dla id, tagu i klas zaznaczonego elementu"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:196
+#, fuzzy
+msgid "Kopiuj selektor"
+msgstr "Selektor"
+
+#: src/epubforge/gui/widgets/css_element_panel.py:197
+msgid "Skopiuj selektor wybranej reguły lub elementu do schowka"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:201
+msgid "Podświetl wszystkie dopasowania"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:202
+msgid "Wyróżnij w dokładnym podglądzie wszystkie elementy pasujące do selektora"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:206
+#, fuzzy
+msgid "Zastosuj"
+msgstr "Zastosuj preset"
+
+#: src/epubforge/gui/widgets/css_element_panel.py:207
+msgid "Po kontroli revision zapisz regułę do źródła jako jedną operację Undo"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:240
+msgid "Wybierz element w dokładnym podglądzie."
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:248
+#, fuzzy, python-brace-format
+msgid "DOM: {path}"
+msgstr "OK: {path}"
+
+#: src/epubforge/gui/widgets/css_element_panel.py:252
+#, python-brace-format
+msgid ""
+"Element: {tag}  id={id}  klasy={classes}\n"
+"{text}"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:265
+#, python-brace-format
+msgid "Nadpisania czytnika: {items}"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:272
+#, python-brace-format
+msgid "Ograniczenia: {items}"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:285
+#, python-brace-format
+msgid ""
+"Preview: {count} dopasowań. Uwaga: warstwa na końcu dokumentu może mieć "
+"inną kolejność niż źródło."
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:290
+#, python-brace-format
+msgid "Błąd preview: {error} — zachowano ostatnią poprawną warstwę."
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:308
+#, fuzzy
+msgid "inline"
+msgstr "Inne"
+
+#: src/epubforge/gui/widgets/css_element_panel.py:313
+msgid "aktywna"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:340
+msgid "Właściwości dziedziczone"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:340
+#: src/epubforge/gui/widgets/css_element_panel.py:350
+msgid "dziedziczona"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:388
+msgid "/* Reguła tylko do odczytu: brak wiarygodnego spanu źródła. */"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:401
+msgid "Błąd CSS — zachowano ostatnią poprawną warstwę."
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:416
+msgid "Konflikt revision: źródło zmieniło się. Niczego nie nadpisano."
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:423
+msgid "Zastosowano jako jedną operację Undo."
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_element_panel.py:426
+msgid "Nie zastosowano zmiany. Sprawdź tryb edycji i aktualność źródła."
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_inspector.py:124
 msgid "Tryb inspektora: arkusz źródłowy albo rzeczywisty element DOM"
 msgstr ""
 
-#: src/epubforge/gui/widgets/css_inspector.py:133
+#: src/epubforge/gui/widgets/css_inspector.py:138
 msgid "Selektor"
 msgstr "Selektor"
 
-#: src/epubforge/gui/widgets/css_inspector.py:133
+#: src/epubforge/gui/widgets/css_inspector.py:138
 msgid "Deklaracje"
 msgstr "Deklaracje"
 
-#: src/epubforge/gui/widgets/css_inspector.py:133
+#: src/epubforge/gui/widgets/css_inspector.py:138
 msgid "@media"
 msgstr "@media"
 
-#: src/epubforge/gui/widgets/css_inspector.py:148
+#: src/epubforge/gui/widgets/css_inspector.py:140
+msgid "Reguły bieżącego arkusza wraz z deklaracjami i kontekstem @media"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_inspector.py:147
+msgid "Kod wybranej reguły CSS; zmiany pozostają lokalne do Zastosuj"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_inspector.py:157
 msgid "Zastosuj do arkusza"
 msgstr "Zastosuj do arkusza"
 
-#: src/epubforge/gui/widgets/css_inspector.py:150
+#: src/epubforge/gui/widgets/css_inspector.py:159
+msgid "Zapisz poprawną regułę do jej dokładnego spanu jako jedną operację Undo"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_inspector.py:162
 msgid "Przywróć"
 msgstr "Przywróć"
 
-#: src/epubforge/gui/widgets/css_inspector.py:158
+#: src/epubforge/gui/widgets/css_inspector.py:163
+msgid "Odrzuć edycję reguły i wczytaj ją ponownie ze źródła"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_inspector.py:171
 msgid "Arkusz"
 msgstr ""
 
-#: src/epubforge/gui/widgets/css_inspector.py:191
+#: src/epubforge/gui/widgets/css_inspector.py:186
+msgid "Przewiń zakładki inspektora w lewo"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_inspector.py:188
+msgid "Przewiń zakładki inspektora w prawo"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_inspector.py:197
+msgid "Przybliżony podgląd wybranej reguły na neutralnej karcie"
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_inspector.py:210
 msgid "Podgląd przybliżony — czytnik może różnić się w szczegółach."
 msgstr "Podgląd przybliżony — czytnik może różnić się w szczegółach."
 
-#: src/epubforge/gui/widgets/css_inspector.py:260
+#: src/epubforge/gui/widgets/css_inspector.py:279
 #, python-brace-format
 msgid "Błąd CSS: {msg}"
 msgstr "Błąd CSS: {msg}"
 
-#: src/epubforge/gui/widgets/css_inspector.py:267
+#: src/epubforge/gui/widgets/css_inspector.py:286
 #, python-brace-format
 msgid "Nieobsługiwane w podglądzie: {items}"
 msgstr "Nieobsługiwane w podglądzie: {items}"
 
-#: src/epubforge/gui/widgets/css_inspector.py:283
+#: src/epubforge/gui/widgets/css_inspector.py:302
 msgid "Konflikt revision: źródło zmieniło się; niczego nie nadpisano."
+msgstr ""
+
+#: src/epubforge/gui/widgets/css_inspector.py:334
+msgid "Ładowanie dokumentu do inspektora elementu…"
 msgstr ""
 
 #: src/epubforge/gui/widgets/html_preview.py:112
@@ -3711,55 +4153,88 @@ msgstr "Brak podglądu"
 msgid "Nie udało się wczytać obrazu"
 msgstr "Nie udało się wczytać obrazu"
 
-#: src/epubforge/gui/widgets/search_panel.py:84
+#: src/epubforge/gui/widgets/search_panel.py:81
+#, fuzzy
+msgid "Fraza lub wyrażenie regularne do wyszukania"
+msgstr "Traktuj frazę jako wyrażenie regularne"
+
+#: src/epubforge/gui/widgets/search_panel.py:85
 msgid "Zamień na…"
 msgstr "Zamień na…"
 
-#: src/epubforge/gui/widgets/search_panel.py:89
+#: src/epubforge/gui/widgets/search_panel.py:86
+msgid "Tekst podstawiany przez operację Zamień wszystkie"
+msgstr ""
+
+#: src/epubforge/gui/widgets/search_panel.py:91
 msgid "Regex"
 msgstr "Regex"
 
-#: src/epubforge/gui/widgets/search_panel.py:90
+#: src/epubforge/gui/widgets/search_panel.py:92
 msgid "Traktuj frazę jako wyrażenie regularne"
 msgstr "Traktuj frazę jako wyrażenie regularne"
 
-#: src/epubforge/gui/widgets/search_panel.py:92
+#: src/epubforge/gui/widgets/search_panel.py:94
 msgid "Aa"
 msgstr "Aa"
 
-#: src/epubforge/gui/widgets/search_panel.py:93
+#: src/epubforge/gui/widgets/search_panel.py:95
 msgid "Rozróżniaj wielkość liter"
 msgstr "Rozróżniaj wielkość liter"
 
-#: src/epubforge/gui/widgets/search_panel.py:95
+#: src/epubforge/gui/widgets/search_panel.py:97
 msgid "Całe słowa"
 msgstr "Całe słowa"
 
-#: src/epubforge/gui/widgets/search_panel.py:96
+#: src/epubforge/gui/widgets/search_panel.py:98
 msgid "Dopasuj tylko całe słowa"
 msgstr "Dopasuj tylko całe słowa"
 
-#: src/epubforge/gui/widgets/search_panel.py:100
+#: src/epubforge/gui/widgets/search_panel.py:102
 msgid "Bieżący plik"
 msgstr "Bieżący plik"
 
-#: src/epubforge/gui/widgets/search_panel.py:101
+#: src/epubforge/gui/widgets/search_panel.py:103
 msgid "Cały EPUB"
 msgstr "Cały EPUB"
 
-#: src/epubforge/gui/widgets/search_panel.py:115
+#: src/epubforge/gui/widgets/search_panel.py:104
+msgid "Ogranicz wyszukiwanie do aktualnie otwartego pliku"
+msgstr ""
+
+#: src/epubforge/gui/widgets/search_panel.py:105
+msgid "Przeszukaj wszystkie tekstowe pliki publikacji"
+msgstr ""
+
+#: src/epubforge/gui/widgets/search_panel.py:117
+msgid "Uruchom wyszukiwanie z wybranymi opcjami"
+msgstr ""
+
+#: src/epubforge/gui/widgets/search_panel.py:120
 msgid "Zamień wszystkie"
 msgstr "Zamień wszystkie"
 
-#: src/epubforge/gui/widgets/search_panel.py:174
+#: src/epubforge/gui/widgets/search_panel.py:122
+msgid "Zastąp wszystkie trafienia w wybranym zakresie i pokaż podsumowanie"
+msgstr ""
+
+#: src/epubforge/gui/widgets/search_panel.py:127
+msgid "Anuluj trwające wyszukiwanie całej publikacji"
+msgstr ""
+
+#: src/epubforge/gui/widgets/search_panel.py:133
+msgid "Ukryj panel Szukaj/Zamień"
+msgstr ""
+
+#: src/epubforge/gui/widgets/search_panel.py:184
 msgid "Otwórz najpierw plik EPUB."
 msgstr "Otwórz najpierw plik EPUB."
 
-#: src/epubforge/gui/widgets/search_panel.py:177
+#: src/epubforge/gui/widgets/search_panel.py:187
 msgid "Podaj frazę do wyszukania."
 msgstr "Podaj frazę do wyszukania."
 
-#: src/epubforge/gui/widgets/search_panel.py:261
+#: src/epubforge/gui/widgets/search_panel.py:271
 #, python-brace-format
 msgid "Znaleziono {n} trafienie"
 msgid_plural "Znaleziono {n} trafień"
@@ -3767,16 +4242,16 @@ msgstr[0] "Znaleziono {n} trafienie"
 msgstr[1] "Znaleziono {n} trafienia"
 msgstr[2] "Znaleziono {n} trafień"
 
-#: src/epubforge/gui/widgets/search_panel.py:280
+#: src/epubforge/gui/widgets/search_panel.py:290
 msgid "Otwórz EPUB i podaj frazę."
 msgstr "Otwórz EPUB i podaj frazę."
 
-#: src/epubforge/gui/widgets/search_panel.py:306
+#: src/epubforge/gui/widgets/search_panel.py:316
 #, python-brace-format
 msgid "Zamieniono {total} w {files} plikach"
 msgstr "Zamieniono {total} w {files} plikach"
 
-#: src/epubforge/gui/widgets/search_panel.py:308
+#: src/epubforge/gui/widgets/search_panel.py:318
 #, python-brace-format
 msgid " · pominięto {n} (nie-UTF-8)"
 msgstr " · pominięto {n} (nie-UTF-8)"
@@ -3860,4 +4335,10 @@ msgstr "Raport EpubCheck ma nieoczekiwany format."
 
 #~ msgid "Konwersja {current}/{total}"
 #~ msgstr "Konwersja {current}/{total}"
+
+#~ msgid "Włącz edycję (domyślnie tylko do odczytu)"
+#~ msgstr "Włącz edycję (domyślnie tylko do odczytu)"
+
+#~ msgid "Pokaż panel reguł CSS z podglądem na żywo"
+#~ msgstr "Pokaż panel reguł CSS z podglądem na żywo"
 

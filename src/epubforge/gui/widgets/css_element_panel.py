@@ -25,6 +25,13 @@ from PySide6.QtWidgets import (
 from epubforge.fixers.css_rules import parse_single_rule
 from epubforge.gui.css_inspection import ElementInspection, InspectorRule, RuleIdentity
 from epubforge.gui.widgets.code_editor import CodeEditor
+from epubforge.gui.widgets.css_element_format import (
+    declaration_source,
+    format_box,
+    format_font,
+    state_label,
+)
+from epubforge.gui.widgets.horizontal_strip import HorizontalStrip
 from epubforge.i18n import _
 
 _RULE_ROLE = Qt.ItemDataRole.UserRole
@@ -108,12 +115,12 @@ class CssElementPanel(QWidget):
         ):
             layout.addWidget(widget_label)
 
-        filters = QHBoxLayout()
+        filters = HorizontalStrip()
         self.search_edit = QLineEdit()
         self.search_edit.setPlaceholderText(_("Szukaj właściwości…"))
         self.search_edit.setToolTip(_("Filtruj deklaracje po nazwie właściwości"))
         self.search_edit.textChanged.connect(self._rebuild_tree)
-        filters.addWidget(self.search_edit, stretch=1)
+        filters.row.addWidget(self.search_edit, stretch=1)
         self.filter_checks: dict[str, QCheckBox] = {}
         for key, filter_label in (
             ("typography", _("Typografia")),
@@ -125,19 +132,30 @@ class CssElementPanel(QWidget):
             check = QCheckBox(filter_label)
             check.setToolTip(_("Włącz filtr: {name}").format(name=filter_label))
             check.toggled.connect(self._rebuild_tree)
-            filters.addWidget(check)
+            filters.row.addWidget(check)
             self.filter_checks[key] = check
-        layout.addLayout(filters)
+        filters.finish()
+        self.filter_strip = filters
+        layout.addWidget(filters)
 
         splitter = QSplitter(Qt.Orientation.Vertical)
+        splitter.setChildrenCollapsible(False)
+        splitter.setHandleWidth(8)
+        self.detail_splitter = splitter
         self.tree = QTreeWidget()
         self.tree.setHeaderLabels(
             [_("Właściwość / reguła"), _("Zadeklarowana"), _("Computed"), _("Stan"), _("Źródło")]
+        )
+        self.tree.setToolTip(
+            _("Dopasowane, inline, dziedziczone i nieaktywne deklaracje rzeczywistego elementu")
         )
         self.tree.currentItemChanged.connect(self._on_selection)
         splitter.addWidget(self.tree)
         self.rule_editor = CodeEditor()
         self.rule_editor.read_only = True
+        self.rule_editor.setToolTip(
+            _("Źródło wybranej reguły; poprawna edycja najpierw trafia do warstwy preview")
+        )
         splitter.addWidget(self.rule_editor)
         splitter.setSizes([360, 150])
         layout.addWidget(splitter, stretch=1)
@@ -158,13 +176,37 @@ class CssElementPanel(QWidget):
         scope_row.addWidget(self.preview_status, stretch=1)
         layout.addLayout(scope_row)
 
-        actions = QHBoxLayout()
-        self.jump_button = self._button(_("Przejdź do reguły"), self._jump)
-        self.source_button = self._button(_("Pokaż źródło elementu"), self._show_source)
-        self.create_button = self._button(_("Utwórz regułę dla elementu"), self._create)
-        self.copy_button = self._button(_("Kopiuj selektor"), self._copy_selector)
-        self.highlight_button = self._button(_("Podświetl wszystkie dopasowania"), self._highlight)
-        self.apply_button = self._button(_("Zastosuj"), self._apply)
+        actions = HorizontalStrip()
+        self.jump_button = self._button(
+            _("Przejdź do reguły"),
+            _("Otwórz właściwy arkusz i zaznacz dokładny span tej reguły"),
+            self._jump,
+        )
+        self.source_button = self._button(
+            _("Pokaż źródło elementu"),
+            _("Otwórz dokument HTML i przejdź do przybliżonej linii elementu"),
+            self._show_source,
+        )
+        self.create_button = self._button(
+            _("Utwórz regułę dla elementu"),
+            _("Dodaj nową regułę dla id, tagu i klas zaznaczonego elementu"),
+            self._create,
+        )
+        self.copy_button = self._button(
+            _("Kopiuj selektor"),
+            _("Skopiuj selektor wybranej reguły lub elementu do schowka"),
+            self._copy_selector,
+        )
+        self.highlight_button = self._button(
+            _("Podświetl wszystkie dopasowania"),
+            _("Wyróżnij w dokładnym podglądzie wszystkie elementy pasujące do selektora"),
+            self._highlight,
+        )
+        self.apply_button = self._button(
+            _("Zastosuj"),
+            _("Po kontroli revision zapisz regułę do źródła jako jedną operację Undo"),
+            self._apply,
+        )
         for button in (
             self.jump_button,
             self.source_button,
@@ -173,16 +215,19 @@ class CssElementPanel(QWidget):
             self.highlight_button,
             self.apply_button,
         ):
-            actions.addWidget(button)
-        layout.addLayout(actions)
+            actions.row.addWidget(button)
+        actions.row.addStretch(1)
+        actions.finish()
+        self.action_strip = actions
+        layout.addWidget(actions)
 
         self.limitations_label = QLabel()
         self.limitations_label.setWordWrap(True)
         layout.addWidget(self.limitations_label)
 
-    def _button(self, text: str, slot: Callable[[], None]) -> QPushButton:
+    def _button(self, text: str, tooltip: str, slot: Callable[[], None]) -> QPushButton:
         button = QPushButton(text)
-        button.setToolTip(text)
+        button.setToolTip(tooltip)
         button.clicked.connect(slot)
         return button
 
@@ -211,8 +256,8 @@ class CssElementPanel(QWidget):
                     text=element.text,
                 )
             )
-            self.box_label.setText(_format_box(inspection.box))
-            self.font_label.setText(_format_font(inspection))
+            self.box_label.setText(format_box(inspection.box))
+            self.font_label.setText(format_font(inspection))
             reader = inspection.reader_simulation
             overrides = reader.get("overrides", {}) if isinstance(reader, dict) else {}
             if isinstance(overrides, dict) and overrides:
@@ -276,8 +321,8 @@ class CssElementPanel(QWidget):
                         decl.property,
                         decl.declared + important,
                         decl.computed,
-                        _state_label(decl.state),
-                        _declaration_source(rule, decl.winner_order, decl.state),
+                        state_label(decl.state),
+                        declaration_source(rule, decl.winner_order, decl.state),
                     ]
                 )
                 child.setData(0, _RULE_ROLE, rule)
@@ -425,58 +470,3 @@ class CssElementPanel(QWidget):
         selector = self._selector()
         if selector:
             self._highlight_matches(selector)
-
-
-def _format_box(box: object) -> str:
-    if not isinstance(box, dict):
-        return ""
-
-    def values(name: str) -> str:
-        item = box.get(name, {})
-        return (
-            "/".join(str(item.get(side, "")) for side in ("top", "right", "bottom", "left"))
-            if isinstance(item, dict)
-            else ""
-        )
-
-    content = box.get("content", {})
-    size = (
-        f"{content.get('width', '')} x {content.get('height', '')}"
-        if isinstance(content, dict)
-        else ""
-    )
-    return _(
-        "Box: margin {margin} · border {border} · padding {padding} · content {content}"
-    ).format(
-        margin=values("margin"), border=values("border"), padding=values("padding"), content=size
-    )
-
-
-def _format_font(inspection: ElementInspection) -> str:
-    font = inspection.font
-    if font is None:
-        return ""
-    return _(
-        "Font: {used} · computed {computed} · osadzony {embedded} ({status}) · fallback {fallback}"
-    ).format(
-        used=font.used_family,
-        computed=font.computed_family,
-        embedded=_("tak") if font.embedded else _("nie"),
-        status=font.status,
-        fallback=", ".join(font.fallbacks) or "—",
-    )
-
-
-def _state_label(state: str) -> str:
-    return {
-        "winning": _("zwycięska"),
-        "partial": _("częściowo nadpisana"),
-        "lost": _("przegrana"),
-        "inactive": _("nieaktywna"),
-    }.get(state, state)
-
-
-def _declaration_source(rule: InspectorRule, winner_order: int | None, state: str) -> str:
-    """Pokazuje kolejność/specyficzność i wskazuje zwycięzcę przegranej deklaracji."""
-    winner = f" -> {_('wygrywa')} #{winner_order}" if state == "lost" and winner_order else ""
-    return f"spec={rule.specificity} · #{rule.order}{winner}"

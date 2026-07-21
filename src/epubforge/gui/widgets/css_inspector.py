@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
     QSplitter,
     QTabWidget,
     QTextEdit,
+    QToolButton,
     QTreeWidget,
     QTreeWidgetItem,
     QVBoxLayout,
@@ -37,6 +38,7 @@ from epubforge.fixers.css_rules import (
     parse_single_rule,
 )
 from epubforge.gui.css_inspection import (
+    ElementInspection,
     RuleIdentity,
     SourceProvider,
     content_revision,
@@ -127,16 +129,23 @@ class CssInspector(QWidget):
         sheet_layout = QVBoxLayout(sheet)
         sheet_layout.setContentsMargins(0, 0, 0, 0)
         splitter = QSplitter(Qt.Orientation.Vertical)
+        splitter.setChildrenCollapsible(False)
+        splitter.setHandleWidth(8)
         sheet_layout.addWidget(splitter)
+        self.sheet_splitter = splitter
 
         self.tree = QTreeWidget()
         self.tree.setHeaderLabels([_("Selektor"), _("Deklaracje"), _("@media")])
         self.tree.setRootIsDecorated(False)
+        self.tree.setToolTip(_("Reguły bieżącego arkusza wraz z deklaracjami i kontekstem @media"))
         self.tree.currentItemChanged.connect(self._on_rule_selected)
         splitter.addWidget(self.tree)
 
         read_only = self._apply is None
         self.rule_editor = CodeEditor()
+        self.rule_editor.setToolTip(
+            _("Kod wybranej reguły CSS; zmiany pozostają lokalne do Zastosuj")
+        )
         self.rule_editor.read_only = read_only
         self.rule_editor.editor.textChanged.connect(self._preview_timer.start)
         splitter.addWidget(self.rule_editor)
@@ -146,8 +155,12 @@ class CssInspector(QWidget):
 
         buttons = QHBoxLayout()
         self.apply_button = QPushButton(_("Zastosuj do arkusza"))
+        self.apply_button.setToolTip(
+            _("Zapisz poprawną regułę do jej dokładnego spanu jako jedną operację Undo")
+        )
         self.apply_button.clicked.connect(self._apply_rule)
         self.revert_button = QPushButton(_("Przywróć"))
+        self.revert_button.setToolTip(_("Odrzuć edycję reguły i wczytaj ją ponownie ze źródła"))
         self.revert_button.clicked.connect(self._revert_rule)
         buttons.addStretch(1)
         buttons.addWidget(self.revert_button)
@@ -169,6 +182,11 @@ class CssInspector(QWidget):
         )
         self.mode_tabs.addTab(self.element_panel, _("Element"))
         self.mode_tabs.setTabEnabled(1, False)
+        for button in self.mode_tabs.findChildren(QToolButton):
+            label = _("Przewiń zakładki inspektora w lewo")
+            if button.objectName() == "ScrollRightButton":
+                label = _("Przewiń zakładki inspektora w prawo")
+            button.setToolTip(label)
 
     def _build_preview_pane(self) -> QWidget:
         pane = QWidget()
@@ -176,6 +194,7 @@ class CssInspector(QWidget):
         box.setContentsMargins(0, 0, 0, 0)
         self.preview = QTextEdit()
         self.preview.setReadOnly(True)
+        self.preview.setToolTip(_("Przybliżony podgląd wybranej reguły na neutralnej karcie"))
         box.addWidget(self.preview, stretch=1)
 
         self.error_label = QLabel()
@@ -308,6 +327,12 @@ class CssInspector(QWidget):
         self.mode_tabs.setTabEnabled(1, True)
         if inspection.available:
             self.mode_tabs.setCurrentIndex(1)
+
+    def set_element_pending(self) -> None:
+        """Czyści poprzedni element podczas przygotowywania aktualnego DOM."""
+        self.element_panel.set_inspection(
+            ElementInspection(False, error=_("Ładowanie dokumentu do inspektora elementu…"))
+        )
 
     def set_context(self, *, sheet: bool, element: bool) -> None:
         """Włącza tryby właściwe dla bieżącego pliku i aktywnego backendu."""

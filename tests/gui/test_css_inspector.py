@@ -11,6 +11,7 @@ from pytestqt.qtbot import QtBot
 
 from epubforge.fixers.css_rules import parse_rules
 from epubforge.gui.css_inspection import RuleIdentity, content_revision
+from epubforge.gui.preview.backend import BackendKind
 from epubforge.gui.preview.webengine_backend import _decode_json_object
 from epubforge.gui.tabs.editor import EditorTab
 from epubforge.gui.widgets.css_inspector import CssInspector
@@ -78,6 +79,24 @@ def test_inspector_hidden_for_non_css(qtbot: QtBot, tmp_path: Path) -> None:
     tab._select_path("OEBPS/a.xhtml")
     assert tab.css_inspector.isHidden()
     assert not tab.inspector_toggle.isEnabled()
+    assert "WebEngine" in tab.inspector_toggle.toolTip()
+
+
+def test_exact_html_enables_element_inspector_without_view_toggle(
+    qtbot: QtBot, tmp_path: Path
+) -> None:
+    """Zwykły XHTML jest kwalifikowany od razu, bez kliknięcia Kod/Podgląd/Podział."""
+    tab = _open_css(qtbot, tmp_path)
+    tab._select_path("OEBPS/a.xhtml")
+    tab.book_preview._active.kind = BackendKind.WEBENGINE
+    tab.book_preview._ready_document = "OEBPS/a.xhtml"
+
+    tab._update_inspector()
+
+    assert tab.inspector_toggle.isEnabled()
+    assert not tab.css_inspector.isHidden()
+    assert tab.css_inspector.mode_tabs.isTabEnabled(1)
+    assert tab.css_inspector.mode_tabs.currentIndex() == 1
 
 
 def test_live_preview_updates_after_debounce(qtbot: QtBot, tmp_path: Path) -> None:
