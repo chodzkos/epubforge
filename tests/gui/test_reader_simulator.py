@@ -216,3 +216,15 @@ def test_profile_change_restores_selected_element() -> None:
     assert host._last_state.node_id == "selected-node"
     assert host.restored and host.restored[-1].node_id == "selected-node"
     assert any("epubforge-reader-user-layer" in script for script in host._page.scripts)
+
+
+def test_reader_layers_are_inert_until_explicitly_enabled() -> None:
+    host = _ReaderHost()
+
+    host._apply_reader_layers()
+
+    assert host.restored == [PreviewState()]
+    assert not any("epubforge-reader-simulator-layer" in script for script in host._page.scripts)
+    assert host.reader_state_changed.values[-1]["enabled"] is False
+    assert host.reader_state_changed.values[-1]["columns_enabled"] is False
+    assert host.reader_state_changed.values[-1]["overrides"] == {}

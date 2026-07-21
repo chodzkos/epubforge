@@ -49,6 +49,7 @@ class ReaderWebEngineMixin:
         self._user_style = self._reader_profile.user_style
         self._comparison = ComparisonMode.PUBLISHER_USER
         self._publication_layout = PublicationLayout()
+        self._reader_simulation_enabled = False
 
     def set_reader_simulation(
         self,
@@ -56,6 +57,7 @@ class ReaderWebEngineMixin:
         user_style: UserStyleSettings,
         comparison: ComparisonMode,
     ) -> None:
+        self._reader_simulation_enabled = True
         self._reader_profile = profile.normalized()
         self._user_style = user_style.normalized()
         self._comparison = comparison
@@ -165,6 +167,10 @@ class ReaderWebEngineMixin:
         )
 
     def _apply_reader_layers(self) -> None:
+        if not self._reader_simulation_enabled:
+            self.restore_state(self._last_state)
+            self._emit_reader_state()
+            return
         layers = build_reader_layers(
             self._reader_profile, self._publication_layout, self._user_style, self._comparison
         )
@@ -202,17 +208,27 @@ class ReaderWebEngineMixin:
         def reported(value: Any) -> None:
             if expected == self._expected_generation:
                 state = dict(value) if isinstance(value, dict) else {}
-                state.update(
-                    reader_payload(
-                        self._reader_profile,
-                        self._publication_layout,
-                        self._user_style,
-                        self._comparison,
-                    )
-                )
+                state.update(self._reader_payload())
                 self.reader_state_changed.emit(state)
 
         self._page.runJavaScript(READER_STATE_SCRIPT, APP_WORLD, reported)
+
+    def _reader_payload(self) -> dict[str, Any]:
+        payload = reader_payload(
+            self._reader_profile,
+            self._publication_layout,
+            self._user_style,
+            self._comparison,
+        )
+        payload["enabled"] = self._reader_simulation_enabled
+        if not self._reader_simulation_enabled:
+            payload.update(
+                columns_enabled=False,
+                publisher_disabled=False,
+                overrides={},
+                limitations=[],
+            )
+        return payload
 
 
 def _decode_json_object(value: Any) -> dict[str, Any]:

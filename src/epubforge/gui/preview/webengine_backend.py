@@ -24,7 +24,6 @@ from epubforge.gui.preview.backend import (
 )
 from epubforge.gui.preview.css_bridge import INSPECT_SCRIPT
 from epubforge.gui.preview.dom_mapping import NODE_ATTRIBUTE, source_location
-from epubforge.gui.preview.reader import reader_payload
 from epubforge.gui.preview.reader_webengine import ReaderWebEngineMixin
 from epubforge.gui.preview.rewrite import safe_source_url
 from epubforge.gui.preview.session import PreviewSession
@@ -195,12 +194,7 @@ class WebEnginePreviewBackend(ReaderWebEngineMixin, PreviewBackend):
             except (TypeError, ValueError) as exc:
                 logger.warning("Niepoprawny raport JSON inspektora WebEngine: %s", exc)
                 payload = {"available": False, "error": f"WebEngine JSON: {exc}"}
-            payload["reader_simulation"] = reader_payload(
-                self._reader_profile,
-                self._publication_layout,
-                self._user_style,
-                self._comparison,
-            )
+            payload["reader_simulation"] = self._reader_payload()
             self.element_inspected.emit(payload)
 
         self._page.runJavaScript(script, _APP_WORLD, inspected)
