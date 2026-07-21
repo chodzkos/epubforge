@@ -46,7 +46,7 @@ jobs:
         enable-cache: true
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -126,7 +126,7 @@ jobs:
         enable-cache: true
 
     - name: Set up Python 3.12
-      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
       with:
         python-version: "3.12"
 
@@ -172,7 +172,7 @@ jobs:
       with:
         version: "0.8.17"
         enable-cache: true
-    - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
+    - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
       with:
         python-version: "3.12"
     - name: Install Chromium/Qt runtime libraries
@@ -209,7 +209,7 @@ jobs:
       with:
         version: "0.8.17"
         enable-cache: true
-    - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
+    - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
       with:
         python-version: "3.12"
     - name: Install locked build dependencies
@@ -260,7 +260,7 @@ jobs:
         enable-cache: true
 
     - name: Set up Python 3.12
-      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
       with:
         python-version: "3.12"
 
@@ -316,7 +316,7 @@ jobs:
         enable-cache: true
 
     - name: Set up Python 3.12
-      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
       with:
         python-version: "3.12"
 
