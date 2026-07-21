@@ -43,7 +43,7 @@ from epubforge.gui.preview.backend import (
     PreviewStatus,
 )
 from epubforge.gui.preview.controller import PreviewController
-from epubforge.gui.preview.dom_mapping import nearest_node_for_line
+from epubforge.gui.preview.dom_mapping import SourceLocation, nearest_node_for_line, source_location
 from epubforge.gui.preview.preinit import preview_scheme_registered
 from epubforge.gui.preview.session import PreviewSession
 from epubforge.gui.preview.settings import PreviewSettings
@@ -72,6 +72,9 @@ class BookPreview(QWidget):
     open_external = Signal(str)
     diagnostics = Signal(object)
     source_requested = Signal(object)
+    element_inspected = Signal(object)
+    css_preview_result = Signal(object)
+    backend_changed = Signal(object)
 
     def __init__(
         self,
@@ -102,6 +105,8 @@ class BookPreview(QWidget):
         self._text_backend.source_requested.connect(self.source_requested)
         self._text_backend.diagnostics.connect(self.diagnostics)
         self._text_backend.status_changed.connect(self._on_status_changed)
+        self._text_backend.element_inspected.connect(self.element_inspected)
+        self._text_backend.css_preview_result.connect(self.css_preview_result)
         self._body_layout.addWidget(self._text_backend)
         self._active: PreviewBackend = self._text_backend
 
@@ -174,6 +179,16 @@ class BookPreview(QWidget):
         """Liczba wykonanych renderów (do testów: motyw nie może jej zwiększać)."""
         return self._render_count
 
+    @property
+    def generation_id(self) -> int:
+        """Numer generacji używany w stabilnej tożsamości reguły inspektora."""
+        return self._generation
+
+    @property
+    def current_document(self) -> str | None:
+        """Dokument ostatniego poprawnie zbudowanego snapshotu podglądu."""
+        return self._last_snapshot.internal_path if self._last_snapshot is not None else None
+
     # ── Wybór backendu ─────────────────────────────────────────────────────────
 
     def _sync_combo_from_settings(self) -> None:
@@ -228,6 +243,8 @@ class BookPreview(QWidget):
         backend.diagnostics.connect(self.diagnostics)
         backend.status_changed.connect(self._on_status_changed)
         backend.fallback_requested.connect(self._on_renderer_fallback)
+        backend.element_inspected.connect(self.element_inspected)
+        backend.css_preview_result.connect(self.css_preview_result)
         self._webengine_backend = backend
         return backend, ""
 
@@ -276,6 +293,7 @@ class BookPreview(QWidget):
             self._body_layout.addWidget(backend)
         self._active = backend
         backend.show()
+        self.backend_changed.emit(backend.kind)
         self._update_status()
         if self._last_snapshot is not None:
             backend.set_session(self._session)
@@ -373,6 +391,31 @@ class BookPreview(QWidget):
         if self._session is not None:
             self._session.select(internal_path, node.node_id)
         self._active.focus_node(node.node_id)
+
+    def inspect_element(self, node_id: str | None = None) -> None:
+        """Deleguje inspekcję do aktywnego backendu bez ujawniania WebEngine widgetowi."""
+        self._active.inspect_element(node_id)
+
+    def preview_css_rule(
+        self, selector: str, rule_text: str, *, current_element: bool = False
+    ) -> None:
+        """Deleguje bezźródłową warstwę preview do aktywnego backendu."""
+        self._active.preview_css_rule(selector, rule_text, current_element=current_element)
+
+    def clear_css_preview(self) -> None:
+        """Usuwa warstwę preview z aktywnego renderera."""
+        self._active.clear_css_preview()
+
+    def highlight_matches(self, selector: str) -> None:
+        """Podświetla dopasowania przez aktywny silnik renderujący."""
+        self._active.highlight_matches(selector)
+
+    def source_location_for_node(self, node_id: str) -> SourceLocation | None:
+        """Rozwiązuje techniczny node wyłącznie w mapie aktualnej generacji."""
+        snapshot = self._last_snapshot
+        generation = snapshot.generation if snapshot is not None else None
+        node = generation.source_map.get(node_id) if generation is not None else None
+        return source_location(node) if node is not None else None
 
     def set_session(self, session: PreviewSession | None) -> None:
         """Ustawia bieżącą sesję i przekazuje ją do aktywnego backendu."""

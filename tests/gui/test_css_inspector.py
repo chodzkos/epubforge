@@ -9,12 +9,22 @@ import pytest
 from PySide6.QtCore import Qt
 from pytestqt.qtbot import QtBot
 
+from epubforge.fixers.css_rules import parse_rules
+from epubforge.gui.css_inspection import RuleIdentity, content_revision
+from epubforge.gui.preview.webengine_backend import _decode_json_object
 from epubforge.gui.tabs.editor import EditorTab
 from epubforge.gui.widgets.css_inspector import CssInspector
 
 pytestmark = pytest.mark.gui
 
 _CSS = "h1 { color: red }\np { font-size: 12pt; letter-spacing: 2px }\n"
+
+
+def test_webengine_json_transport_decodes_objects() -> None:
+    """Złożone wyniki Chromium są dekodowane ze stabilnego transportu JSON."""
+    assert _decode_json_object('{"ok":true,"matches":1}') == {"ok": True, "matches": 1}
+    with pytest.raises(ValueError, match="nie jest obiektem"):
+        _decode_json_object("[]")
 
 
 def _make_css_epub(path: Path, css: str = _CSS) -> None:
@@ -41,9 +51,9 @@ def _make_css_epub(path: Path, css: str = _CSS) -> None:
         zf.writestr("OEBPS/a.xhtml", b"<html><body><p>x</p></body></html>")
 
 
-def _open_css(qtbot: QtBot, tmp_path: Path) -> EditorTab:
+def _open_css(qtbot: QtBot, tmp_path: Path, css: str = _CSS) -> EditorTab:
     book = tmp_path / "b.epub"
-    _make_css_epub(book)
+    _make_css_epub(book, css)
     tab = EditorTab()
     qtbot.addWidget(tab)
     tab.open_epub(book)
@@ -101,3 +111,38 @@ def test_read_only_inspector_hides_apply(qtbot: QtBot) -> None:
     assert not inspector.apply_button.isVisibleTo(inspector)
     assert inspector.rule_editor.read_only is True
     assert inspector.tree.topLevelItemCount() == 2
+
+
+def test_sheet_revision_conflict_does_not_overwrite(qtbot: QtBot) -> None:
+    """Zastosuj nie używa starego spanu po zewnętrznej zmianie źródła."""
+    state = {"source": _CSS}
+    calls: list[tuple[int, int, str]] = []
+    inspector = CssInspector(
+        get_source=lambda: state["source"],
+        apply_replacement=lambda start, end, text: calls.append((start, end, text)),
+    )
+    qtbot.addWidget(inspector)
+    inspector.tree.setCurrentItem(inspector.tree.topLevelItem(0))
+    inspector.rule_editor.editor.setPlainText("h1 { color: blue }")
+    state["source"] = "/* nowsza treść */\n" + _CSS
+    inspector.apply_button.click()
+    assert calls == []
+    assert "Konflikt revision" in inspector.error_label.text()
+
+
+def test_jump_to_rule_uses_path_and_span_for_duplicate_selector(
+    qtbot: QtBot, tmp_path: Path
+) -> None:
+    """Przejście wybiera drugie wystąpienie selektora, a nie pierwszy tekst o tej nazwie."""
+    css = "p { color: red }\n@media screen { p { color: blue } }\n"
+    tab = _open_css(qtbot, tmp_path, css)
+    second = parse_rules(css)[1]
+    identity = RuleIdentity(
+        "OEBPS/s.css",
+        second.rule_path,
+        second.span,
+        generation=4,
+        revision=content_revision(css),
+    )
+    tab._jump_to_css_rule(identity)
+    assert tab.code_editor.editor.textCursor().selectedText() == "p { color: blue }"

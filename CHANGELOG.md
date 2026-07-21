@@ -8,6 +8,13 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Added
+- **Rzeczywisty inspektor kaskady CSS (Prompt 5)** — dotychczasowy tryb Arkusz
+  pozostaje dostępny bez WebEngine, a tryb Element korzysta z CSSOM,
+  `getComputedStyle` i aktywnego layoutu Chromium. Reguły są mapowane na parserowe
+  `plik + rule_path + span + generation/revision`; panel pokazuje box model, font,
+  inline, dziedziczenie, media, specyficzność, `!important`, kolejność i zwycięzcę.
+  Live edit używa technicznej warstwy kopii renderowanej, a Zastosuj kontroluje
+  konflikt revision i zapisuje przez dotychczasowy pojedynczy krok Undo.
 - **Fundament dokładnego podglądu EPUB** (Prompt 1) — nowy pakiet
   `epubforge.gui.preview` wprowadza abstrakcję backendu podglądu (`PreviewBackend`)
   z dwoma torami: lekkim `TextDocumentPreviewBackend` (dotychczasowy `QTextBrowser`)

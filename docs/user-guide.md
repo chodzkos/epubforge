@@ -101,23 +101,23 @@ motywu, „O programie") i zakładki robocze:
   edytuj HTML/CSS z podświetlaniem i wyszukiwarką (Ctrl+F). Edycja jest domyślnie
   wyłączona — włącz **Tryb edycji**. Zapis pliku: Ctrl+S (XHTML/OPF jest walidowany);
   **Zapisz EPUB** utrwala zmiany na dysk (kopia `.bak`). Pliki nie-UTF-8 są tylko do odczytu.
-  Przy otwartym `.css` panel **Inspektor CSS** pokazuje listę reguł i podgląd na żywo —
-  edytujesz regułę, a „Zastosuj do arkusza" wpisuje ją z powrotem do pliku.
+  Przy otwartym `.css` tryb **Inspektor CSS / Arkusz** pokazuje listę reguł i
+  podgląd na żywo; „Zastosuj do arkusza" podmienia dokładny span jako jeden krok
+  Undo. W dokładnym podglądzie tryb **Element** wyjaśnia kaskadę klikniętego elementu:
+  computed style, box model, inline, dziedziczenie, font, aktywne `@media`,
+  specyficzność, `!important`, kolejność i źródło reguły.
+  Edycja elementu najpierw działa w technicznej warstwie preview. **Zastosuj**
+  sprawdza revision; konflikt nie nadpisuje nowszej treści.
   Skrót **Ctrl+Shift+F** otwiera panel **Szukaj/Zamień** (regex, wielkość liter,
   całe słowa; zakres: bieżący plik / cały EPUB). Wyniki są zgrupowane po pliku —
   dwuklik otwiera plik i ustawia kursor na trafieniu. „Zamień wszystkie" zapisuje
   zmiany do bufora (utrwalasz je przyciskiem **Zapisz EPUB**); pliki nie-UTF-8 są
   przy zamianie pomijane. Duże książki przeszukuje wątek roboczy (z **Anuluj**).
   Dla plików HTML/XHTML prawy panel ma przełącznik **Kod ⇄ Podgląd** (domyślnie Kod):
-  podgląd renderuje przybliżony obraz silnikiem Qt (obrazki osadzone z EPUB) i
-  odświeża się z niezapisanej treści. Pasek nad podglądem ma przyciski **Sigil /
-  Calibre Editor** otwierające plik do pełnego podglądu w zewnętrznym programie.
+  backend Dokładny renderuje zasoby publikacji przez WebEngine, a Szybki pozostaje
+  fallbackiem `QTextDocument`. Oba odświeżają się z niezapisanej treści.
 
-  > ⚠️ **Podgląd HTML jest przybliżony** — silnik `QTextDocument` nie wykonuje
-  > JavaScriptu ani pełnego CSS i nie odwzorowuje układu czytnika. Do wiernego
-  > podglądu użyj przycisków Sigil/Calibre Editor.
-
-  > ⚠️ **Podgląd jest przybliżony.** Renderuje go silnik rich text Qt, który obsługuje
+  > ⚠️ **Szybki podgląd jest przybliżony.** Renderuje go silnik rich text Qt, który obsługuje
   > tylko podzbiór CSS (m.in. `font-*`, `color`, `text-align`, `margin/padding`,
   > `line-height`). Właściwości spoza tego zakresu (np. `letter-spacing`, `hyphens`,
   > `float`) są wypisywane jako „nieobsługiwane w podglądzie" i **nie** wpływają na obraz.

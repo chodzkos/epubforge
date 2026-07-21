@@ -113,6 +113,10 @@ class PreviewBackend(QWidget):
     open_external = Signal(str)
     #: Żądanie przejścia na lekki backend po trwałej awarii renderera.
     fallback_requested = Signal(str)
+    #: Raport rzeczywistego elementu i kaskady zwrócony przez Chromium.
+    element_inspected = Signal(object)
+    #: Wynik walidacji/instalacji tymczasowej warstwy CSS.
+    css_preview_result = Signal(object)
 
     kind: BackendKind
 
@@ -139,6 +143,26 @@ class PreviewBackend(QWidget):
     def focus_node(self, node_id: str) -> None:
         """Wyróżnia element technicznym identyfikatorem, jeśli backend to obsługuje."""
         raise NotImplementedError
+
+    def inspect_element(self, node_id: str | None = None) -> None:
+        """Pobiera dane elementu; fallback może jawnie zgłosić brak możliwości."""
+        self.element_inspected.emit(
+            {"available": False, "limitations": ["Computed style wymaga WebEngine."]}
+        )
+
+    def preview_css_rule(
+        self, selector: str, rule_text: str, *, current_element: bool = False
+    ) -> None:
+        """Instaluje zwalidowaną warstwę preview bez zmiany źródła."""
+        self.css_preview_result.emit(
+            {"ok": False, "error": "Podgląd CSS na żywo wymaga WebEngine."}
+        )
+
+    def clear_css_preview(self) -> None:
+        """Usuwa techniczną warstwę preview, jeśli backend ją obsługuje."""
+
+    def highlight_matches(self, selector: str) -> None:
+        """Podświetla elementy dopasowane przez Chromium, jeśli dostępne."""
 
     def set_theme(self, palette: Palette) -> None:
         """Przemalowuje chrome backendu (NIE treść książki) na daną paletę."""
