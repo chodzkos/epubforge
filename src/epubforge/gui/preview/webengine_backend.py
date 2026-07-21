@@ -409,15 +409,14 @@ class WebEnginePreviewBackend(ReaderWebEngineMixin, PreviewBackend):
             if self._last_state.node_id:
                 self.inspect_element(self._last_state.node_id)
             self.status_changed.emit(PreviewStatus.READY)
-            generation = snapshot.generation
-            entries = len(generation.source_map) if generation is not None else 0
-            overlay_bytes = (
-                sum(len(value) for value in generation.dirty_overlay.values())
-                if generation is not None
-                else 0
-            )
+            stats = self._session.cache_stats() if self._session is not None else None
             self.cache_changed.emit(
-                {"entries": entries, "bytes": overlay_bytes, "http_cache": "disabled"}
+                {
+                    "entries": stats.entries if stats is not None else 0,
+                    "bytes": stats.bytes if stats is not None else 0,
+                    "by_kind": stats.by_kind if stats is not None else {},
+                    "http_cache": "disabled",
+                }
             )
         else:
             self.status_changed.emit(PreviewStatus.LAST_GOOD)

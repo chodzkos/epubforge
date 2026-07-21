@@ -209,6 +209,7 @@ markers = [
     "integration: testy integracyjne (wymagają zewnętrznych narzędzi)",
     "slow: wolne testy",
     "security: testy bezpieczeństwa/odporności (fuzz, property) — osobny stabilny job CI",
+    "webengine: testy wymagające prawdziwego Qt WebEngine/Chromium",
 ]
 
 # ── Coverage ───────────────────────────────────────────────────────────────────

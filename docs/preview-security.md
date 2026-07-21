@@ -4,10 +4,11 @@ Dokładny podgląd traktuje każdy EPUB jako niezaufany dokument. Każde otwarci
 publikacji otrzymuje losowy origin `epub-preview://<session-id>/`, a każda zmiana
 tworzy nową generację snapshotu. Stary origin lub numer `rev` nie zwraca danych.
 
-Handler schematu czyta wyłącznie nieruchomy `ResourceProvider`: najpierw snapshot
-niezapisanej treści, następnie snapshot bufora `Epub`, a na końcu oryginalny wpis
-ZIP. Nie odwołuje się do `EditorTab`, widgetów ani żywego `_dirty`. Zamknięcie
-sesji usuwa aktywną generację i nie pozostawia otwartego uchwytu EPUB-a.
+Worker przygotowuje nieruchomy `ResourceProvider`: najpierw snapshot niezapisanej
+treści, następnie snapshot bufora `Epub`, a zasoby źródłowe preładuje z ZIP-a do
+ograniczonego bajtowo cache. Handler schematu czyta już wyłącznie gotowe dane
+pamięciowe — nie dotyka `EditorTab`, widgetów, żywego `_dirty`, systemu plików ani
+ZIP-a. Zamknięcie sesji usuwa aktywną generację i nie pozostawia otwartego uchwytu.
 
 Profil WebEngine jest osobny i off-the-record. Cache, trwałe cookies, trwałe
 uprawnienia, spellcheck i push są wyłączone. Interceptor blokuje sieć, `file:`,
@@ -57,6 +58,7 @@ przybliżona, ponieważ parser XML nie udostępnia dokładnego zakresu znacznika
 Listener w `ApplicationWorld` wysyła przez prywatny, losowy token tylko 16-znakowy
 identyfikator. Backend odrzuca pozostałe komunikaty konsoli i rozwiązuje ID
 wyłącznie w mapie aktywnej generacji, bez logowania treści publikacji.
+
 ## Odświeżanie i awarie
 
 Edycja jest debouncowana przez 400 ms. Zmiana XHTML tworzy nową generację i przed

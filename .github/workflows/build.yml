@@ -99,6 +99,8 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: read
+    env:
+      EPUBFORGE_BUILD_VARIANT: full
 
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -133,8 +135,10 @@ jobs:
       shell: pwsh
       run: |
         $log = Join-Path $PWD "selfcheck-portable.log"
+        $watch = [System.Diagnostics.Stopwatch]::StartNew()
         $proc = Start-Process -FilePath "dist/epubforge.exe" `
           -ArgumentList "--self-check", "$log" -Wait -PassThru
+        $watch.Stop()
         if (Test-Path $log) { Get-Content $log }
         if ($proc.ExitCode -ne 0) {
           Write-Error "portable self-check FAILED (exit $($proc.ExitCode))"
@@ -144,6 +148,8 @@ jobs:
           Write-Error "portable .exe nie zglosil mode=portable (kontrakt F-04)"
           exit 1
         }
+        $size = [Math]::Round((Get-Item "dist/epubforge.exe").Length / 1MB, 1)
+        "Portable onefile: ${size} MiB; cold self-check: $([Math]::Round($watch.Elapsed.TotalSeconds, 2)) s" >> $env:GITHUB_STEP_SUMMARY
 
     - name: Build onedir (do instalatora)
       working-directory: build
@@ -154,8 +160,10 @@ jobs:
       shell: pwsh
       run: |
         $log = Join-Path $PWD "selfcheck-onedir.log"
+        $watch = [System.Diagnostics.Stopwatch]::StartNew()
         $proc = Start-Process -FilePath "dist/epubforge/epubforge.exe" `
           -ArgumentList "--self-check", "$log" -Wait -PassThru
+        $watch.Stop()
         if (Test-Path $log) { Get-Content $log }
         if ($proc.ExitCode -ne 0) {
           Write-Error "onedir self-check FAILED (exit $($proc.ExitCode))"
@@ -165,6 +173,9 @@ jobs:
           Write-Error "onedir .exe nie zglosil mode=installed (kontrakt F-04)"
           exit 1
         }
+        $bytes = (Get-ChildItem "dist/epubforge" -Recurse -File | Measure-Object Length -Sum).Sum
+        $size = [Math]::Round($bytes / 1MB, 1)
+        "Installed onedir: ${size} MiB; cold self-check: $([Math]::Round($watch.Elapsed.TotalSeconds, 2)) s" >> $env:GITHUB_STEP_SUMMARY
 
     - name: Sign EXE (Authenticode — warunkowo, gdy dostępny certyfikat)
       # Podpisujemy portable + onedir .exe TYLKO gdy skonfigurowano bezpieczny

@@ -109,7 +109,7 @@ def test_preview_toggle_renders_content(qtbot: QtBot, tmp_path: Path) -> None:
     tab = _open_html(qtbot, tmp_path)
     tab.preview_view_button.setChecked(True)
     assert tab.stack.currentIndex() == _PAGE_HTML
-    assert "PODGLAD" in tab.html_preview.view.toPlainText()
+    qtbot.waitUntil(lambda: "PODGLAD" in tab.html_preview.view.toPlainText(), timeout=2_000)
 
 
 def test_preview_reflects_edits(qtbot: QtBot, tmp_path: Path) -> None:
@@ -123,7 +123,9 @@ def test_preview_reflects_edits(qtbot: QtBot, tmp_path: Path) -> None:
         "<p>NOWA TRESC EDYCJI</p></body></html>"
     )
     tab.preview_view_button.setChecked(True)
-    assert "NOWA TRESC EDYCJI" in tab.html_preview.view.toPlainText()
+    qtbot.waitUntil(
+        lambda: "NOWA TRESC EDYCJI" in tab.html_preview.view.toPlainText(), timeout=2_000
+    )
 
 
 def test_external_button_launches_with_current_epub(

@@ -15,7 +15,7 @@ import pytest
 
 from epubforge.gui.preview.availability import probe_webengine
 
-pytestmark = [pytest.mark.gui, pytest.mark.security]
+pytestmark = [pytest.mark.gui, pytest.mark.security, pytest.mark.webengine]
 
 _RUNTIME_SCRIPT = r"""
 import json

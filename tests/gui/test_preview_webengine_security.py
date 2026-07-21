@@ -9,7 +9,7 @@ import sys
 
 import pytest
 
-pytestmark = pytest.mark.gui
+pytestmark = [pytest.mark.gui, pytest.mark.webengine]
 
 _WEBENGINE_AVAILABLE = importlib.util.find_spec("PySide6.QtWebEngineCore") is not None
 

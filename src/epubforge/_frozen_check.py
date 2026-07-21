@@ -1,4 +1,4 @@
-"""Samokontrola zasobów zamrożonego artefaktu (PyInstaller) — bez Qt.
+"""Samokontrola zasobów zamrożonego artefaktu PyInstaller.
 
 Zamrożony ``epubforge.exe`` uruchomiony z ``--self-check [PLIK_LOGU]`` ładuje
 każdy pakowany zasób przez publiczne API i kończy się kodem 0 (wszystko OK) lub
@@ -10,7 +10,9 @@ Windowed build (``console=False``) nie ma podpiętego stdout (``sys.stdout`` byw
 ``None``), dlatego wynik zapisujemy do pliku logu; gdy stdout istnieje (źródła/
 konsola), dublujemy go na stdout. Moduł jest czysto-core (żaden import Qt), więc
 używa go zarówno zamrożony entry point GUI, jak i testy jednostkowe oraz
-``build/verify_wheel_resources.py`` (kontrakt koła).
+``build/verify_wheel_resources.py`` (kontrakt koła). Poza frozen kontrola
+WebEngine nie importuje Qt; pełny artefakt importuje moduły i sprawdza pliki
+Chromium dołączone przez hook PyInstallera.
 """
 
 from __future__ import annotations
@@ -99,6 +101,48 @@ def _check_locale() -> str:
     return "tłumaczenia gettext: en OK"
 
 
+def _check_third_party_notices() -> str:
+    """Noty Qt/Chromium muszą być częścią koła i zamrożonego artefaktu."""
+    from importlib.resources import files
+
+    notice = (files("epubforge.licenses") / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+    if "Qt WebEngine" not in notice or "Chromium" not in notice:
+        raise RuntimeError("niekompletne noty licencyjne Qt/Chromium")
+    return "third-party notices: Qt/PySide6/Chromium"
+
+
+def _check_webengine_bundle() -> str:
+    """Pełny release zawiera moduły, proces pomocniczy, locales i pakiety Chromium."""
+    root_value = getattr(sys, "_MEIPASS", None)
+    if not root_value:
+        return "WebEngine: kontrola artefaktu pominięta poza frozen"
+    from PySide6 import QtWebChannel, QtWebEngineCore, QtWebEngineWidgets
+
+    del QtWebChannel, QtWebEngineCore, QtWebEngineWidgets
+    missing = _missing_webengine_resources(Path(root_value))
+    if missing:
+        raise RuntimeError(f"niekompletny Qt WebEngine: {', '.join(missing)}")
+    return "WebEngine: proces, DLL, resources, locales i pakiety Chromium"
+
+
+def _missing_webengine_resources(root: Path) -> list[str]:
+    """Zwraca brakujące grupy zasobów niezależnie od układu katalogów hooka."""
+    names = {path.name.lower() for path in root.rglob("*") if path.is_file()}
+    groups = {
+        "QtWebEngineProcess": {"qtwebengineprocess.exe", "qtwebengineprocess"},
+        "Qt6WebEngineCore": {"qt6webenginecore.dll", "libqt6webenginecore.so.6"},
+        "Qt6WebEngineWidgets": {"qt6webenginewidgets.dll", "libqt6webenginewidgets.so.6"},
+        "Qt6WebChannel": {"qt6webchannel.dll", "libqt6webchannel.so.6"},
+        "icudtl.dat": {"icudtl.dat"},
+        "qtwebengine_resources.pak": {"qtwebengine_resources.pak"},
+        "qtwebengine_devtools_resources.pak": {"qtwebengine_devtools_resources.pak"},
+    }
+    missing = [label for label, choices in groups.items() if names.isdisjoint(choices)]
+    if not any(name.endswith(".pak") and "en-us" in name for name in names):
+        missing.append("locales/en-US.pak")
+    return missing
+
+
 # Kolejność krotki = kolejność raportu. Każda kontrola zwraca opis albo rzuca wyjątek.
 CHECKS: tuple[tuple[str, Callable[[], str]], ...] = (
     ("taksonomia", _check_taxonomy),
@@ -107,6 +151,8 @@ CHECKS: tuple[tuple[str, Callable[[], str]], ...] = (
     ("stopwords", _check_stopwords),
     ("pomoc", _check_help_docs),
     ("tłumaczenia", _check_locale),
+    ("licencje", _check_third_party_notices),
+    ("WebEngine", _check_webengine_bundle),
 )
 
 

@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller spec — wariant PORTABLE (jeden plik epubforge.exe), GUI na PySide6.
+"""PyInstaller spec — pełny PORTABLE z Qt WebEngine (jeden plik Windows).
 
 Lista zasobów, hiddenimports i wykluczeń pochodzi z `build/_spec_common.py`
 (jedno źródło dla onefile i onedir — patrz audyt F-03).

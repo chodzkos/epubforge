@@ -17,7 +17,6 @@ niezależne od motywu aplikacji (dane profilu czytnika — Prompt 6).
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping
 from dataclasses import replace
 
 from chodzkos_gui_kit.palette import Palette
@@ -25,7 +24,7 @@ from chodzkos_gui_kit.qt.theme import current_palette
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
-from epubforge.core import Epub, Tool
+from epubforge.core import Tool
 from epubforge.gui.preview.availability import probe_webengine
 from epubforge.gui.preview.backend import (
     BackendKind,
@@ -35,12 +34,12 @@ from epubforge.gui.preview.backend import (
     PreviewSnapshot,
     PreviewStatus,
 )
-from epubforge.gui.preview.controller import PreviewController
 from epubforge.gui.preview.dom_mapping import SourceLocation, nearest_node_for_line, source_location
 from epubforge.gui.preview.preinit import preview_scheme_registered
 from epubforge.gui.preview.reader_ui import ReaderUiMixin
 from epubforge.gui.preview.session import PreviewSession
 from epubforge.gui.preview.settings import PreviewSettings
+from epubforge.gui.preview.snapshot_worker import SnapshotWorkerMixin
 from epubforge.gui.preview.text_backend import TextDocumentPreviewBackend
 from epubforge.gui.preview.webengine_backend import (
     WebEngineInitError,
@@ -55,7 +54,7 @@ logger = logging.getLogger(__name__)
 _BACKEND_ORDER: tuple[str, ...] = ("auto", "webengine", "text")
 
 
-class BookPreview(ReaderUiMixin, QWidget):
+class BookPreview(SnapshotWorkerMixin, ReaderUiMixin, QWidget):
     """Pasek wyboru backendu + aktywny tor podglądu (lekki albo dokładny).
 
     Sygnały:
@@ -83,7 +82,8 @@ class BookPreview(ReaderUiMixin, QWidget):
         self._palette = theme if theme is not None else current_palette()
         self._settings = settings if settings is not None else PreviewSettings()
         self._generation = 0
-        self._controller = PreviewController()
+        self._disposed = False
+        self._init_snapshot_pipeline()
         self._status = PreviewStatus.READY
         self._render_count = 0
         self._last_snapshot: PreviewSnapshot | None = None
@@ -344,51 +344,6 @@ class BookPreview(ReaderUiMixin, QWidget):
 
     # ── Renderowanie / sesja ────────────────────────────────────────────────--
 
-    def render_document(
-        self,
-        xhtml: str,
-        epub: Epub | None,
-        internal_path: str | None,
-        *,
-        dirty: Mapping[str, str | bytes] | None = None,
-        media_types: Mapping[str, str] | None = None,
-    ) -> None:
-        """Buduje snapshot bieżącego edytora, dirty i bufora Epub."""
-        if epub is None or internal_path is None or self._session is None:
-            self._generation += 1
-            snapshot = PreviewSnapshot(xhtml, epub, internal_path, self._generation)
-            self._last_snapshot = snapshot
-            target = self._text_backend if epub is None else self._active
-            self._render_snapshot_into(target, snapshot)
-            if self._comparison_backend is not None and target is self._active:
-                self._render_snapshot_into(self._comparison_backend, snapshot)
-            return
-        result = self._controller.build(
-            epub=epub,
-            session=self._session,
-            current_path=internal_path,
-            current_text=xhtml,
-            dirty=dirty or {},
-            media_types=media_types or {},
-        )
-        if result.snapshot is None:
-            self._status = PreviewStatus.LAST_GOOD
-            self._update_status()
-            if result.diagnostic is not None:
-                self.diagnostics.emit(result.diagnostic)
-                self.fallback_label.setText(result.diagnostic.message)
-                self.fallback_label.setVisible(True)
-            return
-        snapshot = result.snapshot
-        self._generation = snapshot.generation_id
-        self._last_snapshot = snapshot
-        self.fallback_label.setVisible(False)
-        self._active.set_session(self._session)
-        self._render_snapshot_into(self._active, snapshot)
-        if self._comparison_backend is not None:
-            self._comparison_backend.set_session(self._session)
-            self._render_snapshot_into(self._comparison_backend, snapshot)
-
     def _render_snapshot_into(self, backend: PreviewBackend, snapshot: PreviewSnapshot) -> None:
         """Jedno miejsce liczenia renderów (motyw nie może go zwiększać)."""
         self._render_count += 1
@@ -438,6 +393,7 @@ class BookPreview(ReaderUiMixin, QWidget):
         """Ustawia bieżącą sesję i przekazuje ją do aktywnego backendu."""
         previous = self._session
         if previous is not None and previous is not session:
+            self._cancel_snapshot_pipeline()
             previous.close()
         self._session = session
         if previous is not session:
@@ -467,6 +423,10 @@ class BookPreview(ReaderUiMixin, QWidget):
 
     def dispose(self) -> None:
         """Unieważnia sesję i zwalnia oba backendy podglądu."""
+        if self._disposed:
+            return
+        self._disposed = True
+        self._cancel_snapshot_pipeline(wait_ms=1000)
         if self._session is not None:
             self._session.close()
             self._session = None

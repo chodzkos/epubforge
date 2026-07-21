@@ -37,6 +37,7 @@ class ReaderWebEngineMixin:
     _profile: Any
     _viewport_frame: QScrollArea
     _last_snapshot: PreviewSnapshot | None
+    _session: Any
     _last_state: PreviewState
     _expected_generation: int
     reader_state_changed: Any
@@ -155,6 +156,8 @@ class ReaderWebEngineMixin:
 
     def clear_preview_cache(self) -> None:
         self._profile.clearHttpCache()
+        if self._session is not None:
+            self._session.clear_cache()
         self.cache_changed.emit({"entries": 0, "bytes": 0, "http_cache": "disabled"})
 
     def _resize_viewport(self) -> None:

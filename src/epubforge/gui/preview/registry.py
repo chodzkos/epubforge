@@ -59,7 +59,10 @@ class PreviewGenerationRegistry:
             provider = generation.resource_provider
         if provider.revision(request.internal_path) != request.revision:
             return None
-        data = provider.read(request.internal_path, request.generation_id)
+        # Realny provider preładuje zasoby w workerze; handler nie może wykonywać
+        # stat/ZIP I/O. Fallback zachowuje kompatybilność prostych providerów testowych.
+        prepared_read = getattr(provider, "read_prepared", provider.read)
+        data = prepared_read(request.internal_path, request.generation_id)
         if data is None:
             return None
         with self._lock:
