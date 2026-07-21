@@ -49,22 +49,24 @@ def finish():
     backend.dispose(); session.close(); epub.close(); app.quit()
 
 def preview_value(value):
-    result["preview_color"] = value
-    result["source_unchanged"] = "rgb(1, 2, 3)" not in epub.read_file("OEBPS/book.css").decode("utf-8")
+    result["preview_margin"] = value
+    result["source_unchanged"] = "margin-left: 9px" not in epub.read_file("OEBPS/book.css").decode("utf-8")
     finish()
 
 def previewed(value):
+    backend.css_preview_result.disconnect(previewed)
     result["preview"] = value
     backend._page.runJavaScript(
-        "getComputedStyle(document.querySelector('#target')).color",
+        "getComputedStyle(document.querySelector('#target')).marginLeft",
         QWebEngineScript.ScriptWorldId.ApplicationWorld,
         preview_value,
     )
 
 def inspected(report):
+    backend.element_inspected.disconnect(inspected)
     result["report"] = report
     backend.css_preview_result.connect(previewed)
-    backend.preview_css_rule("#target", "#target { color: rgb(1, 2, 3) }", current_element=False)
+    backend.preview_css_rule("body p.note", "body p.note { margin-left: 9px }", current_element=False)
 
 def loaded(ok):
     if not ok: fail("load-failed"); return
@@ -90,7 +92,7 @@ valid = (
     and state("body p.note", "margin-left") == "winning"
     and any(not r.get("active") and r.get("selector") == "#target" for r in rules)
     and result.get("preview", {}).get("matches") == 1
-    and result.get("preview_color") == "rgb(1, 2, 3)"
+    and result.get("preview_margin") == "9px"
     and result.get("source_unchanged") is True
 )
 raise SystemExit(0 if valid else 8)
