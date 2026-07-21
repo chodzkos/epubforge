@@ -10,6 +10,9 @@ _REQUIRED_MODULES = {
     "babel.messages.mofile": "babel",
     "PyInstaller": "pyinstaller",
     "PySide6.QtWidgets": "PySide6",
+    "PySide6.QtWebEngineCore": "PySide6",
+    "PySide6.QtWebEngineWidgets": "PySide6",
+    "PySide6.QtWebChannel": "PySide6",
     "lxml.etree": "lxml",
     "pyphen": "pyphen",
     "tinycss2": "tinycss2",
@@ -21,6 +24,7 @@ _LOCALE_DIR = _SRC_DIR / "locale"
 _PRESETS_DIR = _SRC_DIR / "fixers" / "presets"
 _STOPWORDS_DIR = _SRC_DIR / "stats_stopwords"
 _HELP_DOCS_DIR = _SRC_DIR / "help_docs"
+_LICENSES_DIR = _SRC_DIR / "licenses"
 
 
 def main() -> int:
@@ -67,6 +71,9 @@ def main() -> int:
 
     if not all((_HELP_DOCS_DIR / filename).is_file() for _title, filename in MARKDOWN_SECTIONS):
         print("[BLAD] Brak plikow pomocy Markdown (help_docs/*.md z rejestru MARKDOWN_SECTIONS).")
+        return 1
+    if not (_LICENSES_DIR / "THIRD_PARTY_NOTICES.md").is_file():
+        print("[BLAD] Brak not licencyjnych Qt/Chromium (licenses/THIRD_PARTY_NOTICES.md).")
         return 1
     print("[OK] Srodowisko buildu zawiera wymagane zaleznosci.")
     return 0

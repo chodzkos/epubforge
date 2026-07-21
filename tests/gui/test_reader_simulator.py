@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import ClassVar
 
 import pytest
@@ -9,6 +10,7 @@ from pytestqt.qtbot import QtBot
 
 from epubforge.gui.preview import book_preview as bp_mod
 from epubforge.gui.preview import reader_ui as reader_ui_mod
+from epubforge.gui.preview import reader_webengine as reader_webengine_mod
 from epubforge.gui.preview.availability import WebEngineProbe
 from epubforge.gui.preview.backend import BackendKind, PreviewBackend, PreviewSnapshot, PreviewState
 from epubforge.gui.preview.book_preview import BookPreview
@@ -111,6 +113,24 @@ class _ViewportObject:
 
     def setToolTip(self, _text: str) -> None:  # noqa: N802
         pass
+
+
+class _GrabResult:
+    def __init__(self) -> None:
+        self.saved: tuple[str, str] | None = None
+
+    def save(self, path: str, image_format: str) -> bool:
+        self.saved = (path, image_format)
+        return True
+
+
+class _ScreenshotViewport(_ViewportObject):
+    def __init__(self) -> None:
+        super().__init__()
+        self.result = _GrabResult()
+
+    def grab(self) -> _GrabResult:
+        return self.result
 
 
 class _ReaderHost(ReaderWebEngineMixin):
@@ -228,3 +248,21 @@ def test_reader_layers_are_inert_until_explicitly_enabled() -> None:
     assert host.reader_state_changed.values[-1]["enabled"] is False
     assert host.reader_state_changed.values[-1]["columns_enabled"] is False
     assert host.reader_state_changed.values[-1]["overrides"] == {}
+
+
+def test_screenshot_hides_inspector_overlay_and_restores_it(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Regresja strukturalna jest stabilniejsza niż piksele poza przypiętym Qt CI."""
+    monkeypatch.setattr(
+        reader_webengine_mod.QTimer, "singleShot", lambda _delay, callback: callback()
+    )
+    host = _ReaderHost()
+    viewport = _ScreenshotViewport()
+    host._view = viewport
+    target = str(tmp_path / "viewport.png")
+
+    assert host.export_viewport(target)
+    assert viewport.result.saved == (target, "PNG")
+    assert "node.disabled = true" in host._page.scripts[-2]
+    assert "node.disabled = item.disabled" in host._page.scripts[-1]

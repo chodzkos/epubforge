@@ -1,0 +1,180 @@
+"""Asynchroniczne przygotowanie snapshotu poza głównym wątkiem Qt."""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
+from typing import Any
+
+from epubforge.core import Epub
+from epubforge.gui.preview.backend import (
+    DiagnosticCategory,
+    DiagnosticEvent,
+    PreviewBackend,
+    PreviewSnapshot,
+    PreviewStatus,
+)
+from epubforge.gui.preview.controller import PreviewController, SnapshotResult
+from epubforge.gui.preview.session import PreviewSession
+from epubforge.gui.preview.text_backend import TextDocumentPreviewBackend
+from epubforge.gui.workers import EmitLine, EmitProgress, ShouldCancel, Worker
+from epubforge.i18n import _
+
+
+@dataclass(frozen=True)
+class SnapshotRequest:
+    """Gotowe dane pamięciowe przekazywane workerowi, bez referencji do widgetów."""
+
+    serial: int
+    epub: Epub
+    session: PreviewSession
+    current_path: str
+    current_text: str
+    dirty: Mapping[str, str | bytes]
+    media_types: Mapping[str, str]
+
+
+def build_snapshot_job(
+    _emit_line: EmitLine,
+    _emit_progress: EmitProgress,
+    should_cancel: ShouldCancel,
+    controller: PreviewController,
+    request: SnapshotRequest,
+) -> SnapshotResult | None:
+    """Buduje snapshot w workerze; funkcja nie importuje ani nie dotyka widgetów."""
+    if should_cancel():
+        return None
+    result = controller.build(
+        epub=request.epub,
+        session=request.session,
+        current_path=request.current_path,
+        current_text=request.current_text,
+        dirty=request.dirty,
+        media_types=request.media_types,
+    )
+    return None if should_cancel() else result
+
+
+class SnapshotWorkerMixin:
+    """Mixin kolejkujący najwyżej jeden build i jedno najnowsze żądanie."""
+
+    _controller: PreviewController
+    _session: PreviewSession | None
+    _status: PreviewStatus
+    _generation: int
+    _last_snapshot: PreviewSnapshot | None
+    _active: PreviewBackend
+    _text_backend: TextDocumentPreviewBackend
+    _comparison_backend: PreviewBackend | None
+    diagnostics: Any
+    fallback_label: Any
+    _update_status: Callable[[], None]
+    _render_snapshot_into: Callable[[PreviewBackend, PreviewSnapshot], None]
+
+    def _init_snapshot_pipeline(self) -> None:
+        self._controller = PreviewController()
+        self._snapshot_serial = 0
+        self._snapshot_worker: Worker | None = None
+        self._pending_snapshot: SnapshotRequest | None = None
+
+    def render_document(
+        self,
+        xhtml: str,
+        epub: Epub | None,
+        internal_path: str | None,
+        *,
+        dirty: Mapping[str, str | bytes] | None = None,
+        media_types: Mapping[str, str] | None = None,
+    ) -> None:
+        """Kopiuje dane edytora i zleca ciężkie przygotowanie poza wątkiem GUI."""
+        if epub is None or internal_path is None or self._session is None:
+            self._generation += 1
+            snapshot = PreviewSnapshot(xhtml, epub, internal_path, self._generation)
+            self._last_snapshot = snapshot
+            target = self._active if epub is not None else self._text_backend
+            self._render_snapshot_into(target, snapshot)
+            if self._comparison_backend is not None and target is self._active:
+                self._render_snapshot_into(self._comparison_backend, snapshot)
+            return
+        self._snapshot_serial += 1
+        request = SnapshotRequest(
+            serial=self._snapshot_serial,
+            epub=epub,
+            session=self._session,
+            current_path=internal_path,
+            current_text=str(xhtml),
+            dirty=dict(dirty or {}),
+            media_types=dict(media_types or {}),
+        )
+        self._status = PreviewStatus.RENDERING
+        self._update_status()
+        if self._snapshot_worker is not None:
+            self._pending_snapshot = request
+            self._snapshot_worker.cancel()
+            return
+        self._start_snapshot_worker(request)
+
+    def _start_snapshot_worker(self, request: SnapshotRequest) -> None:
+        worker = Worker(build_snapshot_job, self._controller, request)
+        self._snapshot_worker = worker
+        worker.done.connect(lambda result: self._snapshot_ready(request, result))
+        worker.failed.connect(lambda message: self._snapshot_failed(request, message))
+        worker.finished.connect(lambda: self._snapshot_finished(worker))
+        worker.start()
+
+    def _snapshot_ready(self, request: SnapshotRequest, value: object) -> None:
+        if (
+            request.serial != self._snapshot_serial
+            or request.session is not self._session
+            or not isinstance(value, SnapshotResult)
+        ):
+            return
+        if value.snapshot is None:
+            self._status = PreviewStatus.LAST_GOOD
+            self._update_status()
+            if value.diagnostic is not None:
+                self.diagnostics.emit(value.diagnostic)
+                self.fallback_label.setText(value.diagnostic.message)
+                self.fallback_label.setVisible(True)
+            return
+        snapshot = value.snapshot
+        self._generation = snapshot.generation_id
+        self._last_snapshot = snapshot
+        self.fallback_label.setVisible(False)
+        self._active.set_session(self._session)
+        self._render_snapshot_into(self._active, snapshot)
+        if self._comparison_backend is not None:
+            self._comparison_backend.set_session(self._session)
+            self._render_snapshot_into(self._comparison_backend, snapshot)
+
+    def _snapshot_failed(self, request: SnapshotRequest, message: str) -> None:
+        if request.serial != self._snapshot_serial or request.session is not self._session:
+            return
+        self._status = PreviewStatus.LAST_GOOD
+        self._update_status()
+        self.diagnostics.emit(
+            DiagnosticEvent(
+                category=DiagnosticCategory.BOOK_ERROR,
+                message=_("Nie udało się przygotować podglądu: {error}").format(error=message),
+                problem_kind="snapshot_worker",
+                internal_path=request.current_path,
+            )
+        )
+
+    def _snapshot_finished(self, worker: Worker) -> None:
+        if self._snapshot_worker is worker:
+            self._snapshot_worker = None
+        worker.deleteLater()
+        pending, self._pending_snapshot = self._pending_snapshot, None
+        if pending is not None and pending.session is self._session:
+            self._start_snapshot_worker(pending)
+
+    def _cancel_snapshot_pipeline(self, *, wait_ms: int = 0) -> None:
+        """Unieważnia callbacki i opcjonalnie krótko czeka przy niszczeniu widgetu."""
+        self._snapshot_serial += 1
+        self._pending_snapshot = None
+        worker = self._snapshot_worker
+        if worker is not None:
+            worker.cancel()
+            if wait_ms > 0:
+                worker.wait(wait_ms)

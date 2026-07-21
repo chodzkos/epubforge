@@ -17,6 +17,20 @@ from __future__ import annotations
 import importlib
 import os
 
+_BUILD_VARIANT = os.environ.get("EPUBFORGE_BUILD_VARIANT", "full").strip().lower()
+if _BUILD_VARIANT != "full":
+    raise SystemExit(
+        "[epubforge spec] wydawany jest wyłącznie wariant EPUBFORGE_BUILD_VARIANT=full"
+    )
+
+WEBENGINE_BUILD = _BUILD_VARIANT == "full"
+
+_WEBENGINE_MODULES = (
+    "PySide6.QtWebEngineCore",
+    "PySide6.QtWebEngineWidgets",
+    "PySide6.QtWebChannel",
+)
+
 # Moduły, których obecność potwierdzamy przed buildem (fail-fast na brak zależności).
 REQUIRED_MODULES = (
     "PySide6.QtWidgets",
@@ -24,6 +38,7 @@ REQUIRED_MODULES = (
     "pyphen",
     "tinycss2",
     "platformdirs",
+    *(_WEBENGINE_MODULES if WEBENGINE_BUILD else ()),
 )
 
 HIDDEN_IMPORTS = [
@@ -35,6 +50,7 @@ HIDDEN_IMPORTS = [
     "pyphen",
     "tinycss2",
     "platformdirs",
+    *(_WEBENGINE_MODULES if WEBENGINE_BUILD else ()),
 ]
 
 # (podkatalog w src/epubforge, ścieżka docelowa w bundlu). Zasoby czytane z
@@ -42,8 +58,8 @@ HIDDEN_IMPORTS = [
 # fixers/presets (presety CSS), stats_stopwords (statystyki), recipes_builtin
 # (receptury), data (taxonomy_pl.toml) oraz help_docs (pliki Markdown pomocy —
 # okno pomocy czyta je w runtime, więc frozen exe też musi je wozić). recipes_builtin
-# i data były wcześniej pominięte w obu specach (F-03) — bez nich tagowanie i
-# receptury padały w .exe.
+# oraz licenses (noty Qt/Chromium). recipes_builtin i data były wcześniej
+# pominięte w obu specach (F-03) — bez nich tagowanie i receptury padały w .exe.
 _RESOURCE_DIRS = (
     ("gui/assets", "epubforge/gui/assets"),
     ("locale", "epubforge/locale"),
@@ -52,14 +68,12 @@ _RESOURCE_DIRS = (
     ("recipes_builtin", "epubforge/recipes_builtin"),
     ("data", "epubforge/data"),
     ("help_docs", "epubforge/help_docs"),
+    ("licenses", "epubforge/licenses"),
 )
 
 # Ciężkie moduły Qt, których aplikacja nie używa — wykluczamy, by artefakt nie spuchł.
 _QT_EXCLUDES = [
-    "PySide6.QtWebEngineCore",
-    "PySide6.QtWebEngineWidgets",
     "PySide6.QtWebEngineQuick",
-    "PySide6.QtWebChannel",
     "PySide6.QtQuick",
     "PySide6.QtQuick3D",
     "PySide6.QtQml",
@@ -80,6 +94,9 @@ _QT_EXCLUDES = [
     "PySide6.QtDesigner",
     "PySide6.QtTest",
 ]
+
+if not WEBENGINE_BUILD:
+    _QT_EXCLUDES.extend(_WEBENGINE_MODULES)
 
 EXCLUDES = [
     "matplotlib",

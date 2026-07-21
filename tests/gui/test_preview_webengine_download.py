@@ -6,7 +6,7 @@ import pytest
 
 from epubforge.gui.preview.webengine_security import _cancel_download
 
-pytestmark = pytest.mark.gui
+pytestmark = [pytest.mark.gui, pytest.mark.webengine]
 
 
 class _FakeDownload:

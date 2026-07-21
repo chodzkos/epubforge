@@ -98,3 +98,36 @@ def test_check_locale_untranslated_raises(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setattr(i18n, "_", lambda text: text)  # brak tłumaczenia (echo)
     with pytest.raises(RuntimeError, match="nie został wczytany"):
         _frozen_check._check_locale()
+
+
+def test_webengine_resource_check_reports_every_required_group(tmp_path: Path) -> None:
+    """Self-check nie uznaje samego importu modułu za kompletny bundle Chromium."""
+    assert set(_frozen_check._missing_webengine_resources(tmp_path)) == {
+        "QtWebEngineProcess",
+        "Qt6WebEngineCore",
+        "Qt6WebEngineWidgets",
+        "Qt6WebChannel",
+        "icudtl.dat",
+        "qtwebengine_resources.pak",
+        "qtwebengine_devtools_resources.pak",
+        "locales/en-US.pak",
+    }
+
+
+def test_webengine_resource_check_accepts_hook_layout(tmp_path: Path) -> None:
+    """Nazwy wymaganych plików mogą leżeć w dowolnym podkatalogu PyInstallera."""
+    files = (
+        "PySide6/Qt/libexec/QtWebEngineProcess.exe",
+        "PySide6/Qt/bin/Qt6WebEngineCore.dll",
+        "PySide6/Qt/bin/Qt6WebEngineWidgets.dll",
+        "PySide6/Qt/bin/Qt6WebChannel.dll",
+        "PySide6/Qt/resources/icudtl.dat",
+        "PySide6/Qt/resources/qtwebengine_resources.pak",
+        "PySide6/Qt/resources/qtwebengine_devtools_resources.pak",
+        "PySide6/Qt/translations/qtwebengine_locales/en-US.pak",
+    )
+    for relative in files:
+        target = tmp_path / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.touch()
+    assert _frozen_check._missing_webengine_resources(tmp_path) == []

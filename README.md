@@ -142,13 +142,30 @@ Instalator powstaje tylko wtedy, gdy zainstalowany jest
 [Inno Setup](https://jrsoftware.org/isinfo.php) (`ISCC.exe` w `PATH` albo
 standardowy katalog `Program Files`).
 
+Wydawany jest jeden model: **pełny build Windows z Qt WebEngine**. Szybki backend
+`QTextDocument` pozostaje fallbackiem developerskim i awaryjnym, gdy WebEngine nie
+może się uruchomić; nie istnieje osobny pozorny extra `preview`. Extra `[gui]`
+pozostaje meta-pakietem `PySide6`: aplikacja używa modułów z Essentials oraz Addons
+(WebEngine/WebChannel), więc podział nie zmniejszyłby pełnego artefaktu. CI sprawdza
+import wszystkich używanych modułów oraz oba gotowe warianty frozen.
+
 Oba warianty (`onefile` i `onedir`) pakują ten sam komplet zasobów przez jeden
-współdzielony fragment specu `build/_spec_common.py` (locale, presety CSS,
-`recipes_builtin`, `stats_stopwords`, `data/taxonomy_pl.toml`, ikona) — brak
+współdzielony fragment specu `build/_spec_common.py` (WebEngine, locale, presety CSS,
+`recipes_builtin`, `stats_stopwords`, `data/taxonomy_pl.toml`, noty Qt/Chromium,
+ikona) — brak
 któregokolwiek katalogu przerywa build. Po każdym buildzie (lokalnie i w CI
-`build.yml`) zamrożony `.exe` przechodzi **smoke test** `--self-check`: ładuje
-taksonomię, receptury, presety, stopwords i tłumaczenia z bundla (`sys._MEIPASS`,
-nie z checkoutu). Brak dowolnego zasobu → kod ≠ 0 → release przerwany.
+`build.yml` oraz osobnym jobie PR) gotowe onefile i onedir przechodzą **smoke test**
+`--self-check`: ładuje zasoby aplikacji oraz sprawdza `QtWebEngineProcess`, DLL-e,
+locales i pakiety Chromium z bundla (`sys._MEIPASS`, nie z checkoutu). Brak dowolnego
+zasobu → kod ≠ 0 → release przerwany.
+
+WebEngine istotnie zwiększa rozmiar i koszt startu; onedir jest zalecany, ponieważ
+onefile rozpakowuje Chromium przy każdym uruchomieniu. Dokładny rozmiar oraz czas
+zimnego self-checku zależą od przypiętej wersji Qt i są raportowane w podsumowaniu
+każdego builda Windows, zamiast utrzymywania szybko nieaktualnej liczby w README.
+Benchmark snapshotów i budżety CI opisuje [dokument wydajności](docs/preview-performance.md),
+a stan końcowej macierzy w [checkliście wydania](docs/preview-release-readiness.md).
+Noty dystrybucyjne Qt/Chromium są pakowane w `epubforge/licenses`.
 
 ---
 

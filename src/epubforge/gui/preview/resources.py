@@ -6,12 +6,14 @@ import hashlib
 import posixpath
 import zipfile
 from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
 from typing import Protocol
 from urllib.parse import urlsplit
 
 from epubforge.core import Epub
+from epubforge.gui.preview.cache import CacheStats, ResourceByteCache, resource_kind
 from epubforge.gui.preview.paths import UnsafePreviewPathError, normalize_internal_path
 
 _SAFE_MIME: dict[str, str] = {
@@ -32,6 +34,18 @@ _SAFE_MIME: dict[str, str] = {
 }
 
 _SAFE_DECLARED_MIME = frozenset(_SAFE_MIME.values())
+
+
+@dataclass(frozen=True)
+class ResourceCatalog:
+    """Indeks centralnego katalogu ZIP współdzielony przez generacje sesji."""
+
+    source_path: Path
+    source_signature: tuple[int, int, int, int] | None
+    files: frozenset[str]
+    revisions: Mapping[str, int]
+    sizes: Mapping[str, int]
+    manifest_types: Mapping[str, str]
 
 
 class ResourceProvider(Protocol):
@@ -69,6 +83,8 @@ class SnapshotResourceProvider:
         files: frozenset[str],
         manifest_types: Mapping[str, str],
         revisions: Mapping[str, int],
+        sizes: Mapping[str, int],
+        cache: ResourceByteCache,
     ) -> None:
         self.source_path = Path(source_path)
         self.generation_id = generation_id
@@ -79,6 +95,10 @@ class SnapshotResourceProvider:
         self._files = files
         self._manifest_types = MappingProxyType(dict(manifest_types))
         self._revisions = MappingProxyType(dict(revisions))
+        self._sizes = MappingProxyType(dict(sizes))
+        self._cache = cache
+        for path, revision in self._revisions.items():
+            self._cache.invalidate(path, keep_revision=revision)
 
     def read(self, path: str, generation_id: int) -> bytes | None:
         """Czyta overlay, potem bufor Epub, na końcu oryginalny wpis ZIP."""
@@ -96,6 +116,67 @@ class SnapshotResourceProvider:
             return None
         if _source_signature(self.source_path) != self._source_signature:
             return None
+        revision = self._revisions.get(normalized, 0)
+        kind = resource_kind(normalized, self.media_type(normalized))
+        cached = self._cache.get(normalized, revision, kind)
+        if cached is not None:
+            return cached
+        data = self._read_source(normalized)
+        if data is not None:
+            self._cache.put(normalized, revision, kind, data)
+        return data
+
+    def read_prepared(self, path: str, generation_id: int) -> bytes | None:
+        """Obsługuje request WebEngine bez stat/ZIP I/O na wątku handlera."""
+        try:
+            normalized = normalize_internal_path(path)
+        except UnsafePreviewPathError:
+            return None
+        if generation_id != self.generation_id or normalized in self._deleted:
+            return None
+        if normalized in self._dirty:
+            return self._dirty[normalized]
+        if normalized in self._buffered:
+            return self._buffered[normalized]
+        revision = self._revisions.get(normalized, 0)
+        kind = resource_kind(normalized, self.media_type(normalized))
+        return self._cache.get(normalized, revision, kind)
+
+    def preload(self) -> None:
+        """Wypełnia cache w workerze; typowe requesty handlera są wyłącznie pamięciowe."""
+        ordered = sorted(
+            self._files,
+            key=lambda path: (resource_kind(path, self.media_type(path)).value, path),
+        )
+        if _source_signature(self.source_path) != self._source_signature:
+            return
+        try:
+            with zipfile.ZipFile(self.source_path) as archive:
+                for path in ordered:
+                    if path in self._deleted or path in self._dirty or path in self._buffered:
+                        continue
+                    kind = resource_kind(path, self.media_type(path))
+                    if self._sizes.get(path, 0) > self._cache.limits.for_kind(kind):
+                        continue
+                    revision = self._revisions.get(path, 0)
+                    if self._cache.get(path, revision, kind) is not None:
+                        continue
+                    if self._sizes.get(path, 0) > self._cache.remaining(kind):
+                        continue
+                    try:
+                        data = archive.read(path)
+                    except KeyError:
+                        continue
+                    self._cache.put(path, revision, kind, data)
+        except (FileNotFoundError, OSError, zipfile.BadZipFile):
+            return
+
+    def cache_stats(self) -> CacheStats:
+        """Zwraca liczniki współdzielonego cache sesji."""
+        return self._cache.stats()
+
+    def _read_source(self, normalized: str) -> bytes | None:
+        """Czyta pojedynczy wpis bez skanowania pozostałej zawartości ZIP-a."""
         try:
             with zipfile.ZipFile(self.source_path) as archive:
                 return archive.read(normalized)
@@ -136,6 +217,9 @@ def create_resource_provider(
     generation_id: int,
     dirty_overlay: Mapping[str, str | bytes],
     media_types: Mapping[str, str] | None = None,
+    *,
+    catalog: ResourceCatalog | None = None,
+    cache: ResourceByteCache | None = None,
 ) -> SnapshotResourceProvider:
     """Buduje nieruchomą migawkę logicznej zawartości otwartego EPUB-a."""
     dirty = {
@@ -149,10 +233,9 @@ def create_resource_provider(
         normalize_internal_path(path): bytes(value) for path, value in pending.modified.items()
     }
     deleted = frozenset(normalize_internal_path(path) for path in pending.deleted)
-    files = frozenset(
-        normalize_internal_path(path) for path in epub.list_files() if not path.endswith("/")
-    )
-    manifest_types = _manifest_media_types(epub)
+    current_catalog = catalog or build_resource_catalog(epub)
+    files = current_catalog.files
+    manifest_types = dict(current_catalog.manifest_types)
     if media_types is not None:
         for path, media_type in media_types.items():
             try:
@@ -161,8 +244,9 @@ def create_resource_provider(
                 continue
             if media_type.strip().lower() in _SAFE_DECLARED_MIME:
                 manifest_types[normalized] = media_type.strip().lower()
-    revisions = _resource_revisions(epub.path, files, buffered, dirty)
-    return SnapshotResourceProvider(
+    revisions = dict(current_catalog.revisions)
+    _overlay_revisions(revisions, buffered, dirty)
+    provider = SnapshotResourceProvider(
         epub.path,
         generation_id,
         dirty_overlay=dirty,
@@ -171,6 +255,39 @@ def create_resource_provider(
         files=files,
         manifest_types=manifest_types,
         revisions=revisions,
+        sizes=current_catalog.sizes,
+        cache=cache or ResourceByteCache(),
+    )
+    provider.preload()
+    return provider
+
+
+def build_resource_catalog(epub: Epub) -> ResourceCatalog:
+    """Skanuje centralny katalog ZIP raz dla całej sesji, bez odczytu treści wpisów."""
+    files: set[str] = set()
+    revisions: dict[str, int] = {}
+    sizes: dict[str, int] = {}
+    try:
+        with zipfile.ZipFile(epub.path) as archive:
+            for info in archive.infolist():
+                if info.is_dir():
+                    continue
+                try:
+                    path = normalize_internal_path(info.filename)
+                except UnsafePreviewPathError:
+                    continue
+                files.add(path)
+                revisions[path] = info.CRC
+                sizes[path] = info.file_size
+    except (FileNotFoundError, OSError, zipfile.BadZipFile):
+        pass
+    return ResourceCatalog(
+        source_path=epub.path,
+        source_signature=_source_signature(epub.path),
+        files=frozenset(files),
+        revisions=MappingProxyType(revisions),
+        sizes=MappingProxyType(sizes),
+        manifest_types=MappingProxyType(_manifest_media_types(epub)),
     )
 
 
@@ -190,28 +307,16 @@ def _manifest_media_types(epub: Epub) -> dict[str, str]:
     return result
 
 
-def _resource_revisions(
-    source: Path,
-    files: frozenset[str],
+def _overlay_revisions(
+    revisions: dict[str, int],
     buffered: Mapping[str, bytes],
     dirty: Mapping[str, bytes],
-) -> dict[str, int]:
-    """Buduje tanie, stabilne rewizje: CRC ZIP lub skrót bajtów nakładki."""
-    revisions: dict[str, int] = {}
-    try:
-        with zipfile.ZipFile(source) as archive:
-            for path in files:
-                try:
-                    revisions[path] = archive.getinfo(path).CRC
-                except KeyError:
-                    continue
-    except (FileNotFoundError, OSError, zipfile.BadZipFile):
-        pass
+) -> None:
+    """Nakłada rewizje bufora i dirty bez ponownego skanowania ZIP-a."""
     for mapping in (buffered, dirty):
         for path, value in mapping.items():
             digest = hashlib.blake2b(value, digest_size=8).digest()
             revisions[path] = int.from_bytes(digest, "big")
-    return revisions
 
 
 def _source_signature(path: Path) -> tuple[int, int, int, int] | None:

@@ -22,6 +22,17 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 # z zainstalowanym PySide6 (job ``test`` matrycy).
 if importlib.util.find_spec("PySide6") is None:  # pragma: no cover - zależne od środowiska
     collect_ignore_glob = ["*.py"]
+elif os.environ.get("EPUBFORGE_TEST_WEBENGINE") != "1":
+    # Marker pytest działa dopiero po imporcie modułu. Te pliki importują
+    # QtWebEngineCore podczas kolekcji, co na lekkim runnerze bez bibliotek
+    # Chromium kończyłoby suite przed zastosowaniem `-m "not webengine"`.
+    # Dedykowany job ustawia flagę i uruchamia wszystkie poniższe testy.
+    collect_ignore = [
+        "test_css_inspector_webengine.py",
+        "test_preview_webengine_download.py",
+        "test_preview_webengine_runtime.py",
+        "test_preview_webengine_security.py",
+    ]
 
 from epubforge.core import Tool
 

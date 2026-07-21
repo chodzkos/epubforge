@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from threading import RLock
 
 from lxml import etree
 
@@ -34,6 +35,7 @@ class PreviewController:
         self._last_document: str | None = None
         self._last_xhtml: str | None = None
         self._last_layout = PublicationLayout()
+        self._lock = RLock()
 
     def build(
         self,
@@ -46,6 +48,27 @@ class PreviewController:
         media_types: Mapping[str, str],
     ) -> SnapshotResult:
         """Buduje generację, w której tekst edytora ma najwyższy priorytet."""
+        with self._lock:
+            return self._build_locked(
+                epub=epub,
+                session=session,
+                current_path=current_path,
+                current_text=current_text,
+                dirty=dirty,
+                media_types=media_types,
+            )
+
+    def _build_locked(
+        self,
+        *,
+        epub: Epub,
+        session: PreviewSession,
+        current_path: str,
+        current_text: str,
+        dirty: Mapping[str, str | bytes],
+        media_types: Mapping[str, str],
+    ) -> SnapshotResult:
+        """Wykonuje ciężkie parsowanie pod blokadą kontrolera, poza wątkiem GUI."""
         overlay: dict[str, str | bytes] = dict(dirty)
         overlay[current_path] = current_text
         is_css = _is_css(current_path, media_types.get(current_path))
@@ -88,7 +111,7 @@ class PreviewController:
             self._last_xhtml = xhtml
             publication_layout = _publication_layout(epub, xhtml, overlay)
             self._last_layout = publication_layout
-        generation = session.advance(epub, document, overlay, media_types)
+        generation = session.advance(epub, document, overlay, media_types, css_only=is_css)
         return SnapshotResult(
             PreviewSnapshot(
                 xhtml=xhtml,
@@ -104,9 +127,10 @@ class PreviewController:
 
     def clear(self) -> None:
         """Usuwa pamięć dokumentu po zamknięciu lub zmianie książki."""
-        self._last_document = None
-        self._last_xhtml = None
-        self._last_layout = PublicationLayout()
+        with self._lock:
+            self._last_document = None
+            self._last_xhtml = None
+            self._last_layout = PublicationLayout()
 
 
 def _publication_layout(

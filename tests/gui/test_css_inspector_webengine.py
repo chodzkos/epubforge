@@ -12,7 +12,7 @@ import pytest
 
 from epubforge.gui.preview.availability import probe_webengine
 
-pytestmark = pytest.mark.gui
+pytestmark = [pytest.mark.gui, pytest.mark.webengine]
 
 _SCRIPT = r"""
 import json

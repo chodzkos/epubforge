@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller spec — wariant ONEDIR (folder dist/epubforge/ do instalatora), PySide6.
+"""PyInstaller spec — pełny ONEDIR z Qt WebEngine, do instalatora Windows.
 
 Lista zasobów, hiddenimports i wykluczeń pochodzi z `build/_spec_common.py`
 (jedno źródło dla onefile i onedir — patrz audyt F-03).

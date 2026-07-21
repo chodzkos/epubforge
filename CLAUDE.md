@@ -214,10 +214,11 @@ emituje sygnały (`line`, `progress`, `done`, `failed`), GUI je odbiera w głów
 wątku. `winId()` pobieraj wyłącznie w `showEvent`; przekazuj `int(window.winId())`
 do ctypes. `QFileDialog.getOpenFileNames` zwraca krotkę `(list, filter)`.
 
-**PyInstaller:** ciężkie moduły Qt (WebEngine, Quick, Qml, Multimedia…) wykluczaj
-w `.spec`, żeby build nie spuchł. **`upx=False` dla Qt** — UPX uszkadza DLL-e Qt
-(crash przy starcie). Motyw jest własny (`theme.py`), więc nie ma już zasobów
-`qdarktheme` do dopinania.
+**PyInstaller:** wykluczaj nieużywane ciężkie moduły Qt (Quick/Qml/3D/Multimedia…),
+ale WebEngine jest świadomym wyjątkiem w pełnym buildzie EpubForge: wariant,
+test artefaktu i koszt muszą być jawne we wspólnym `_spec_common.py`. **`upx=False`
+dla Qt** — UPX uszkadza DLL-e Qt (crash przy starcie). Motyw jest własny
+(`theme.py`), więc nie ma już zasobów `qdarktheme` do dopinania.
 
 ### 8a. Własny motyw Qt (GUI_STANDARD v2.0 §4)
 **`theme.py` zamiast biblioteki motywów.** Kontrakt:
