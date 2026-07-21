@@ -21,6 +21,9 @@ from typing import Any
 BACKEND_KEY = "editor_preview_backend"
 SPLIT_VIEW_KEY = "editor_preview_split_view"
 PROFILE_KEY = "editor_preview_profile"
+USER_STYLE_KEY = "editor_preview_user_style"
+CUSTOM_VIEWPORT_KEY = "editor_preview_custom_viewport"
+COMPARISON_KEY = "editor_preview_comparison"
 
 #: Dozwolone wartości backendu podglądu.
 VALID_BACKENDS: tuple[str, ...] = ("auto", "webengine", "text")
@@ -76,3 +79,35 @@ class PreviewSettings:
     @profile.setter
     def profile(self, value: str) -> None:
         self._store[PROFILE_KEY] = str(value)
+
+    @property
+    def user_style(self) -> dict[str, Any]:
+        """Kopia ustawień czytelnika; mutacja kopii nie omija debounce configu."""
+        value = self._store.get(USER_STYLE_KEY, {})
+        return dict(value) if isinstance(value, dict) else {}
+
+    @user_style.setter
+    def user_style(self, value: MutableMapping[str, Any] | dict[str, Any]) -> None:
+        self._store[USER_STYLE_KEY] = dict(value)
+
+    @property
+    def custom_viewport(self) -> dict[str, Any]:
+        """Kopia parametrów profilu własnego viewportu."""
+        value = self._store.get(CUSTOM_VIEWPORT_KEY, {})
+        return dict(value) if isinstance(value, dict) else {}
+
+    @custom_viewport.setter
+    def custom_viewport(self, value: MutableMapping[str, Any] | dict[str, Any]) -> None:
+        self._store[CUSTOM_VIEWPORT_KEY] = dict(value)
+
+    @property
+    def comparison(self) -> str:
+        """Wariant CSS wydawcy/użytkownika pokazywany w aktywnym viewportcie."""
+        value = str(self._store.get(COMPARISON_KEY, "publisher_user"))
+        return value if value in {"publisher", "publisher_user", "unstyled"} else "publisher_user"
+
+    @comparison.setter
+    def comparison(self, value: str) -> None:
+        self._store[COMPARISON_KEY] = (
+            value if value in {"publisher", "publisher_user", "unstyled"} else "publisher_user"
+        )

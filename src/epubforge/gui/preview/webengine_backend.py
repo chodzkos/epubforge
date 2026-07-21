@@ -10,8 +10,8 @@ from typing import Any, cast
 
 from chodzkos_gui_kit.palette import Palette
 from chodzkos_gui_kit.qt.theme import current_palette
-from PySide6.QtCore import QTimer, QUrl
-from PySide6.QtWidgets import QVBoxLayout, QWidget
+from PySide6.QtCore import Qt, QTimer, QUrl
+from PySide6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
 
 from epubforge.gui.preview.backend import (
     BackendKind,
@@ -24,39 +24,23 @@ from epubforge.gui.preview.backend import (
 )
 from epubforge.gui.preview.css_bridge import INSPECT_SCRIPT
 from epubforge.gui.preview.dom_mapping import NODE_ATTRIBUTE, source_location
+from epubforge.gui.preview.reader import reader_payload
+from epubforge.gui.preview.reader_webengine import ReaderWebEngineMixin
 from epubforge.gui.preview.rewrite import safe_source_url
 from epubforge.gui.preview.session import PreviewSession
+from epubforge.gui.preview.webengine_state import (
+    APP_WORLD as _APP_WORLD,
+)
+from epubforge.gui.preview.webengine_state import (
+    CAPTURE_SCRIPT as _CAPTURE_SCRIPT,
+)
+from epubforge.gui.preview.webengine_state import (
+    state_from_js as _state_from_js,
+)
 from epubforge.i18n import _
 
 logger = logging.getLogger(__name__)
 _ACTIVE_ATTRIBUTE = "data-epubforge-active-node"
-_APP_WORLD = 1  # ApplicationWorld; bez importu WebEngine przy imporcie pakietu
-_CAPTURE_SCRIPT = r"""
-(() => {
-  const selection = window.getSelection();
-  let node = selection && selection.anchorNode;
-  if (node && node.nodeType !== Node.ELEMENT_NODE) node = node.parentElement;
-  if (!node) node = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
-  const path = (element) => {
-    const parts = [];
-    while (element && element !== document.documentElement) {
-      const siblings = Array.from(element.parentElement ? element.parentElement.children : []);
-      parts.unshift(element.localName + ':nth-child(' + (siblings.indexOf(element) + 1) + ')');
-      element = element.parentElement;
-    }
-    return parts.join(' > ');
-  };
-  const max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
-  return {
-    scroll_ratio: scrollY / max,
-    active_fragment: location.hash ? location.hash.slice(1) : null,
-    node_id: node ? node.getAttribute('data-epubforge-node-id') : null,
-    original_id: node ? node.id || null : null,
-    dom_path: node ? path(node) : null,
-    text_fragment: node ? (node.textContent || '').trim().slice(0, 120) : null
-  };
-})()
-"""
 
 
 def _decode_json_object(value: Any) -> dict[str, Any]:
@@ -75,7 +59,7 @@ class WebEngineInitError(RuntimeError):
     """Sygnalizuje, że backend WebEngine nie mógł się zainicjalizować."""
 
 
-class WebEnginePreviewBackend(PreviewBackend):
+class WebEnginePreviewBackend(ReaderWebEngineMixin, PreviewBackend):
     """QWebEngineView z wersjonowanymi zasobami i bezpiecznym fallbackiem."""
 
     def __init__(self, parent: QWidget | None = None, *, theme: Palette | None = None) -> None:
@@ -88,6 +72,7 @@ class WebEnginePreviewBackend(PreviewBackend):
         self._expected_generation = 0
         self._renderer_recovery_used = False
         self._bridge_token = secrets.token_hex(16)
+        self._init_reader_engine()
         try:
             from PySide6.QtWebEngineWidgets import QWebEngineView
 
@@ -117,7 +102,12 @@ class WebEnginePreviewBackend(PreviewBackend):
             self._view.setPage(self._page)
         except Exception as exc:
             raise WebEngineInitError(f"Bezpieczny profil QWebEngineView: {exc}") from exc
-        layout.addWidget(self._view)
+        self._viewport_frame = QScrollArea(self)
+        self._viewport_frame.setWidgetResizable(False)
+        self._viewport_frame.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._viewport_frame.setWidget(self._view)
+        layout.addWidget(self._viewport_frame)
+        self._resize_viewport()
 
     def set_session(self, session: PreviewSession | None) -> None:
         """Ustawia sesję i czyści cache po zamknięciu lub zmianie książki."""
@@ -139,6 +129,7 @@ class WebEnginePreviewBackend(PreviewBackend):
             return
         self._registry.activate(generation)
         self._expected_generation = generation.generation_id
+        self._publication_layout = snapshot.publication_layout
         self.status_changed.emit(PreviewStatus.RENDERING)
         if snapshot.css_only and self._last_snapshot is not None and snapshot.changed_resource:
             self._update_stylesheet(snapshot)
@@ -204,6 +195,12 @@ class WebEnginePreviewBackend(PreviewBackend):
             except (TypeError, ValueError) as exc:
                 logger.warning("Niepoprawny raport JSON inspektora WebEngine: %s", exc)
                 payload = {"available": False, "error": f"WebEngine JSON: {exc}"}
+            payload["reader_simulation"] = reader_payload(
+                self._reader_profile,
+                self._publication_layout,
+                self._user_style,
+                self._comparison,
+            )
             self.element_inspected.emit(payload)
 
         self._page.runJavaScript(script, _APP_WORLD, inspected)
@@ -351,6 +348,7 @@ class WebEnginePreviewBackend(PreviewBackend):
                 return
             if success:
                 self._last_snapshot = snapshot
+                self._apply_reader_layers()
                 self.status_changed.emit(PreviewStatus.READY)
             else:
                 self._fallback_full_reload(snapshot, "nie znaleziono linku arkusza")
@@ -409,10 +407,20 @@ class WebEnginePreviewBackend(PreviewBackend):
             return
         if success:
             self._install_dom_bridge()
-            self.restore_state(self._last_state)
+            self._apply_reader_layers()
             if self._last_state.node_id:
                 self.inspect_element(self._last_state.node_id)
             self.status_changed.emit(PreviewStatus.READY)
+            generation = snapshot.generation
+            entries = len(generation.source_map) if generation is not None else 0
+            overlay_bytes = (
+                sum(len(value) for value in generation.dirty_overlay.values())
+                if generation is not None
+                else 0
+            )
+            self.cache_changed.emit(
+                {"entries": entries, "bytes": overlay_bytes, "http_cache": "disabled"}
+            )
         else:
             self.status_changed.emit(PreviewStatus.LAST_GOOD)
             self.diagnostics.emit(
@@ -479,23 +487,3 @@ class WebEnginePreviewBackend(PreviewBackend):
                 source_url=safe_source_url(url),
             )
         )
-
-
-def _state_from_js(value: Any, fallback: PreviewState) -> PreviewState:
-    """Konwertuje wynik ApplicationWorld bez zaufania jego typom."""
-    if not isinstance(value, dict):
-        return fallback
-    ratio = value.get("scroll_ratio", fallback.scroll_ratio)
-    return PreviewState(
-        scroll_ratio=float(ratio) if isinstance(ratio, (int, float)) else fallback.scroll_ratio,
-        active_fragment=_optional_text(value.get("active_fragment")),
-        node_id=_optional_text(value.get("node_id")),
-        original_id=_optional_text(value.get("original_id")),
-        dom_path=_optional_text(value.get("dom_path")),
-        text_fragment=_optional_text(value.get("text_fragment")),
-    )
-
-
-def _optional_text(value: Any) -> str | None:
-    """Przyjmuje wyłącznie krótki tekst stanu DOM."""
-    return value[:240] if isinstance(value, str) and value else None

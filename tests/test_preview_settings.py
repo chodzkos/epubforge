@@ -7,8 +7,11 @@ from pathlib import Path
 from epubforge.core import ConfigStore
 from epubforge.gui.preview.settings import (
     BACKEND_KEY,
+    COMPARISON_KEY,
+    CUSTOM_VIEWPORT_KEY,
     PROFILE_KEY,
     SPLIT_VIEW_KEY,
+    USER_STYLE_KEY,
     PreviewSettings,
 )
 
@@ -57,3 +60,21 @@ def test_configstore_marks_dirty_and_persists(tmp_path: Path) -> None:
     store.save_now()
     reloaded = ConfigStore("epubforge", path=tmp_path / "config.json")
     assert reloaded[BACKEND_KEY] == "text"
+
+
+def test_reader_nested_settings_are_reassigned_as_copies() -> None:
+    """Warstwy czytnika nie pozwalają ominąć debounce mutacją zagnieżdżenia."""
+    store: dict[str, object] = {}
+    settings = PreviewSettings(store)
+    settings.user_style = {"font_size_px": 22}
+    settings.custom_viewport = {"width": 700, "height": 900}
+    settings.comparison = "unstyled"
+
+    copied = settings.user_style
+    copied["font_size_px"] = 40
+    viewport = settings.custom_viewport
+    viewport["width"] = 999
+
+    assert store[USER_STYLE_KEY] == {"font_size_px": 22}
+    assert store[CUSTOM_VIEWPORT_KEY] == {"width": 700, "height": 900}
+    assert store[COMPARISON_KEY] == "unstyled"

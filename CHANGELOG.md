@@ -8,6 +8,13 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Added
+- **Kontrolowany symulator czytnika (Prompt 6)** — neutralne profile viewportu,
+  reflowable scroll/pages przez CSS columns oraz osobny algorytm skalowania
+  fixed-layout z wykrywaniem rendition, viewportu, spread, orientation i page
+  progression. Ustawienia użytkownika są odwracalną warstwą niezależną od CSS
+  wydawcy; dostępne są porównanie dwóch profili, screenshot viewportu, panel
+  użytego fontu/cache i diagnostyka layoutu oraz podstawowej dostępności z
+  przejściem do elementu źródłowego.
 - **Rzeczywisty inspektor kaskady CSS (Prompt 5)** — dotychczasowy tryb Arkusz
   pozostaje dostępny bez WebEngine, a tryb Element korzysta z CSSOM,
   `getComputedStyle` i aktywnego layoutu Chromium. Reguły są mapowane na parserowe

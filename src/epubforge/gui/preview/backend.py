@@ -15,7 +15,7 @@ bazowa jest ``QWidget`` — to jedynie ``PySide6.QtWidgets``, nie WebEngine.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 from chodzkos_gui_kit.palette import Palette
@@ -23,6 +23,12 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QWidget
 
 from epubforge.core import Epub
+from epubforge.gui.preview.reader import (
+    ComparisonMode,
+    PublicationLayout,
+    ReaderProfile,
+    UserStyleSettings,
+)
 from epubforge.gui.preview.session import PreviewGeneration, PreviewSession
 
 
@@ -49,6 +55,8 @@ class DiagnosticCategory(Enum):
     BOOK_ERROR = "book_error"  # błąd publikacji
     SECURITY = "security"  # blokada bezpieczeństwa
     PREVIEW_LIMIT = "preview_limit"  # ograniczenie podglądu
+    SIMULATOR_LIMIT = "simulator_limit"  # ograniczenie profilu/layoutu czytnika
+    QUALITY = "quality"  # ostrzeżenie jakości, bez arbitralnego auto-fixu
 
 
 @dataclass(frozen=True)
@@ -78,6 +86,7 @@ class PreviewSnapshot:
     generation: PreviewGeneration | None = None
     changed_resource: str | None = None
     css_only: bool = False
+    publication_layout: PublicationLayout = field(default_factory=PublicationLayout)
 
 
 @dataclass(frozen=True)
@@ -117,6 +126,12 @@ class PreviewBackend(QWidget):
     element_inspected = Signal(object)
     #: Wynik walidacji/instalacji tymczasowej warstwy CSS.
     css_preview_result = Signal(object)
+    #: Stan strony podglądu, aktywnych nadpisań i fontu.
+    reader_state_changed = Signal(object)
+    #: Lista ostrzeżeń jakości wyliczona z aktywnego layoutu Chromium.
+    quality_diagnostics = Signal(object)
+    #: Licznik zasobów aktywnej migawki (nie jest cache HTTP Chromium).
+    cache_changed = Signal(object)
 
     kind: BackendKind
 
@@ -163,6 +178,40 @@ class PreviewBackend(QWidget):
 
     def highlight_matches(self, selector: str) -> None:
         """Podświetla elementy dopasowane przez Chromium, jeśli dostępne."""
+
+    def set_reader_simulation(
+        self,
+        profile: ReaderProfile,
+        user_style: UserStyleSettings,
+        comparison: ComparisonMode,
+    ) -> None:
+        """Ustawia neutralny profil; fallback zachowuje treść bez emulacji layoutu."""
+        self.reader_state_changed.emit(
+            {
+                "available": False,
+                "limitations": ["Kontrolowany layout stron wymaga WebEngine."],
+            }
+        )
+
+    def navigate_preview_page(self, delta: int) -> None:
+        """Przechodzi o stronę podglądu, jeśli backend obsługuje CSS columns."""
+
+    def jump_to_current_element(self) -> None:
+        """Przewija aktywny element do bieżącej strony podglądu."""
+
+    def run_quality_diagnostics(
+        self, *, min_font_px: float = 12.0, min_line_height: float = 1.1, accessibility: bool = True
+    ) -> None:
+        """Uruchamia diagnostykę rzeczywistego layoutu lub zgłasza ograniczenie."""
+        self.quality_diagnostics.emit([])
+
+    def export_viewport(self, path: str) -> bool:
+        """Zapisuje sam viewport bez panelu inspektora, jeśli backend to wspiera."""
+        return False
+
+    def clear_preview_cache(self) -> None:
+        """Czyści cache symulatora; cache HTTP WebEngine pozostaje wyłączony."""
+        self.cache_changed.emit({"entries": 0, "bytes": 0})
 
     def set_theme(self, palette: Palette) -> None:
         """Przemalowuje chrome backendu (NIE treść książki) na daną paletę."""

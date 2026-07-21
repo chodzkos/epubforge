@@ -23,14 +23,7 @@ from dataclasses import replace
 from chodzkos_gui_kit.palette import Palette
 from chodzkos_gui_kit.qt.theme import current_palette
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import (
-    QComboBox,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from epubforge.core import Epub, Tool
 from epubforge.gui.preview.availability import probe_webengine
@@ -45,6 +38,7 @@ from epubforge.gui.preview.backend import (
 from epubforge.gui.preview.controller import PreviewController
 from epubforge.gui.preview.dom_mapping import SourceLocation, nearest_node_for_line, source_location
 from epubforge.gui.preview.preinit import preview_scheme_registered
+from epubforge.gui.preview.reader_ui import ReaderUiMixin
 from epubforge.gui.preview.session import PreviewSession
 from epubforge.gui.preview.settings import PreviewSettings
 from epubforge.gui.preview.text_backend import TextDocumentPreviewBackend
@@ -61,7 +55,7 @@ logger = logging.getLogger(__name__)
 _BACKEND_ORDER: tuple[str, ...] = ("auto", "webengine", "text")
 
 
-class BookPreview(QWidget):
+class BookPreview(ReaderUiMixin, QWidget):
     """Pasek wyboru backendu + aktywny tor podglądu (lekki albo dokładny).
 
     Sygnały:
@@ -95,6 +89,7 @@ class BookPreview(QWidget):
         self._last_snapshot: PreviewSnapshot | None = None
         self._session: PreviewSession | None = None
         self._webengine_backend: PreviewBackend | None = None
+        self._init_reader_ui_state()
 
         self._build_ui()
         self.diagnostics.connect(self._show_diagnostic)
@@ -107,6 +102,9 @@ class BookPreview(QWidget):
         self._text_backend.status_changed.connect(self._on_status_changed)
         self._text_backend.element_inspected.connect(self.element_inspected)
         self._text_backend.css_preview_result.connect(self.css_preview_result)
+        self._text_backend.reader_state_changed.connect(self._on_reader_state)
+        self._text_backend.quality_diagnostics.connect(self._on_quality_diagnostics)
+        self._text_backend.cache_changed.connect(self._on_cache_changed)
         self._body_layout.addWidget(self._text_backend)
         self._active: PreviewBackend = self._text_backend
 
@@ -156,9 +154,11 @@ class BookPreview(QWidget):
         bar.addStretch(0)
         layout.addLayout(bar)
 
+        self._build_reader_ui(layout)
+
         self._body = QWidget()
         self._body.setObjectName("previewBody")
-        self._body_layout = QVBoxLayout(self._body)
+        self._body_layout = QHBoxLayout(self._body)
         self._body_layout.setContentsMargins(12, 12, 12, 12)
         layout.addWidget(self._body, stretch=1)
 
@@ -245,6 +245,10 @@ class BookPreview(QWidget):
         backend.fallback_requested.connect(self._on_renderer_fallback)
         backend.element_inspected.connect(self.element_inspected)
         backend.css_preview_result.connect(self.css_preview_result)
+        backend.reader_state_changed.connect(self._on_reader_state)
+        backend.quality_diagnostics.connect(self._on_quality_diagnostics)
+        backend.cache_changed.connect(self._on_cache_changed)
+        backend.set_reader_simulation(self._reader_profile, self._user_style, self._comparison)
         self._webengine_backend = backend
         return backend, ""
 
@@ -254,6 +258,8 @@ class BookPreview(QWidget):
             DiagnosticCategory.BOOK_ERROR: _("Błąd książki"),
             DiagnosticCategory.SECURITY: _("Blokada bezpieczeństwa"),
             DiagnosticCategory.PREVIEW_LIMIT: _("Ograniczenie podglądu"),
+            DiagnosticCategory.SIMULATOR_LIMIT: _("Ograniczenie symulatora"),
+            DiagnosticCategory.QUALITY: _("Ostrzeżenie jakości"),
         }[event.category]
         details = [event.message, _("Kategoria: {category}").format(category=category)]
         if event.problem_kind:
@@ -287,12 +293,16 @@ class BookPreview(QWidget):
             return
         if self._active.kind is BackendKind.WEBENGINE:
             self._active.set_session(None)
+        if backend.kind is not BackendKind.WEBENGINE and self._comparison_backend is not None:
+            self.compare_profiles_button.setChecked(False)
         self._body_layout.removeWidget(self._active)
         self._active.hide()
         if self._body_layout.indexOf(backend) == -1:
             self._body_layout.addWidget(backend)
         self._active = backend
         backend.show()
+        if backend.kind is BackendKind.WEBENGINE:
+            backend.set_reader_simulation(self._reader_profile, self._user_style, self._comparison)
         self.backend_changed.emit(backend.kind)
         self._update_status()
         if self._last_snapshot is not None:
@@ -350,6 +360,8 @@ class BookPreview(QWidget):
             self._last_snapshot = snapshot
             target = self._text_backend if epub is None else self._active
             self._render_snapshot_into(target, snapshot)
+            if self._comparison_backend is not None and target is self._active:
+                self._render_snapshot_into(self._comparison_backend, snapshot)
             return
         result = self._controller.build(
             epub=epub,
@@ -373,6 +385,9 @@ class BookPreview(QWidget):
         self.fallback_label.setVisible(False)
         self._active.set_session(self._session)
         self._render_snapshot_into(self._active, snapshot)
+        if self._comparison_backend is not None:
+            self._comparison_backend.set_session(self._session)
+            self._render_snapshot_into(self._comparison_backend, snapshot)
 
     def _render_snapshot_into(self, backend: PreviewBackend, snapshot: PreviewSnapshot) -> None:
         """Jedno miejsce liczenia renderów (motyw nie może go zwiększać)."""
@@ -391,6 +406,8 @@ class BookPreview(QWidget):
         if self._session is not None:
             self._session.select(internal_path, node.node_id)
         self._active.focus_node(node.node_id)
+        if self._comparison_backend is not None:
+            self._comparison_backend.focus_node(node.node_id)
 
     def inspect_element(self, node_id: str | None = None) -> None:
         """Deleguje inspekcję do aktywnego backendu bez ujawniania WebEngine widgetowi."""
@@ -428,6 +445,8 @@ class BookPreview(QWidget):
         self._text_backend.set_session(session)
         if self._webengine_backend is not None:
             self._webengine_backend.set_session(session)
+        if self._comparison_backend is not None:
+            self._comparison_backend.set_session(session)
 
     # ── Motyw ──────────────────────────────────────────────────────────────────
 
@@ -453,6 +472,7 @@ class BookPreview(QWidget):
             self._session = None
         self._text_backend.set_session(None)
         self._text_backend.dispose()
+        self._dispose_comparison_backend()
         if self._webengine_backend is not None:
             self._webengine_backend.dispose()
 

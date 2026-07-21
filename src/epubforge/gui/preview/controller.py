@@ -14,6 +14,7 @@ from epubforge.gui.preview.backend import (
     DiagnosticEvent,
     PreviewSnapshot,
 )
+from epubforge.gui.preview.reader import PublicationLayout, detect_publication_layout
 from epubforge.gui.preview.session import PreviewSession
 from epubforge.i18n import _
 
@@ -32,6 +33,7 @@ class PreviewController:
     def __init__(self) -> None:
         self._last_document: str | None = None
         self._last_xhtml: str | None = None
+        self._last_layout = PublicationLayout()
 
     def build(
         self,
@@ -61,6 +63,7 @@ class PreviewController:
                 )
             document = self._last_document
             xhtml = self._last_xhtml
+            publication_layout = self._last_layout
         else:
             document = current_path
             xhtml = current_text
@@ -83,6 +86,8 @@ class PreviewController:
                 )
             self._last_document = document
             self._last_xhtml = xhtml
+            publication_layout = _publication_layout(epub, xhtml, overlay)
+            self._last_layout = publication_layout
         generation = session.advance(epub, document, overlay, media_types)
         return SnapshotResult(
             PreviewSnapshot(
@@ -93,6 +98,7 @@ class PreviewController:
                 generation=generation,
                 changed_resource=current_path,
                 css_only=is_css,
+                publication_layout=publication_layout,
             )
         )
 
@@ -100,6 +106,24 @@ class PreviewController:
         """Usuwa pamięć dokumentu po zamknięciu lub zmianie książki."""
         self._last_document = None
         self._last_xhtml = None
+        self._last_layout = PublicationLayout()
+
+
+def _publication_layout(
+    epub: Epub, xhtml: str, overlay: Mapping[str, str | bytes]
+) -> PublicationLayout:
+    """Czyta bieżący OPF (z dirty overlay), a błąd degraduje do reflowable."""
+    try:
+        opf_value = overlay.get(epub.opf_path)
+        if opf_value is None:
+            opf = epub.read_file(epub.opf_path)
+        elif isinstance(opf_value, str):
+            opf = opf_value.encode("utf-8")
+        else:
+            opf = bytes(opf_value)
+        return detect_publication_layout(opf, xhtml)
+    except (KeyError, OSError, RuntimeError, ValueError):
+        return PublicationLayout(limitations=("Nie odczytano metadanych publikacji.",))
 
 
 def _is_css(path: str, media_type: str | None) -> bool:
