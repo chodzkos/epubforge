@@ -21,15 +21,8 @@ from lxml import etree
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
-    QHBoxLayout,
-    QLabel,
     QMessageBox,
-    QPushButton,
-    QSplitter,
-    QToolButton,
-    QTreeWidget,
     QTreeWidgetItem,
-    QVBoxLayout,
     QWidget,
 )
 
@@ -37,14 +30,13 @@ from epubforge.core import ConfigStore, Epub, Tool
 from epubforge.core._xml_safe import XmlSecurityError, parse_untrusted
 from epubforge.gui import editor_files as ef
 from epubforge.gui.preview import PreviewSession, PreviewSettings
+from epubforge.gui.tabs.editor_layout import EditorLayoutMixin
 from epubforge.gui.tabs.editor_preview import (
     _PAGE_EDITOR,
     _PAGE_IMAGE,
     _PAGE_INFO,
     EditorPreviewMixin,
 )
-from epubforge.gui.widgets.code_editor import CodeEditor
-from epubforge.gui.widgets.search_panel import SearchReplacePanel
 from epubforge.i18n import _
 
 logger = logging.getLogger(__name__)
@@ -63,7 +55,7 @@ def _group_label(key: str) -> str:
     }.get(key, key)
 
 
-class EditorTab(EditorPreviewMixin, QWidget):
+class EditorTab(EditorLayoutMixin, EditorPreviewMixin, QWidget):
     """Przegląd i edycja zawartości EPUB z podświetlaniem składni.
 
     Prawy panel (inspektor CSS + podgląd HTML + przełącznik Kod/Podgląd) jest
@@ -96,71 +88,6 @@ class EditorTab(EditorPreviewMixin, QWidget):
         self._wire_shortcuts()
         self._refresh_actions()
         self._update_mode_indicator()
-
-    # ── Budowa UI ─────────────────────────────────────────────────────────────
-
-    def _build_ui(self) -> None:
-        outer = QVBoxLayout(self)
-        outer.setContentsMargins(12, 12, 12, 12)
-        outer.addLayout(self._build_toolbar())
-
-        self.info_bar = QLabel()
-        self.info_bar.setWordWrap(True)
-        self.info_bar.setVisible(False)
-        outer.addWidget(self.info_bar)
-
-        # Wyraźny status trybu edycji (kolor z motywu) tuż nad obszarem edytora.
-        self.mode_label = QLabel()
-        self.mode_label.setContentsMargins(2, 0, 2, 4)
-        outer.addWidget(self.mode_label)
-
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        outer.addWidget(splitter, stretch=1)
-
-        self.tree = QTreeWidget()
-        self.tree.setHeaderHidden(True)
-        self.tree.currentItemChanged.connect(self._on_item_changed)
-        splitter.addWidget(self.tree)
-
-        self.code_editor = CodeEditor()
-        self.code_editor.modified_changed.connect(self._on_modified)
-        splitter.addWidget(self._build_right_panel())  # prawy panel z mixinu
-        splitter.setStretchFactor(0, 1)
-        splitter.setStretchFactor(1, 3)
-
-        self.search_panel = SearchReplacePanel(self)
-        outer.addWidget(self.search_panel)
-
-    def _build_toolbar(self) -> QHBoxLayout:
-        toolbar = QHBoxLayout()
-        self.open_button = QPushButton(_("Otwórz EPUB…"))
-        self.open_button.setToolTip(_("Otwórz plik EPUB do podglądu i edycji"))
-        self.open_button.clicked.connect(self._choose_epub)
-        toolbar.addWidget(self.open_button)
-
-        self.path_label = QLabel(_("Nie otwarto pliku"))
-        toolbar.addWidget(self.path_label, stretch=1)
-
-        self.edit_toggle = QToolButton()
-        self.edit_toggle.setToolTip(_("Włącz edycję (domyślnie tylko do odczytu)"))
-        self.edit_toggle.setCheckable(True)
-        self.edit_toggle.toggled.connect(self._on_edit_toggled)
-        toolbar.addWidget(self.edit_toggle)
-
-        self.inspector_toggle = QToolButton()
-        self.inspector_toggle.setText(_("Inspektor CSS"))
-        self.inspector_toggle.setToolTip(_("Pokaż panel reguł CSS z podglądem na żywo"))
-        self.inspector_toggle.setCheckable(True)
-        self.inspector_toggle.setChecked(True)
-        self.inspector_toggle.setEnabled(False)
-        self.inspector_toggle.toggled.connect(lambda _checked: self._update_inspector())
-        toolbar.addWidget(self.inspector_toggle)
-
-        self.save_epub_button = QPushButton(_("Zapisz EPUB"))
-        self.save_epub_button.setToolTip(_("Zapisuje zmiany do pliku EPUB (kopia .bak)"))
-        self.save_epub_button.clicked.connect(self._save_epub)
-        toolbar.addWidget(self.save_epub_button)
-        return toolbar
 
     def _wire_shortcuts(self) -> None:
         save = QShortcut(QKeySequence.StandardKey.Save, self)
@@ -245,6 +172,7 @@ class EditorTab(EditorPreviewMixin, QWidget):
         self._epub = epub
         self._epub_path = path
         self.path_label.setText(str(path))
+        self.path_label.setToolTip(str(path))
         # Nowa publikacja → osobna sesja podglądu (origin per sesja: Prompt 2).
         self.book_preview.set_session(PreviewSession.create(epub, path))
         self._populate_tree()
@@ -286,13 +214,16 @@ class EditorTab(EditorPreviewMixin, QWidget):
                 continue
             group_item = QTreeWidgetItem([_group_label(key)])
             group_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+            group_item.setToolTip(0, _group_label(key))
             self.tree.addTopLevelItem(group_item)
             for internal in paths:
                 child = QTreeWidgetItem([self._display_name(internal)])
                 child.setData(0, _PATH_ROLE, internal)
+                child.setToolTip(0, internal)
                 group_item.addChild(child)
             group_item.setExpanded(True)
         self._update_tree_markers()
+        self.tree.resizeColumnToContents(0)
 
     def _all_files(self) -> list[str]:
         """Wszystkie pliki EPUB poza ``mimetype`` i metadanymi kontenera."""
@@ -538,6 +469,7 @@ class EditorTab(EditorPreviewMixin, QWidget):
         for child in self._file_items():
             internal = child.data(0, _PATH_ROLE)
             child.setText(0, self._display_name(internal))
+        self.tree.resizeColumnToContents(0)
 
     def _display_name(self, internal: str) -> str:
         """Nazwa pliku w drzewie z „*", gdy zmodyfikowany (bufor lub bieżący edytor)."""

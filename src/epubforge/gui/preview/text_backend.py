@@ -52,6 +52,8 @@ class TextDocumentPreviewBackend(PreviewBackend):
         self.status_changed.emit(PreviewStatus.RENDERING)
         self.html_preview.set_content(snapshot.xhtml, snapshot.epub, snapshot.internal_path)
         self.status_changed.emit(PreviewStatus.READY)
+        if snapshot.internal_path is not None:
+            self.document_ready.emit(snapshot.internal_path)
 
     def capture_state(self) -> PreviewState:
         """Zapisuje względną pozycję scrolla podglądu."""

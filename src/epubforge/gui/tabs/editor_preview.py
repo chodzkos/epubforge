@@ -61,6 +61,7 @@ class EditorPreviewMixin:
     _preview_settings: PreviewSettings
     code_editor: CodeEditor
     _set_info_bar: Callable[[str], None]
+    _set_splitter_ratio: Callable[[QSplitter, tuple[int, ...]], None]
     jump_to_hit: Callable[[str, int, int], None]
 
     # Widgety tworzone w tym mixinie.
@@ -76,6 +77,7 @@ class EditorPreviewMixin:
     preview_view_button: QToolButton
     split_view_button: QToolButton
     preview_split: QSplitter
+    content_splitter: QSplitter
     _split_active: bool
     _cursor_sync_timer: QTimer
 
@@ -102,6 +104,7 @@ class EditorPreviewMixin:
         )
         self.book_preview.open_external.connect(self._launch_external_tool)
         self.book_preview.source_requested.connect(self._on_preview_source_requested)
+        self._inspector_render_path: str | None = None
         self._cursor_sync_timer = QTimer(self)  # type: ignore[arg-type]
         self._cursor_sync_timer.setSingleShot(True)
         self._cursor_sync_timer.setInterval(80)
@@ -142,11 +145,14 @@ class EditorPreviewMixin:
         )
         self.book_preview.element_inspected.connect(self.css_inspector.set_element_report)
         self.book_preview.css_preview_result.connect(self.css_inspector.set_preview_result)
-        self.book_preview.backend_changed.connect(lambda _kind: self._update_inspector())
+        self.book_preview.backend_changed.connect(self._on_preview_backend_changed)
+        self.book_preview.document_ready.connect(self._on_preview_document_ready)
         self.css_inspector.setVisible(False)
-        right.addWidget(self.css_inspector)
-        right.setStretchFactor(0, 3)
-        right.setStretchFactor(1, 2)
+        self.content_splitter = right
+        self.content_splitter.addWidget(self.css_inspector)
+        self.content_splitter.setStretchFactor(0, 3)
+        self.content_splitter.setStretchFactor(1, 2)
+        self._prepare_editor_panels(editor_side)  # type: ignore[attr-defined]
         self.code_editor.editor.textChanged.connect(self._on_main_editor_changed)
         self.code_editor.editor.cursorPositionChanged.connect(self._schedule_source_sync)
 
@@ -168,6 +174,7 @@ class EditorPreviewMixin:
         self.view_group.setExclusive(True)
         self.code_view_button = QToolButton()
         self.code_view_button.setText(_("Kod"))
+        self.code_view_button.setToolTip(_("Pokaż kod źródłowy bieżącego dokumentu HTML"))
         self.code_view_button.setCheckable(True)
         self.code_view_button.setChecked(True)
         self.preview_view_button = QToolButton()
@@ -203,23 +210,56 @@ class EditorPreviewMixin:
         )
 
     def _update_inspector(self) -> None:
-        """Pokazuje Arkusz dla CSS, a Element dla XHTML w dokładnym podglądzie."""
+        """Udostępnia Arkusz dla CSS i Element dla każdego HTML w dokładnym torze."""
         is_css = self._current_is_css()
-        is_element = (
-            self._current_is_html()
-            and self.book_preview.active_kind is BackendKind.WEBENGINE
-            and self.book_preview.current_document == self._current
+        exact_html = self._current_is_html() and (
+            self.book_preview.active_kind is BackendKind.WEBENGINE
         )
-        eligible = is_css or is_element
+        element_ready = exact_html and self.book_preview.ready_document == self._current
+        eligible = is_css or exact_html
         self.inspector_toggle.setEnabled(eligible)  # type: ignore[attr-defined]
         visible = eligible and self.inspector_toggle.isChecked()  # type: ignore[attr-defined]
+        was_visible = self.css_inspector.isVisible()
         self.css_inspector.setVisible(visible)
-        self.css_inspector.set_context(sheet=is_css, element=is_element)
+        self.css_inspector.set_context(sheet=is_css, element=exact_html)
+        self._update_inspector_tooltip(is_css=is_css, exact_html=exact_html)
+        if visible and not was_visible:
+            QTimer.singleShot(
+                0,
+                lambda: self._set_splitter_ratio(self.content_splitter, (3, 2)),
+            )
         if visible:
             if is_css:
                 self.css_inspector.refresh()
-            elif is_element:
+            elif element_ready:
                 self.book_preview.inspect_element()
+            elif exact_html and self._inspector_render_path != self._current:
+                self._inspector_render_path = self._current
+                self.css_inspector.set_element_pending()
+                self._render_html_preview()
+
+    def _update_inspector_tooltip(self, *, is_css: bool, exact_html: bool) -> None:
+        """Wyjaśnia dostępność inspektora zamiast zostawiać niejasny disabled."""
+        if is_css:
+            text = _("Pokaż lub ukryj listę reguł i edycję bieżącego arkusza CSS")
+        elif exact_html:
+            text = _("Pokaż lub ukryj rzeczywistą kaskadę zaznaczonego elementu HTML")
+        elif self._current_is_html():
+            text = _("Inspektor elementu HTML wymaga dokładnego podglądu WebEngine")
+        else:
+            text = _("Inspektor jest dostępny dla arkuszy CSS oraz HTML w trybie dokładnym")
+        self.inspector_toggle.setToolTip(text)  # type: ignore[attr-defined]
+
+    def _on_preview_document_ready(self, internal_path: str) -> None:
+        """Po załadowaniu właściwego DOM stabilnie uruchamia inspekcję elementu."""
+        if internal_path == self._current:
+            self._inspector_render_path = None
+            self._update_inspector()
+
+    def _on_preview_backend_changed(self, _kind: object) -> None:
+        """Zmiana toru unieważnia gotowość DOM i przelicza dostępne tryby."""
+        self._inspector_render_path = None
+        self._update_inspector()
 
     def _on_main_editor_changed(self) -> None:
         """Edycja → odroczone odświeżenie inspektora CSS i podglądu HTML (gdy aktywne)."""
@@ -406,6 +446,10 @@ class EditorPreviewMixin:
             if self.stack.indexOf(self.book_preview) != -1:
                 self.stack.removeWidget(self.book_preview)
             self.preview_split.addWidget(self.book_preview)
+            QTimer.singleShot(
+                0,
+                lambda: self._set_splitter_ratio(self.preview_split, (1, 1)),
+            )
             if self.stack.currentIndex() == _PAGE_HTML:
                 self.stack.setCurrentIndex(_PAGE_EDITOR)
         else:

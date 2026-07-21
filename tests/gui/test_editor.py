@@ -6,7 +6,9 @@ import zipfile
 from pathlib import Path
 
 import pytest
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QTextCursor, QTextDocument
+from PySide6.QtWidgets import QAbstractButton, QHeaderView, QMessageBox
 from pytestqt.qtbot import QtBot
 
 from epubforge.core import Epub
@@ -92,6 +94,85 @@ def test_open_epub_builds_tree(qtbot: QtBot) -> None:
     assert tab.tree.topLevelItemCount() >= 1
     group = tab.tree.topLevelItem(0)
     assert group.childCount() >= 1
+
+
+def test_file_tree_keeps_full_names_and_scrolls_immediately(qtbot: QtBot) -> None:
+    """Kolumna nie rozciąga się do viewportu, więc scroll obejmuje całą długą nazwę."""
+    tab = EditorTab()
+    qtbot.addWidget(tab)
+    tab.open_epub(_FIXTURE)
+    item = next(tab._file_items())
+    internal = str(item.data(0, Qt.ItemDataRole.UserRole))
+    item.setText(0, "bardzo-dluga-nazwa-pliku-" * 12 + ".xhtml")
+    tab.tree.resizeColumnToContents(0)
+    tab.resize(820, 560)
+    tab.show()
+    qtbot.waitExposed(tab)
+
+    assert item.toolTip(0) == internal
+    assert tab.tree.textElideMode() == Qt.TextElideMode.ElideNone
+    assert tab.tree.header().stretchLastSection() is False
+    assert tab.tree.header().sectionResizeMode(0) == QHeaderView.ResizeMode.ResizeToContents
+    assert tab.tree.columnWidth(0) > tab.tree.viewport().width()
+    assert tab.tree.horizontalScrollBar().maximum() > 0
+
+
+def test_editor_splitters_preserve_readable_panels(qtbot: QtBot) -> None:
+    """Wszystkie poziome podziały mają uchwyty i blokadę zwijania paneli do zera."""
+    tab = EditorTab()
+    qtbot.addWidget(tab)
+    for splitter in (tab.main_splitter, tab.content_splitter, tab.preview_split):
+        assert splitter.childrenCollapsible() is False
+        assert splitter.handleWidth() >= 8
+    assert tab.tree.minimumWidth() >= 180
+    assert tab.stack.minimumWidth() >= 300
+    assert tab.css_inspector.minimumWidth() >= 360
+
+
+def test_reset_layout_requires_confirmation_and_keeps_content(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Reset zamyka panele dopiero po „Tak” i nie zmienia kodu dokumentu."""
+    tab = EditorTab()
+    qtbot.addWidget(tab)
+    tab.open_epub(_FIXTURE)
+    tab._select_path(_CHAPTER)
+    original = tab.code_editor.get_text()
+    tab.split_view_button.setChecked(True)
+    tab.search_panel.setVisible(True)
+    tab.book_preview.reader_settings_button.setChecked(True)
+    tab.book_preview.diagnostics_button.setChecked(True)
+
+    monkeypatch.setattr(
+        QMessageBox,
+        "question",
+        lambda *args, **kwargs: QMessageBox.StandardButton.No,
+    )
+    tab.reset_layout_button.click()
+    assert tab.split_view_button.isChecked()
+
+    monkeypatch.setattr(
+        QMessageBox,
+        "question",
+        lambda *args, **kwargs: QMessageBox.StandardButton.Yes,
+    )
+    tab.reset_layout_button.click()
+    assert not tab.split_view_button.isChecked()
+    assert not tab.inspector_toggle.isChecked()
+    assert tab.search_panel.isHidden()
+    assert not tab.book_preview.reader_settings_button.isChecked()
+    assert not tab.book_preview.diagnostics_button.isChecked()
+    assert tab.code_editor.get_text() == original
+
+
+def test_editor_buttons_have_tooltips(qtbot: QtBot) -> None:
+    """Audyt gui-kit: każda akcja przyciskowa edytora ma pełną podpowiedź."""
+    tab = EditorTab()
+    qtbot.addWidget(tab)
+    missing = [
+        button.text() for button in tab.findChildren(QAbstractButton) if not button.toolTip()
+    ]
+    assert missing == []
 
 
 def test_edit_save_reopen_flow(qtbot: QtBot, tmp_path: Path) -> None:

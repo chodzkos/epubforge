@@ -101,6 +101,9 @@ motywu, „O programie") i zakładki robocze:
   edytuj HTML/CSS z podświetlaniem i wyszukiwarką (Ctrl+F). Edycja jest domyślnie
   wyłączona — włącz **Tryb edycji**. Zapis pliku: Ctrl+S (XHTML/OPF jest walidowany);
   **Zapisz EPUB** utrwala zmiany na dysk (kopia `.bak`). Pliki nie-UTF-8 są tylko do odczytu.
+  Drzewo zachowuje pełne nazwy i przewija się poziomo, a uchwyty paneli mają czytelne
+  minima. Szerokie paski akcji przewijają się zamiast ucinać napisy. **Resetuj układ**
+  po potwierdzeniu zamyka dodatkowe panele i przywraca proporcje, ale nie usuwa zmian.
   Przy otwartym `.css` tryb **Inspektor CSS / Arkusz** pokazuje listę reguł i
   podgląd na żywo; „Zastosuj do arkusza" podmienia dokładny span jako jeden krok
   Undo. W dokładnym podglądzie tryb **Element** wyjaśnia kaskadę klikniętego elementu:
@@ -116,6 +119,8 @@ motywu, „O programie") i zakładki robocze:
   Dla plików HTML/XHTML prawy panel ma przełącznik **Kod ⇄ Podgląd** (domyślnie Kod):
   backend Dokładny renderuje zasoby publikacji przez WebEngine, a Szybki pozostaje
   fallbackiem `QTextDocument`. Oba odświeżają się z niezapisanej treści.
+  Inspektor zwykłego HTML jest dostępny od razu po wyborze dokładnego backendu —
+  nie trzeba wcześniej przełączać widoku Kod/Podgląd ani włączać Podziału.
   Dokładny podgląd zawiera neutralne profile **e-ink mały/duży**, **telefon pionowy**
   i **tablet pionowy/poziomy** oraz własny viewport. Dla reflowable można wybrać
   przewijanie albo CSS columns ze wskaźnikiem „strona podglądu”; fixed-layout jest
@@ -125,6 +130,8 @@ motywu, „O programie") i zakładki robocze:
   wyłączenie CSS wydawcy lub fontów osadzonych. Można zestawić dwa profile obok
   siebie, wyeksportować sam viewport i uruchomić diagnostykę overflow, szerokości,
   obrazów, pozycjonowania, fontów, kontrastu, `alt` i hierarchii nagłówków.
+  **Diagnostyka** działa jako przełącznik: pierwszy klik pokazuje wyniki, drugi je chowa.
+  Dokładna instrukcja wszystkich kontrolek znajduje się w zakładce **Edytor** okna Pomoc.
 
   > ⚠️ **Szybki podgląd jest przybliżony.** Renderuje go silnik rich text Qt, który obsługuje
   > tylko podzbiór CSS (m.in. `font-*`, `color`, `text-align`, `margin/padding`,

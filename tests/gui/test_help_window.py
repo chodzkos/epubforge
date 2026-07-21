@@ -70,6 +70,24 @@ def test_help_docs_files_exist_and_nonempty() -> None:
         assert "user-guide.md" in text, f"brak odnośnika do pełnej wersji: {filename}"
 
 
+def test_editor_help_covers_new_editor_workflow() -> None:
+    """Pomoc opisuje obsługę paneli, oba backendy i funkcje Promptów 5-6."""
+    text = (files("epubforge.help_docs") / "editor.md").read_text(encoding="utf-8")
+    for needle in (
+        "Resetuj układ",
+        "Szybki i dokładny podgląd",
+        "Inspektor CSS — Arkusz",
+        "Inspektor CSS — Element",
+        "Edycja CSS na żywo",
+        "Symulator czytnika",
+        "Ustawienia użytkownika",
+        "Diagnostyka i screenshot",
+        "Szukaj i zamień",
+        "Bezpieczeństwo i ograniczenia",
+    ):
+        assert needle in text, f"pomoc Edytora nie opisuje: {needle}"
+
+
 def test_cli_help_covers_all_subcommands() -> None:
     """Zakładka „Wiersz poleceń" wymienia wszystkie podkomendy CLI (audyt kompletności)."""
     cli_md = (files("epubforge.help_docs") / "cli.md").read_text(encoding="utf-8")

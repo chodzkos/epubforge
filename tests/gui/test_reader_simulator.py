@@ -209,6 +209,10 @@ def test_quality_diagnostic_is_visible(qtbot: QtBot, exact_backend: None) -> Non
     preview.diagnostics_button.click()
     assert preview.diagnostics_tree.topLevelItemCount() == 1
     assert "Overflow" in preview.diagnostics_tree.topLevelItem(0).text(1)
+    assert not preview.diagnostics_tree.isHidden()
+
+    preview.diagnostics_button.click()
+    assert preview.diagnostics_tree.isHidden()
 
 
 def test_custom_viewport_and_flow_are_persisted(qtbot: QtBot, exact_backend: None) -> None:
@@ -226,6 +230,21 @@ def test_custom_viewport_and_flow_are_persisted(qtbot: QtBot, exact_backend: Non
     assert settings.custom_viewport["width"] == 712
     assert settings.custom_viewport["height"] == 934
     assert settings.custom_viewport["flow"] == "pages"
+
+
+def test_reader_toolbar_scrolls_instead_of_clipping_buttons(qtbot: QtBot) -> None:
+    """Wąski panel zachowuje naturalne szerokości długich etykiet i dostaje scroll."""
+    preview = BookPreview()
+    qtbot.addWidget(preview)
+    preview.resize(650, 500)
+    preview.show()
+    qtbot.waitExposed(preview)
+    preview.reader_toolbar.setFixedWidth(260)
+    qtbot.waitUntil(lambda: preview.reader_toolbar.horizontalScrollBar().maximum() > 0)
+
+    button = preview.reader_settings_button
+    assert button.width() >= button.minimumSizeHint().width()
+    assert button.toolTip()
 
 
 def test_profile_change_restores_selected_element() -> None:
