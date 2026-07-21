@@ -85,3 +85,16 @@ def test_unmapped_rule_is_reported_not_dropped() -> None:
 def test_content_revision_changes_with_exact_source() -> None:
     """Kontrola konfliktu reaguje nawet na zmianę formatowania poza regułą."""
     assert content_revision("p{color:red}") != content_revision("p { color:red }")
+
+
+def test_reader_overrides_and_limitations_are_visible_in_inspector() -> None:
+    report = _report((0,))
+    report["reader_simulation"] = {
+        "overrides": {"rozmiar tekstu": "22px", "CSS wydawcy": "wyłączony"},
+        "limitations": ["Typografia fixed-layout została pominięta."],
+    }
+    inspection = map_element_report(
+        report, lambda _path: source_snapshot(".x { color: red }"), generation=3
+    )
+    assert inspection.reader_simulation["overrides"]["rozmiar tekstu"] == "22px"
+    assert any("Symulator:" in item for item in inspection.limitations)

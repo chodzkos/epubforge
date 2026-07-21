@@ -116,6 +116,15 @@ motywu, „O programie") i zakładki robocze:
   Dla plików HTML/XHTML prawy panel ma przełącznik **Kod ⇄ Podgląd** (domyślnie Kod):
   backend Dokładny renderuje zasoby publikacji przez WebEngine, a Szybki pozostaje
   fallbackiem `QTextDocument`. Oba odświeżają się z niezapisanej treści.
+  Dokładny podgląd zawiera neutralne profile **e-ink mały/duży**, **telefon pionowy**
+  i **tablet pionowy/poziomy** oraz własny viewport. Dla reflowable można wybrać
+  przewijanie albo CSS columns ze wskaźnikiem „strona podglądu”; fixed-layout jest
+  wykrywany z metadanych rendition i viewportu, skalowany jako cała strona i nie
+  otrzymuje columns ani wymuszonej typografii. Ustawienia czytelnika są osobną,
+  odwracalną warstwą: rozmiar i interlinia, marginesy, font/fallback, kolory,
+  wyłączenie CSS wydawcy lub fontów osadzonych. Można zestawić dwa profile obok
+  siebie, wyeksportować sam viewport i uruchomić diagnostykę overflow, szerokości,
+  obrazów, pozycjonowania, fontów, kontrastu, `alt` i hierarchii nagłówków.
 
   > ⚠️ **Szybki podgląd jest przybliżony.** Renderuje go silnik rich text Qt, który obsługuje
   > tylko podzbiór CSS (m.in. `font-*`, `color`, `text-align`, `margin/padding`,

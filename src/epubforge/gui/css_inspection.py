@@ -94,6 +94,7 @@ class ElementInspection:
     rules: tuple[InspectorRule, ...] = ()
     inherited: tuple[Mapping[str, str], ...] = ()
     font: FontUsage | None = None
+    reader_simulation: Mapping[str, Any] = field(default_factory=dict)
     limitations: tuple[str, ...] = ()
     error: str | None = None
 
@@ -214,6 +215,9 @@ def map_element_report(
     )
     inherited = tuple(item for item in report.get("inherited", ()) if isinstance(item, dict))
     box = report.get("box", {})
+    reader = report.get("reader_simulation", {})
+    if isinstance(reader, dict):
+        limitations.extend(f"Symulator: {item}" for item in _texts(reader.get("limitations", ())))
     return ElementInspection(
         available=True,
         element=summary,
@@ -221,6 +225,7 @@ def map_element_report(
         rules=tuple(mapped_rules),
         inherited=inherited,
         font=font_usage,
+        reader_simulation=reader if isinstance(reader, dict) else {},
         limitations=tuple(dict.fromkeys(limitations)),
     )
 

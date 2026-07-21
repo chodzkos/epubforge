@@ -97,11 +97,14 @@ class CssElementPanel(QWidget):
         self.box_label.setWordWrap(True)
         self.font_label = QLabel()
         self.font_label.setWordWrap(True)
+        self.reader_label = QLabel()
+        self.reader_label.setWordWrap(True)
         for widget_label in (
             self.breadcrumb_label,
             self.element_label,
             self.box_label,
             self.font_label,
+            self.reader_label,
         ):
             layout.addWidget(widget_label)
 
@@ -194,6 +197,7 @@ class CssElementPanel(QWidget):
             self.element_label.clear()
             self.box_label.clear()
             self.font_label.clear()
+            self.reader_label.clear()
         else:
             self.breadcrumb_label.setText(
                 _("DOM: {path}").format(path=" > ".join(element.breadcrumb))
@@ -209,6 +213,16 @@ class CssElementPanel(QWidget):
             )
             self.box_label.setText(_format_box(inspection.box))
             self.font_label.setText(_format_font(inspection))
+            reader = inspection.reader_simulation
+            overrides = reader.get("overrides", {}) if isinstance(reader, dict) else {}
+            if isinstance(overrides, dict) and overrides:
+                self.reader_label.setText(
+                    _("Nadpisania czytnika: {items}").format(
+                        items="; ".join(f"{key}: {value}" for key, value in overrides.items())
+                    )
+                )
+            else:
+                self.reader_label.clear()
         self.limitations_label.setText(
             _("Ograniczenia: {items}").format(items=" ".join(inspection.limitations))
             if inspection.limitations
