@@ -143,6 +143,7 @@ def test_document_rtl_is_visible_when_progression_is_default() -> None:
     )
     assert publication.page_progression == "default"
     assert publication.document_direction == "rtl"
-    assert "direction: rtl" in build_reader_layers(
-        READER_PROFILES["tablet-portrait"], publication
-    ).simulator_css
+    assert (
+        "direction: rtl"
+        in build_reader_layers(READER_PROFILES["tablet-portrait"], publication).simulator_css
+    )

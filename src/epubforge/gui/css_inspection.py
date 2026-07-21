@@ -217,9 +217,7 @@ def map_element_report(
     box = report.get("box", {})
     reader = report.get("reader_simulation", {})
     if isinstance(reader, dict):
-        limitations.extend(
-            f"Symulator: {item}" for item in _texts(reader.get("limitations", ()))
-        )
+        limitations.extend(f"Symulator: {item}" for item in _texts(reader.get("limitations", ())))
     return ElementInspection(
         available=True,
         element=summary,
