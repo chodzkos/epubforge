@@ -38,6 +38,12 @@ def rewrite_xhtml(
     clean = sanitize_xhtml(serialize_document(source_root, source_doctype))
     root, doctype = parse_untrusted_document(clean)
     for element in root.iter():
+        tag = cast(object, element.tag)
+        if not isinstance(tag, str):
+            # ``resolve_entities=False`` celowo zachowuje bezpieczne referencje
+            # encji jako węzły ``_Entity``. Nie są elementami DOM i nie wolno
+            # przekazywać ich do ``QName`` (częste w starszych EPUB-ach: &nbsp;).
+            continue
         base = _element_base(element, requester)
         for attribute in list(element.attrib):
             local = etree.QName(attribute).localname.lower()
@@ -54,7 +60,7 @@ def rewrite_xhtml(
                 element.attrib[attribute] = rewrite_css_text(
                     cast(str, element.attrib[attribute]), generation, base, requester, report
                 )
-        if etree.QName(element.tag).localname.lower() == "style" and element.text:
+        if etree.QName(tag).localname.lower() == "style" and element.text:
             element.text = rewrite_css_text(element.text, generation, base, requester, report)
 
     _remove_xml_bases(root)
@@ -70,7 +76,10 @@ def rewrite_svg(
     """Usuwa aktywną treść SVG i wersjonuje jego odwołania do zasobów."""
     root, doctype = parse_untrusted_document(data)
     for element in list(root.iter()):
-        local_name = etree.QName(element.tag).localname.lower()
+        tag = cast(object, element.tag)
+        if not isinstance(tag, str):
+            continue
+        local_name = etree.QName(tag).localname.lower()
         if local_name in {"script", "foreignobject"}:
             parent = element.getparent()
             if parent is not None:

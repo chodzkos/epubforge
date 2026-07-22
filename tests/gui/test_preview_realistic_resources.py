@@ -102,6 +102,25 @@ def test_xhtml_and_css_references_use_resource_revisions(tmp_path: Path) -> None
     epub.close()
 
 
+def test_xhtml_named_entity_nodes_do_not_break_preview_rewrite(tmp_path: Path) -> None:
+    """Nierozwinięte encje XHTML nie są elementami i nie mogą trafić do ``QName``."""
+    epub = Epub(_make_resource_epub(tmp_path / "named-entity.epub"))
+    epub.open()
+    chapter_path = "OEBPS/text/ch.xhtml"
+    chapter = b"""<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+      "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+      <html xmlns="http://www.w3.org/1999/xhtml"><head></head>
+      <body><p>Przed&nbsp;po</p></body></html>"""
+    session = PreviewSession.create(epub)
+    generation = session.advance(epub, chapter_path, {chapter_path: chapter})
+
+    rendered = rewrite_xhtml(chapter, generation, chapter_path)
+
+    assert b"&nbsp;" in rendered
+    assert b"data-epubforge-node-id" in rendered
+    epub.close()
+
+
 def test_current_editor_and_dirty_css_are_snapshotted(tmp_path: Path) -> None:
     """Bieżący CodeEditor wygrywa z dirty, a niezapisany CSS tworzy nową generację."""
     epub = Epub(_make_resource_epub(tmp_path / "snapshot.epub"))
