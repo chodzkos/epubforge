@@ -18,6 +18,11 @@ katalogi). Gdy brak Javy/jara, zakładka pokazuje instrukcję i przycisk
 Wyniki są **klikalne**: dwuklik wiersza z lokalizacją przeskakuje do miejsca w
 **Edytorze**. **Eksport…** zapisuje raport jako JSON lub HTML.
 
+Przyciski **Sigil** i **Calibre Editor** w górnym pasku otwierają cały zaznaczony
+plik `.epub`, a bez zaznaczenia mogą użyć pliku ostatniego raportu. Nie przekazują
+pojedynczego zasobu wskazanego w tabeli. Podczas trwającej walidacji są zablokowane,
+aby zewnętrzny program nie zmienił pliku czytanego przez EpubCheck lub Ace.
+
 ## Dostępność (DAISY Ace)
 
 **Sprawdź dostępność (Ace)** — audyt zgodności z WCAG / EPUB Accessibility (European

@@ -186,7 +186,9 @@ Pseudoelementy, animacje i transitions, pełna analiza `@layer`, złożone `var(
 tylko do odczytu albo mają widoczne ograniczenie — nierozpoznana reguła nie znika
 po cichu.
 
-Przyciski **Sigil** i **Calibre Editor** przekazują otwarty EPUB do wykrytego
-narzędzia zewnętrznego, gdy potrzebny jest niezależny podgląd lub pełna edycja.
+Przyciski **Sigil** i **Calibre Editor** w pierwszym, górnym pasku przekazują cały
+otwarty plik `.epub` do wykrytego narzędzia — nigdy pojedynczy zasób z drzewa.
+Zewnętrzny program czyta wersję zapisaną na dysku; niezapisany bufor Edytora trzeba
+najpierw świadomie utrwalić przyciskiem **Zapisz EPUB**.
 
 Pełny opis wszystkich funkcji: `docs/user-guide.md`.

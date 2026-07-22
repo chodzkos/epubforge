@@ -454,6 +454,9 @@ class EditorTab(EditorLayoutMixin, EditorPreviewMixin, QWidget):
         if self._epub is not None:
             self._epub.close()
         self._epub = None
+        self._epub_path = None
+        self.path_label.setText(_("Nie otwarto pliku"))
+        self._refresh_external_tool_actions()
         self._dirty.clear()
         self._readonly_files.clear()
         self._current = None
@@ -483,6 +486,7 @@ class EditorTab(EditorLayoutMixin, EditorPreviewMixin, QWidget):
         """Aktualizuje stan przycisku „Zapisz EPUB" i wskaźnika niezapisanych zmian."""
         self.save_epub_button.setEnabled(bool(self._dirty))
         self.open_button.setEnabled(True)
+        self._refresh_external_tool_actions()
 
     def _set_info_bar(self, text: str) -> None:
         """Pokazuje/ukrywa pasek informacyjny pliku."""
