@@ -7,7 +7,14 @@ from pathlib import Path
 from lxml import etree
 
 from epubforge.cli.main import main
-from epubforge.core import Epub, Metadata, set_number_of_pages
+from epubforge.core import (
+    Epub,
+    Metadata,
+    get_number_of_pages,
+    remove_number_of_pages,
+    set_number_of_pages,
+    supports_number_of_pages,
+)
 
 DC_NS = "http://purl.org/dc/elements/1.1/"
 OPF_NS = "http://www.idpf.org/2007/opf"
@@ -315,6 +322,19 @@ def test_set_number_of_pages_epub3(opf_bytes: bytes) -> None:
     pages = [m for m in metas if m.get("property") == "schema:numberOfPages"]
     assert len(pages) == 1
     assert pages[0].text == "330"
+    assert get_number_of_pages(result) == 330
+
+
+def test_get_number_of_pages_missing(opf_bytes: bytes) -> None:
+    """Brak właściwości w EPUB 3 daje jednoznaczne ``None``."""
+    assert supports_number_of_pages(opf_bytes)
+    assert get_number_of_pages(opf_bytes) is None
+
+
+def test_number_of_pages_requires_opf_package_root() -> None:
+    """Sam atrybut version poza korzeniem package nie oznacza EPUB 3."""
+    not_opf = b'<metadata xmlns="http://www.idpf.org/2007/opf" version="3.0"/>'
+    assert not supports_number_of_pages(not_opf)
 
 
 def test_set_number_of_pages_idempotent(opf_bytes: bytes) -> None:
@@ -323,6 +343,8 @@ def test_set_number_of_pages_idempotent(opf_bytes: bytes) -> None:
     assert once is not None
     twice = set_number_of_pages(once, 200)
     assert twice is not None
+    same_again = set_number_of_pages(twice, 200)
+    assert same_again == twice
     root = etree.fromstring(twice)
     pages = [
         m
@@ -337,13 +359,47 @@ def test_set_number_of_pages_epub2_skipped(epub2_epub: Path) -> None:
     """EPUB 2: brak składni meta property → zwraca None (zapis pominięty)."""
     with Epub(epub2_epub) as epub:
         opf = epub.read_file(epub.opf_path)
+    assert not supports_number_of_pages(opf)
+    assert get_number_of_pages(opf) is None
     assert set_number_of_pages(opf, 330) is None
+    assert remove_number_of_pages(opf) is None
 
 
 def test_set_number_of_pages_invalid_count(opf_bytes: bytes) -> None:
     """Niepoprawna liczba stron (<= 0) → None."""
     assert set_number_of_pages(opf_bytes, 0) is None
     assert set_number_of_pages(opf_bytes, -5) is None
+    assert set_number_of_pages(opf_bytes, True) is None
+    assert set_number_of_pages(opf_bytes, 1.5) is None  # type: ignore[arg-type]
+
+
+def test_remove_number_of_pages_is_idempotent_and_keeps_foreign_metadata(
+    opf_bytes: bytes,
+) -> None:
+    """Usuwanie stron nie rusza obcych metadanych i drugi przebieg jest no-opem."""
+    root = etree.fromstring(opf_bytes)
+    metadata = root.find(f"{{{OPF_NS}}}metadata")
+    assert metadata is not None
+    foreign = etree.SubElement(metadata, f"{{{OPF_NS}}}meta")
+    foreign.set("property", "example:foreign")
+    foreign.text = "zachowaj"
+    source = etree.tostring(root, xml_declaration=True, encoding="utf-8")
+    with_pages = set_number_of_pages(source, 123)
+    assert with_pages is not None
+
+    once = remove_number_of_pages(with_pages)
+    assert once is not None
+    twice = remove_number_of_pages(once)
+    assert twice == once
+    assert get_number_of_pages(once) is None
+    after = etree.fromstring(once)
+    kept = [
+        meta
+        for meta in after.findall(f".//{{{OPF_NS}}}meta")
+        if meta.get("property") == "example:foreign"
+    ]
+    assert len(kept) == 1
+    assert kept[0].text == "zachowaj"
 
 
 def test_cli_meta_sets_series(sample_epub: Path) -> None:

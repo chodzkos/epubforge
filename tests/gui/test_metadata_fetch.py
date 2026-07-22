@@ -16,7 +16,7 @@ from PySide6.QtCore import Qt
 from pytestqt.qtbot import QtBot
 
 from epubforge.bookmeta import BookRecord, Candidate
-from epubforge.core import Metadata, Tool
+from epubforge.core import Metadata, Tool, get_number_of_pages
 from epubforge.gui.metadata_fetch import FetchMetadataDialog, FetchResult
 from epubforge.gui.tabs import metadata as metadata_module
 from epubforge.gui.tabs.metadata import MetadataTab
@@ -137,6 +137,7 @@ class _FakeEpub:
 
     saved_metadata: ClassVar[Metadata | None] = None
     written_opf: ClassVar[bytes | None] = None
+    save_calls: ClassVar[int] = 0
     opf = "OEBPS/content.opf"
     # OPF EPUB 3 z sekcją metadata (dla set_number_of_pages).
     _OPF3 = (
@@ -171,9 +172,10 @@ class _FakeEpub:
 
     def write_file(self, _path: str, data: bytes) -> None:
         _FakeEpub.written_opf = data
+        _FakeEpub.saved_metadata = Metadata.from_opf(data)
 
     def save(self) -> None:
-        return None
+        _FakeEpub.save_calls += 1
 
 
 def test_tab_applies_fetch_and_writes_pages(
@@ -183,12 +185,14 @@ def test_tab_applies_fetch_and_writes_pages(
     monkeypatch.setattr(metadata_module, "Epub", _FakeEpub)
     _FakeEpub.saved_metadata = None
     _FakeEpub.written_opf = None
+    _FakeEpub.save_calls = 0
 
     tab = MetadataTab(tools=_tools())
     qtbot.addWidget(tab)
     book = tmp_path / "book.epub"
     book.write_bytes(b"epub")
     tab.current_path = book
+    tab.pages.set_document(book, supported=True, page_count=None)
 
     selection = FetchResult(
         fields={"title": "Ostatnie życzenie", "publisher": "SuperNOWA"},
@@ -200,13 +204,33 @@ def test_tab_applies_fetch_and_writes_pages(
     assert tab.title_edit.text() == "Ostatnie życzenie"
     assert tab.publisher_edit.text() == "SuperNOWA"
     assert "Fantasy" in tab.subjects_edit.toPlainText()
+    assert tab.pages.value() == 330
+
+    # Wartość pobrana jest zwykłą, widoczną wartością formularza — użytkownik
+    # może ją poprawić przed zapisem.
+    tab.pages.page_count.setValue(331)
 
     tab._save_metadata()
     assert _FakeEpub.saved_metadata is not None
     assert _FakeEpub.saved_metadata.title == "Ostatnie życzenie"
     assert _FakeEpub.written_opf is not None
     assert b"schema:numberOfPages" in _FakeEpub.written_opf
-    assert b"330" in _FakeEpub.written_opf
+    assert get_number_of_pages(_FakeEpub.written_opf) == 331
+    assert _FakeEpub.save_calls == 1
+
+
+def test_tab_fetch_pages_on_epub2_shows_limitation(qtbot: QtBot, tmp_path: Path) -> None:
+    """Pobrana liczba nie trafia do nieaktywnego pola EPUB 2 i status wyjaśnia powód."""
+    tab = MetadataTab(tools=_tools())
+    qtbot.addWidget(tab)
+    book = tmp_path / "book2.epub"
+    tab.current_path = book
+    tab.pages.set_document(book, supported=False, page_count=None)
+
+    tab._apply_fetch_result(FetchResult(page_count=330))
+
+    assert tab.pages.value() is None
+    assert "EPUB 3" in tab.status_label.text()
 
 
 def test_tab_open_fetch_dialog_prefills_isbn(

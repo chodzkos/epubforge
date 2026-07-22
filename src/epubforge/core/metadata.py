@@ -129,16 +129,42 @@ def get_number_of_pages(existing_opf: bytes) -> int | None:
         niepoprawna.
     """
     root = parse_untrusted(existing_opf)
+    if not _supports_number_of_pages_root(root):
+        return None
     metadata_el = root.find(f"{{{OPF_NS}}}metadata")
     if metadata_el is None:
         return None
     for meta in metadata_el.findall(_opf("meta")):
         if meta.get("property") == _NUMBER_OF_PAGES_PROPERTY and meta.text:
             try:
-                return int(meta.text.strip())
+                value = int(meta.text.strip())
+                return value if value > 0 else None
             except ValueError:
                 return None
     return None
+
+
+def supports_number_of_pages(existing_opf: bytes) -> bool:
+    """Sprawdza, czy OPF obsługuje ``schema:numberOfPages``.
+
+    Wersja pochodzi wyłącznie z ``package/@version`` właściwego dokumentu OPF;
+    rozszerzenie pliku ani zawartość manifestu nie są używane do zgadywania.
+
+    Args:
+        existing_opf: surowa zawartość pliku OPF.
+
+    Returns:
+        ``True`` dla pakietów EPUB 3.x, w przeciwnym razie ``False``.
+    """
+    return _supports_number_of_pages_root(parse_untrusted(existing_opf))
+
+
+def _supports_number_of_pages_root(root: etree._Element) -> bool:
+    """Sprawdza główną wersję OPF na już bezpiecznie sparsowanym drzewie."""
+    if root.tag != _opf("package"):
+        return False
+    version = str(root.get("version", "")).strip()
+    return version.split(".", 1)[0] == "3"
 
 
 def set_number_of_pages(existing_opf: bytes, count: int) -> bytes | None:
@@ -157,10 +183,10 @@ def set_number_of_pages(existing_opf: bytes, count: int) -> bytes | None:
         Nowa zawartość OPF jako bajty UTF-8 albo ``None`` (EPUB 2, brak sekcji
         ``metadata`` lub niepoprawna liczba).
     """
-    if count <= 0:
+    if isinstance(count, bool) or not isinstance(count, int) or count <= 0:
         return None
     root = parse_untrusted(existing_opf)
-    if not str(root.get("version", "")).startswith("3"):
+    if not _supports_number_of_pages_root(root):
         return None
     metadata_el = root.find(f"{{{OPF_NS}}}metadata")
     if metadata_el is None:
@@ -171,6 +197,38 @@ def set_number_of_pages(existing_opf: bytes, count: int) -> bytes | None:
     meta_el = etree.SubElement(metadata_el, _opf("meta"))
     meta_el.set("property", _NUMBER_OF_PAGES_PROPERTY)
     meta_el.text = str(count)
+    return etree.tostring(root, xml_declaration=True, encoding="utf-8")
+
+
+def remove_number_of_pages(existing_opf: bytes) -> bytes | None:
+    """Usuwa ``schema:numberOfPages`` z OPF EPUB 3.
+
+    Operacja jest idempotentna: gdy właściwości nie ma, zwracane są dokładnie
+    wejściowe bajty. Dla EPUB 2 zwracane jest ``None`` i dokument nie jest
+    modyfikowany. Inne metadane oraz sekcje OPF pozostają nietknięte.
+
+    Args:
+        existing_opf: surowa zawartość obecnego pliku OPF.
+
+    Returns:
+        OPF bez właściwości liczby stron albo ``None`` dla EPUB 2 lub dokumentu
+        bez sekcji ``metadata``.
+    """
+    root = parse_untrusted(existing_opf)
+    if not _supports_number_of_pages_root(root):
+        return None
+    metadata_el = root.find(f"{{{OPF_NS}}}metadata")
+    if metadata_el is None:
+        return None
+    matching = [
+        meta
+        for meta in metadata_el.findall(_opf("meta"))
+        if meta.get("property") == _NUMBER_OF_PAGES_PROPERTY
+    ]
+    if not matching:
+        return existing_opf
+    for meta in matching:
+        metadata_el.remove(meta)
     return etree.tostring(root, xml_declaration=True, encoding="utf-8")
 
 

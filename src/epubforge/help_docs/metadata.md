@@ -13,8 +13,26 @@ zapasową `.bak`.
 | Wydawca | `dc:publisher` | Nazwa wydawcy |
 | Data | `dc:date` | Format ISO: `RRRR-MM-DD` |
 | Identyfikator | `dc:identifier` | ISBN lub UUID |
+| Liczba stron | `meta property="schema:numberOfPages"` | Dodatnia liczba całkowita; tylko EPUB 3 |
 | Tematy | `dc:subject` | Tematy/tagi — jeden na linię |
 | Opis | `dc:description` | Streszczenie książki |
+
+## Liczba stron
+
+W EPUB 3 pole **Liczba stron** można wpisać ręcznie, zastąpić wartością pobraną
+z katalogu albo wyczyścić. **Zapisz** utrwala wszystkie zmiany metadanych razem;
+puste pole usuwa istniejące `schema:numberOfPages`. EPUB 2 nie obsługuje tej
+właściwości — pole oraz przycisk **Oblicz** pozostają nieaktywne do czasu konwersji
+pliku do EPUB 3.
+
+Przycisk **Oblicz** analizuje tekst poza głównym wątkiem i wstawia wartość z modułu
+Statystyki (domyślnie 250 słów na stronę). To tylko **estymacja objętości tekstu**,
+a nie pewna liczba stron konkretnego wydania papierowego. Wynik można poprawić
+przed zapisaniem.
+
+Te dane nie są też numerem „strony podglądu” z symulatora czytnika. Strony
+podglądu powstają technicznie z bieżącego viewportu i ustawień renderowania, więc
+ich liczba może zmieniać się wraz z profilem.
 
 ## Pobieranie metadanych z sieci
 
@@ -31,7 +49,9 @@ zaznaczasz, **które pola nadpisać** — nigdy nie dzieje się to po cichu.
 - **Bez ISBN** — wpisz **Tytuł/Autor** i użyj „Szukaj wg tytułu": wyszukiwarka
   LubimyCzytac zwraca listę kandydatów z oceną dopasowania; wybór należy do Ciebie
   (poniżej progu pewności nic nie jest zaznaczane automatycznie).
-- **Liczba stron** wydania papierowego zapisywana jest do OPF (tylko EPUB 3).
+- **Liczba stron** z katalogu opisuje wskazane wydanie papierowe. Po zaakceptowaniu
+  trafia do widocznego formularza, gdzie można ją sprawdzić lub zmienić; samo
+  pobranie nie zapisuje pliku.
 
 ## Tagi (taksonomia + AI, opt-in)
 

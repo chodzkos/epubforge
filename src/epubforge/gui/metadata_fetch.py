@@ -12,7 +12,7 @@ dopasowania; użytkownik wybiera, a dopiero wtedy pobierany jest pełny rekord. 
 progu pewności nic nie jest wybierane automatycznie.
 
 Dialog niczego nie zapisuje — zwraca :class:`FetchResult`, a zakładka metadanych
-sama nanosi wybór na formularz (i liczbę stron przy zapisie do OPF).
+nanosi cały wybór, w tym liczbę stron, na widoczny formularz do weryfikacji.
 """
 
 from __future__ import annotations
@@ -62,7 +62,7 @@ class FetchResult:
         fields: zaznaczone pola skalarne (atrybut → nowa wartość).
         creators: nowa lista autorów, jeśli zaznaczono; ``None`` = bez zmian.
         add_subjects: deskryptory BN do **dopisania** do tematów.
-        page_count: liczba stron do zapisania (EPUB 3) lub ``None``.
+        page_count: liczba stron do pokazania w formularzu lub ``None``.
     """
 
     fields: dict[str, str] = field(default_factory=dict)

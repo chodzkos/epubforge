@@ -21,7 +21,13 @@ from epubforge.core.exceptions import (
     ResourceLimitError,
     ValidationError,
 )
-from epubforge.core.metadata import Metadata, get_number_of_pages, set_number_of_pages
+from epubforge.core.metadata import (
+    Metadata,
+    get_number_of_pages,
+    remove_number_of_pages,
+    set_number_of_pages,
+    supports_number_of_pages,
+)
 
 __all__ = [
     "DEFAULT_LIMITS",
@@ -47,6 +53,8 @@ __all__ = [
     "detect_with_cache",
     "get_number_of_pages",
     "load_config",
+    "remove_number_of_pages",
     "save_config",
     "set_number_of_pages",
+    "supports_number_of_pages",
 ]

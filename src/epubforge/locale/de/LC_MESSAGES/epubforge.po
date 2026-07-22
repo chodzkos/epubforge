@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EpubForge 1.0.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-07-22 01:12+0200\n"
+"POT-Creation-Date: 2026-07-23 00:34+0200\n"
 "PO-Revision-Date: 2026-06-12 13:30+0200\n"
 "Last-Translator: EpubForge translators <noreply@example.com>\n"
 "Language: de\n"
@@ -19,9 +19,10 @@ msgstr ""
 "Generated-By: Babel 2.18.0\n"
 
 #: src/epubforge/_frozen_check.py:99 src/epubforge/gui/app.py:219
-#: src/epubforge/gui/tabs/metadata.py:257
-#: src/epubforge/gui/tabs/metadata.py:279
-#: src/epubforge/gui/tabs/metadata.py:451
+#: src/epubforge/gui/metadata_pages.py:222
+#: src/epubforge/gui/tabs/metadata.py:271
+#: src/epubforge/gui/tabs/metadata.py:293
+#: src/epubforge/gui/tabs/metadata.py:457
 msgid "Metadane"
 msgstr "Metadaten"
 
@@ -686,7 +687,7 @@ msgid "Nazwa"
 msgstr "Name"
 
 #: src/epubforge/cli/presets.py:24 src/epubforge/gui/metadata_fetch.py:53
-#: src/epubforge/gui/tabs/metadata.py:153
+#: src/epubforge/gui/tabs/metadata.py:165
 msgid "Opis"
 msgstr "Beschreibung"
 
@@ -1190,7 +1191,7 @@ msgstr "Design: {theme}"
 
 #: src/epubforge/gui/app.py:261 src/epubforge/gui/metadata_fetch.py:51
 #: src/epubforge/gui/tabs/converter.py:157 src/epubforge/gui/tabs/fixer.py:297
-#: src/epubforge/gui/tabs/fixer.py:407 src/epubforge/gui/tabs/metadata.py:139
+#: src/epubforge/gui/tabs/fixer.py:407 src/epubforge/gui/tabs/metadata.py:148
 #: src/epubforge/gui/tabs/stats.py:122
 msgid "Język"
 msgstr "Sprache"
@@ -1258,23 +1259,23 @@ msgstr ""
 #: src/epubforge/gui/metadata_fetch.py:48
 #: src/epubforge/gui/metadata_fetch.py:182
 #: src/epubforge/gui/tabs/converter.py:147
-#: src/epubforge/gui/tabs/metadata.py:131 src/epubforge/gui/tabs/stats.py:146
+#: src/epubforge/gui/tabs/metadata.py:140 src/epubforge/gui/tabs/stats.py:146
 #: src/epubforge/gui/tabs/toc.py:74
 msgid "Tytuł"
 msgstr "Titel"
 
 #: src/epubforge/gui/metadata_fetch.py:49
-#: src/epubforge/gui/tabs/metadata.py:141
+#: src/epubforge/gui/tabs/metadata.py:150
 msgid "Wydawca"
 msgstr "Verlag"
 
 #: src/epubforge/gui/metadata_fetch.py:50
-#: src/epubforge/gui/tabs/metadata.py:143
+#: src/epubforge/gui/tabs/metadata.py:152
 msgid "Data"
 msgstr "Datum"
 
 #: src/epubforge/gui/metadata_fetch.py:52
-#: src/epubforge/gui/tabs/metadata.py:132
+#: src/epubforge/gui/tabs/metadata.py:141
 msgid "Cykl"
 msgstr "Reihe"
 
@@ -1365,7 +1366,7 @@ msgid "Pobieram metadane wybranej książki…"
 msgstr "Metadaten des gewählten Buchs werden geladen…"
 
 #: src/epubforge/gui/metadata_fetch.py:352
-#: src/epubforge/gui/tabs/metadata.py:136
+#: src/epubforge/gui/tabs/metadata.py:145
 msgid "Autorzy"
 msgstr "Autoren"
 
@@ -1381,6 +1382,68 @@ msgstr "Deskriptoren (zu Themen hinzufügen):"
 #: src/epubforge/gui/metadata_fetch.py:380
 msgid "Ten temat jest już przypisany"
 msgstr "Dieses Thema ist bereits zugewiesen"
+
+#: src/epubforge/gui/metadata_pages.py:64
+msgid ""
+"Liczba stron zapisywana w EPUB 3 jako schema:numberOfPages. Wartość „—” "
+"oznacza brak i usuwa istniejący wpis przy zapisie."
+msgstr ""
+"Die Seitenzahl wird in EPUB 3 als schema:numberOfPages gespeichert. Der "
+"Wert „—“ bedeutet keine Angabe und entfernt beim Speichern den vorhandenen Eintrag."
+
+#: src/epubforge/gui/metadata_pages.py:70 src/epubforge/gui/tabs/stats.py:89
+msgid "Oblicz"
+msgstr "Berechnen"
+
+#: src/epubforge/gui/metadata_pages.py:72
+msgid "Szacuje liczbę stron z liczby słów przy użyciu modułu Statystyki"
+msgstr "Schätzt die Seitenzahl anhand der Wortzahl mit dem Statistikmodul"
+
+#: src/epubforge/gui/metadata_pages.py:81
+msgid ""
+"Wynik „Oblicz” jest estymacją na podstawie liczby słów (domyślnie 250 "
+"słów na stronę), nie liczbą stron wydania papierowego."
+msgstr ""
+"Das Ergebnis von „Berechnen“ ist eine Schätzung anhand der Wortzahl "
+"(standardmäßig 250 Wörter pro Seite), nicht die Seitenzahl einer Druckausgabe."
+
+#: src/epubforge/gui/metadata_pages.py:89
+msgid "Liczbę stron można zapisać dopiero po konwersji pliku do EPUB 3."
+msgstr "Die Seitenzahl kann erst nach der Konvertierung in EPUB 3 gespeichert werden."
+
+#: src/epubforge/gui/metadata_pages.py:158
+msgid ""
+"EPUB 2 nie obsługuje schema:numberOfPages; najpierw uaktualnij plik do "
+"EPUB 3."
+msgstr ""
+"EPUB 2 unterstützt schema:numberOfPages nicht; aktualisieren Sie die Datei "
+"zuerst auf EPUB 3."
+
+#: src/epubforge/gui/metadata_pages.py:179
+msgid "Obliczanie…"
+msgstr "Berechnung…"
+
+#: src/epubforge/gui/metadata_pages.py:192
+msgid "Worker statystyk zwrócił niepoprawny wynik."
+msgstr "Der Statistik-Worker hat ein ungültiges Ergebnis zurückgegeben."
+
+#: src/epubforge/gui/metadata_pages.py:196
+msgid "Nie udało się wyznaczyć dodatniej liczby stron."
+msgstr "Es konnte keine positive Seitenzahl ermittelt werden."
+
+#: src/epubforge/gui/metadata_pages.py:200
+#, python-brace-format
+msgid ""
+"Wstawiono szacunkową liczbę stron: {n}. Kliknij Zapisz, aby utrwalić "
+"zmianę."
+msgstr ""
+"Geschätzte Seitenzahl eingefügt: {n}. Klicken Sie auf Speichern, um die "
+"Änderung zu übernehmen."
+
+#: src/epubforge/gui/metadata_pages.py:209
+#, python-brace-format
+msgid "Nie udało się obliczyć liczby stron: {error}"
+msgstr "Die Seitenzahl konnte nicht berechnet werden: {error}"
 
 #: src/epubforge/gui/tags_panel.py:117
 msgid "Tagi"
@@ -1668,145 +1731,145 @@ msgstr "Öffnen Sie ein Kapitel, bevor Sie CSS-Änderungen in der Vorschau anzei
 msgid "Niepoprawny XHTML: {error}"
 msgstr "Ungültiges XHTML: {error}"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:49
+#: src/epubforge/gui/preview/reader_settings_ui.py:52
 msgid "Aktywna warstwa użytkownika"
 msgstr "Benutzerebene aktiv"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:51
+#: src/epubforge/gui/preview/reader_settings_ui.py:54
 msgid "Włącz lub wyłącz wszystkie odwracalne nadpisania użytkownika"
 msgstr "Alle umkehrbaren Benutzerüberschreibungen ein- oder ausschalten"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:55
+#: src/epubforge/gui/preview/reader_settings_ui.py:58
 msgid "Bazowy rozmiar tekstu warstwy użytkownika"
 msgstr "Basistextgröße der Benutzerebene"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:58
+#: src/epubforge/gui/preview/reader_settings_ui.py:61
 msgid "Wysokość linii warstwy użytkownika"
 msgstr "Zeilenhöhe der Benutzerebene"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:61
+#: src/epubforge/gui/preview/reader_settings_ui.py:64
 msgid "Margines strony narzucony przez użytkownika"
 msgstr "Vom Benutzer vorgegebener Seitenrand"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:65
+#: src/epubforge/gui/preview/reader_settings_ui.py:68
 msgid "Rozmiar tekstu"
 msgstr "Textgröße"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:67
+#: src/epubforge/gui/preview/reader_settings_ui.py:70
 msgid "Marginesy"
 msgstr "Ränder"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:83
+#: src/epubforge/gui/preview/reader_settings_ui.py:86
 msgid "Rodzina fontu lub uporządkowana lista fallbacków oddzielona przecinkami"
 msgstr "Schriftfamilie oder geordnete, kommagetrennte Fallback-Liste"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:86
+#: src/epubforge/gui/preview/reader_settings_ui.py:89
 msgid "Font / fallback"
 msgstr "Schrift / Fallback"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:88
+#: src/epubforge/gui/preview/reader_settings_ui.py:91
 msgid "Wymuś font"
 msgstr "Schrift erzwingen"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:89
+#: src/epubforge/gui/preview/reader_settings_ui.py:92
 msgid "Wyłącz fonty osadzone"
 msgstr "Eingebettete Schriften deaktivieren"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:90
+#: src/epubforge/gui/preview/reader_settings_ui.py:93
 msgid "Wyłącz CSS wydawcy"
 msgstr "Verlags-CSS deaktivieren"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:91
+#: src/epubforge/gui/preview/reader_settings_ui.py:94
 msgid "Nadaj wybranemu fontowi priorytet nad CSS wydawcy"
 msgstr "Der gewählten Schrift Vorrang vor dem Verlags-CSS geben"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:92
+#: src/epubforge/gui/preview/reader_settings_ui.py:95
 msgid "Nie używaj fontów dołączonych do publikacji"
 msgstr "Keine in der Publikation eingebetteten Schriften verwenden"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:94
+#: src/epubforge/gui/preview/reader_settings_ui.py:97
 msgid "Wyłącz style wydawcy w kopii renderowanej; nie zmienia to źródła EPUB"
 msgstr ""
 "Verlagsstile in der gerenderten Kopie deaktivieren; die EPUB-Quelle "
 "bleibt unverändert"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:103
+#: src/epubforge/gui/preview/reader_settings_ui.py:106
 msgid "Porównaj CSS wydawcy, CSS z ustawieniami użytkownika albo tekst bez stylów"
 msgstr ""
 "Verlags-CSS, CSS mit Benutzereinstellungen oder unformatierten Text "
 "vergleichen"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:105
+#: src/epubforge/gui/preview/reader_settings_ui.py:108
 msgid "CSS wydawcy"
 msgstr "Verlags-CSS"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:107
+#: src/epubforge/gui/preview/reader_settings_ui.py:110
 msgid "CSS wydawcy + ustawienia użytkownika"
 msgstr "Verlags-CSS + Benutzereinstellungen"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:109
+#: src/epubforge/gui/preview/reader_settings_ui.py:112
 msgid "Tekst bez stylów wydawcy"
 msgstr "Text ohne Verlagsstile"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:117
+#: src/epubforge/gui/preview/reader_settings_ui.py:120
 msgid "Kolor strony w warstwie symulatora, np. #ffffff"
 msgstr "Seitenfarbe in der Simulatorebene, z. B. #ffffff"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:118
+#: src/epubforge/gui/preview/reader_settings_ui.py:121
 msgid "Kolor tekstu w warstwie symulatora, np. #1a1a1a"
 msgstr "Textfarbe in der Simulatorebene, z. B. #1a1a1a"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:123
+#: src/epubforge/gui/preview/reader_settings_ui.py:126
 msgid "Kolor strony"
 msgstr "Seitenfarbe"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:125
+#: src/epubforge/gui/preview/reader_settings_ui.py:128
 msgid "Kolor tekstu"
 msgstr "Textfarbe"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:129
+#: src/epubforge/gui/preview/reader_settings_ui.py:132
 msgid "Szerokość własnego viewportu w CSS px"
 msgstr "Breite des eigenen Viewports in CSS-Pixeln"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:130
+#: src/epubforge/gui/preview/reader_settings_ui.py:133
 msgid "Wysokość własnego viewportu w CSS px"
 msgstr "Höhe des eigenen Viewports in CSS-Pixeln"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:135
+#: src/epubforge/gui/preview/reader_settings_ui.py:138
 msgid "Własny viewport"
 msgstr "Eigener Viewport"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:142
+#: src/epubforge/gui/preview/reader_settings_ui.py:145
 msgid "Cache: 0 wpisów / 0 B (HTTP wyłączony)"
 msgstr "Cache: 0 Einträge / 0 B (HTTP deaktiviert)"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:145
+#: src/epubforge/gui/preview/reader_settings_ui.py:148
 msgid "Wyczyść cache"
 msgstr "Cache leeren"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:146
+#: src/epubforge/gui/preview/reader_settings_ui.py:149
 msgid "Usuń pamięciowy cache dokumentów, CSS, obrazów i fontów bieżącej sesji"
 msgstr ""
 "Speichercache für Dokumente, CSS, Bilder und Schriften dieser Sitzung "
 "leeren"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:153
+#: src/epubforge/gui/preview/reader_settings_ui.py:156
 msgid "Font elementu: —"
 msgstr "Elementschrift: —"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:157
+#: src/epubforge/gui/preview/reader_settings_ui.py:160
 msgid "Wybierz drugi neutralny profil do porównania"
 msgstr "Ein zweites neutrales Profil zum Vergleich wählen"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:163
+#: src/epubforge/gui/preview/reader_settings_ui.py:166
 msgid "Drugi profil"
 msgstr "Zweites Profil"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:166
+#: src/epubforge/gui/preview/reader_settings_ui.py:169
 msgid "Porównaj obok siebie"
 msgstr "Nebeneinander vergleichen"
 
-#: src/epubforge/gui/preview/reader_settings_ui.py:167
+#: src/epubforge/gui/preview/reader_settings_ui.py:170
 msgid "Pokaż lub ukryj drugi viewport; funkcja wymaga dokładnego podglądu"
 msgstr ""
 "Den zweiten Viewport ein- oder ausblenden; diese Funktion erfordert die "
@@ -1970,19 +2033,19 @@ msgstr "Die Navigation der Vorschauseiten gilt nur für reflowable Seiten."
 msgid "Viewport {width}x{height} CSS px · DPR {dpr} (symulacyjne)"
 msgstr "Viewport {width}x{height} CSS-Pixel · DPR {dpr} (simuliert)"
 
-#: src/epubforge/gui/preview/rewrite.py:149
+#: src/epubforge/gui/preview/rewrite.py:158
 msgid "Zablokowano odwołanie poza publikację."
 msgstr "Ein Verweis außerhalb der Publikation wurde blockiert."
 
-#: src/epubforge/gui/preview/rewrite.py:163
+#: src/epubforge/gui/preview/rewrite.py:172
 msgid "Zablokowano niebezpieczną ścieżkę zasobu."
 msgstr "Ein unsicherer Ressourcenpfad wurde blockiert."
 
-#: src/epubforge/gui/preview/rewrite.py:174
+#: src/epubforge/gui/preview/rewrite.py:183
 msgid "Brak zasobu wskazanego przez publikację."
 msgstr "Eine von der Publikation referenzierte Ressource fehlt."
 
-#: src/epubforge/gui/preview/snapshot_worker.py:158
+#: src/epubforge/gui/preview/snapshot_worker.py:187
 #, python-brace-format
 msgid "Nie udało się przygotować podglądu: {error}"
 msgstr "Vorschau konnte nicht vorbereitet werden: {error}"
@@ -2172,7 +2235,7 @@ msgid "pdf2md"
 msgstr "pdf2md"
 
 #: src/epubforge/gui/tabs/converter.py:361
-#: src/epubforge/gui/tabs/metadata.py:383
+#: src/epubforge/gui/tabs/metadata.py:389
 #, python-brace-format
 msgid ""
 "Nie udało się uruchomić programu:\n"
@@ -2354,33 +2417,33 @@ msgstr ""
 msgid "nieznany"
 msgstr "unbekannt"
 
-#: src/epubforge/gui/tabs/editor_layout.py:82
+#: src/epubforge/gui/tabs/editor_layout.py:103
 msgid "Otwórz EPUB…"
 msgstr "EPUB öffnen…"
 
-#: src/epubforge/gui/tabs/editor_layout.py:84
+#: src/epubforge/gui/tabs/editor_layout.py:105
 msgid "Otwórz plik EPUB do bezpiecznego podglądu i edycji jego zawartości"
 msgstr "Eine EPUB-Datei zur sicheren Vorschau und Bearbeitung ihres Inhalts öffnen"
 
-#: src/epubforge/gui/tabs/editor_layout.py:89
+#: src/epubforge/gui/tabs/editor_layout.py:110
 msgid "Nie otwarto pliku"
 msgstr "Keine Datei geöffnet"
 
-#: src/epubforge/gui/tabs/editor_layout.py:90
+#: src/epubforge/gui/tabs/editor_layout.py:111
 msgid "Ścieżka aktualnie otwartego pliku EPUB"
 msgstr "Pfad der aktuell geöffneten EPUB-Datei"
 
-#: src/epubforge/gui/tabs/editor_layout.py:98
+#: src/epubforge/gui/tabs/editor_layout.py:117
 msgid "Włącz lub wyłącz edycję plików; startowo zawartość jest tylko do odczytu"
 msgstr ""
 "Dateibearbeitung ein- oder ausschalten; der Inhalt ist anfangs "
 "schreibgeschützt"
 
-#: src/epubforge/gui/tabs/editor_layout.py:105
+#: src/epubforge/gui/tabs/editor_layout.py:124
 msgid "Inspektor CSS"
 msgstr "CSS-Inspektor"
 
-#: src/epubforge/gui/tabs/editor_layout.py:107
+#: src/epubforge/gui/tabs/editor_layout.py:126
 msgid ""
 "Pokaż lub ukryj analizę arkusza CSS albo kaskady elementu w dokładnym "
 "podglądzie"
@@ -2388,31 +2451,31 @@ msgstr ""
 "CSS-Stylesheet-Analyse oder Elementkaskade in der genauen Vorschau ein- "
 "oder ausblenden"
 
-#: src/epubforge/gui/tabs/editor_layout.py:118
+#: src/epubforge/gui/tabs/editor_layout.py:135
 msgid "Resetuj układ"
 msgstr "Layout zurücksetzen"
 
-#: src/epubforge/gui/tabs/editor_layout.py:124
+#: src/epubforge/gui/tabs/editor_layout.py:139
 msgid "Przywróć podstawowy układ paneli po dodatkowym potwierdzeniu"
 msgstr ""
 "Das grundlegende Panel-Layout nach einer zusätzlichen Bestätigung "
 "wiederherstellen"
 
-#: src/epubforge/gui/tabs/editor_layout.py:129
+#: src/epubforge/gui/tabs/editor_layout.py:144
 msgid "Zapisz EPUB"
 msgstr "EPUB speichern"
 
-#: src/epubforge/gui/tabs/editor_layout.py:131
+#: src/epubforge/gui/tabs/editor_layout.py:146
 msgid "Zapisz zmiany całej publikacji na dysku i utwórz kopię .bak"
 msgstr ""
 "Alle Änderungen der Publikation speichern und eine .bak-Sicherung "
 "erstellen"
 
-#: src/epubforge/gui/tabs/editor_layout.py:158
+#: src/epubforge/gui/tabs/editor_layout.py:173
 msgid "Reset układu edytora"
 msgstr "Editor-Layout zurücksetzen"
 
-#: src/epubforge/gui/tabs/editor_layout.py:160
+#: src/epubforge/gui/tabs/editor_layout.py:175
 msgid ""
 "Przywrócić podstawowy układ paneli? Zostaną zamknięte dodatkowe panele, "
 "ale treść EPUB-a i niezapisane zmiany pozostaną bez zmian."
@@ -2421,74 +2484,74 @@ msgstr ""
 "geschlossen, der EPUB-Inhalt und ungespeicherte Änderungen bleiben jedoch"
 " unverändert."
 
-#: src/epubforge/gui/tabs/editor_preview.py:175
+#: src/epubforge/gui/tabs/editor_preview.py:176
 #: src/epubforge/gui/tabs/validator.py:216
 msgid "Kod"
 msgstr "Code"
 
-#: src/epubforge/gui/tabs/editor_preview.py:176
+#: src/epubforge/gui/tabs/editor_preview.py:177
 msgid "Pokaż kod źródłowy bieżącego dokumentu HTML"
 msgstr "Quellcode des aktuellen HTML-Dokuments anzeigen"
 
-#: src/epubforge/gui/tabs/editor_preview.py:180
+#: src/epubforge/gui/tabs/editor_preview.py:181
 msgid "Podgląd"
 msgstr "Vorschau"
 
-#: src/epubforge/gui/tabs/editor_preview.py:182
+#: src/epubforge/gui/tabs/editor_preview.py:183
 msgid "Przybliżony podgląd HTML (silnik Qt)"
 msgstr "Ungefähre HTML-Vorschau (Qt-Engine)"
 
-#: src/epubforge/gui/tabs/editor_preview.py:190
+#: src/epubforge/gui/tabs/editor_preview.py:191
 msgid "Podział"
 msgstr "Teilen"
 
-#: src/epubforge/gui/tabs/editor_preview.py:192
+#: src/epubforge/gui/tabs/editor_preview.py:193
 msgid "Widok dzielony: Kod obok Podglądu"
 msgstr "Geteilte Ansicht: Code neben Vorschau"
 
-#: src/epubforge/gui/tabs/editor_preview.py:240
+#: src/epubforge/gui/tabs/editor_preview.py:244
 msgid "Pokaż lub ukryj listę reguł i edycję bieżącego arkusza CSS"
 msgstr ""
 "Regelliste und Bearbeitung des aktuellen CSS-Stylesheets ein- oder "
 "ausblenden"
 
-#: src/epubforge/gui/tabs/editor_preview.py:242
+#: src/epubforge/gui/tabs/editor_preview.py:246
 msgid "Pokaż lub ukryj rzeczywistą kaskadę zaznaczonego elementu HTML"
 msgstr ""
 "Die tatsächliche Kaskade des ausgewählten HTML-Elements ein- oder "
 "ausblenden"
 
-#: src/epubforge/gui/tabs/editor_preview.py:244
+#: src/epubforge/gui/tabs/editor_preview.py:248
 msgid "Inspektor elementu HTML wymaga dokładnego podglądu WebEngine"
 msgstr "Der HTML-Elementinspektor erfordert die genaue WebEngine-Vorschau"
 
-#: src/epubforge/gui/tabs/editor_preview.py:246
+#: src/epubforge/gui/tabs/editor_preview.py:250
 msgid "Inspektor jest dostępny dla arkuszy CSS oraz HTML w trybie dokładnym"
 msgstr "Der Inspektor ist für CSS-Stylesheets und HTML im genauen Modus verfügbar"
 
-#: src/epubforge/gui/tabs/editor_preview.py:335
+#: src/epubforge/gui/tabs/editor_preview.py:339
 msgid "Brak arkusza CSS, do którego można dodać regułę."
 msgstr "Kein CSS-Stylesheet für die neue Regel verfügbar."
 
-#: src/epubforge/gui/tabs/editor_preview.py:420
+#: src/epubforge/gui/tabs/editor_preview.py:424
 #, python-brace-format
 msgid "Element {label}; przybliżona pozycja w kodzie: linia {line}."
 msgstr "Element {label}; ungefähre Position im Quelltext: Zeile {line}."
 
-#: src/epubforge/gui/tabs/editor_preview.py:470
+#: src/epubforge/gui/tabs/editor_preview.py:477
 msgid "Najpierw otwórz EPUB"
 msgstr "Zuerst ein EPUB öffnen"
 
-#: src/epubforge/gui/tabs/editor_preview.py:475
-#: src/epubforge/gui/tabs/metadata.py:375
-#: src/epubforge/gui/tabs/metadata.py:396
+#: src/epubforge/gui/tabs/editor_preview.py:482
+#: src/epubforge/gui/tabs/metadata.py:381
+#: src/epubforge/gui/tabs/metadata.py:402
 #: src/epubforge/gui/widgets/html_preview.py:172
 #, python-brace-format
 msgid "Nie wykryto {tool}"
 msgstr "{tool} nicht erkannt"
 
-#: src/epubforge/gui/tabs/editor_preview.py:478
-#: src/epubforge/gui/tabs/metadata.py:378
+#: src/epubforge/gui/tabs/editor_preview.py:485
+#: src/epubforge/gui/tabs/metadata.py:384
 #, python-brace-format
 msgid "Nie udało się uruchomić {tool}: {error}"
 msgstr "{tool} konnte nicht gestartet werden: {error}"
@@ -2503,7 +2566,7 @@ msgid "Receptura"
 msgstr "Rezept"
 
 #: src/epubforge/gui/tabs/fixer.py:108 src/epubforge/gui/tabs/fixer.py:253
-#: src/epubforge/gui/tabs/kfx.py:101 src/epubforge/gui/tabs/metadata.py:100
+#: src/epubforge/gui/tabs/kfx.py:101 src/epubforge/gui/tabs/metadata.py:109
 #: src/epubforge/gui/tabs/stats.py:82 src/epubforge/gui/tabs/toc.py:120
 #: src/epubforge/gui/tabs/validator.py:136
 msgid "Pliki EPUB"
@@ -3145,83 +3208,87 @@ msgstr ""
 "nicht mehr entwickelt. Es erzeugt weiterhin gültige MOBI-Dateien, "
 "empfohlen ist aber Calibre ebook-convert."
 
-#: src/epubforge/gui/tabs/metadata.py:87 src/epubforge/gui/tabs/metadata.py:370
+#: src/epubforge/gui/tabs/metadata.py:96 src/epubforge/gui/tabs/metadata.py:376
 msgid "Wybierz plik EPUB"
 msgstr "EPUB-Datei wählen"
 
-#: src/epubforge/gui/tabs/metadata.py:104
+#: src/epubforge/gui/tabs/metadata.py:113
 msgid "Folder z plikami EPUB"
 msgstr "Ordner mit EPUB-Dateien"
 
-#: src/epubforge/gui/tabs/metadata.py:106
+#: src/epubforge/gui/tabs/metadata.py:115
 msgid "Folder z plikami EPUB do edycji metadanych"
 msgstr "Ordner mit EPUB-Dateien zur Metadatenbearbeitung"
 
-#: src/epubforge/gui/tabs/metadata.py:123
+#: src/epubforge/gui/tabs/metadata.py:132
 msgid "Metadane Dublin Core"
 msgstr "Dublin-Core-Metadaten"
 
-#: src/epubforge/gui/tabs/metadata.py:130
+#: src/epubforge/gui/tabs/metadata.py:139
 msgid "Tytuł książki (dc:title)"
 msgstr "Buchtitel (dc:title)"
 
-#: src/epubforge/gui/tabs/metadata.py:134
+#: src/epubforge/gui/tabs/metadata.py:143
 msgid "Autorzy — jeden na linię; format: Nazwisko, Imię"
 msgstr "Autoren — einer pro Zeile; Format: Nachname, Vorname"
 
-#: src/epubforge/gui/tabs/metadata.py:137
+#: src/epubforge/gui/tabs/metadata.py:146
 msgid "Kod języka, np. pl, en (dc:language)"
 msgstr "Sprachcode, z. B. pl, en (dc:language)"
 
-#: src/epubforge/gui/tabs/metadata.py:140
+#: src/epubforge/gui/tabs/metadata.py:149
 msgid "Wydawca (dc:publisher)"
 msgstr "Verlag (dc:publisher)"
 
-#: src/epubforge/gui/tabs/metadata.py:142
+#: src/epubforge/gui/tabs/metadata.py:151
 msgid "Data publikacji w formacie ISO: RRRR-MM-DD"
 msgstr "Veröffentlichungsdatum im ISO-Format: JJJJ-MM-TT"
 
-#: src/epubforge/gui/tabs/metadata.py:144
+#: src/epubforge/gui/tabs/metadata.py:153
 msgid "Identyfikator: ISBN lub UUID (dc:identifier)"
 msgstr "Kennung: ISBN oder UUID (dc:identifier)"
 
-#: src/epubforge/gui/tabs/metadata.py:147
+#: src/epubforge/gui/tabs/metadata.py:157
+msgid "Liczba stron"
+msgstr "Seitenzahl"
+
+#: src/epubforge/gui/tabs/metadata.py:159
 msgid "Tematy/tagi — jeden na linię (dc:subject)"
 msgstr "Themen/Tags — einer pro Zeile (dc:subject)"
 
-#: src/epubforge/gui/tabs/metadata.py:149
+#: src/epubforge/gui/tabs/metadata.py:161
 msgid "Tematy"
 msgstr "Themen"
 
-#: src/epubforge/gui/tabs/metadata.py:151
+#: src/epubforge/gui/tabs/metadata.py:163
 msgid "Opis/streszczenie książki (dc:description)"
 msgstr "Beschreibung/Zusammenfassung des Buchs (dc:description)"
 
-#: src/epubforge/gui/tabs/metadata.py:169
+#: src/epubforge/gui/tabs/metadata.py:181
 msgid "Nazwa cyklu/serii, np. Wiedźmin"
 msgstr "Name der Reihe/Serie, z. B. The Witcher"
 
-#: src/epubforge/gui/tabs/metadata.py:171
+#: src/epubforge/gui/tabs/metadata.py:183
 msgid "Tom nr:"
 msgstr "Band Nr.:"
 
-#: src/epubforge/gui/tabs/metadata.py:174
+#: src/epubforge/gui/tabs/metadata.py:186
 msgid "Numer tomu w cyklu, np. 2 (można 1.5)"
 msgstr "Bandnummer in der Reihe, z. B. 2 (1.5 möglich)"
 
-#: src/epubforge/gui/tabs/metadata.py:182
+#: src/epubforge/gui/tabs/metadata.py:194
 msgid "Zapisz"
 msgstr "Speichern"
 
-#: src/epubforge/gui/tabs/metadata.py:183
+#: src/epubforge/gui/tabs/metadata.py:195
 msgid "Zapisuje metadane do wybranego EPUB"
 msgstr "Speichert Metadaten im ausgewählten EPUB"
 
-#: src/epubforge/gui/tabs/metadata.py:186
+#: src/epubforge/gui/tabs/metadata.py:198
 msgid "Pobierz metadane…"
 msgstr "Metadaten abrufen…"
 
-#: src/epubforge/gui/tabs/metadata.py:188
+#: src/epubforge/gui/tabs/metadata.py:200
 msgid ""
 "Pobiera metadane po ISBN z Biblioteki Narodowej / Open Library / Google "
 "Books"
@@ -3229,23 +3296,23 @@ msgstr ""
 "Ruft Metadaten per ISBN von der Polnischen Nationalbibliothek / Open "
 "Library / Google Books ab"
 
-#: src/epubforge/gui/tabs/metadata.py:223
+#: src/epubforge/gui/tabs/metadata.py:233
 msgid "Wybrany folder nie istnieje"
 msgstr "Der ausgewählte Ordner existiert nicht"
 
-#: src/epubforge/gui/tabs/metadata.py:231
+#: src/epubforge/gui/tabs/metadata.py:241
 #, python-brace-format
 msgid "Wczytano {n} plik EPUB"
 msgid_plural "Wczytano {n} plików EPUB"
 msgstr[0] "{n} EPUB-Datei geladen"
 msgstr[1] "{n} EPUB-Dateien geladen"
 
-#: src/epubforge/gui/tabs/metadata.py:254
+#: src/epubforge/gui/tabs/metadata.py:268
 #, python-brace-format
 msgid "Nie udało się wczytać metadanych: {error}"
 msgstr "Metadaten konnten nicht geladen werden: {error}"
 
-#: src/epubforge/gui/tabs/metadata.py:258
+#: src/epubforge/gui/tabs/metadata.py:272
 #, python-brace-format
 msgid ""
 "Nie udało się wczytać metadanych:\n"
@@ -3254,21 +3321,21 @@ msgstr ""
 "Metadaten konnten nicht geladen werden:\n"
 "{error}"
 
-#: src/epubforge/gui/tabs/metadata.py:265
+#: src/epubforge/gui/tabs/metadata.py:279
 #, python-brace-format
 msgid "Wczytano metadane: {name}"
 msgstr "Metadaten geladen: {name}"
 
-#: src/epubforge/gui/tabs/metadata.py:270
+#: src/epubforge/gui/tabs/metadata.py:284
 msgid "Wybierz plik EPUB przed zapisem"
 msgstr "Vor dem Speichern eine EPUB-Datei wählen"
 
-#: src/epubforge/gui/tabs/metadata.py:276
+#: src/epubforge/gui/tabs/metadata.py:290
 #, python-brace-format
 msgid "Nie udało się zapisać metadanych: {error}"
 msgstr "Metadaten konnten nicht gespeichert werden: {error}"
 
-#: src/epubforge/gui/tabs/metadata.py:280
+#: src/epubforge/gui/tabs/metadata.py:294
 #, python-brace-format
 msgid ""
 "Nie udało się zapisać metadanych:\n"
@@ -3277,25 +3344,28 @@ msgstr ""
 "Metadaten konnten nicht gespeichert werden:\n"
 "{error}"
 
-#: src/epubforge/gui/tabs/metadata.py:287
-#, python-brace-format
-msgid "Zapisano metadane: {name} (liczbę stron pominięto — to EPUB 2)"
-msgstr "Metadaten gespeichert: {name} (Seitenzahl übersprungen – EPUB 2)"
-
-#: src/epubforge/gui/tabs/metadata.py:292
+#: src/epubforge/gui/tabs/metadata.py:298
 #, python-brace-format
 msgid "Zapisano metadane: {name}"
 msgstr "Metadaten gespeichert: {name}"
 
-#: src/epubforge/gui/tabs/metadata.py:350
+#: src/epubforge/gui/tabs/metadata.py:351
+msgid ""
+"Naniesiono pobrane metadane, ale liczbę stron można zapisać dopiero po "
+"konwersji pliku do EPUB 3."
+msgstr ""
+"Die abgerufenen Metadaten wurden übernommen, aber die Seitenzahl kann erst "
+"nach der Konvertierung in EPUB 3 gespeichert werden."
+
+#: src/epubforge/gui/tabs/metadata.py:356
 msgid "Naniesiono pobrane metadane — sprawdź i zapisz"
 msgstr "Abgerufene Metadaten übernommen – prüfen und speichern"
 
-#: src/epubforge/gui/tabs/metadata.py:448
+#: src/epubforge/gui/tabs/metadata.py:454
 msgid "Tom nr nie jest liczbą; zapisano pozostałe metadane"
 msgstr "Bandnummer ist keine Zahl; übrige Metadaten wurden gespeichert"
 
-#: src/epubforge/gui/tabs/metadata.py:452
+#: src/epubforge/gui/tabs/metadata.py:458
 msgid ""
 "Pole „Tom nr” musi być liczbą, np. 2 albo 1.5. Ta wartość nie zostanie "
 "zmieniona."
@@ -3306,10 +3376,6 @@ msgstr ""
 #: src/epubforge/gui/tabs/stats.py:83 src/epubforge/gui/tabs/toc.py:121
 msgid "Wskaż plik EPUB…"
 msgstr "EPUB-Datei auswählen…"
-
-#: src/epubforge/gui/tabs/stats.py:89
-msgid "Oblicz"
-msgstr "Berechnen"
 
 #: src/epubforge/gui/tabs/stats.py:96
 msgid "Język z metadanych — zainstaluj epubforge[stats] dla wykrywania języka."
@@ -4401,3 +4467,6 @@ msgstr "Der EpubCheck-Bericht hat ein unerwartetes Format."
 
 #~ msgid "Pokaż panel reguł CSS z podglądem na żywo"
 #~ msgstr "CSS-Regelpanel mit Live-Vorschau anzeigen"
+
+#~ msgid "Zapisano metadane: {name} (liczbę stron pominięto — to EPUB 2)"
+#~ msgstr "Metadaten gespeichert: {name} (Seitenzahl übersprungen – EPUB 2)"

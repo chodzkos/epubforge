@@ -13,5 +13,11 @@ Liczby książki — przydatne przy korekcie i opisie. Kliknij **Oblicz**:
 Wykrywanie języka wymaga extra `[stats]` — bez niego język pochodzi z metadanych
 EPUB-a.
 
+Szacowana liczba stron wynika domyślnie z przelicznika 250 słów na stronę. Nie
+oznacza liczby stron wydania papierowego ani technicznych stron podglądu w
+symulatorze. Ten sam wynik można wstawić przyciskiem **Oblicz** w polu **Liczba
+stron** zakładki Metadane, a następnie — tylko dla EPUB 3 — zapisać jako
+`schema:numberOfPages`.
+
 > Odpowiednik CLI: `epubforge stats --report stats.html` (zakładka **Wiersz poleceń**).
 > Pełny opis: `docs/user-guide.md`.
