@@ -8,6 +8,11 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Added
+- **Edytowalna liczba stron w Metadanych** — EPUB 3 pokazuje i zapisuje
+  `schema:numberOfPages`, pozwala ręcznie zmienić lub usunąć wartość oraz wstawić
+  szacunek z istniejącego modułu Statystyki bez blokowania GUI. Wartość pobrana z
+  katalogu jest widoczna przed zapisem, EPUB 2 ma jawne ograniczenie, a cały OPF
+  wraz z pozostałymi metadanymi jest utrwalany jednym zapisem EPUB-a.
 - **Kontrolowany symulator czytnika (Prompt 6)** — neutralne profile viewportu,
   reflowable scroll/pages przez CSS columns oraz osobny algorytm skalowania
   fixed-layout z wykrywaniem rendition, viewportu, spread, orientation i page

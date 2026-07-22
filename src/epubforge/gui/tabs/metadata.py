@@ -21,9 +21,21 @@ from PySide6.QtWidgets import (
 )
 
 from epubforge.bookmeta import validate_isbn
-from epubforge.core import ConfigStore, Epub, EpubError, Metadata, Tool, Tools, set_number_of_pages
+from epubforge.core import (
+    ConfigStore,
+    Epub,
+    EpubError,
+    Metadata,
+    Tool,
+    Tools,
+    get_number_of_pages,
+    remove_number_of_pages,
+    set_number_of_pages,
+    supports_number_of_pages,
+)
 from epubforge.gui.external_tools import ToolUnavailableError, launch_tool
 from epubforge.gui.metadata_fetch import FetchMetadataDialog, FetchResult
+from epubforge.gui.metadata_pages import MetadataPages
 from epubforge.gui.tags_panel import TagsPanel
 from epubforge.gui.widgets import (
     FileList,
@@ -58,9 +70,6 @@ class MetadataTab(QWidget):
         self._config = config
         self.current_path: Path | None = None
         self._loaded_metadata: Metadata | None = None
-        # Liczba stron pobrana z sieci, do zapisania w OPF przy najbliższym „Zapisz"
-        # (tylko EPUB 3). Czyszczona po zapisie i przy zmianie pliku.
-        self._pending_page_count: int | None = None
         self.tool_buttons: dict[str, QPushButton] = {}
 
         self._build_layout()
@@ -143,6 +152,9 @@ class MetadataTab(QWidget):
         form.addRow(_("Data"), self.date_edit)
         self.identifier_edit = self._line_edit(_("Identyfikator: ISBN lub UUID (dc:identifier)"))
         form.addRow("ISBN", self.identifier_edit)
+        self.pages = MetadataPages()
+        self.pages.status_changed.connect(self._set_status)
+        form.addRow(_("Liczba stron"), self.pages)
         self.subjects_edit = self._text_edit(
             _("Tematy/tagi — jeden na linię (dc:subject)"), height=3
         )
@@ -212,8 +224,6 @@ class MetadataTab(QWidget):
         edit.setMinimumHeight(line_height * height + 12)
         return edit
 
-    # ── Logika ────────────────────────────────────────────────────────────────
-
     def _load_folder(self, raw_path: str) -> None:
         """Wczytuje EPUB-y z podanego folderu do listy plików."""
         if not raw_path:
@@ -247,9 +257,13 @@ class MetadataTab(QWidget):
 
     def _load_metadata(self, path: Path) -> None:
         """Czyta metadane z EPUB i wypełnia formularz."""
+        self.pages.set_document(None, supported=False, page_count=None)
         try:
             with Epub(path) as epub:
                 metadata = epub.metadata
+                opf = epub.read_file(epub.opf_path)
+                supports_pages = supports_number_of_pages(opf)
+                page_count = get_number_of_pages(opf) if supports_pages else None
         except (EpubError, OSError, KeyError) as exc:
             self._set_status(_("Nie udało się wczytać metadanych: {error}").format(error=exc))
             QMessageBox.critical(
@@ -260,8 +274,8 @@ class MetadataTab(QWidget):
             return
         self.current_path = path
         self._loaded_metadata = metadata
-        self._pending_page_count = None
         self._set_form(metadata)
+        self.pages.set_document(path, supported=supports_pages, page_count=page_count)
         self._set_status(_("Wczytano metadane: {name}").format(name=path.name))
 
     def _save_metadata(self) -> None:
@@ -271,7 +285,7 @@ class MetadataTab(QWidget):
             return
         metadata = self._metadata_from_form()
         try:
-            pages_skipped = self._write_metadata(self.current_path, metadata)
+            self._write_metadata(self.current_path, metadata)
         except (EpubError, OSError, KeyError) as exc:
             self._set_status(_("Nie udało się zapisać metadanych: {error}").format(error=exc))
             QMessageBox.critical(
@@ -281,40 +295,24 @@ class MetadataTab(QWidget):
             )
             return
         self._loaded_metadata = metadata
-        self._pending_page_count = None
-        if pages_skipped:
-            self._set_status(
-                _("Zapisano metadane: {name} (liczbę stron pominięto — to EPUB 2)").format(
-                    name=self.current_path.name
-                )
-            )
-        else:
-            self._set_status(_("Zapisano metadane: {name}").format(name=self.current_path.name))
+        self._set_status(_("Zapisano metadane: {name}").format(name=self.current_path.name))
 
-    def _write_metadata(self, path: Path, metadata: Metadata) -> bool:
-        """Zapisuje metadane Dublin Core, a dla EPUB 3 dokłada liczbę stron.
-
-        Dublin Core idzie przez setter ``Epub.metadata`` (sprawdzona ścieżka).
-        Liczba stron (``schema:numberOfPages``) jest dopisywana osobno i tylko dla
-        EPUB 3 — dla EPUB 2 składnia ``<meta property>`` nie istnieje, więc zapis
-        jest pomijany.
-
-        Returns:
-            ``True``, gdy była liczba stron do zapisania, ale plik to EPUB 2
-            (zapis pominięty) — wywołujący dopisuje o tym notę w statusie.
-        """
+    def _write_metadata(self, path: Path, metadata: Metadata) -> None:
+        """Buduje jeden spójny OPF i zapisuje EPUB dokładnie raz."""
         with Epub(path) as epub:
-            epub.metadata = metadata
-            if self._pending_page_count is None:
-                return False
-            with_pages = set_number_of_pages(
-                epub.read_file(epub.opf_path), self._pending_page_count
-            )
-            if with_pages is None:
-                return True
-            epub.write_file(epub.opf_path, with_pages)
+            current_opf = epub.read_file(epub.opf_path)
+            updated_opf = metadata.to_opf(current_opf)
+            if supports_number_of_pages(current_opf):
+                page_count = self.pages.value()
+                with_pages = (
+                    remove_number_of_pages(updated_opf)
+                    if page_count is None
+                    else set_number_of_pages(updated_opf, page_count)
+                )
+                if with_pages is not None:
+                    updated_opf = with_pages
+            epub.write_file(epub.opf_path, updated_opf)
             epub.save()
-        return False
 
     def _open_fetch_dialog(self) -> None:
         """Otwiera dialog pobierania metadanych po ISBN i nanosi wybór na formularz."""
@@ -345,8 +343,16 @@ class MetadataTab(QWidget):
             self.creators_edit.setPlainText("\n".join(selection.creators))
         if selection.add_subjects:
             self._append_subjects(selection.add_subjects)
-        if selection.page_count is not None:
-            self._pending_page_count = selection.page_count
+        if selection.page_count is not None and not self.pages.apply_fetched_value(
+            selection.page_count
+        ):
+            self._set_status(
+                _(
+                    "Naniesiono pobrane metadane, ale liczbę stron można zapisać "
+                    "dopiero po konwersji pliku do EPUB 3."
+                )
+            )
+            return
         self._set_status(_("Naniesiono pobrane metadane — sprawdź i zapisz"))
 
     def _tag_context(self) -> tuple[list[str], str, Path | None]:
@@ -426,7 +432,7 @@ class MetadataTab(QWidget):
     def _clear_form(self) -> None:
         """Czyści formularz metadanych."""
         self._loaded_metadata = None
-        self._pending_page_count = None
+        self.pages.set_document(None, supported=False, page_count=None)
         self._set_form(Metadata())
 
     def _series_index_from_form(self) -> float | None:

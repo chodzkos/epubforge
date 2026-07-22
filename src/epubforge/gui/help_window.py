@@ -4,9 +4,10 @@ Okno (belka DWM + re-render motywu na ``PaletteChange``) liczy wspólny kit
 (:class:`chodzkos_gui_kit.qt.widgets.HelpWindow`). Tu zostaje WYŁĄCZNIE wiedza o
 EpubForge: kolejność zakładek i ich źródła treści.
 
-„Jeden plik prawdy" (gui-kit 0.5.3): zakładki odwzorowujące zakładki GUI renderowane
-są z Markdown wprost z plików pakietu (:mod:`epubforge.help_docs`) — treść nie jest
-duplikowana w kodzie. Zakładka **Narzędzia zewnętrzne** zostaje HTML-owa: tabela
+„Jeden plik prawdy" (gui-kit 0.5.3): zakładki odwzorowujące zakładki GUI — w tym
+instrukcja liczby stron EPUB 3 w zakładce Metadane — renderowane są z Markdown
+wprost z plików pakietu (:mod:`epubforge.help_docs`), bez duplikowania treści w
+kodzie. Zakładka **Narzędzia zewnętrzne** zostaje HTML-owa: tabela
 narzędzi (+ nota o motywie/języku) dobrze składa się helperami kitu
 (``palette(...)`` → zero hexów; re-render motywu robi kit).
 
