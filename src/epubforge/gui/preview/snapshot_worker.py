@@ -6,6 +6,9 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from PySide6.QtCore import Slot
+from shiboken6 import isValid
+
 from epubforge.core import Epub
 from epubforge.gui.preview.backend import (
     DiagnosticCategory,
@@ -75,6 +78,7 @@ class SnapshotWorkerMixin:
         self._controller = PreviewController()
         self._snapshot_serial = 0
         self._snapshot_worker: Worker | None = None
+        self._snapshot_request: SnapshotRequest | None = None
         self._pending_snapshot: SnapshotRequest | None = None
 
     def render_document(
@@ -117,14 +121,34 @@ class SnapshotWorkerMixin:
     def _start_snapshot_worker(self, request: SnapshotRequest) -> None:
         worker = Worker(build_snapshot_job, self._controller, request)
         self._snapshot_worker = worker
-        worker.done.connect(lambda result: self._snapshot_ready(request, result))
-        worker.failed.connect(lambda message: self._snapshot_failed(request, message))
-        worker.finished.connect(lambda: self._snapshot_finished(worker))
+        self._snapshot_request = request
+        # Bezpośrednie sloty zachowują kontekst odbiorcy QObject. Qt automatycznie
+        # odłącza oczekujące callbacki, gdy BookPreview zostanie usunięty; lambda
+        # przechwytująca ``self`` mogła wykonać się już po skasowaniu jego dzieci.
+        worker.done.connect(self._snapshot_worker_done)
+        worker.failed.connect(self._snapshot_worker_failed)
+        worker.finished.connect(self._snapshot_worker_finished)
+        # Sprzątanie QThread nie może zależeć od czasu życia widgetu-odbiorcy.
+        worker.finished.connect(worker.deleteLater)
         worker.start()
+
+    @Slot(object)
+    def _snapshot_worker_done(self, value: object) -> None:
+        request = self._snapshot_request
+        if request is not None:
+            self._snapshot_ready(request, value)
+
+    @Slot(str)
+    def _snapshot_worker_failed(self, message: str) -> None:
+        request = self._snapshot_request
+        if request is not None:
+            self._snapshot_failed(request, message)
 
     def _snapshot_ready(self, request: SnapshotRequest, value: object) -> None:
         if (
-            request.serial != self._snapshot_serial
+            not isValid(self)
+            or getattr(self, "_disposed", False)
+            or request.serial != self._snapshot_serial
             or request.session is not self._session
             or not isinstance(value, SnapshotResult)
         ):
@@ -148,7 +172,12 @@ class SnapshotWorkerMixin:
             self._render_snapshot_into(self._comparison_backend, snapshot)
 
     def _snapshot_failed(self, request: SnapshotRequest, message: str) -> None:
-        if request.serial != self._snapshot_serial or request.session is not self._session:
+        if (
+            not isValid(self)
+            or getattr(self, "_disposed", False)
+            or request.serial != self._snapshot_serial
+            or request.session is not self._session
+        ):
             return
         self._status = PreviewStatus.LAST_GOOD
         self._update_status()
@@ -161,12 +190,18 @@ class SnapshotWorkerMixin:
             )
         )
 
-    def _snapshot_finished(self, worker: Worker) -> None:
-        if self._snapshot_worker is worker:
-            self._snapshot_worker = None
-        worker.deleteLater()
+    @Slot()
+    def _snapshot_worker_finished(self) -> None:
+        if not isValid(self):
+            return
+        self._snapshot_worker = None
+        self._snapshot_request = None
         pending, self._pending_snapshot = self._pending_snapshot, None
-        if pending is not None and pending.session is self._session:
+        if (
+            not getattr(self, "_disposed", False)
+            and pending is not None
+            and pending.session is self._session
+        ):
             self._start_snapshot_worker(pending)
 
     def _cancel_snapshot_pipeline(self, *, wait_ms: int = 0) -> None:
