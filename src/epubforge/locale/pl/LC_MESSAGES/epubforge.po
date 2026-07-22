@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EpubForge 1.0.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-07-23 00:34+0200\n"
+"POT-Creation-Date: 2026-07-23 01:10+0200\n"
 "PO-Revision-Date: 2026-06-12 13:30+0200\n"
 "Last-Translator: EpubForge translators <noreply@example.com>\n"
 "Language: pl\n"
@@ -1690,7 +1690,8 @@ msgstr ""
 
 #: src/epubforge/gui/preview/book_preview.py:348
 #: src/epubforge/gui/tabs/editor.py:168 src/epubforge/gui/tabs/editor.py:391
-#: src/epubforge/gui/tabs/validator.py:535
+#: src/epubforge/gui/tabs/validator.py:292
+#: src/epubforge/gui/tabs/validator_results.py:140
 msgid "Błąd"
 msgstr "Błąd"
 
@@ -1963,7 +1964,7 @@ msgid "Font elementu: {family} · {size} · line-height {line} · {status}"
 msgstr ""
 
 #: src/epubforge/gui/preview/reader_ui.py:204
-#: src/epubforge/gui/tabs/validator.py:537
+#: src/epubforge/gui/tabs/validator_results.py:142
 msgid "Informacja"
 msgstr "Informacja"
 
@@ -2120,7 +2121,7 @@ msgstr ""
 "Puste pole 'Folder wyjściowy' = zapis obok pliku źródłowego."
 
 #: src/epubforge/gui/tabs/converter.py:195 src/epubforge/gui/tabs/kfx.py:253
-#: src/epubforge/gui/tabs/validator.py:177
+#: src/epubforge/gui/tabs/validator.py:138
 #: src/epubforge/gui/widgets/search_panel.py:126
 msgid "Anuluj"
 msgstr "Anuluj"
@@ -2226,7 +2227,7 @@ msgid "Konwertowanie..."
 msgstr "Konwertowanie..."
 
 #: src/epubforge/gui/tabs/converter.py:414 src/epubforge/gui/tabs/kfx.py:381
-#: src/epubforge/gui/tabs/validator.py:373
+#: src/epubforge/gui/tabs/validator.py:383
 msgid "Anulowanie…"
 msgstr "Anulowanie…"
 
@@ -2238,7 +2239,7 @@ msgstr "Zakończono: {done}/{total} OK"
 
 #: src/epubforge/gui/tabs/converter.py:439
 #: src/epubforge/gui/tabs/converter.py:440 src/epubforge/gui/tabs/kfx.py:406
-#: src/epubforge/gui/tabs/kfx.py:407 src/epubforge/gui/tabs/validator.py:422
+#: src/epubforge/gui/tabs/kfx.py:407 src/epubforge/gui/tabs/validator.py:432
 #: src/epubforge/gui/widgets/search_panel.py:245
 msgid "Anulowano"
 msgstr "Anulowano"
@@ -2375,7 +2376,12 @@ msgstr "Plik „{name}” ma niezapisane zmiany."
 msgid "EPUB ma niezapisane zmiany. Zapisać przed zamknięciem?"
 msgstr "EPUB ma niezapisane zmiany. Zapisać przed zamknięciem?"
 
-#: src/epubforge/gui/tabs/editor.py:494
+#: src/epubforge/gui/tabs/editor.py:458
+#: src/epubforge/gui/tabs/editor_layout.py:115
+msgid "Nie otwarto pliku"
+msgstr "Nie otwarto pliku"
+
+#: src/epubforge/gui/tabs/editor.py:498
 #, python-brace-format
 msgid ""
 "{name}\n"
@@ -2388,71 +2394,110 @@ msgstr ""
 "Typ: {mtype}\n"
 "Rozmiar: {size} B"
 
-#: src/epubforge/gui/tabs/editor.py:495
+#: src/epubforge/gui/tabs/editor.py:499
 msgid "nieznany"
 msgstr "nieznany"
 
-#: src/epubforge/gui/tabs/editor_layout.py:103
+#: src/epubforge/gui/tabs/editor_layout.py:108
 msgid "Otwórz EPUB…"
 msgstr "Otwórz EPUB…"
 
-#: src/epubforge/gui/tabs/editor_layout.py:105
+#: src/epubforge/gui/tabs/editor_layout.py:110
 #, fuzzy
 msgid "Otwórz plik EPUB do bezpiecznego podglądu i edycji jego zawartości"
 msgstr "Otwórz plik EPUB do podglądu i edycji"
 
-#: src/epubforge/gui/tabs/editor_layout.py:110
-msgid "Nie otwarto pliku"
-msgstr "Nie otwarto pliku"
-
-#: src/epubforge/gui/tabs/editor_layout.py:111
+#: src/epubforge/gui/tabs/editor_layout.py:116
 #, fuzzy
 msgid "Ścieżka aktualnie otwartego pliku EPUB"
 msgstr "Nie otwarto pliku"
 
-#: src/epubforge/gui/tabs/editor_layout.py:117
+#: src/epubforge/gui/tabs/editor_layout.py:121
+#: src/epubforge/gui/tabs/editor_layout.py:169
+#: src/epubforge/gui/tabs/validator.py:155
+#: src/epubforge/gui/tabs/validator.py:260
+#: src/epubforge/gui/tabs/validator.py:280
+#: src/epubforge/gui/widgets/html_preview.py:152
+msgid "Sigil"
+msgstr "Sigil"
+
+#: src/epubforge/gui/tabs/editor_layout.py:121
+#: src/epubforge/gui/tabs/editor_layout.py:169
+#: src/epubforge/gui/tabs/validator.py:155
+#: src/epubforge/gui/tabs/validator.py:260
+#: src/epubforge/gui/tabs/validator.py:280
+#: src/epubforge/gui/widgets/html_preview.py:153
+msgid "Calibre Editor"
+msgstr "Calibre Editor"
+
+#: src/epubforge/gui/tabs/editor_layout.py:131
 msgid "Włącz lub wyłącz edycję plików; startowo zawartość jest tylko do odczytu"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor_layout.py:124
+#: src/epubforge/gui/tabs/editor_layout.py:138
 msgid "Inspektor CSS"
 msgstr "Inspektor CSS"
 
-#: src/epubforge/gui/tabs/editor_layout.py:126
+#: src/epubforge/gui/tabs/editor_layout.py:140
 msgid ""
 "Pokaż lub ukryj analizę arkusza CSS albo kaskady elementu w dokładnym "
 "podglądzie"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor_layout.py:135
+#: src/epubforge/gui/tabs/editor_layout.py:149
 msgid "Resetuj układ"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor_layout.py:139
+#: src/epubforge/gui/tabs/editor_layout.py:153
 msgid "Przywróć podstawowy układ paneli po dodatkowym potwierdzeniu"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor_layout.py:144
+#: src/epubforge/gui/tabs/editor_layout.py:158
 msgid "Zapisz EPUB"
 msgstr "Zapisz EPUB"
 
-#: src/epubforge/gui/tabs/editor_layout.py:146
+#: src/epubforge/gui/tabs/editor_layout.py:160
 #, fuzzy
 msgid "Zapisz zmiany całej publikacji na dysku i utwórz kopię .bak"
 msgstr "Zapisuje zmiany do pliku EPUB (kopia .bak)"
 
-#: src/epubforge/gui/tabs/editor_layout.py:173
+#: src/epubforge/gui/tabs/editor_layout.py:174
+#: src/epubforge/gui/tabs/editor_preview.py:482
+#: src/epubforge/gui/tabs/metadata.py:381
+#: src/epubforge/gui/tabs/metadata.py:402
+#: src/epubforge/gui/tabs/validator.py:267
+#: src/epubforge/gui/tabs/validator.py:288
+#: src/epubforge/gui/widgets/html_preview.py:172
+#, python-brace-format
+msgid "Nie wykryto {tool}"
+msgstr "Nie wykryto {tool}"
+
+#: src/epubforge/gui/tabs/editor_layout.py:176
+#: src/epubforge/gui/tabs/editor_preview.py:477
+msgid "Najpierw otwórz EPUB"
+msgstr "Najpierw otwórz EPUB"
+
+#: src/epubforge/gui/tabs/editor_layout.py:180
+#, python-brace-format
+msgid ""
+"Otwórz cały aktualny EPUB w {tool}. Program zobaczy wersję zapisaną na "
+"dysku, bez niezapisanych zmian Edytora. Wykryta ścieżka: {path}"
+msgstr ""
+"Otwórz cały aktualny EPUB w {tool}. Program zobaczy wersję zapisaną na "
+"dysku, bez niezapisanych zmian Edytora. Wykryta ścieżka: {path}"
+
+#: src/epubforge/gui/tabs/editor_layout.py:206
 msgid "Reset układu edytora"
 msgstr ""
 
-#: src/epubforge/gui/tabs/editor_layout.py:175
+#: src/epubforge/gui/tabs/editor_layout.py:208
 msgid ""
 "Przywrócić podstawowy układ paneli? Zostaną zamknięte dodatkowe panele, "
 "ale treść EPUB-a i niezapisane zmiany pozostaną bez zmian."
 msgstr ""
 
 #: src/epubforge/gui/tabs/editor_preview.py:176
-#: src/epubforge/gui/tabs/validator.py:216
+#: src/epubforge/gui/tabs/validator.py:183
 msgid "Kod"
 msgstr "Kod"
 
@@ -2502,20 +2547,9 @@ msgstr ""
 msgid "Element {label}; przybliżona pozycja w kodzie: linia {line}."
 msgstr "Element {label}; przybli?ona pozycja w kodzie: linia {line}."
 
-#: src/epubforge/gui/tabs/editor_preview.py:477
-msgid "Najpierw otwórz EPUB"
-msgstr "Najpierw otwórz EPUB"
-
-#: src/epubforge/gui/tabs/editor_preview.py:482
-#: src/epubforge/gui/tabs/metadata.py:381
-#: src/epubforge/gui/tabs/metadata.py:402
-#: src/epubforge/gui/widgets/html_preview.py:172
-#, python-brace-format
-msgid "Nie wykryto {tool}"
-msgstr "Nie wykryto {tool}"
-
 #: src/epubforge/gui/tabs/editor_preview.py:485
 #: src/epubforge/gui/tabs/metadata.py:384
+#: src/epubforge/gui/tabs/validator.py:290
 #, python-brace-format
 msgid "Nie udało się uruchomić {tool}: {error}"
 msgstr "Nie udało się uruchomić {tool}: {error}"
@@ -2532,7 +2566,7 @@ msgstr ""
 #: src/epubforge/gui/tabs/fixer.py:108 src/epubforge/gui/tabs/fixer.py:253
 #: src/epubforge/gui/tabs/kfx.py:101 src/epubforge/gui/tabs/metadata.py:109
 #: src/epubforge/gui/tabs/stats.py:82 src/epubforge/gui/tabs/toc.py:120
-#: src/epubforge/gui/tabs/validator.py:136
+#: src/epubforge/gui/tabs/validator.py:97
 msgid "Pliki EPUB"
 msgstr "Pliki EPUB"
 
@@ -3393,7 +3427,8 @@ msgstr "Eksport raportu HTML"
 msgid "HTML (*.html)"
 msgstr "HTML (*.html)"
 
-#: src/epubforge/gui/tabs/stats.py:222 src/epubforge/gui/tabs/validator.py:521
+#: src/epubforge/gui/tabs/stats.py:222
+#: src/epubforge/gui/tabs/validator_reports.py:63
 #, python-brace-format
 msgid "Zapisano raport: {name}"
 msgstr "Zapisano raport: {name}"
@@ -3502,7 +3537,8 @@ msgstr "Spis treści jest poprawny."
 msgid "Usunięto {n} wpisów."
 msgstr "Usunięto {n} wpisów."
 
-#: src/epubforge/gui/tabs/toc.py:377 src/epubforge/gui/tabs/validator.py:519
+#: src/epubforge/gui/tabs/toc.py:377
+#: src/epubforge/gui/tabs/validator_reports.py:61
 #, python-brace-format
 msgid "Nie udało się zapisać: {error}"
 msgstr "Nie udało się zapisać: {error}"
@@ -3539,83 +3575,101 @@ msgstr "Potwierdzenie"
 msgid "Spis treści ma niezapisane zmiany. Porzucić je?"
 msgstr "Spis treści ma niezapisane zmiany. Porzucić je?"
 
-#: src/epubforge/gui/tabs/validator.py:159
+#: src/epubforge/gui/tabs/validator.py:120
 msgid "Dodaj pliki EPUB i kliknij „Sprawdź zaznaczony”."
 msgstr "Dodaj pliki EPUB i kliknij „Sprawdź zaznaczony”."
 
-#: src/epubforge/gui/tabs/validator.py:170
+#: src/epubforge/gui/tabs/validator.py:131
 msgid "Sprawdź zaznaczony"
 msgstr "Sprawdź zaznaczony"
 
-#: src/epubforge/gui/tabs/validator.py:171
+#: src/epubforge/gui/tabs/validator.py:132
 msgid "Uruchom EpubCheck na zaznaczonym pliku"
 msgstr "Uruchom EpubCheck na zaznaczonym pliku"
 
-#: src/epubforge/gui/tabs/validator.py:174
+#: src/epubforge/gui/tabs/validator.py:135
 msgid "Sprawdź dostępność (Ace)"
 msgstr "Sprawdź dostępność (Ace)"
 
-#: src/epubforge/gui/tabs/validator.py:178
+#: src/epubforge/gui/tabs/validator.py:139
 msgid "Przerywa trwającą walidację (kończy proces Javy)"
 msgstr "Przerywa trwającą walidację (kończy proces Javy)"
 
-#: src/epubforge/gui/tabs/validator.py:188
+#: src/epubforge/gui/tabs/validator.py:149
 msgid "Eksport…"
 msgstr "Eksport…"
 
-#: src/epubforge/gui/tabs/validator.py:189
+#: src/epubforge/gui/tabs/validator.py:150
 msgid "Zapisz raport jako JSON lub HTML"
 msgstr "Zapisz raport jako JSON lub HTML"
 
-#: src/epubforge/gui/tabs/validator.py:197
+#: src/epubforge/gui/tabs/validator.py:164
 msgid "Pokaż:"
 msgstr "Pokaż:"
 
-#: src/epubforge/gui/tabs/validator.py:198
+#: src/epubforge/gui/tabs/validator.py:165
 msgid "Błędy"
 msgstr "Błędy"
 
-#: src/epubforge/gui/tabs/validator.py:199
+#: src/epubforge/gui/tabs/validator.py:166
 msgid "Ostrzeżenia"
 msgstr "Ostrzeżenia"
 
-#: src/epubforge/gui/tabs/validator.py:200
+#: src/epubforge/gui/tabs/validator.py:167
 msgid "Informacje"
 msgstr "Informacje"
 
-#: src/epubforge/gui/tabs/validator.py:216
+#: src/epubforge/gui/tabs/validator.py:183
 msgid "Poziom"
 msgstr "Poziom"
 
-#: src/epubforge/gui/tabs/validator.py:216
+#: src/epubforge/gui/tabs/validator.py:183
 msgid "Plik:linia"
 msgstr "Plik:linia"
 
-#: src/epubforge/gui/tabs/validator.py:216
+#: src/epubforge/gui/tabs/validator.py:183
 msgid "Komunikat"
 msgstr "Komunikat"
 
-#: src/epubforge/gui/tabs/validator.py:233
+#: src/epubforge/gui/tabs/validator.py:200
 msgid "Wskaż java.exe…"
 msgstr "Wskaż java.exe…"
 
-#: src/epubforge/gui/tabs/validator.py:236
+#: src/epubforge/gui/tabs/validator.py:203
 msgid "Wskaż epubcheck.jar…"
 msgstr "Wskaż epubcheck.jar…"
 
-#: src/epubforge/gui/tabs/validator.py:276
+#: src/epubforge/gui/tabs/validator.py:243
 msgid "Uruchom audyt dostępności DAISY Ace na zaznaczonym pliku"
 msgstr "Uruchom audyt dostępności DAISY Ace na zaznaczonym pliku"
 
-#: src/epubforge/gui/tabs/validator.py:278
+#: src/epubforge/gui/tabs/validator.py:245
 msgid "Zainstaluj DAISY Ace (Node.js): npm install -g @daisy/ace"
 msgstr "Zainstaluj DAISY Ace (Node.js): npm install -g @daisy/ace"
 
-#: src/epubforge/gui/tabs/validator.py:290
+#: src/epubforge/gui/tabs/validator.py:265
+msgid "Poczekaj na zakończenie walidacji przed otwarciem EPUB-a."
+msgstr "Poczekaj na zakończenie walidacji przed otwarciem EPUB-a."
+
+#: src/epubforge/gui/tabs/validator.py:269
+#: src/epubforge/gui/tabs/validator.py:283
+msgid "Najpierw zaznacz plik EPUB"
+msgstr "Najpierw zaznacz plik EPUB"
+
+#: src/epubforge/gui/tabs/validator.py:273
+#, python-brace-format
+msgid ""
+"Otwórz cały aktualny EPUB w {tool}. Program zobaczy wersję zapisaną na "
+"dysku. Wykryta ścieżka: {path}"
+msgstr ""
+"Otwórz cały aktualny EPUB w {tool}. Program zobaczy wersję zapisaną na "
+"dysku. Wykryta ścieżka: {path}"
+
+#: src/epubforge/gui/tabs/validator.py:300
 msgid "Java (Temurin JRE 17+)"
 msgstr "Java (Temurin JRE 17+)"
 
-#: src/epubforge/gui/tabs/validator.py:294
+#: src/epubforge/gui/tabs/validator.py:304
 #, python-brace-format
 msgid ""
 "<b>Walidacja wymaga dodatkowych narzędzi.</b><br>Brakuje: "
@@ -3630,64 +3684,72 @@ msgstr ""
 "href='https://github.com/w3c/epubcheck/releases'>epubcheck-5.x</a>.<br>3."
 " Rozpakuj i wskaż <code>epubcheck.jar</code> przyciskiem poniżej."
 
-#: src/epubforge/gui/tabs/validator.py:302
+#: src/epubforge/gui/tabs/validator.py:312
 msgid "Wskaż epubcheck.jar"
 msgstr "Wskaż epubcheck.jar"
 
-#: src/epubforge/gui/tabs/validator.py:302
+#: src/epubforge/gui/tabs/validator.py:312
 msgid "Plik JAR (*.jar)"
 msgstr "Plik JAR (*.jar)"
 
-#: src/epubforge/gui/tabs/validator.py:308
+#: src/epubforge/gui/tabs/validator.py:318
 msgid "Wskaż java.exe"
 msgstr "Wskaż java.exe"
 
-#: src/epubforge/gui/tabs/validator.py:308
+#: src/epubforge/gui/tabs/validator.py:318
 msgid "Plik wykonywalny Java (java*)"
 msgstr "Plik wykonywalny Java (java*)"
 
-#: src/epubforge/gui/tabs/validator.py:344
+#: src/epubforge/gui/tabs/validator.py:354
 #, python-brace-format
 msgid "Walidacja: {name}…"
 msgstr "Walidacja: {name}…"
 
-#: src/epubforge/gui/tabs/validator.py:362
+#: src/epubforge/gui/tabs/validator.py:372
 #, python-brace-format
 msgid "Audyt dostępności: {name}…"
 msgstr "Audyt dostępności: {name}…"
 
-#: src/epubforge/gui/tabs/validator.py:393
+#: src/epubforge/gui/tabs/validator.py:403
 msgid "POPRAWNY"
 msgstr "POPRAWNY"
 
-#: src/epubforge/gui/tabs/validator.py:393
+#: src/epubforge/gui/tabs/validator.py:403
 msgid "NIEPOPRAWNY"
 msgstr "NIEPOPRAWNY"
 
-#: src/epubforge/gui/tabs/validator.py:395
+#: src/epubforge/gui/tabs/validator.py:405
 #, python-brace-format
 msgid "Zakończono w {sec:.1f}s — {verdict}"
 msgstr "Zakończono w {sec:.1f}s — {verdict}"
 
-#: src/epubforge/gui/tabs/validator.py:410
+#: src/epubforge/gui/tabs/validator.py:420
 msgid "DOSTĘPNY"
 msgstr "DOSTĘPNY"
 
-#: src/epubforge/gui/tabs/validator.py:410
+#: src/epubforge/gui/tabs/validator.py:420
 msgid "NIEDOSTĘPNY"
 msgstr "NIEDOSTĘPNY"
 
-#: src/epubforge/gui/tabs/validator.py:412
+#: src/epubforge/gui/tabs/validator.py:422
 #, python-brace-format
 msgid "Audyt zakończono w {sec:.1f}s — {verdict}"
 msgstr "Audyt zakończono w {sec:.1f}s — {verdict}"
 
-#: src/epubforge/gui/tabs/validator.py:429
+#: src/epubforge/gui/tabs/validator.py:439
 #, python-brace-format
 msgid "Walidacja nieudana: {error}"
 msgstr "Walidacja nieudana: {error}"
 
-#: src/epubforge/gui/tabs/validator.py:487
+#: src/epubforge/gui/tabs/validator_reports.py:40
+msgid "Eksport raportu"
+msgstr "Eksport raportu"
+
+#: src/epubforge/gui/tabs/validator_reports.py:42
+msgid "JSON (*.json);;HTML (*.html)"
+msgstr "JSON (*.json);;HTML (*.html)"
+
+#: src/epubforge/gui/tabs/validator_results.py:123
 #, python-brace-format
 msgid "{n} błąd"
 msgid_plural "{n} błędów"
@@ -3695,7 +3757,7 @@ msgstr[0] "{n} błąd"
 msgstr[1] "{n} błędy"
 msgstr[2] "{n} błędów"
 
-#: src/epubforge/gui/tabs/validator.py:488
+#: src/epubforge/gui/tabs/validator_results.py:124
 #, python-brace-format
 msgid "{n} ostrzeżenie"
 msgid_plural "{n} ostrzeżeń"
@@ -3703,7 +3765,7 @@ msgstr[0] "{n} ostrzeżenie"
 msgstr[1] "{n} ostrzeżenia"
 msgstr[2] "{n} ostrzeżeń"
 
-#: src/epubforge/gui/tabs/validator.py:489
+#: src/epubforge/gui/tabs/validator_results.py:125
 #, python-brace-format
 msgid "{n} informacja"
 msgid_plural "{n} informacji"
@@ -3711,19 +3773,11 @@ msgstr[0] "{n} informacja"
 msgstr[1] "{n} informacje"
 msgstr[2] "{n} informacji"
 
-#: src/epubforge/gui/tabs/validator.py:501
-msgid "Eksport raportu"
-msgstr "Eksport raportu"
-
-#: src/epubforge/gui/tabs/validator.py:501
-msgid "JSON (*.json);;HTML (*.html)"
-msgstr "JSON (*.json);;HTML (*.html)"
-
-#: src/epubforge/gui/tabs/validator.py:534
+#: src/epubforge/gui/tabs/validator_results.py:139
 msgid "Krytyczny"
 msgstr "Krytyczny"
 
-#: src/epubforge/gui/tabs/validator.py:536
+#: src/epubforge/gui/tabs/validator_results.py:141
 msgid "Ostrzeżenie"
 msgstr "Ostrzeżenie"
 
@@ -4197,14 +4251,6 @@ msgid ""
 msgstr ""
 "Podgląd przybliżony (silnik Qt) — nie pokazuje pełnego CSS, fontów "
 "osadzonych ani układu czytnika. Pełny podgląd:"
-
-#: src/epubforge/gui/widgets/html_preview.py:152
-msgid "Sigil"
-msgstr "Sigil"
-
-#: src/epubforge/gui/widgets/html_preview.py:153
-msgid "Calibre Editor"
-msgstr "Calibre Editor"
 
 #: src/epubforge/gui/widgets/html_preview.py:170
 #, python-brace-format

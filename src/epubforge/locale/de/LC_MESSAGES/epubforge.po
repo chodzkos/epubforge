@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EpubForge 1.0.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-07-23 00:34+0200\n"
+"POT-Creation-Date: 2026-07-23 01:10+0200\n"
 "PO-Revision-Date: 2026-06-12 13:30+0200\n"
 "Last-Translator: EpubForge translators <noreply@example.com>\n"
 "Language: de\n"
@@ -1389,7 +1389,8 @@ msgid ""
 "oznacza brak i usuwa istniejący wpis przy zapisie."
 msgstr ""
 "Die Seitenzahl wird in EPUB 3 als schema:numberOfPages gespeichert. Der "
-"Wert „—“ bedeutet keine Angabe und entfernt beim Speichern den vorhandenen Eintrag."
+"Wert „—“ bedeutet keine Angabe und entfernt beim Speichern den "
+"vorhandenen Eintrag."
 
 #: src/epubforge/gui/metadata_pages.py:70 src/epubforge/gui/tabs/stats.py:89
 msgid "Oblicz"
@@ -1405,19 +1406,22 @@ msgid ""
 "słów na stronę), nie liczbą stron wydania papierowego."
 msgstr ""
 "Das Ergebnis von „Berechnen“ ist eine Schätzung anhand der Wortzahl "
-"(standardmäßig 250 Wörter pro Seite), nicht die Seitenzahl einer Druckausgabe."
+"(standardmäßig 250 Wörter pro Seite), nicht die Seitenzahl einer "
+"Druckausgabe."
 
 #: src/epubforge/gui/metadata_pages.py:89
 msgid "Liczbę stron można zapisać dopiero po konwersji pliku do EPUB 3."
-msgstr "Die Seitenzahl kann erst nach der Konvertierung in EPUB 3 gespeichert werden."
+msgstr ""
+"Die Seitenzahl kann erst nach der Konvertierung in EPUB 3 gespeichert "
+"werden."
 
 #: src/epubforge/gui/metadata_pages.py:158
 msgid ""
 "EPUB 2 nie obsługuje schema:numberOfPages; najpierw uaktualnij plik do "
 "EPUB 3."
 msgstr ""
-"EPUB 2 unterstützt schema:numberOfPages nicht; aktualisieren Sie die Datei "
-"zuerst auf EPUB 3."
+"EPUB 2 unterstützt schema:numberOfPages nicht; aktualisieren Sie die "
+"Datei zuerst auf EPUB 3."
 
 #: src/epubforge/gui/metadata_pages.py:179
 msgid "Obliczanie…"
@@ -1713,7 +1717,8 @@ msgstr "Fallback"
 
 #: src/epubforge/gui/preview/book_preview.py:348
 #: src/epubforge/gui/tabs/editor.py:168 src/epubforge/gui/tabs/editor.py:391
-#: src/epubforge/gui/tabs/validator.py:535
+#: src/epubforge/gui/tabs/validator.py:292
+#: src/epubforge/gui/tabs/validator_results.py:140
 msgid "Błąd"
 msgstr "Fehler"
 
@@ -1989,7 +1994,7 @@ msgid "Font elementu: {family} · {size} · line-height {line} · {status}"
 msgstr "Elementschrift: {family} · {size} · Zeilenhöhe {line} · {status}"
 
 #: src/epubforge/gui/preview/reader_ui.py:204
-#: src/epubforge/gui/tabs/validator.py:537
+#: src/epubforge/gui/tabs/validator_results.py:142
 msgid "Informacja"
 msgstr "Info"
 
@@ -2148,7 +2153,7 @@ msgstr ""
 "Leeres Feld 'Ausgabeordner' = neben der Quelldatei speichern."
 
 #: src/epubforge/gui/tabs/converter.py:195 src/epubforge/gui/tabs/kfx.py:253
-#: src/epubforge/gui/tabs/validator.py:177
+#: src/epubforge/gui/tabs/validator.py:138
 #: src/epubforge/gui/widgets/search_panel.py:126
 msgid "Anuluj"
 msgstr "Abbrechen"
@@ -2253,7 +2258,7 @@ msgid "Konwertowanie..."
 msgstr "Konvertiere..."
 
 #: src/epubforge/gui/tabs/converter.py:414 src/epubforge/gui/tabs/kfx.py:381
-#: src/epubforge/gui/tabs/validator.py:373
+#: src/epubforge/gui/tabs/validator.py:383
 msgid "Anulowanie…"
 msgstr "Wird abgebrochen…"
 
@@ -2265,7 +2270,7 @@ msgstr "Fertig: {done}/{total} OK"
 
 #: src/epubforge/gui/tabs/converter.py:439
 #: src/epubforge/gui/tabs/converter.py:440 src/epubforge/gui/tabs/kfx.py:406
-#: src/epubforge/gui/tabs/kfx.py:407 src/epubforge/gui/tabs/validator.py:422
+#: src/epubforge/gui/tabs/kfx.py:407 src/epubforge/gui/tabs/validator.py:432
 #: src/epubforge/gui/widgets/search_panel.py:245
 msgid "Anulowano"
 msgstr "Abgebrochen"
@@ -2400,7 +2405,12 @@ msgstr "Datei „{name}“ hat nicht gespeicherte Änderungen."
 msgid "EPUB ma niezapisane zmiany. Zapisać przed zamknięciem?"
 msgstr "Das EPUB hat nicht gespeicherte Änderungen. Vor dem Schließen speichern?"
 
-#: src/epubforge/gui/tabs/editor.py:494
+#: src/epubforge/gui/tabs/editor.py:458
+#: src/epubforge/gui/tabs/editor_layout.py:115
+msgid "Nie otwarto pliku"
+msgstr "Keine Datei geöffnet"
+
+#: src/epubforge/gui/tabs/editor.py:498
 #, python-brace-format
 msgid ""
 "{name}\n"
@@ -2413,37 +2423,51 @@ msgstr ""
 "Typ: {mtype}\n"
 "Größe: {size} B"
 
-#: src/epubforge/gui/tabs/editor.py:495
+#: src/epubforge/gui/tabs/editor.py:499
 msgid "nieznany"
 msgstr "unbekannt"
 
-#: src/epubforge/gui/tabs/editor_layout.py:103
+#: src/epubforge/gui/tabs/editor_layout.py:108
 msgid "Otwórz EPUB…"
 msgstr "EPUB öffnen…"
 
-#: src/epubforge/gui/tabs/editor_layout.py:105
+#: src/epubforge/gui/tabs/editor_layout.py:110
 msgid "Otwórz plik EPUB do bezpiecznego podglądu i edycji jego zawartości"
 msgstr "Eine EPUB-Datei zur sicheren Vorschau und Bearbeitung ihres Inhalts öffnen"
 
-#: src/epubforge/gui/tabs/editor_layout.py:110
-msgid "Nie otwarto pliku"
-msgstr "Keine Datei geöffnet"
-
-#: src/epubforge/gui/tabs/editor_layout.py:111
+#: src/epubforge/gui/tabs/editor_layout.py:116
 msgid "Ścieżka aktualnie otwartego pliku EPUB"
 msgstr "Pfad der aktuell geöffneten EPUB-Datei"
 
-#: src/epubforge/gui/tabs/editor_layout.py:117
+#: src/epubforge/gui/tabs/editor_layout.py:121
+#: src/epubforge/gui/tabs/editor_layout.py:169
+#: src/epubforge/gui/tabs/validator.py:155
+#: src/epubforge/gui/tabs/validator.py:260
+#: src/epubforge/gui/tabs/validator.py:280
+#: src/epubforge/gui/widgets/html_preview.py:152
+msgid "Sigil"
+msgstr "Sigil"
+
+#: src/epubforge/gui/tabs/editor_layout.py:121
+#: src/epubforge/gui/tabs/editor_layout.py:169
+#: src/epubforge/gui/tabs/validator.py:155
+#: src/epubforge/gui/tabs/validator.py:260
+#: src/epubforge/gui/tabs/validator.py:280
+#: src/epubforge/gui/widgets/html_preview.py:153
+msgid "Calibre Editor"
+msgstr "Calibre Editor"
+
+#: src/epubforge/gui/tabs/editor_layout.py:131
 msgid "Włącz lub wyłącz edycję plików; startowo zawartość jest tylko do odczytu"
 msgstr ""
 "Dateibearbeitung ein- oder ausschalten; der Inhalt ist anfangs "
 "schreibgeschützt"
 
-#: src/epubforge/gui/tabs/editor_layout.py:124
+#: src/epubforge/gui/tabs/editor_layout.py:138
 msgid "Inspektor CSS"
 msgstr "CSS-Inspektor"
 
-#: src/epubforge/gui/tabs/editor_layout.py:126
+#: src/epubforge/gui/tabs/editor_layout.py:140
 msgid ""
 "Pokaż lub ukryj analizę arkusza CSS albo kaskady elementu w dokładnym "
 "podglądzie"
@@ -2451,31 +2475,57 @@ msgstr ""
 "CSS-Stylesheet-Analyse oder Elementkaskade in der genauen Vorschau ein- "
 "oder ausblenden"
 
-#: src/epubforge/gui/tabs/editor_layout.py:135
+#: src/epubforge/gui/tabs/editor_layout.py:149
 msgid "Resetuj układ"
 msgstr "Layout zurücksetzen"
 
-#: src/epubforge/gui/tabs/editor_layout.py:139
+#: src/epubforge/gui/tabs/editor_layout.py:153
 msgid "Przywróć podstawowy układ paneli po dodatkowym potwierdzeniu"
 msgstr ""
 "Das grundlegende Panel-Layout nach einer zusätzlichen Bestätigung "
 "wiederherstellen"
 
-#: src/epubforge/gui/tabs/editor_layout.py:144
+#: src/epubforge/gui/tabs/editor_layout.py:158
 msgid "Zapisz EPUB"
 msgstr "EPUB speichern"
 
-#: src/epubforge/gui/tabs/editor_layout.py:146
+#: src/epubforge/gui/tabs/editor_layout.py:160
 msgid "Zapisz zmiany całej publikacji na dysku i utwórz kopię .bak"
 msgstr ""
 "Alle Änderungen der Publikation speichern und eine .bak-Sicherung "
 "erstellen"
 
-#: src/epubforge/gui/tabs/editor_layout.py:173
+#: src/epubforge/gui/tabs/editor_layout.py:174
+#: src/epubforge/gui/tabs/editor_preview.py:482
+#: src/epubforge/gui/tabs/metadata.py:381
+#: src/epubforge/gui/tabs/metadata.py:402
+#: src/epubforge/gui/tabs/validator.py:267
+#: src/epubforge/gui/tabs/validator.py:288
+#: src/epubforge/gui/widgets/html_preview.py:172
+#, python-brace-format
+msgid "Nie wykryto {tool}"
+msgstr "{tool} nicht erkannt"
+
+#: src/epubforge/gui/tabs/editor_layout.py:176
+#: src/epubforge/gui/tabs/editor_preview.py:477
+msgid "Najpierw otwórz EPUB"
+msgstr "Zuerst ein EPUB öffnen"
+
+#: src/epubforge/gui/tabs/editor_layout.py:180
+#, python-brace-format
+msgid ""
+"Otwórz cały aktualny EPUB w {tool}. Program zobaczy wersję zapisaną na "
+"dysku, bez niezapisanych zmian Edytora. Wykryta ścieżka: {path}"
+msgstr ""
+"Den gesamten aktuellen EPUB in {tool} öffnen. Das Programm sieht die auf "
+"dem Datenträger gespeicherte Version ohne ungespeicherte Editor-"
+"Änderungen. Erkannter Pfad: {path}"
+
+#: src/epubforge/gui/tabs/editor_layout.py:206
 msgid "Reset układu edytora"
 msgstr "Editor-Layout zurücksetzen"
 
-#: src/epubforge/gui/tabs/editor_layout.py:175
+#: src/epubforge/gui/tabs/editor_layout.py:208
 msgid ""
 "Przywrócić podstawowy układ paneli? Zostaną zamknięte dodatkowe panele, "
 "ale treść EPUB-a i niezapisane zmiany pozostaną bez zmian."
@@ -2485,7 +2535,7 @@ msgstr ""
 " unverändert."
 
 #: src/epubforge/gui/tabs/editor_preview.py:176
-#: src/epubforge/gui/tabs/validator.py:216
+#: src/epubforge/gui/tabs/validator.py:183
 msgid "Kod"
 msgstr "Code"
 
@@ -2538,20 +2588,9 @@ msgstr "Kein CSS-Stylesheet für die neue Regel verfügbar."
 msgid "Element {label}; przybliżona pozycja w kodzie: linia {line}."
 msgstr "Element {label}; ungefähre Position im Quelltext: Zeile {line}."
 
-#: src/epubforge/gui/tabs/editor_preview.py:477
-msgid "Najpierw otwórz EPUB"
-msgstr "Zuerst ein EPUB öffnen"
-
-#: src/epubforge/gui/tabs/editor_preview.py:482
-#: src/epubforge/gui/tabs/metadata.py:381
-#: src/epubforge/gui/tabs/metadata.py:402
-#: src/epubforge/gui/widgets/html_preview.py:172
-#, python-brace-format
-msgid "Nie wykryto {tool}"
-msgstr "{tool} nicht erkannt"
-
 #: src/epubforge/gui/tabs/editor_preview.py:485
 #: src/epubforge/gui/tabs/metadata.py:384
+#: src/epubforge/gui/tabs/validator.py:290
 #, python-brace-format
 msgid "Nie udało się uruchomić {tool}: {error}"
 msgstr "{tool} konnte nicht gestartet werden: {error}"
@@ -2568,7 +2607,7 @@ msgstr "Rezept"
 #: src/epubforge/gui/tabs/fixer.py:108 src/epubforge/gui/tabs/fixer.py:253
 #: src/epubforge/gui/tabs/kfx.py:101 src/epubforge/gui/tabs/metadata.py:109
 #: src/epubforge/gui/tabs/stats.py:82 src/epubforge/gui/tabs/toc.py:120
-#: src/epubforge/gui/tabs/validator.py:136
+#: src/epubforge/gui/tabs/validator.py:97
 msgid "Pliki EPUB"
 msgstr "EPUB-Dateien"
 
@@ -3354,8 +3393,8 @@ msgid ""
 "Naniesiono pobrane metadane, ale liczbę stron można zapisać dopiero po "
 "konwersji pliku do EPUB 3."
 msgstr ""
-"Die abgerufenen Metadaten wurden übernommen, aber die Seitenzahl kann erst "
-"nach der Konvertierung in EPUB 3 gespeichert werden."
+"Die abgerufenen Metadaten wurden übernommen, aber die Seitenzahl kann "
+"erst nach der Konvertierung in EPUB 3 gespeichert werden."
 
 #: src/epubforge/gui/tabs/metadata.py:356
 msgid "Naniesiono pobrane metadane — sprawdź i zapisz"
@@ -3446,7 +3485,8 @@ msgstr "HTML-Bericht exportieren"
 msgid "HTML (*.html)"
 msgstr "HTML (*.html)"
 
-#: src/epubforge/gui/tabs/stats.py:222 src/epubforge/gui/tabs/validator.py:521
+#: src/epubforge/gui/tabs/stats.py:222
+#: src/epubforge/gui/tabs/validator_reports.py:63
 #, python-brace-format
 msgid "Zapisano raport: {name}"
 msgstr "Bericht gespeichert: {name}"
@@ -3555,7 +3595,8 @@ msgstr "Das Inhaltsverzeichnis ist gültig."
 msgid "Usunięto {n} wpisów."
 msgstr "{n} Einträge entfernt."
 
-#: src/epubforge/gui/tabs/toc.py:377 src/epubforge/gui/tabs/validator.py:519
+#: src/epubforge/gui/tabs/toc.py:377
+#: src/epubforge/gui/tabs/validator_reports.py:61
 #, python-brace-format
 msgid "Nie udało się zapisać: {error}"
 msgstr "Speichern fehlgeschlagen: {error}"
@@ -3591,83 +3632,101 @@ msgstr "Bestätigung"
 msgid "Spis treści ma niezapisane zmiany. Porzucić je?"
 msgstr "Das Inhaltsverzeichnis hat ungespeicherte Änderungen. Verwerfen?"
 
-#: src/epubforge/gui/tabs/validator.py:159
+#: src/epubforge/gui/tabs/validator.py:120
 msgid "Dodaj pliki EPUB i kliknij „Sprawdź zaznaczony”."
 msgstr "EPUB-Dateien hinzufügen und „Auswahl prüfen“ klicken."
 
-#: src/epubforge/gui/tabs/validator.py:170
+#: src/epubforge/gui/tabs/validator.py:131
 msgid "Sprawdź zaznaczony"
 msgstr "Auswahl prüfen"
 
-#: src/epubforge/gui/tabs/validator.py:171
+#: src/epubforge/gui/tabs/validator.py:132
 msgid "Uruchom EpubCheck na zaznaczonym pliku"
 msgstr "EpubCheck für die ausgewählte Datei ausführen"
 
-#: src/epubforge/gui/tabs/validator.py:174
+#: src/epubforge/gui/tabs/validator.py:135
 msgid "Sprawdź dostępność (Ace)"
 msgstr "Barrierefreiheit prüfen (Ace)"
 
-#: src/epubforge/gui/tabs/validator.py:178
+#: src/epubforge/gui/tabs/validator.py:139
 msgid "Przerywa trwającą walidację (kończy proces Javy)"
 msgstr "Bricht die laufende Validierung ab (beendet den Java-Prozess)"
 
-#: src/epubforge/gui/tabs/validator.py:188
+#: src/epubforge/gui/tabs/validator.py:149
 msgid "Eksport…"
 msgstr "Export…"
 
-#: src/epubforge/gui/tabs/validator.py:189
+#: src/epubforge/gui/tabs/validator.py:150
 msgid "Zapisz raport jako JSON lub HTML"
 msgstr "Bericht als JSON oder HTML speichern"
 
-#: src/epubforge/gui/tabs/validator.py:197
+#: src/epubforge/gui/tabs/validator.py:164
 msgid "Pokaż:"
 msgstr "Anzeigen:"
 
-#: src/epubforge/gui/tabs/validator.py:198
+#: src/epubforge/gui/tabs/validator.py:165
 msgid "Błędy"
 msgstr "Fehler"
 
-#: src/epubforge/gui/tabs/validator.py:199
+#: src/epubforge/gui/tabs/validator.py:166
 msgid "Ostrzeżenia"
 msgstr "Warnungen"
 
-#: src/epubforge/gui/tabs/validator.py:200
+#: src/epubforge/gui/tabs/validator.py:167
 msgid "Informacje"
 msgstr "Infos"
 
-#: src/epubforge/gui/tabs/validator.py:216
+#: src/epubforge/gui/tabs/validator.py:183
 msgid "Poziom"
 msgstr "Stufe"
 
-#: src/epubforge/gui/tabs/validator.py:216
+#: src/epubforge/gui/tabs/validator.py:183
 msgid "Plik:linia"
 msgstr "Datei:Zeile"
 
-#: src/epubforge/gui/tabs/validator.py:216
+#: src/epubforge/gui/tabs/validator.py:183
 msgid "Komunikat"
 msgstr "Meldung"
 
-#: src/epubforge/gui/tabs/validator.py:233
+#: src/epubforge/gui/tabs/validator.py:200
 msgid "Wskaż java.exe…"
 msgstr "java.exe auswählen…"
 
-#: src/epubforge/gui/tabs/validator.py:236
+#: src/epubforge/gui/tabs/validator.py:203
 msgid "Wskaż epubcheck.jar…"
 msgstr "epubcheck.jar auswählen…"
 
-#: src/epubforge/gui/tabs/validator.py:276
+#: src/epubforge/gui/tabs/validator.py:243
 msgid "Uruchom audyt dostępności DAISY Ace na zaznaczonym pliku"
 msgstr "DAISY-Ace-Barrierefreiheitsprüfung für die ausgewählte Datei ausführen"
 
-#: src/epubforge/gui/tabs/validator.py:278
+#: src/epubforge/gui/tabs/validator.py:245
 msgid "Zainstaluj DAISY Ace (Node.js): npm install -g @daisy/ace"
 msgstr "DAISY Ace installieren (Node.js): npm install -g @daisy/ace"
 
-#: src/epubforge/gui/tabs/validator.py:290
+#: src/epubforge/gui/tabs/validator.py:265
+msgid "Poczekaj na zakończenie walidacji przed otwarciem EPUB-a."
+msgstr "Warten Sie vor dem Öffnen des EPUB auf das Ende der Validierung."
+
+#: src/epubforge/gui/tabs/validator.py:269
+#: src/epubforge/gui/tabs/validator.py:283
+msgid "Najpierw zaznacz plik EPUB"
+msgstr "Wählen Sie zuerst eine EPUB-Datei aus"
+
+#: src/epubforge/gui/tabs/validator.py:273
+#, python-brace-format
+msgid ""
+"Otwórz cały aktualny EPUB w {tool}. Program zobaczy wersję zapisaną na "
+"dysku. Wykryta ścieżka: {path}"
+msgstr ""
+"Den gesamten aktuellen EPUB in {tool} öffnen. Das Programm sieht die auf "
+"dem Datenträger gespeicherte Version. Erkannter Pfad: {path}"
+
+#: src/epubforge/gui/tabs/validator.py:300
 msgid "Java (Temurin JRE 17+)"
 msgstr "Java (Temurin JRE 17+)"
 
-#: src/epubforge/gui/tabs/validator.py:294
+#: src/epubforge/gui/tabs/validator.py:304
 #, python-brace-format
 msgid ""
 "<b>Walidacja wymaga dodatkowych narzędzi.</b><br>Brakuje: "
@@ -3683,97 +3742,97 @@ msgstr ""
 " Entpacke und wähle <code>epubcheck.jar</code> mit der Schaltfläche "
 "unten."
 
-#: src/epubforge/gui/tabs/validator.py:302
+#: src/epubforge/gui/tabs/validator.py:312
 msgid "Wskaż epubcheck.jar"
 msgstr "epubcheck.jar auswählen"
 
-#: src/epubforge/gui/tabs/validator.py:302
+#: src/epubforge/gui/tabs/validator.py:312
 msgid "Plik JAR (*.jar)"
 msgstr "JAR-Datei (*.jar)"
 
-#: src/epubforge/gui/tabs/validator.py:308
+#: src/epubforge/gui/tabs/validator.py:318
 msgid "Wskaż java.exe"
 msgstr "java.exe auswählen"
 
-#: src/epubforge/gui/tabs/validator.py:308
+#: src/epubforge/gui/tabs/validator.py:318
 msgid "Plik wykonywalny Java (java*)"
 msgstr "Java-Programm (java*)"
 
-#: src/epubforge/gui/tabs/validator.py:344
+#: src/epubforge/gui/tabs/validator.py:354
 #, python-brace-format
 msgid "Walidacja: {name}…"
 msgstr "Validierung: {name}…"
 
-#: src/epubforge/gui/tabs/validator.py:362
+#: src/epubforge/gui/tabs/validator.py:372
 #, python-brace-format
 msgid "Audyt dostępności: {name}…"
 msgstr "Barrierefreiheitsprüfung: {name}…"
 
-#: src/epubforge/gui/tabs/validator.py:393
+#: src/epubforge/gui/tabs/validator.py:403
 msgid "POPRAWNY"
 msgstr "GÜLTIG"
 
-#: src/epubforge/gui/tabs/validator.py:393
+#: src/epubforge/gui/tabs/validator.py:403
 msgid "NIEPOPRAWNY"
 msgstr "UNGÜLTIG"
 
-#: src/epubforge/gui/tabs/validator.py:395
+#: src/epubforge/gui/tabs/validator.py:405
 #, python-brace-format
 msgid "Zakończono w {sec:.1f}s — {verdict}"
 msgstr "Fertig in {sec:.1f}s — {verdict}"
 
-#: src/epubforge/gui/tabs/validator.py:410
+#: src/epubforge/gui/tabs/validator.py:420
 msgid "DOSTĘPNY"
 msgstr "BARRIEREFREI"
 
-#: src/epubforge/gui/tabs/validator.py:410
+#: src/epubforge/gui/tabs/validator.py:420
 msgid "NIEDOSTĘPNY"
 msgstr "NICHT BARRIEREFREI"
 
-#: src/epubforge/gui/tabs/validator.py:412
+#: src/epubforge/gui/tabs/validator.py:422
 #, python-brace-format
 msgid "Audyt zakończono w {sec:.1f}s — {verdict}"
 msgstr "Prüfung abgeschlossen in {sec:.1f}s — {verdict}"
 
-#: src/epubforge/gui/tabs/validator.py:429
+#: src/epubforge/gui/tabs/validator.py:439
 #, python-brace-format
 msgid "Walidacja nieudana: {error}"
 msgstr "Validierung fehlgeschlagen: {error}"
 
-#: src/epubforge/gui/tabs/validator.py:487
+#: src/epubforge/gui/tabs/validator_reports.py:40
+msgid "Eksport raportu"
+msgstr "Bericht exportieren"
+
+#: src/epubforge/gui/tabs/validator_reports.py:42
+msgid "JSON (*.json);;HTML (*.html)"
+msgstr "JSON (*.json);;HTML (*.html)"
+
+#: src/epubforge/gui/tabs/validator_results.py:123
 #, python-brace-format
 msgid "{n} błąd"
 msgid_plural "{n} błędów"
 msgstr[0] "{n} Fehler"
 msgstr[1] "{n} Fehler"
 
-#: src/epubforge/gui/tabs/validator.py:488
+#: src/epubforge/gui/tabs/validator_results.py:124
 #, python-brace-format
 msgid "{n} ostrzeżenie"
 msgid_plural "{n} ostrzeżeń"
 msgstr[0] "{n} Warnung"
 msgstr[1] "{n} Warnungen"
 
-#: src/epubforge/gui/tabs/validator.py:489
+#: src/epubforge/gui/tabs/validator_results.py:125
 #, python-brace-format
 msgid "{n} informacja"
 msgid_plural "{n} informacji"
 msgstr[0] "{n} Info"
 msgstr[1] "{n} Infos"
 
-#: src/epubforge/gui/tabs/validator.py:501
-msgid "Eksport raportu"
-msgstr "Bericht exportieren"
-
-#: src/epubforge/gui/tabs/validator.py:501
-msgid "JSON (*.json);;HTML (*.html)"
-msgstr "JSON (*.json);;HTML (*.html)"
-
-#: src/epubforge/gui/tabs/validator.py:534
+#: src/epubforge/gui/tabs/validator_results.py:139
 msgid "Krytyczny"
 msgstr "Kritisch"
 
-#: src/epubforge/gui/tabs/validator.py:536
+#: src/epubforge/gui/tabs/validator_results.py:141
 msgid "Ostrzeżenie"
 msgstr "Warnung"
 
@@ -4257,14 +4316,6 @@ msgid ""
 msgstr ""
 "Ungefähre Vorschau (Qt-Engine) — zeigt weder vollständiges CSS noch "
 "eingebettete Schriften oder das Reader-Layout. Vollständige Vorschau:"
-
-#: src/epubforge/gui/widgets/html_preview.py:152
-msgid "Sigil"
-msgstr "Sigil"
-
-#: src/epubforge/gui/widgets/html_preview.py:153
-msgid "Calibre Editor"
-msgstr "Calibre Editor"
 
 #: src/epubforge/gui/widgets/html_preview.py:170
 #, python-brace-format

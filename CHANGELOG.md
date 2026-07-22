@@ -8,6 +8,11 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
 ## [Unreleased]
 
 ### Added
+- **Handoff do Sigila i Calibre Editor z Edytora oraz Walidacji** — widoczne
+  przyciski w pierwszych paskach akcji przekazują cały aktualny EPUB przez wspólny
+  helper. Stan odzwierciedla wybór pliku i detekcję narzędzia; Walidacja blokuje
+  zewnętrzną edycję podczas EpubChecka/Ace i potrafi użyć pliku ostatniego raportu.
+  Eksport raportów oraz prezentacja wyników zostały wydzielone z monolitu zakładki.
 - **Edytowalna liczba stron w Metadanych** — EPUB 3 pokazuje i zapisuje
   `schema:numberOfPages`, pozwala ręcznie zmienić lub usunąć wartość oraz wstawić
   szacunek z istniejącego modułu Statystyki bez blokowania GUI. Wartość pobrana z

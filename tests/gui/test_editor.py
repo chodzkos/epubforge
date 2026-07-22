@@ -11,7 +11,8 @@ from PySide6.QtGui import QTextCursor, QTextDocument
 from PySide6.QtWidgets import QAbstractButton, QHeaderView, QMessageBox
 from pytestqt.qtbot import QtBot
 
-from epubforge.core import Epub
+from epubforge.core import Epub, Tool
+from epubforge.gui.tabs import editor_preview
 from epubforge.gui.tabs.editor import EditorTab
 from epubforge.gui.widgets.code_editor import CodeEditor
 from epubforge.gui.widgets.syntax_highlight import XmlHighlighter
@@ -26,6 +27,13 @@ def _copy_fixture(tmp_path: Path) -> Path:
     target = tmp_path / "book.epub"
     target.write_bytes(_FIXTURE.read_bytes())
     return target
+
+
+def _handoff_tools() -> dict[str, Tool]:
+    return {
+        "sigil": Tool("sigil", Path("/tools/sigil"), "", True),
+        "calibre_editor": Tool("calibre_editor", Path("/tools/ebook-edit"), "", True),
+    }
 
 
 # ── CodeEditor ─────────────────────────────────────────────────────────────--
@@ -94,6 +102,44 @@ def test_open_epub_builds_tree(qtbot: QtBot) -> None:
     assert tab.tree.topLevelItemCount() >= 1
     group = tab.tree.topLevelItem(0)
     assert group.childCount() >= 1
+
+
+def test_top_toolbar_handoff_tracks_open_epub(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Górne przyciski otwierają cały EPUB i wyłączają się po jego zamknięciu."""
+    tools = _handoff_tools()
+    calls: list[tuple[Tool | None, Path]] = []
+    monkeypatch.setattr(
+        editor_preview, "launch_tool", lambda tool, target: calls.append((tool, target))
+    )
+    tab = EditorTab(tools=tools)
+    qtbot.addWidget(tab)
+
+    assert set(tab.external_tool_buttons) == {"sigil", "calibre_editor"}
+    assert all(not button.isEnabled() for button in tab.external_tool_buttons.values())
+    assert tab.open_epub(_FIXTURE)
+    assert all(button.isEnabled() for button in tab.external_tool_buttons.values())
+
+    tab.external_tool_buttons["sigil"].click()
+    tab.external_tool_buttons["calibre_editor"].click()
+    assert calls == [(tools["sigil"], _FIXTURE), (tools["calibre_editor"], _FIXTURE)]
+    assert "zapisaną" in tab.external_tool_buttons["sigil"].toolTip()
+
+    tab._close_epub()
+    assert all(not button.isEnabled() for button in tab.external_tool_buttons.values())
+
+
+def test_top_toolbar_handoff_missing_tool_has_explanation(qtbot: QtBot) -> None:
+    """Niewykryte narzędzia pozostają nieaktywne z jednoznacznym tooltipem."""
+    tab = EditorTab(tools={"sigil": Tool("sigil", None, "", False)})
+    qtbot.addWidget(tab)
+    tab.open_epub(_FIXTURE)
+
+    assert not tab.external_tool_buttons["sigil"].isEnabled()
+    assert tab.external_tool_buttons["sigil"].toolTip() == "Nie wykryto Sigil"
+    assert not tab.external_tool_buttons["calibre_editor"].isEnabled()
+    assert "Calibre Editor" in tab.external_tool_buttons["calibre_editor"].toolTip()
 
 
 def test_file_tree_keeps_full_names_and_scrolls_immediately(qtbot: QtBot) -> None:

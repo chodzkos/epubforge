@@ -38,7 +38,7 @@ Część funkcji korzysta z zewnętrznych programów — EpubForge wykrywa je au
 | **pdf2md** | zalecany silnik PDF → EPUB (PDF → Markdown → Pandoc); handoff „Otwórz w pdf2md" |
 | **Calibre** (`ebook-convert`) | konwersja (w tym PDF — fallback), eksport KFX/MOBI/AZW3 |
 | **Calibre — wtyczka KFX Output** | zalecany silnik eksportu KFX |
-| **Sigil**, **Calibre Editor/Viewer** | edycja/podgląd EPUB z poziomu zakładki Metadane |
+| **Sigil**, **Calibre Editor/Viewer** | edycja/podgląd EPUB z Metadanych oraz handoff z górnych pasków Edytora i Walidacji |
 | **Kindle Previewer 3** | eksperymentalny silnik KFX |
 | **kindlegen** | wycofany silnik MOBI (zalecane Calibre) |
 | **Java (Temurin JRE 17+)** + **EpubCheck 5.x** | walidacja EPUB (zakładka Walidacja / `epubforge check`) |
@@ -109,6 +109,10 @@ motywu, „O programie") i zakładki robocze:
   edytuj HTML/CSS z podświetlaniem i wyszukiwarką (Ctrl+F). Edycja jest domyślnie
   wyłączona — włącz **Tryb edycji**. Zapis pliku: Ctrl+S (XHTML/OPF jest walidowany);
   **Zapisz EPUB** utrwala zmiany na dysk (kopia `.bak`). Pliki nie-UTF-8 są tylko do odczytu.
+  Przyciski **Sigil** i **Calibre Editor** w górnym pasku otwierają cały aktualny
+  plik `.epub`, nie pojedynczy zasób zaznaczony w drzewie. Zewnętrzny program widzi
+  wersję zapisaną na dysku, więc najpierw użyj **Zapisz EPUB**, jeśli chcesz przekazać
+  również bieżące zmiany.
   Drzewo zachowuje pełne nazwy i przewija się poziomo, a uchwyty paneli mają czytelne
   minima. Szerokie paski akcji przewijają się zamiast ucinać napisy. **Resetuj układ**
   po potwierdzeniu zamyka dodatkowe panele i przywraca proporcje, ale nie usuwa zmian.
@@ -150,6 +154,9 @@ motywu, „O programie") i zakładki robocze:
   EpubCheck i pokazuje raport (poziom, kod, plik:linia, komunikat) z paskiem podsumowania
   i filtrami błędy/ostrzeżenia/informacje. **Dwuklik** błędu z lokalizacją otwiera plik
   w zakładce Edytor na właściwej linii. **Eksport…** zapisuje raport jako JSON lub HTML.
+  **Sigil** i **Calibre Editor** przekazują cały zaznaczony EPUB; po zakończeniu
+  walidacji mogą otworzyć plik ostatniego raportu również bez zaznaczenia. Handoff
+  jest zablokowany podczas pracy EpubChecka lub Ace.
   W trakcie walidacji pasek postępu pracuje w trybie nieokreślonym, a przycisk
   **Anuluj** przerywa sprawdzanie (kończy proces Javy).
   Gdy brak Javy/`epubcheck.jar`, zakładka pokazuje instrukcję i przycisk **Wskaż epubcheck.jar…**.

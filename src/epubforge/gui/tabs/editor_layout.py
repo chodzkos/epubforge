@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, cast
 
 from chodzkos_gui_kit.qt.icons import get_icon
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QAbstractItemView,
-    QHBoxLayout,
     QHeaderView,
     QLabel,
     QMessageBox,
@@ -23,8 +23,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from epubforge.core import Tool
 from epubforge.gui.widgets.code_editor import CodeEditor
 from epubforge.gui.widgets.css_inspector import CssInspector
+from epubforge.gui.widgets.horizontal_strip import HorizontalStrip
 from epubforge.gui.widgets.search_panel import SearchHost, SearchReplacePanel
 from epubforge.i18n import _
 
@@ -58,11 +60,18 @@ class EditorLayoutMixin:
     _update_inspector: Callable[..., None]
     _save_epub: Callable[..., None]
     _current_is_html: Callable[[], bool]
+    _launch_external_tool: Callable[[str], None]
+    _tools: dict[str, Tool]
+    _epub_path: Path | None
 
     def _build_ui(self) -> None:
         outer = QVBoxLayout(cast(QWidget, self))
         outer.setContentsMargins(12, 12, 12, 12)
-        outer.addLayout(self._build_toolbar())
+        toolbar_host = QWidget()
+        toolbar_layout = QVBoxLayout(toolbar_host)
+        toolbar_layout.setContentsMargins(0, 0, 0, 0)
+        toolbar_layout.addWidget(self._build_toolbar())
+        outer.addWidget(toolbar_host)
 
         self.info_bar = QLabel()
         self.info_bar.setWordWrap(True)
@@ -98,8 +107,9 @@ class EditorLayoutMixin:
     def _new_search_panel(self) -> SearchReplacePanel:
         return SearchReplacePanel(cast(SearchHost, self))
 
-    def _build_toolbar(self) -> QHBoxLayout:
-        toolbar = QHBoxLayout()
+    def _build_toolbar(self) -> HorizontalStrip:
+        strip = HorizontalStrip()
+        toolbar = strip.row
         self.open_button = QPushButton(_("Otwórz EPUB…"))
         self.open_button.setToolTip(
             _("Otwórz plik EPUB do bezpiecznego podglądu i edycji jego zawartości")
@@ -111,6 +121,15 @@ class EditorLayoutMixin:
         self.path_label.setToolTip(_("Ścieżka aktualnie otwartego pliku EPUB"))
         self.path_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         toolbar.addWidget(self.path_label, stretch=1)
+
+        self.external_tool_buttons: dict[str, QPushButton] = {}
+        for key, label in (("sigil", _("Sigil")), ("calibre_editor", _("Calibre Editor"))):
+            button = QPushButton(label)
+            button.clicked.connect(
+                lambda _checked=False, tool_key=key: self._launch_external_tool(tool_key)
+            )
+            toolbar.addWidget(button)
+            self.external_tool_buttons[key] = button
 
         self.edit_toggle = QToolButton()
         self.edit_toggle.setToolTip(
@@ -147,7 +166,27 @@ class EditorLayoutMixin:
         )
         self.save_epub_button.clicked.connect(self._save_epub)
         toolbar.addWidget(self.save_epub_button)
-        return toolbar
+        strip.finish()
+        return strip
+
+    def _refresh_external_tool_actions(self) -> None:
+        """Aktualizuje górny handoff do Sigila i edytora Calibre."""
+        for key, button in self.external_tool_buttons.items():
+            label = _("Sigil") if key == "sigil" else _("Calibre Editor")
+            tool = self._tools.get(key)
+            available = bool(tool and tool.available and tool.path)
+            button.setEnabled(self._epub_path is not None and available)
+            if not available:
+                tooltip = _("Nie wykryto {tool}").format(tool=label)
+            elif self._epub_path is None:
+                tooltip = _("Najpierw otwórz EPUB")
+            else:
+                assert tool is not None and tool.path is not None
+                tooltip = _(
+                    "Otwórz cały aktualny EPUB w {tool}. Program zobaczy wersję zapisaną "
+                    "na dysku, bez niezapisanych zmian Edytora. Wykryta ścieżka: {path}"
+                ).format(tool=label, path=tool.path)
+            button.setToolTip(tooltip)
 
     def _configure_file_tree(self) -> None:
         """Zapewnia natychmiastowy scroll i pełne, nieelidowane nazwy plików."""
