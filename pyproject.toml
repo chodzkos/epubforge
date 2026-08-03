@@ -89,7 +89,7 @@ dev = [
     # parsuje pliki workflow przez PyYAML.
     "pyyaml>=6.0",
     # Property-based / fuzz testy bezpieczeństwa (ZIP/XML/ścieżki).
-    "hypothesis>=6.161.8",
+    "hypothesis>=6.164.0",
 ]
 build = [
     "babel>=2.14",
