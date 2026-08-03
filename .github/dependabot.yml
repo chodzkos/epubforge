@@ -27,3 +27,8 @@ updates:
     open-pull-requests-limit: 10
     commit-message:
       prefix: "chore(ci)"
+    groups:
+      # Kroki init/analyze muszą używać identycznej wersji CodeQL Action.
+      codeql-action:
+        patterns:
+          - "github/codeql-action/*"

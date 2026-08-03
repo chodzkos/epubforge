@@ -64,15 +64,17 @@ Odniesienie: szczegóły problemów i gotowe prompty naprawcze → `AUDYT-epubfo
 ```python
 @dataclass
 class TypographyOptions:
-    language: str = "pl"                     # pl / en / de — dobiera cudzysłowy i reguły
-    fix_quotes: bool = True                  # "..." → „…” (pl), “…” (en), „…“ (de)
-    fix_dashes: bool = True                  # " - " → " — " (pl: pauza w dialogach/wtrąceniach)
-    fix_ellipsis: bool = True                # "..." → "…"
-    nbsp_single_letters: bool = True         # pl: spacja po a/i/o/u/w/z → U+00A0 („sieroty”)
-    nbsp_numbers_units: bool = False         # "10 km", "XX w." → twarda spacja (ostrożnie)
+    language: str = "pl"  # pl / en / de — dobiera cudzysłowy i reguły
+    fix_quotes: bool = True  # "..." → „…” (pl), “…” (en), „…“ (de)
+    fix_dashes: bool = True  # " - " → " — " (pl: pauza w dialogach/wtrąceniach)
+    fix_ellipsis: bool = True  # "..." → "…"
+    nbsp_single_letters: bool = True  # pl: spacja po a/i/o/u/w/z → U+00A0 („sieroty”)
+    nbsp_numbers_units: bool = False  # "10 km", "XX w." → twarda spacja (ostrożnie)
     skip_tags: set[str] = field(default_factory=lambda: {"code", "pre", "kbd", "samp", "var", "tt"})
 
-def fix_typography(epub: Epub, options: TypographyOptions) -> TypographyReport: ...
+
+def fix_typography(epub: Epub, options: TypographyOptions) -> TypographyReport:
+    ...
     # Report: ile podmian per reguła per plik — do logu GUI i --dry-run
 ```
 
@@ -227,12 +229,13 @@ fmt = "mobi"
 ```python
 @dataclass
 class ImageFixOptions:
-    max_px: int | None = 1200          # dłuższy bok; None = bez skalowania
+    max_px: int | None = 1200  # dłuższy bok; None = bez skalowania
     jpeg_quality: int = 75
-    grayscale: bool = False            # pod e-ink
-    strip_metadata: bool = True        # EXIF/ICC out
-    skip_cover: bool = True            # okładkę zostaw w pełnej jakości
+    grayscale: bool = False  # pod e-ink
+    strip_metadata: bool = True  # EXIF/ICC out
+    skip_cover: bool = True  # okładkę zostaw w pełnej jakości
     formats: set[str] = field(default_factory=lambda: {".jpg", ".jpeg", ".png"})
+
 
 def optimize_images(epub: Epub, options: ImageFixOptions) -> ImageReport: ...
 ```

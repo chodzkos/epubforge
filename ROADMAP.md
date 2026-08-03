@@ -68,7 +68,7 @@ class Epub:
     def __exit__(self, *args) -> None: ...
 
     @property
-    def opf_path(self) -> str: ...        # odczytany z META-INF/container.xml
+    def opf_path(self) -> str: ...  # odczytany z META-INF/container.xml
     @property
     def manifest(self) -> list[ManifestItem]: ...
     @property
@@ -97,6 +97,7 @@ Wzorzec zapisu — **kopiuj niezmienione wpisy bezpośrednio ze źródłowego ZI
 import zipfile, os
 from pathlib import Path
 
+
 def _write_epub(source: Path, target: Path, modified: dict[str, bytes]) -> None:
     """Zapis z kopiowaniem strumieniowym ze źródła.
 
@@ -108,8 +109,7 @@ def _write_epub(source: Path, target: Path, modified: dict[str, bytes]) -> None:
     tmp = target.with_suffix(target.suffix + ".tmp")
     with zipfile.ZipFile(source) as zin, zipfile.ZipFile(tmp, "w") as zout:
         # 1. mimetype PIERWSZY, BEZ kompresji
-        zout.writestr("mimetype", b"application/epub+zip",
-                      compress_type=zipfile.ZIP_STORED)
+        zout.writestr("mimetype", b"application/epub+zip", compress_type=zipfile.ZIP_STORED)
         # 2. reszta: zmienione z dict, niezmienione kopiowane ze źródła
         for item in zin.infolist():
             if item.filename == "mimetype":
@@ -161,9 +161,9 @@ class Metadata:
     title: str = ""
     creators: list[str] = field(default_factory=list)
     language: str = "en"
-    identifier: str = ""        # ISBN/UUID
+    identifier: str = ""  # ISBN/UUID
     publisher: str = ""
-    date: str = ""              # ISO 8601
+    date: str = ""  # ISO 8601
     description: str = ""
     subjects: list[str] = field(default_factory=list)
 
@@ -177,8 +177,8 @@ class Metadata:
 OPF używa przestrzeni nazw XML. Metadane są w namespace Dublin Core, elementy struktury w namespace OPF. Parsowanie BEZ obsługi namespace'ów zwróci puste wyniki. Trzeba użyć namespace map:
 ```python
 NS = {
-    "dc":   "http://purl.org/dc/elements/1.1/",
-    "opf":  "http://www.idpf.org/2007/opf",
+    "dc": "http://purl.org/dc/elements/1.1/",
+    "opf": "http://www.idpf.org/2007/opf",
 }
 # lxml: root.findall(".//dc:creator", namespaces=NS)
 # xml.etree: root.findall(".//{http://purl.org/dc/elements/1.1/}creator")
@@ -217,6 +217,7 @@ class Tool:
     path: Path | None
     version: str = ""
     available: bool = False
+
 
 class Tools:
     @staticmethod
@@ -264,11 +265,12 @@ class ConvertOptions:
     toc_depth: int = 3
     css: Path | None = None
 
+
 def to_epub(
     source: Path,
     target: Path,
     options: ConvertOptions = ConvertOptions(),
-    engine: Literal["pandoc", "calibre", "auto"] = "auto"
+    engine: Literal["pandoc", "calibre", "auto"] = "auto",
 ) -> ConversionResult: ...
 ```
 
@@ -301,11 +303,12 @@ def to_epub(
 ```python
 @dataclass
 class HyphenationOptions:
-    language: str = "pl"           # ISO 639-1
+    language: str = "pl"  # ISO 639-1
     method: Literal["soft-hyphen", "css"] = "soft-hyphen"
-    skip_headers: bool = True       # h1-h3
+    skip_headers: bool = True  # h1-h3
     skip_tags: set[str] = field(default_factory=lambda: {"code", "pre", "kbd"})
     min_word_length: int = 5
+
 
 def hyphenate(epub: Epub, options: HyphenationOptions) -> None: ...
 ```
@@ -361,6 +364,7 @@ class CssFixOptions:
     inject_book_margin_px: int | None = None
     skip_hyphenation_headers: bool = True
 
+
 def fix_css(epub: Epub, options: CssFixOptions) -> None: ...
 ```
 
@@ -380,6 +384,7 @@ def fix_css(epub: Epub, options: CssFixOptions) -> None: ...
 `tinycss2` to tokenizer/parser niskiego poziomu (nie obiektowy model jak cssutils). Operujesz na liście tokenów:
 ```python
 import tinycss2
+
 rules = tinycss2.parse_stylesheet(css_text, skip_whitespace=True)
 # Modyfikuj/filtruj tokeny, potem serialize:
 new_css = tinycss2.serialize(rules)
@@ -417,12 +422,11 @@ Zachowuj nieznane reguły (`@supports`, `calc()`, zmienne) bez zmian — modyfik
 @dataclass
 class KfxOptions:
     engine: Literal["calibre", "kindle-previewer", "auto"] = "calibre"  # Calibre = główny
-    fix_epub_first: bool = True   # uruchom CSS fixer przed konwersją
+    fix_epub_first: bool = True  # uruchom CSS fixer przed konwersją
+
 
 def to_kfx(
-    source: Path,
-    target_dir: Path,
-    options: KfxOptions = KfxOptions()
+    source: Path, target_dir: Path, options: KfxOptions = KfxOptions()
 ) -> ConversionResult: ...
 ```
 
@@ -551,8 +555,9 @@ placeholder. Podmiana plików w `assets/` nie wymaga zmian w kodzie ani spec-ach
 **tkinterdnd2 + PyInstaller** — `tkinterdnd2` dołącza natywne binaria `tkdnd`, których PyInstaller domyślnie NIE pakuje → `.exe` wywala się z `can't find package tkdnd`. Rozwiązanie w `.spec`:
 ```python
 import tkinterdnd2, os
-tkdnd_dir = os.path.join(os.path.dirname(tkinterdnd2.__file__), 'tkdnd')
-datas += [(tkdnd_dir, 'tkinterdnd2/tkdnd')]
+
+tkdnd_dir = os.path.join(os.path.dirname(tkinterdnd2.__file__), "tkdnd")
+datas += [(tkdnd_dir, "tkinterdnd2/tkdnd")]
 # Alternatywnie: pyinstaller --collect-all tkinterdnd2
 ```
 

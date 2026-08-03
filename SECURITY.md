@@ -35,7 +35,7 @@ może je świadomie podnieść:
 ```python
 from epubforge.core import Epub, ArchiveLimits
 
-limits = ArchiveLimits(max_entry_size=1024 ** 3)  # np. 1 GiB na wpis
+limits = ArchiveLimits(max_entry_size=1024**3)  # np. 1 GiB na wpis
 with Epub(path, limits=limits) as epub:
     ...
 ```

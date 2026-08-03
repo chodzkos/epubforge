@@ -52,7 +52,7 @@ def run_subprocess_streaming(
     cwd: str | None = None,
     should_cancel: CancelCheck | None = None,
     *,
-    timeout: float | None | _Default = _USE_DEFAULT_TIMEOUT,
+    timeout: float | _Default | None = _USE_DEFAULT_TIMEOUT,
 ) -> ProcessResult:
     """Uruchamia subprocess strumieniowo (adapter na :func:`run_process_streaming`).
 
