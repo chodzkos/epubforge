@@ -340,8 +340,14 @@ Własne presety dodasz przez `Importuj własny…` w GUI (zakładka **Fixer**) �
 ```python
 from epubforge import Epub
 from epubforge.fixers import (
-    fix_css, hyphenate, fix_typography, optimize_images,
-    CssFixOptions, HyphenationOptions, TypographyOptions, ImageFixOptions,
+    fix_css,
+    hyphenate,
+    fix_typography,
+    optimize_images,
+    CssFixOptions,
+    HyphenationOptions,
+    TypographyOptions,
+    ImageFixOptions,
 )
 
 with Epub("book.epub") as ebook:
@@ -352,11 +358,9 @@ with Epub("book.epub") as ebook:
     ebook.metadata = meta
 
     # Naprawa CSS
-    fix_css(ebook, CssFixOptions(
-        remove_colors=True,
-        replace_justify="left",
-        inject_book_margin_px=20
-    ))
+    fix_css(
+        ebook, CssFixOptions(remove_colors=True, replace_justify="left", inject_book_margin_px=20)
+    )
 
     # Hyphenacja
     hyphenate(ebook, HyphenationOptions(language="pl"))
@@ -371,10 +375,12 @@ with Epub("book.epub") as ebook:
 
     # Preset CSS
     from epubforge.fixers import apply_preset, get_preset
+
     apply_preset(ebook, get_preset("reader-friendly"), mode="append")
 
     # Szukaj i zamień (zamiana trafia do bufora — utrwala ebook.save())
     from epubforge.core.search import search_epub, replace_in_epub
+
     hits = search_epub(ebook, r"kot\w*", regex=True, whole_words=True)
     print(len(hits), hits[0].internal_path, hits[0].line)
     result = replace_in_epub(ebook, "kot", "pies")

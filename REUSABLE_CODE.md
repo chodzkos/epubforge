@@ -102,6 +102,7 @@ import json
 import sys
 from pathlib import Path
 
+
 def _config_path() -> Path:
     """Lokalizacja config.json — obok exe lub w ~/.config/epubforge/"""
     if hasattr(sys, "_MEIPASS"):  # PyInstaller bundle
@@ -126,10 +127,7 @@ def save_config(config: dict) -> None:
     path = _config_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
-    tmp.write_text(
-        json.dumps(config, indent=2, ensure_ascii=False),
-        encoding="utf-8"
-    )
+    tmp.write_text(json.dumps(config, indent=2, ensure_ascii=False), encoding="utf-8")
     tmp.replace(path)  # atomic on POSIX, near-atomic on Windows
 ```
 
@@ -158,11 +156,7 @@ def _run_version_check(exe: str, args: list[str] = ["--version"]) -> str:
     """Zwraca wersję narzędzia lub pusty string."""
     try:
         result = subprocess.run(
-            [exe] + args,
-            capture_output=True,
-            text=True,
-            timeout=5,
-            creationflags=CREATE_NO_WINDOW
+            [exe] + args, capture_output=True, text=True, timeout=5, creationflags=CREATE_NO_WINDOW
         )
         return result.stdout.split("\n")[0].strip()
     except Exception:
@@ -263,21 +257,23 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+
 @dataclass(frozen=True)
 class Tool:
     """Informacja o wykrytym (lub nie) narzędziu zewnętrznym."""
-    name: str                       # np. "Pandoc"
-    executable: str                 # np. "pandoc"
-    path: Path | None = None        # ścieżka jeśli znaleziono
-    version: str = ""               # wersja jeśli udało się odczytać
-    available: bool = False         # czy gotowe do użycia
+
+    name: str  # np. "Pandoc"
+    executable: str  # np. "pandoc"
+    path: Path | None = None  # ścieżka jeśli znaleziono
+    version: str = ""  # wersja jeśli udało się odczytać
+    available: bool = False  # czy gotowe do użycia
     source: Literal[
-        "path",          # znalezione w PATH
+        "path",  # znalezione w PATH
         "default_path",  # znalezione w typowej lokalizacji
-        "config",        # ścieżka z config.json (ręczny override)
-        "not_found"      # nie znaleziono
+        "config",  # ścieżka z config.json (ręczny override)
+        "not_found",  # nie znaleziono
     ] = "not_found"
-    error: str = ""                 # komunikat dlaczego niedostępne
+    error: str = ""  # komunikat dlaczego niedostępne
 ```
 
 **Korzyść:** GUI może pokazać użytkownikowi nie tylko „brak", ale też „czemu brak"
@@ -308,12 +304,9 @@ class PathEntry(tk.Frame):
         self.entry = tk.Entry(self, textvariable=self.var)
         self.entry.pack(side="left", fill="x", expand=True, ipady=4)
 
-        tk.Button(
-            self, text="…",
-            command=self._browse,
-            cursor="hand2",
-            padx=8
-        ).pack(side="right", padx=(4, 0))
+        tk.Button(self, text="…", command=self._browse, cursor="hand2", padx=8).pack(
+            side="right", padx=(4, 0)
+        )
 
     def _browse(self) -> None:
         if self.mode == "dir":
@@ -350,6 +343,7 @@ from pathlib import Path
 
 try:
     from tkinterdnd2 import DND_FILES
+
     HAS_DND = True
 except ImportError:
     HAS_DND = False
@@ -450,31 +444,31 @@ class FileList(tk.Frame):
 """Motywy jasny i ciemny dla GUI."""
 
 DARK = {
-    "bg":     "#1e2028",
-    "bg2":    "#252830",
-    "bg3":    "#2d3040",
-    "fg":     "#dde1ec",
-    "fg2":    "#8b90a7",
-    "fg3":    "#555a70",
+    "bg": "#1e2028",
+    "bg2": "#252830",
+    "bg3": "#2d3040",
+    "fg": "#dde1ec",
+    "fg2": "#8b90a7",
+    "fg3": "#555a70",
     "accent": "#5DCAA5",
     "accent2": "#1D9E75",
     "border": "#383c50",
-    "red":    "#e25454",
-    "amber":  "#EF9F27",
+    "red": "#e25454",
+    "amber": "#EF9F27",
 }
 
 LIGHT = {
-    "bg":     "#ffffff",
-    "bg2":    "#f5f5f7",
-    "bg3":    "#e8e8ed",
-    "fg":     "#1d1d1f",
-    "fg2":    "#515154",
-    "fg3":    "#86868b",
+    "bg": "#ffffff",
+    "bg2": "#f5f5f7",
+    "bg3": "#e8e8ed",
+    "fg": "#1d1d1f",
+    "fg2": "#515154",
+    "fg3": "#86868b",
     "accent": "#1D9E75",
     "accent2": "#0F7C5B",
     "border": "#d1d1d6",
-    "red":    "#d70015",
-    "amber":  "#b25000",
+    "red": "#d70015",
+    "amber": "#b25000",
 }
 
 
@@ -493,15 +487,19 @@ def apply_theme(widget, theme: dict) -> None:
             widget.configure(bg=theme["bg3"], fg=theme["fg"], insertbackground=theme["accent"])
         elif cls == "Listbox":
             widget.configure(
-                bg=theme["bg3"], fg=theme["fg"],
-                selectbackground=theme["accent2"], selectforeground=theme["bg"]
+                bg=theme["bg3"],
+                fg=theme["fg"],
+                selectbackground=theme["accent2"],
+                selectforeground=theme["bg"],
             )
         elif cls == "Text":
             widget.configure(bg=theme["bg3"], fg=theme["fg"], insertbackground=theme["accent"])
         elif cls == "Checkbutton" or cls == "Radiobutton":
             widget.configure(
-                bg=theme["bg2"], fg=theme["fg"],
-                activebackground=theme["bg2"], selectcolor=theme["accent2"]
+                bg=theme["bg2"],
+                fg=theme["fg"],
+                activebackground=theme["bg2"],
+                selectcolor=theme["accent2"],
             )
     except tk.TclError:
         pass  # Niektóre widgety nie wspierają wszystkich opcji
@@ -534,11 +532,11 @@ class LogStreamer:
         self._running = False
 
         # Tagi kolorystyczne (kolory ustawione przez parent)
-        self.text.tag_config("ok",    foreground="#5DCAA5")
-        self.text.tag_config("err",   foreground="#e25454")
-        self.text.tag_config("warn",  foreground="#EF9F27")
-        self.text.tag_config("info",  foreground="#8b90a7")
-        self.text.tag_config("cmd",   foreground="#555a70")
+        self.text.tag_config("ok", foreground="#5DCAA5")
+        self.text.tag_config("err", foreground="#e25454")
+        self.text.tag_config("warn", foreground="#EF9F27")
+        self.text.tag_config("info", foreground="#8b90a7")
+        self.text.tag_config("cmd", foreground="#555a70")
 
     def start_polling(self) -> None:
         """Uruchom polling kolejki (z main loop tkinter)."""
@@ -584,7 +582,7 @@ class LogStreamer:
             errors="replace",
             bufsize=1,
             creationflags=flags,
-            **kwargs
+            **kwargs,
         )
 
         for line in proc.stdout:
@@ -617,30 +615,34 @@ import tkinterdnd2
 from PyInstaller.utils.hooks import collect_data_files
 
 # tkinterdnd2 — dołącz natywne binaria tkdnd (inaczej "can't find package tkdnd")
-tkdnd_dir = os.path.join(os.path.dirname(tkinterdnd2.__file__), 'tkdnd')
+tkdnd_dir = os.path.join(os.path.dirname(tkinterdnd2.__file__), "tkdnd")
 
 a = Analysis(
-    ['../src/epubforge/gui/app.py'],
-    pathex=['../src'],
+    ["../src/epubforge/gui/app.py"],
+    pathex=["../src"],
     binaries=[],
     datas=[
-        (tkdnd_dir, 'tkinterdnd2/tkdnd'),  # KLUCZOWE dla drag&drop w .exe
+        (tkdnd_dir, "tkinterdnd2/tkdnd"),  # KLUCZOWE dla drag&drop w .exe
         # ('../src/epubforge/gui/assets/*', 'assets'),  # jeśli będą ikony
     ],
     hiddenimports=[
-        'tkinter',
-        'tkinter.ttk',
-        'lxml',
-        'lxml.etree',
-        'pyphen',
-        'tinycss2',
-        'tkinterdnd2',
+        "tkinter",
+        "tkinter.ttk",
+        "lxml",
+        "lxml.etree",
+        "pyphen",
+        "tinycss2",
+        "tkinterdnd2",
     ],
     hookspath=[],
     runtime_hooks=[],
     excludes=[
-        'matplotlib', 'numpy', 'scipy',
-        'PIL.tests', 'unittest', 'test',
+        "matplotlib",
+        "numpy",
+        "scipy",
+        "PIL.tests",
+        "unittest",
+        "test",
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -657,7 +659,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='epubforge',
+    name="epubforge",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -665,7 +667,7 @@ exe = EXE(
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,  # GUI app — NIE chcemy okna konsoli
-    icon='icon.ico',  # wygenerowane przez create_icon.py
+    icon="icon.ico",  # wygenerowane przez create_icon.py
     version_file=None,
 )
 ```
@@ -856,12 +858,16 @@ class Tooltip:
         tw.wm_geometry(f"+{x}+{y}")
 
         label = tk.Label(
-            tw, text=self.text,
+            tw,
+            text=self.text,
             justify="left",
-            bg="#2d3040", fg="#dde1ec",
-            relief="solid", borderwidth=1,
+            bg="#2d3040",
+            fg="#dde1ec",
+            relief="solid",
+            borderwidth=1,
             font=("TkDefaultFont", 9),
-            padx=8, pady=4
+            padx=8,
+            pady=4,
         )
         label.pack()
 
@@ -895,16 +901,17 @@ class Tooltip:
 # stary kod:
 result = subprocess.run(["pandoc", source, "-o", target])
 
+
 # nowy, testowalny:
 def _run_pandoc(args: list[str], runner=subprocess.run) -> CompletedProcess:
     return runner(args, capture_output=True, text=True)
+
 
 # test:
 def test_pandoc_command(mocker):
     mock_run = mocker.Mock(return_value=Mock(returncode=0, stdout="ok", stderr=""))
     result = _run_pandoc(["pandoc", "in.txt", "-o", "out.epub"], runner=mock_run)
     mock_run.assert_called_once_with(
-        ["pandoc", "in.txt", "-o", "out.epub"],
-        capture_output=True, text=True
+        ["pandoc", "in.txt", "-o", "out.epub"], capture_output=True, text=True
     )
 ```

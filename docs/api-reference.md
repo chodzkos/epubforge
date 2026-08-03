@@ -11,14 +11,14 @@ API (pdoc) publikowana jest na GitHub Pages.
 from epubforge import Epub
 
 with Epub("book.epub") as ebook:
-    print(ebook.opf_path)            # ścieżka OPF z META-INF/container.xml
-    print(ebook.spine)               # kolejność czytania (idref-y)
+    print(ebook.opf_path)  # ścieżka OPF z META-INF/container.xml
+    print(ebook.spine)  # kolejność czytania (idref-y)
     print([item.id for item in ebook.manifest])
     print(ebook.list_files())
 
     html = ebook.read_file("OEBPS/text/chapter1.xhtml")
     ebook.write_file("OEBPS/text/chapter1.xhtml", html.replace(b"foo", b"bar"))
-    ebook.save()                     # nadpisuje oryginał + tworzy rotowany .bak
+    ebook.save()  # nadpisuje oryginał + tworzy rotowany .bak
 ```
 
 `save(output_path)` zapisuje kopię pod wskazaną ścieżką (bez ruszania oryginału);
@@ -37,17 +37,17 @@ backup** (`.bak`, `.bak.1`, …) z konfigurowalną retencją (`save(backup_reten
 from epubforge import Epub, Metadata
 
 with Epub("book.epub") as ebook:
-    meta = ebook.metadata               # odczyt
+    meta = ebook.metadata  # odczyt
     meta.title = "Krew elfów"
     meta.creators = ["Andrzej Sapkowski"]
     meta.language = "pl"
-    meta.series = "Wiedźmin"            # zapis w formacie Calibre + EPUB 3
-    meta.series_index = 3              # float (bywa 1.5)
-    ebook.metadata = meta               # setter zapisuje + robi backup
+    meta.series = "Wiedźmin"  # zapis w formacie Calibre + EPUB 3
+    meta.series_index = 3  # float (bywa 1.5)
+    ebook.metadata = meta  # setter zapisuje + robi backup
 
 # Bez Epub — bezpośrednio na bajtach OPF:
 meta = Metadata.from_opf(opf_bytes)
-new_opf = meta.to_opf(opf_bytes)        # zachowuje manifest/spine i resztę
+new_opf = meta.to_opf(opf_bytes)  # zachowuje manifest/spine i resztę
 ```
 
 ---
@@ -63,7 +63,7 @@ result = to_epub(
     Path("book.docx"),
     Path("out/book.epub"),
     ConvertOptions(metadata=Metadata(title="Tytuł"), cover_image=Path("cover.jpg")),
-    engine="auto",                      # "pandoc" | "calibre" | "auto"
+    engine="auto",  # "pandoc" | "calibre" | "auto"
 )
 print(result.success, result.engine, result.output_path)
 ```
@@ -95,12 +95,15 @@ from epubforge.fixers import CssFixOptions, HyphenationOptions, fix_css, hyphena
 
 with Epub("book.epub") as ebook:
     hyphenate(ebook, HyphenationOptions(language="pl", method="soft-hyphen", skip_headers=True))
-    fix_css(ebook, CssFixOptions(
-        remove_colors=True,
-        replace_justify="left",
-        inject_book_margin_px=20,
-        skip_hyphenation_headers=True,
-    ))
+    fix_css(
+        ebook,
+        CssFixOptions(
+            remove_colors=True,
+            replace_justify="left",
+            inject_book_margin_px=20,
+            skip_hyphenation_headers=True,
+        ),
+    )
     ebook.save()
 ```
 
@@ -115,9 +118,12 @@ from epubforge.core.search import search_epub, replace_in_epub, SearchPatternErr
 with Epub("book.epub") as ebook:
     # Szukanie (literal/regex, wielkość liter, całe słowa, zakres plików)
     hits = search_epub(
-        ebook, "kot",
-        regex=False, case_sensitive=False, whole_words=True,
-        paths=None,           # None = wszystkie pliki tekstowe
+        ebook,
+        "kot",
+        regex=False,
+        case_sensitive=False,
+        whole_words=True,
+        paths=None,  # None = wszystkie pliki tekstowe
     )
     for hit in hits[:3]:
         print(hit.internal_path, hit.line, hit.column, hit.preview)
@@ -125,7 +131,7 @@ with Epub("book.epub") as ebook:
     # Zamiana — pisze do BUFORA; utrwalasz przez ebook.save()
     report = replace_in_epub(ebook, "kot", "pies")
     print(report.total, report.changed_files)
-    print(report.skipped)     # [(ścieżka, powód)] dla plików nie-UTF-8
+    print(report.skipped)  # [(ścieżka, powód)] dla plików nie-UTF-8
 
     ebook.save()
 ```
@@ -143,17 +149,20 @@ from epubforge import Epub
 from epubforge.fixers import ImageFixOptions, optimize_images  # wymaga epubforge[images]
 
 with Epub("book.epub") as ebook:
-    report = optimize_images(ebook, ImageFixOptions(
-        max_px=1200,            # dłuższy bok; None = bez skalowania
-        jpeg_quality=75,
-        grayscale=False,        # pod e-ink
-        strip_metadata=True,    # EXIF/ICC out
-        skip_cover=True,        # okładkę zostaw w pełnej jakości
-    ))
+    report = optimize_images(
+        ebook,
+        ImageFixOptions(
+            max_px=1200,  # dłuższy bok; None = bez skalowania
+            jpeg_quality=75,
+            grayscale=False,  # pod e-ink
+            strip_metadata=True,  # EXIF/ICC out
+            skip_cover=True,  # okładkę zostaw w pełnej jakości
+        ),
+    )
     ebook.save()
 
-print(report.saved_bytes, report.saved_percent)   # np. 1048576, 63.2
-print(report.changed_files)                        # ścieżki zmniejszonych obrazów
+print(report.saved_bytes, report.saved_percent)  # np. 1048576, 63.2
+print(report.changed_files)  # ścieżki zmniejszonych obrazów
 ```
 
 Format pliku nigdy się nie zmienia (jpg→jpg, png→png), a zapis następuje tylko gdy
@@ -169,20 +178,23 @@ from epubforge import Epub
 from epubforge.fixers import TypographyOptions, fix_typography
 
 with Epub("book.epub") as ebook:
-    report = fix_typography(ebook, TypographyOptions(
-        language="pl",              # pl / en / de — dobiera znaki cudzysłowów
-        fix_quotes=True,            # proste " ' → pary typograficzne wg języka
-        fix_dashes=True,            # pauza w dialogach/wtrąceniach (łączniki w słowach bez zmian)
-        fix_ellipsis=True,          # ... → …
-        nbsp_single_letters=True,   # pl: twarda spacja po sierotach a/i/o/u/w/z
-        nbsp_numbers_units=False,   # 10 km, XX w. → twarda spacja (domyślnie OFF)
-    ))
+    report = fix_typography(
+        ebook,
+        TypographyOptions(
+            language="pl",  # pl / en / de — dobiera znaki cudzysłowów
+            fix_quotes=True,  # proste " ' → pary typograficzne wg języka
+            fix_dashes=True,  # pauza w dialogach/wtrąceniach (łączniki w słowach bez zmian)
+            fix_ellipsis=True,  # ... → …
+            nbsp_single_letters=True,  # pl: twarda spacja po sierotach a/i/o/u/w/z
+            nbsp_numbers_units=False,  # 10 km, XX w. → twarda spacja (domyślnie OFF)
+        ),
+    )
     ebook.save()
 
 # TypographyReport: liczba podmian per reguła, per plik i sumarycznie
-print(report.total_changes)          # łączna liczba podmian
-print(report.changed_files)          # lista ścieżek zmienionych plików
-print(report.totals())               # {"fix_quotes": 12, "fix_dashes": 4, ...}
+print(report.total_changes)  # łączna liczba podmian
+print(report.changed_files)  # lista ścieżek zmienionych plików
+print(report.totals())  # {"fix_quotes": 12, "fix_dashes": 4, ...}
 ```
 
 Reguły są idempotentne — drugi przebieg nie wprowadza zmian. Parser jest utwardzony
@@ -199,7 +211,7 @@ from epubforge.core import Tools, detect_with_cache
 pandoc = Tools.pandoc()
 print(pandoc.available, pandoc.path, pandoc.version)
 
-tools = detect_with_cache()             # cache w config.json, re-detekcja po 7 dniach
+tools = detect_with_cache()  # cache w config.json, re-detekcja po 7 dniach
 print({name: t.available for name, t in tools.items()})
 ```
 
