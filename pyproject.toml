@@ -82,7 +82,7 @@ dev = [
     "pytest-qt>=4.4",
     "ruff>=0.15.22",
     "mypy>=1.10",
-    "pre-commit>=3.7",
+    "pre-commit>=4.6.1",
     "pdoc>=14.0",
     "lxml-stubs",
     # Jawnie (mimo że wciąga je pre-commit) — test bramkowy least-privilege CI
