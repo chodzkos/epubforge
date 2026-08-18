@@ -93,7 +93,7 @@ dev = [
 ]
 build = [
     "babel>=2.14",
-    "pyinstaller>=6.6",
+    "pyinstaller>=6.22.0",
     "Pillow>=10.0",
 ]
 
