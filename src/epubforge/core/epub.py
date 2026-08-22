@@ -14,9 +14,12 @@ czytników. Ten moduł respektuje wymogi specyfikacji OCF:
 from __future__ import annotations
 
 import logging
+import os
 import posixpath
 import shutil
+import tempfile
 import zipfile
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 from types import TracebackType
@@ -25,12 +28,18 @@ from lxml import etree
 
 from epubforge.core._archive import (
     DEFAULT_LIMITS,
+    EPUB_CONTAINER_PATH,
     ArchiveLimits,
-    validate_archive,
+    validate_epub_archive,
+    validate_member_name,
 )
 from epubforge.core._epub_write import (
+    assert_staged_identity,
+    discard_staged,
     is_same_target,
+    publish_staged,
     rotate_backups,
+    stage_epub,
     write_epub,
 )
 from epubforge.core._xml_safe import parse_untrusted
@@ -45,7 +54,7 @@ from epubforge.core.metadata import Metadata
 logger = logging.getLogger(__name__)
 
 # Stałe ścieżki i przestrzenie nazw wg specyfikacji OCF/OPF.
-_CONTAINER_PATH = "META-INF/container.xml"
+_CONTAINER_PATH = EPUB_CONTAINER_PATH
 _CONTAINER_NS = "urn:oasis:names:tc:opendocument:xmlns:container"
 _OPF_NS = "http://www.idpf.org/2007/opf"
 
@@ -128,6 +137,7 @@ class Epub:
         self.path = Path(path)
         self._limits = limits if limits is not None else DEFAULT_LIMITS
         self._zip: zipfile.ZipFile | None = None
+        self._source_stat: os.stat_result | None = None
         self._modified: dict[str, bytes] = {}
         self._deleted: set[str] = set()
         self._opf_path: str | None = None
@@ -154,14 +164,13 @@ class Epub:
         # Centralna walidacja niezaufanego archiwum PRZED jakimkolwiek odczytem
         # treści — bomby ZIP i niekanoniczne nazwy odrzucamy na metadanych.
         try:
-            validate_archive(zf, self._limits)
-        except ResourceLimitError:
+            validate_epub_archive(zf, self._limits)
+        except (ResourceLimitError, OpfNotFoundError):
             zf.close()
             raise
-        if _CONTAINER_PATH not in zf.namelist():
-            zf.close()
-            raise OpfNotFoundError(f"Brak {_CONTAINER_PATH} — to nie jest poprawny EPUB")
         self._zip = zf
+        assert zf.fp is not None
+        self._source_stat = os.fstat(zf.fp.fileno())
         logger.debug("Otwarto EPUB: %s", self.path)
 
     def close(self) -> None:
@@ -172,6 +181,7 @@ class Epub:
         if self._zip is not None:
             self._zip.close()
             self._zip = None
+        self._source_stat = None
         self._modified.clear()
         self._deleted.clear()
         self._reset_cache()
@@ -259,6 +269,7 @@ class Epub:
             EpubNotOpenError: gdy EPUB nie jest otwarty.
         """
         self._ensure_open()
+        validate_member_name(internal_path)
         self._deleted.discard(internal_path)
         self._modified[internal_path] = data
         # Modyfikacja OPF unieważnia zcache'owany manifest/spine.
@@ -276,6 +287,7 @@ class Epub:
             EpubNotOpenError: gdy EPUB nie jest otwarty.
         """
         self._ensure_open()
+        validate_member_name(internal_path)
         self._modified.pop(internal_path, None)
         self._deleted.add(internal_path)
         if internal_path == self._opf_path:
@@ -295,8 +307,7 @@ class Epub:
         return names
 
     def pending_changes(self) -> PendingChanges:
-        """Zwraca kopię bufora niezapisanych zmian."""
-        self._ensure_open()
+        """Zwraca bufor także po błędzie save, gdy recovery nie otworzył uchwytu."""
         return PendingChanges(modified=dict(self._modified), deleted=frozenset(self._deleted))
 
     # ── Zapis i backup ───────────────────────────────────────────────────────
@@ -329,6 +340,7 @@ class Epub:
             EpubNotOpenError: gdy EPUB nie jest otwarty.
         """
         self._ensure_open()
+        self._assert_source_unchanged()
         modified = dict(self._modified)
         deleted = set(self._deleted)
         target = self.path if output_path is None else Path(output_path)
@@ -337,18 +349,38 @@ class Epub:
             write_epub(self.path, target, modified, deleted, self._limits)
             logger.debug("Zapisano EPUB jako: %s", target)
             return target
-        # Nadpisanie oryginału (także gdy output_path == source): backup, zamknięcie
-        # uchwytu (Windows), atomowy zapis, reopen. Backup PRZED zamknięciem uchwytu,
-        # by błąd kopiowania nie zostawił zamkniętej sesji.
-        self.backup(retention=backup_retention)
-        assert self._zip is not None
-        self._zip.close()
-        self._zip = None
-        write_epub(self.path, self.path, modified, deleted, self._limits)
+        # Overwrite transaction: stage+validate while source is open, then backup,
+        # close for Windows, atomic publish, reopen, and only then commit memory.
+        staged = stage_epub(self.path, self.path, modified, deleted, self._limits)
+        try:
+            # Do not rotate backup history for a candidate already changed/rejected.
+            assert_staged_identity(staged)
+            self._assert_source_unchanged()
+            self.backup(retention=backup_retention)
+            self._assert_source_unchanged()
+            assert self._zip is not None
+            self._zip.close()
+            self._zip = None
+            try:
+                publish_staged(staged, self.path)
+                self._reset_cache()
+                self.open()
+            except BaseException:
+                # Preserve the original failure. Recovery errors are logged only;
+                # pending remains observable and is never cleared on this path.
+                self._reset_cache()
+                if self._zip is None:
+                    try:
+                        self.open()
+                    except BaseException:
+                        logger.exception("Nie udało się odtworzyć sesji EPUB po błędzie zapisu")
+                raise
+        finally:
+            with suppress(OSError):
+                discard_staged(staged)
         self._modified.clear()
         self._deleted.clear()
         self._reset_cache()
-        self.open()
         logger.debug("Nadpisano EPUB: %s", self.path)
         return self.path
 
@@ -368,8 +400,28 @@ class Epub:
             Ścieżka najnowszego backupu (``<plik>.bak``).
         """
         primary = self.path.with_name(self.path.name + ".bak")
-        rotate_backups(primary, retention)
-        shutil.copy2(self.path, primary)
+        fd, tmp_name = tempfile.mkstemp(
+            dir=primary.parent, prefix=f".{primary.name}.", suffix=".tmp"
+        )
+        os.close(fd)
+        tmp = Path(tmp_name)
+        try:
+            # Copy first: a read/copy failure must not mutate existing history.
+            zf = self._ensure_open()
+            assert zf.fp is not None
+            original_offset = zf.fp.tell()
+            duplicate = os.dup(zf.fp.fileno())
+            try:
+                with os.fdopen(duplicate, "rb") as source, tmp.open("wb") as destination:
+                    source.seek(0)
+                    shutil.copyfileobj(source, destination, self._limits.copy_buffer_size)
+            finally:
+                zf.fp.seek(original_offset)
+            rotate_backups(primary, retention)
+            os.replace(tmp, primary)
+        finally:
+            with suppress(OSError):
+                tmp.unlink(missing_ok=True)
         logger.debug("Utworzono backup: %s (retention=%d)", primary, retention)
         return primary
 
@@ -380,6 +432,15 @@ class Epub:
         if self._zip is None:
             raise EpubNotOpenError("EPUB nie jest otwarty — wywołaj open() lub użyj 'with'.")
         return self._zip
+
+    def _assert_source_unchanged(self) -> None:
+        """Odrzuca save, gdy pathname nie wskazuje archiwum otwartego przez sesję."""
+        if self._source_stat is None:
+            raise EpubNotOpenError("Brak tożsamości otwartego źródła EPUB.")
+        current = os.stat(self.path, follow_symlinks=False)
+        fields = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
+        if any(getattr(current, field) != getattr(self._source_stat, field) for field in fields):
+            raise OSError("Plik źródłowy EPUB zmienił się od czasu otwarcia; zapis przerwany.")
 
     def _read_xml(self, internal_path: str) -> bytes:
         """Odczyt wpisu przeznaczonego do parsowania XML/tekstu — z limitem ``max_text_size``.

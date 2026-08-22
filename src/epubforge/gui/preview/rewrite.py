@@ -2,18 +2,17 @@
 
 from __future__ import annotations
 
-import posixpath
 import re
 from collections.abc import Callable
 from typing import cast
-from urllib.parse import unquote, urlsplit
+from urllib.parse import urlsplit
 
 from lxml import etree
 
 from epubforge.core._xml_safe import parse_untrusted_document, serialize_document
 from epubforge.gui.preview.backend import DiagnosticCategory, DiagnosticEvent
 from epubforge.gui.preview.dom_mapping import assign_render_node_ids
-from epubforge.gui.preview.paths import UnsafePreviewPathError, normalize_internal_path
+from epubforge.gui.preview.paths import resolve_publication_path
 from epubforge.gui.preview.sanitize import sanitize_xhtml
 from epubforge.gui.preview.session import PreviewGeneration
 from epubforge.i18n import _
@@ -203,16 +202,7 @@ def safe_source_url(value: str) -> str:
 
 def _resolved_path(source_url: str, base_path: str) -> str | None:
     """Zwraca bezpieczną ścieżkę archiwum albo None."""
-    parsed = urlsplit(source_url.strip())
-    try:
-        decoded = unquote(parsed.path, errors="strict")
-        base_dir = (
-            base_path.rstrip("/") if base_path.endswith("/") else posixpath.dirname(base_path)
-        )
-        combined = posixpath.normpath(posixpath.join(base_dir, decoded))
-        return normalize_internal_path(combined)
-    except (UnicodeDecodeError, UnsafePreviewPathError):
-        return None
+    return resolve_publication_path(source_url, base_path)
 
 
 def _element_base(element: etree._Element, requester: str) -> str:

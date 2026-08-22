@@ -23,10 +23,11 @@ import shutil
 import zipfile
 from dataclasses import dataclass
 
-from epubforge.core.exceptions import ResourceLimitError
+from epubforge.core.exceptions import OpfNotFoundError, ResourceLimitError
 
 # Flaga „traversal” w nagłówku ZIP: bit 0 ``flag_bits`` oznacza wpis zaszyfrowany.
 _ENCRYPTED_FLAG = 0x1
+EPUB_CONTAINER_PATH = "META-INF/container.xml"
 
 
 @dataclass(frozen=True)
@@ -71,8 +72,10 @@ def _has_drive(name: str) -> bool:
     return len(name) >= 2 and name[1] == ":" and name[0].isalpha()
 
 
-def _validate_name(name: str, seen: set[str]) -> None:
-    """Odrzuca niekanoniczne/niebezpieczne nazwy wpisów (duplikaty, traversal, NUL…).
+def validate_member_name(name: str, seen: set[str] | None = None) -> None:
+    """Waliduje kanoniczną nazwę wpisu wspólnie dla odczytu i zapisu.
+
+    Opcjonalny ``seen`` dodaje kontrolę duplikatów podczas walidacji archiwum.
 
     Raises:
         ResourceLimitError: gdy nazwa jest pusta, zawiera NUL/backslash, jest
@@ -95,9 +98,14 @@ def _validate_name(name: str, seen: set[str]) -> None:
         # Pusty segment dozwolony tylko jako końcowy (wpis-katalog ``dir/``).
         if segment == "" and index != len(segments) - 1:
             raise ResourceLimitError(f"Niekanoniczna nazwa wpisu (pusty segment): {name!r}.")
-    if name in seen:
-        raise ResourceLimitError(f"Zdublowana nazwa wpisu w archiwum EPUB: {name!r}.")
-    seen.add(name)
+    if seen is not None:
+        if name in seen:
+            raise ResourceLimitError(f"Zdublowana nazwa wpisu w archiwum EPUB: {name!r}.")
+        seen.add(name)
+
+
+# Zachowany dla istniejących property/fuzz testów; to alias, nie druga polityka.
+_validate_name = validate_member_name
 
 
 def _validate_entry_budgets(info: zipfile.ZipInfo, limits: ArchiveLimits) -> None:
@@ -114,8 +122,12 @@ def _validate_entry_budgets(info: zipfile.ZipInfo, limits: ArchiveLimits) -> Non
             f"Wpis {info.filename!r} przekracza limit rozmiaru "
             f"({info.file_size} > {limits.max_entry_size} B)."
         )
+    if info.file_size > 0 and info.compress_size <= 0:
+        raise ResourceLimitError(
+            f"Niepusty wpis {info.filename!r} ma zerowy rozmiar skompresowany."
+        )
     # Współczynnik kompresji liczymy dopiero powyżej progu (małe wpisy nie grożą DoS).
-    if info.file_size > limits.ratio_check_min_size and info.compress_size > 0:
+    if info.file_size > limits.ratio_check_min_size:
         ratio = info.file_size / info.compress_size
         if ratio > limits.max_compression_ratio:
             raise ResourceLimitError(
@@ -148,7 +160,7 @@ def validate_archive(zf: zipfile.ZipFile, limits: ArchiveLimits = DEFAULT_LIMITS
     for operations, info in enumerate(infos, start=1):
         if operations > limits.max_operations:
             raise ResourceLimitError("Przekroczono budżet operacji walidacji archiwum EPUB.")
-        _validate_name(info.filename, seen)
+        validate_member_name(info.filename, seen)
         _validate_entry_budgets(info, limits)
         total += info.file_size
         if total > limits.max_total_uncompressed:
@@ -156,6 +168,13 @@ def validate_archive(zf: zipfile.ZipFile, limits: ArchiveLimits = DEFAULT_LIMITS
                 f"Suma rozmiarów nieskompresowanych przekracza limit "
                 f"({total} > {limits.max_total_uncompressed} B)."
             )
+
+
+def validate_epub_archive(zf: zipfile.ZipFile, limits: ArchiveLimits = DEFAULT_LIMITS) -> None:
+    """Stosuje pełną politykę normalnego openera, łącznie z minimum OCF."""
+    validate_archive(zf, limits)
+    if EPUB_CONTAINER_PATH not in zf.namelist():
+        raise OpfNotFoundError(f"Brak {EPUB_CONTAINER_PATH} — to nie jest poprawny EPUB")
 
 
 def _dest_info(item: zipfile.ZipInfo) -> zipfile.ZipInfo:
