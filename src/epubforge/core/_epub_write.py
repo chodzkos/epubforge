@@ -203,9 +203,9 @@ def _write_zip_entries(
                 raise ResourceLimitError("Przekroczono budżet operacji zapisu EPUB.")
             data = modified.get(item.filename)
             if data is None:
-                # Niezmieniony wpis — kopia STRUMIENIOWA (stały bufor), zachowuje
-                # compress_type źródła (STORED, np. obrazy, nie są rekompresowane).
-                copy_entry_streamed(zin, zout, item, buffer_size=limits.copy_buffer_size)
+                # Niezmieniony wpis — kopia strumieniowa; DEFLATE przechodzi na
+                # STORED tylko wtedy, gdy rekompresja złamałaby politykę ratio.
+                copy_entry_streamed(zin, zout, item, limits=limits)
             else:
                 # Legalne dane własne: STORED tylko gdy DEFLATE złamałby własny ratio.
                 zout.writestr(
