@@ -225,7 +225,23 @@ def test_edit_save_reopen_flow(
     qtbot: QtBot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Edycja XHTML → Ctrl+S → Zapisz EPUB → ponowne otwarcie pokazuje zmianę."""
+    import epubforge.core._epub_write as epub_write
+
     save_errors: list[str] = []
+    real_same_identity = epub_write._same_identity
+
+    def trace_identity(current: object, validated: object) -> bool:
+        fields = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
+        differences = {
+            field: (getattr(validated, field), getattr(current, field))
+            for field in fields
+            if getattr(current, field) != getattr(validated, field)
+        }
+        if differences:
+            print(f"[DEBUG-pr180] staged identity differences: {differences}")
+        return real_same_identity(current, validated)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(epub_write, "_same_identity", trace_identity)
     monkeypatch.setattr(
         QMessageBox,
         "critical",
