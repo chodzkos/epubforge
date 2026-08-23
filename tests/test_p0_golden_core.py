@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import shutil
+import os
 import zipfile
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -271,22 +272,34 @@ def test_source_handle_is_closed_before_publish_for_windows_compatibility(
 
 
 def test_save_rejects_source_path_replaced_after_session_open(
-    sample_epub: Path, tmp_path: Path
+    sample_epub: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     original = sample_epub.read_bytes()
-    replacement = tmp_path / "replacement.epub"
-    shutil.copy2(sample_epub, replacement)
-    with zipfile.ZipFile(replacement, "a") as archive:
-        archive.writestr("OEBPS/replacement.txt", b"replacement")
     epub = Epub(sample_epub)
     epub.open()
     epub.write_file("OEBPS/pending.txt", b"pending")
-    replacement.replace(sample_epub)
+    real_stat = os.stat
+    source_stat = real_stat(sample_epub, follow_symlinks=False)
+    changed_stat = SimpleNamespace(
+        st_dev=source_stat.st_dev,
+        st_ino=source_stat.st_ino,
+        st_size=source_stat.st_size + 1,
+        st_mtime_ns=source_stat.st_mtime_ns,
+        st_ctime_ns=source_stat.st_ctime_ns,
+    )
+
+    def stat_with_changed_source(path: object, **kwargs: object) -> os.stat_result:
+        if path == sample_epub:
+            return changed_stat  # type: ignore[return-value]
+        return real_stat(path, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr("epubforge.core.epub.os.stat", stat_with_changed_source)
     try:
         with pytest.raises(OSError, match="zmienił się od czasu otwarcia"):
             epub.save()
         assert epub.pending_changes().modified["OEBPS/pending.txt"] == b"pending"
-        assert sample_epub.read_bytes() != original
+        assert epub.read_file("OEBPS/pending.txt") == b"pending"
+        assert sample_epub.read_bytes() == original
         assert not sample_epub.with_name(sample_epub.name + ".bak").exists()
     finally:
         epub.close()
