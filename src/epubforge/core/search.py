@@ -37,7 +37,7 @@ CancelCheck = Callable[[], bool]
 MAX_PATTERN_LENGTH = 1000
 # Twardy limit czasu jednego wywołania matchera (finditer/subn) per plik.
 REGEX_TIMEOUT_SECONDS = 1.0
-_REGEX_TIMEOUT_MESSAGE = "Wyrażenie regularne przekroczyło limit czasu. Uprość wzorzec."
+REGEX_TIMEOUT_MESSAGE = "Wyrażenie regularne przekroczyło limit czasu. Uprość wzorzec."
 # Maksymalna długość podglądu linii z trafieniem.
 _PREVIEW_LIMIT = 160
 
@@ -147,7 +147,7 @@ def search_epub(
                 line, column = offset_to_line_col(text, match.start())
                 hits.append(SearchHit(internal, line, column, _preview(text, match.start())))
         except TimeoutError as exc:
-            raise SearchPatternError(_REGEX_TIMEOUT_MESSAGE) from exc
+            raise SearchPatternError(REGEX_TIMEOUT_MESSAGE) from exc
     return hits
 
 
@@ -194,7 +194,7 @@ def replace_in_epub(
         try:
             new_text, count = _subn(pattern, repl, text, timed=timed)
         except TimeoutError:
-            report.skipped.append((internal, _REGEX_TIMEOUT_MESSAGE))
+            report.skipped.append((internal, REGEX_TIMEOUT_MESSAGE))
             break
         except (re.error, regex_lib.error) as exc:
             raise SearchPatternError(f"Niepoprawne podstawienie: {exc}") from exc

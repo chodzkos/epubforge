@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 
 from epubforge.core import Epub
 from epubforge.core.search import (
+    REGEX_TIMEOUT_MESSAGE,
     ReplaceReport,
     SearchHit,
     replace_in_epub,
@@ -57,6 +58,9 @@ class SearchHost(Protocol):
 
     def mark_replaced(self, paths: list[str]) -> None:
         """Oznacza pliki jako zmienione (bufor) i odświeża widok/drzewo."""
+
+    def set_mutation_guard(self, active: bool) -> None:
+        """Blokuje edycję na czas zamiany w tle (żeby nie ścigać się z buforem)."""
 
 
 class SearchReplacePanel(QWidget):
@@ -195,7 +199,7 @@ class SearchReplacePanel(QWidget):
         """Szuka w wątku roboczym (bieżący plik albo cały EPUB, z anulowaniem)."""
         options = self._options()
         self._searching = True
-        self._set_running(True)
+        self._set_running(True, cancellable=True)
         self._set_status(_("Szukam…"))
         self._worker = Worker(
             _search_worker,
@@ -219,11 +223,13 @@ class SearchReplacePanel(QWidget):
     def _on_search_failed(self, message: str) -> None:
         self._searching = False
         self._set_running(False)
+        self._host.set_mutation_guard(False)
         self._set_status(message)
 
     def _on_search_cancelled(self) -> None:
         self._searching = False
         self._set_running(False)
+        self._host.set_mutation_guard(False)
         self._set_status(_("Anulowano"))
 
     def _on_cancel(self) -> None:
@@ -276,7 +282,8 @@ class SearchReplacePanel(QWidget):
         self._host.flush_current_editor()
         options = self._options()
         self._searching = True
-        self._set_running(True)
+        self._host.set_mutation_guard(True)
+        self._set_running(True, cancellable=False)
         self._set_status(_("Zamieniam…"))
         self._worker = Worker(
             _replace_worker,
@@ -296,10 +303,14 @@ class SearchReplacePanel(QWidget):
     def _on_replace_done(self, result: object) -> None:
         self._searching = False
         self._set_running(False)
+        self._host.set_mutation_guard(False)
         report = cast(ReplaceReport, result)
         self._host.mark_replaced(report.changed_files)
         self._report_replace(report.total, len(report.changed_files), report.skipped)
-        # Odśwież wyniki po zamianie (trafienia wykonane znikają).
+        timed_out = any(reason == REGEX_TIMEOUT_MESSAGE for _path, reason in report.skipped)
+        if timed_out:
+            # Ten sam wzorzec przy search znów trafiłby na timeout i nadpisał status.
+            return
         self._on_search()
 
     def _report_replace(self, total: int, files: int, skipped: list[tuple[str, str]]) -> None:
@@ -310,10 +321,10 @@ class SearchReplacePanel(QWidget):
 
     # ── Pomocnicze ──────────────────────────────────────────────────────────--
 
-    def _set_running(self, running: bool) -> None:
+    def _set_running(self, running: bool, *, cancellable: bool = False) -> None:
         self.search_button.setEnabled(not running)
         self.replace_button.setEnabled(not running)
-        self.cancel_button.setEnabled(running)
+        self.cancel_button.setEnabled(running and cancellable)
 
     def _set_status(self, text: str) -> None:
         self.status_label.setText(text)

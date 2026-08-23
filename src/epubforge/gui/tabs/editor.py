@@ -80,6 +80,7 @@ class EditorTab(EditorLayoutMixin, EditorPreviewMixin, QWidget):
         self._dirty: dict[str, str] = {}  # ścieżka → tekst zapisany do bufora EPUB
         self._current: str | None = None
         self._readonly_files: set[str] = set()  # pliki z bajtami zastępczymi
+        self._mutation_guard = False
         self._media_types: dict[str, str] = {}
         self._switching = False  # blokada rekurencji przy cofaniu zaznaczenia
 
@@ -147,6 +148,11 @@ class EditorTab(EditorLayoutMixin, EditorPreviewMixin, QWidget):
             self._show_file(self._current)
         self._update_tree_markers()
         self._refresh_actions()
+
+    def set_mutation_guard(self, active: bool) -> None:
+        """Blokuje edytor na czas zamiany w tle."""
+        self._mutation_guard = active
+        self._apply_read_only()
 
     # ── Otwieranie EPUB ─────────────────────────────────────────────────────--
 
@@ -340,7 +346,9 @@ class EditorTab(EditorLayoutMixin, EditorPreviewMixin, QWidget):
     def _apply_read_only(self) -> None:
         """Edytor jest edytowalny tylko w trybie edycji i dla plików bez zastępczych."""
         forced = self._current in self._readonly_files if self._current else False
-        self.code_editor.read_only = not self.edit_toggle.isChecked() or forced
+        self.code_editor.read_only = (
+            not self.edit_toggle.isChecked() or forced or self._mutation_guard
+        )
 
     def _on_modified(self, _modified: bool) -> None:
         """Reaguje na zmianę stanu modyfikacji edytora (znacznik „*", akcje)."""
