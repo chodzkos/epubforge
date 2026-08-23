@@ -47,6 +47,16 @@ def test_preview_url_rejects_traversal_and_other_schemes(url: str) -> None:
         parse_preview_url(url)
 
 
+def test_canonical_preview_authority_is_accepted() -> None:
+    """Zwykły 32-znakowy host hex jest jedyną akceptowaną postacią authority."""
+    session_id = "0123456789abcdef0123456789abcdef"
+    request = parse_preview_url(f"epub-preview://{session_id}/a.xhtml?gen=1&rev=1")
+    assert request.session_id == session_id
+    assert request.internal_path == "a.xhtml"
+    assert request.generation_id == 1
+    assert request.revision == 1
+
+
 @pytest.mark.parametrize(
     "url",
     (

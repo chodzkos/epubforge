@@ -139,7 +139,16 @@ def parse_preview_url(url: str) -> PreviewRequest:
     if parsed.scheme != EPUB_PREVIEW_SCHEME or not hostname:
         raise UnsafePreviewPathError("Niepoprawny schemat lub pusty host")
     session_id = hostname.lower()
-    if not _SESSION_RE.fullmatch(session_id) or parsed.username or port is not None:
+    # Authority musi być zwykłym hostem sesji. Na części platform Python 3.10
+    # zdejmuje nawiasy z [hex] i .hostname przechodzi _SESSION_RE — surowy
+    # netloc nie może więc różnić się od hostname (nawiasy, userinfo, port).
+    if (
+        not _SESSION_RE.fullmatch(session_id)
+        or parsed.username
+        or parsed.password
+        or port is not None
+        or parsed.netloc.lower() != hostname.lower()
+    ):
         raise UnsafePreviewPathError("Niepoprawny identyfikator sesji")
     if not parsed.path.startswith("/") or parsed.path.startswith("//"):
         raise UnsafePreviewPathError("Niepoprawna ścieżka URL")
