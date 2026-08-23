@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import shutil
 import zipfile
+import zlib
 from dataclasses import dataclass
 
 from epubforge.core.exceptions import OpfNotFoundError, ResourceLimitError
@@ -177,18 +178,45 @@ def validate_epub_archive(zf: zipfile.ZipFile, limits: ArchiveLimits = DEFAULT_L
         raise OpfNotFoundError(f"Brak {EPUB_CONTAINER_PATH} — to nie jest poprawny EPUB")
 
 
-def _dest_info(item: zipfile.ZipInfo) -> zipfile.ZipInfo:
+def _dest_info(item: zipfile.ZipInfo, compress_type: int | None = None) -> zipfile.ZipInfo:
     """Świeży :class:`ZipInfo` dla wpisu docelowego, przenoszący metadane źródła.
 
-    Zachowuje ``compress_type`` (wpisy STORED, np. obrazy, nie są rekompresowane),
-    ``date_time`` i atrybuty — bez współdzielenia obiektu ze źródłem.
+    Domyślnie zachowuje ``compress_type``; jawny typ pozwala bezpiecznie przełączyć
+    niezmieniony wpis na STORED. Zachowuje timestamp i atrybuty bez współdzielenia
+    obiektu ze źródłem.
     """
     dest = zipfile.ZipInfo(item.filename, date_time=item.date_time)
-    dest.compress_type = item.compress_type
+    dest.compress_type = item.compress_type if compress_type is None else compress_type
     dest.external_attr = item.external_attr
     dest.internal_attr = item.internal_attr
     dest.create_system = item.create_system
     return dest
+
+
+def _streamed_deflate_size(zin: zipfile.ZipFile, item: zipfile.ZipInfo, buffer_size: int) -> int:
+    """Liczy rozmiar domyślnego DEFLATE bez buforowania treści wpisu w pamięci."""
+    compressor = zlib.compressobj(zlib.Z_DEFAULT_COMPRESSION, zlib.DEFLATED, -zlib.MAX_WBITS)
+    compressed_size = 0
+    with zin.open(item) as source:
+        while chunk := source.read(buffer_size):
+            compressed_size += len(compressor.compress(chunk))
+    return compressed_size + len(compressor.flush())
+
+
+def _copy_compress_type(
+    zin: zipfile.ZipFile,
+    item: zipfile.ZipInfo,
+    limits: ArchiveLimits,
+) -> int:
+    """Dobiera bezpieczny typ kompresji dla strumieniowej kopii niezmienionego wpisu."""
+    if item.compress_type != zipfile.ZIP_DEFLATED:
+        return item.compress_type
+    if item.file_size <= limits.ratio_check_min_size:
+        return item.compress_type
+    compressed_size = _streamed_deflate_size(zin, item, limits.copy_buffer_size)
+    if not compressed_size or item.file_size / compressed_size > limits.max_compression_ratio:
+        return zipfile.ZIP_STORED
+    return item.compress_type
 
 
 def copy_entry_streamed(
@@ -196,13 +224,15 @@ def copy_entry_streamed(
     zout: zipfile.ZipFile,
     item: zipfile.ZipInfo,
     *,
-    buffer_size: int,
+    limits: ArchiveLimits,
 ) -> None:
-    """Kopiuje wpis ze źródła do wyjścia **strumieniowo** (bufor ``buffer_size``).
+    """Kopiuje wpis ze źródła do wyjścia strumieniowo z buforem z ``limits``.
 
-    Pamięć szczytowa nie zależy od rozmiaru wpisu — czytamy i zapisujemy w kawałkach
-    (``zin.open`` → ``zout.open`` + :func:`shutil.copyfileobj`), zamiast wczytywać
-    cały wpis do RAM (``zin.read``). ``compress_type`` źródła jest zachowany.
+    Pamięć szczytowa nie zależy od rozmiaru wpisu — czytamy i zapisujemy w kawałkach,
+    zamiast wczytywać cały wpis do RAM. Dla dużego DEFLATE najpierw strumieniowo
+    mierzymy wynik rekompresji. Gdy przekroczyłby limit ratio, drugi przebieg zapisuje
+    identyczną treść jako STORED; pozostałe wpisy zachowują typ kompresji źródła.
     """
-    with zin.open(item) as source, zout.open(_dest_info(item), "w") as dest:
-        shutil.copyfileobj(source, dest, buffer_size)
+    compress_type = _copy_compress_type(zin, item, limits)
+    with zin.open(item) as source, zout.open(_dest_info(item, compress_type), "w") as dest:
+        shutil.copyfileobj(source, dest, limits.copy_buffer_size)

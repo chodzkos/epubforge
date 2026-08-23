@@ -11,7 +11,7 @@ import pytest
 
 import epubforge.core._epub_write as epub_write
 import epubforge.core.epub as epub_module
-from epubforge.core._archive import ArchiveLimits, validate_archive
+from epubforge.core._archive import ArchiveLimits, validate_archive, validate_epub_archive
 from epubforge.core._epub_write import publish_staged, stage_epub, write_epub
 from epubforge.core.epub import Epub
 from epubforge.core.exceptions import OpfNotFoundError, ResourceLimitError
@@ -108,6 +108,38 @@ def test_highly_compressible_application_data_saves_and_reopens(
         validate_archive(zf, limits)
         info = zf.getinfo("OEBPS/text/compressible.xhtml")
         assert info.compress_type == zipfile.ZIP_STORED
+
+
+def test_unchanged_entry_recompression_cannot_invalidate_valid_source(
+    sample_epub: Path, tmp_path: Path
+) -> None:
+    """Legalny wpis przy granicy ratio pozostaje zapisywalny po zmianie innego wpisu."""
+    boundary_name = "OEBPS/boundary.bin"
+    boundary_data = bytes(range(28)) + b"A" * (65_537 - 28)
+    with zipfile.ZipFile(
+        sample_epub, "a", compression=zipfile.ZIP_DEFLATED, compresslevel=1
+    ) as source:
+        source.writestr(boundary_name, boundary_data)
+
+    with zipfile.ZipFile(sample_epub) as source:
+        validate_epub_archive(source)
+        source_info = source.getinfo(boundary_name)
+        source_ratio = source_info.file_size / source_info.compress_size
+        assert source_info.file_size == 65_537
+        assert source_info.compress_size == 329
+        assert source_ratio < ArchiveLimits().max_compression_ratio
+
+    target = tmp_path / "saved.epub"
+    changed_chapter = b"<html><body><p>zmieniony rozdzial</p></body></html>"
+    with Epub(sample_epub) as epub:
+        epub.write_file("OEBPS/text/chapter1.xhtml", changed_chapter)
+        epub.save(target)
+
+    with zipfile.ZipFile(target) as candidate:
+        validate_epub_archive(candidate)
+        assert candidate.read("OEBPS/text/chapter1.xhtml") == changed_chapter
+        assert candidate.read(boundary_name) == boundary_data
+        assert candidate.getinfo(boundary_name).compress_type == zipfile.ZIP_STORED
 
 
 @pytest.mark.parametrize("file_size", [1, 4096])
