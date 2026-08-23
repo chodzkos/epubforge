@@ -130,14 +130,15 @@ def resolve_publication_path(reference: str, base_path: str) -> str | None:
 
 def parse_preview_url(url: str) -> PreviewRequest:
     """Waliduje URL własnego schematu z parametrami gen i rev."""
-    parsed = urlsplit(url)
-    if parsed.scheme != EPUB_PREVIEW_SCHEME or not parsed.hostname:
-        raise UnsafePreviewPathError("Niepoprawny schemat lub pusty host")
-    session_id = parsed.hostname.lower()
     try:
+        parsed = urlsplit(url)
+        hostname = parsed.hostname
         port = parsed.port
     except ValueError as exc:
-        raise UnsafePreviewPathError("Niepoprawny port") from exc
+        raise UnsafePreviewPathError("Niepoprawne authority URL-a podglądu") from exc
+    if parsed.scheme != EPUB_PREVIEW_SCHEME or not hostname:
+        raise UnsafePreviewPathError("Niepoprawny schemat lub pusty host")
+    session_id = hostname.lower()
     if not _SESSION_RE.fullmatch(session_id) or parsed.username or port is not None:
         raise UnsafePreviewPathError("Niepoprawny identyfikator sesji")
     if not parsed.path.startswith("/") or parsed.path.startswith("//"):

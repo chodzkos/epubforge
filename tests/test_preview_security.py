@@ -47,6 +47,23 @@ def test_preview_url_rejects_traversal_and_other_schemes(url: str) -> None:
         parse_preview_url(url)
 
 
+@pytest.mark.parametrize(
+    "url",
+    (
+        "epub-preview://[xyz]/a.xhtml?gen=1&rev=1",
+        "epub-preview://[0123456789abcdef0123456789abcdef]/a.xhtml?gen=1&rev=1",
+        "epub-preview://[::1/a.xhtml?gen=1&rev=1",
+    ),
+)
+def test_malformed_preview_authority_is_rejected_fail_closed(url: str) -> None:
+    """Wadliwe authority nie omija kontrolowanego odrzucenia URL-a podglądu."""
+    with pytest.raises(UnsafePreviewPathError):
+        parse_preview_url(url)
+    registry = PreviewGenerationRegistry()
+    assert registry.accepts_url(url) is False
+    assert registry.resolve_resource(url) is None
+
+
 def test_preview_url_decodes_utf8_once_and_ignores_fragment() -> None:
     """UTF-8 jest dekodowany ściśle raz, a fragment nie wybiera zasobu."""
     session_id = "0123456789abcdef0123456789abcdef"
