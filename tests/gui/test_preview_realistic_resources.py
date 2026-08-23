@@ -102,6 +102,26 @@ def test_xhtml_and_css_references_use_resource_revisions(tmp_path: Path) -> None
     epub.close()
 
 
+def test_xhtml_rewrites_percent_encoded_dot_inside_resource_name(tmp_path: Path) -> None:
+    """Zakodowana kropka w nazwie obrazu wskazuje kanoniczny zasób publikacji."""
+    epub = Epub(_make_resource_epub(tmp_path / "encoded-dot.epub"))
+    epub.open()
+    chapter_path = "OEBPS/text/ch.xhtml"
+    cover_path = "OEBPS/images/cover.jpg"
+    chapter = (
+        b'<html xmlns="http://www.w3.org/1999/xhtml"><body>'
+        b'<img src="../images/cover%2Ejpg"/></body></html>'
+    )
+    epub.write_file(cover_path, b"synthetic-cover")
+    session = PreviewSession.create(epub)
+    generation = session.advance(epub, chapter_path, {chapter_path: chapter})
+
+    rendered = rewrite_xhtml(chapter, generation, chapter_path).decode()
+
+    assert f"/{cover_path}?gen=1&amp;rev=" in rendered
+    epub.close()
+
+
 def test_xhtml_named_entity_nodes_do_not_break_preview_rewrite(tmp_path: Path) -> None:
     """Nierozwinięte encje XHTML nie są elementami i nie mogą trafić do ``QName``."""
     epub = Epub(_make_resource_epub(tmp_path / "named-entity.epub"))
