@@ -35,7 +35,7 @@ dependencies = [
     # Raport CLI `doctor`/`info` — tabele i kolory (warstwa prezentacji, nie core).
     "rich>=13.7",
     # Lokalizacja configu wg konwencji systemu (GUI_STANDARD §8) — core, bez Qt.
-    "platformdirs>=4.11.0",
+    "platformdirs>=4.11.3",
     "tomli>=2.0; python_version<'3.11'",
     # Wspólny rdzeń GUI (paleta + config) — warstwa 0 kitu, czysty Python bez Qt;
     # core/CLI używają chodzkos_gui_kit.config i .palette. Tor Qt dokłada extra [qt].
