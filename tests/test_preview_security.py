@@ -17,6 +17,7 @@ from epubforge.gui.preview.paths import (
     build_preview_url,
     normalize_internal_path,
     parse_preview_url,
+    resolve_publication_path,
 )
 from epubforge.gui.preview.registry import PreviewGenerationRegistry
 from epubforge.gui.preview.sanitize import CSP_POLICY, sanitize_xhtml
@@ -46,6 +47,33 @@ def test_preview_url_rejects_traversal_and_other_schemes(url: str) -> None:
         parse_preview_url(url)
 
 
+def test_canonical_preview_authority_is_accepted() -> None:
+    """Zwykły 32-znakowy host hex jest jedyną akceptowaną postacią authority."""
+    session_id = "0123456789abcdef0123456789abcdef"
+    request = parse_preview_url(f"epub-preview://{session_id}/a.xhtml?gen=1&rev=1")
+    assert request.session_id == session_id
+    assert request.internal_path == "a.xhtml"
+    assert request.generation_id == 1
+    assert request.revision == 1
+
+
+@pytest.mark.parametrize(
+    "url",
+    (
+        "epub-preview://[xyz]/a.xhtml?gen=1&rev=1",
+        "epub-preview://[0123456789abcdef0123456789abcdef]/a.xhtml?gen=1&rev=1",
+        "epub-preview://[::1/a.xhtml?gen=1&rev=1",
+    ),
+)
+def test_malformed_preview_authority_is_rejected_fail_closed(url: str) -> None:
+    """Wadliwe authority nie omija kontrolowanego odrzucenia URL-a podglądu."""
+    with pytest.raises(UnsafePreviewPathError):
+        parse_preview_url(url)
+    registry = PreviewGenerationRegistry()
+    assert registry.accepts_url(url) is False
+    assert registry.resolve_resource(url) is None
+
+
 def test_preview_url_decodes_utf8_once_and_ignores_fragment() -> None:
     """UTF-8 jest dekodowany ściśle raz, a fragment nie wybiera zasobu."""
     session_id = "0123456789abcdef0123456789abcdef"
@@ -54,6 +82,37 @@ def test_preview_url_decodes_utf8_once_and_ignores_fragment() -> None:
     )
     assert request.internal_path == "OEBPS/zażółć.xhtml"
     assert request.revision == 7
+
+
+@pytest.mark.parametrize(
+    "raw_path",
+    (
+        "OEBPS/%",
+        "OEBPS/%2",
+        "OEBPS/foo%2Gbar.xhtml",
+    ),
+)
+def test_preview_url_rejects_malformed_percent_escape(raw_path: str) -> None:
+    """Własny URL podglądu odrzuca niepełne i nieheksadecymalne escape'y."""
+    session_id = "0123456789abcdef0123456789abcdef"
+    with pytest.raises(UnsafePreviewPathError):
+        parse_preview_url(f"epub-preview://{session_id}/{raw_path}?gen=1&rev=1")
+
+
+def test_preview_url_rejects_split_encoded_residual_traversal() -> None:
+    """Osobno zakodowane znaki escape'u nie ukrywają traversal w URL-u podglądu."""
+    session_id = "0123456789abcdef0123456789abcdef"
+    path = "OEBPS/%2525%2532%2565%2525%2532%2565/secret.xhtml"
+    with pytest.raises(UnsafePreviewPathError):
+        parse_preview_url(f"epub-preview://{session_id}/{path}?gen=1&rev=1")
+
+
+def test_preview_url_rejects_residual_traversal_beside_invalid_utf8_escape() -> None:
+    """Błędny bajt obok nie może ukryć osobno zakodowanego traversal."""
+    session_id = "0123456789abcdef0123456789abcdef"
+    path = "OEBPS/x%25FF/%2525%2532%2565%2525%2532%2565/secret.xhtml"
+    with pytest.raises(UnsafePreviewPathError):
+        parse_preview_url(f"epub-preview://{session_id}/{path}?gen=1&rev=1")
 
 
 @pytest.mark.parametrize("query", ("", "?path=x&rev=1", "?rev=1&rev=2", "?rev=-1"))
@@ -70,6 +129,68 @@ def test_internal_path_is_posix_and_relative() -> None:
     for path in ("/etc/passwd", "C:/secret", "OEBPS\\secret", "a/../b", "a//b"):
         with pytest.raises(UnsafePreviewPathError):
             normalize_internal_path(path)
+
+
+@pytest.mark.parametrize(
+    ("reference", "expected"),
+    (
+        ("images/cover%2Ejpg", "OEBPS/text/images/cover.jpg"),
+        ("images/foo%2Ebar.png", "OEBPS/text/images/foo.bar.png"),
+        ("chapter%2E1.xhtml", "OEBPS/text/chapter.1.xhtml"),
+        ("./chapter.xhtml", "OEBPS/text/chapter.xhtml"),
+        ("foo%25bar.xhtml", "OEBPS/text/foo%bar.xhtml"),
+    ),
+)
+def test_publication_path_accepts_safe_percent_encoded_characters(
+    reference: str, expected: str
+) -> None:
+    """Pojedynczy decode dopuszcza kropkę wewnątrz nazwy i literalny procent."""
+    assert resolve_publication_path(reference, "OEBPS/text/chapter.xhtml") == expected
+
+
+@pytest.mark.parametrize(
+    "reference",
+    (
+        "%2e/chapter.xhtml",
+        "%2E/chapter.xhtml",
+        "%2e%2e/secret.xhtml",
+        "%2E%2E/secret.xhtml",
+        "%2e./secret.xhtml",
+        ".%2E/secret.xhtml",
+        "images/%2e%2e/secret.xhtml",
+        "images/.%2e/secret.xhtml",
+        "images/%252e%252e/secret.xhtml",
+        "images/%25252e%25252e/secret.xhtml",
+        "images%2Fsecret.xhtml",
+        "images%2fsecret.xhtml",
+        "images%5Csecret.xhtml",
+        "images%5csecret.xhtml",
+        "%00secret.xhtml",
+        "foo%2Gbar.xhtml",
+        "invalid%C0%AEutf8.xhtml",
+        "invalid%FFutf8.xhtml",
+        "%252e%252e/secret.xhtml",
+        "%25252e%25252e/secret.xhtml",
+        "images%25252Fsecret.xhtml",
+        "a/%2525%2532%2565%2525%2532%2565/secret.xhtml",
+        "x%25FF/%2525%2532%2565%2525%2532%2565/secret.xhtml",
+        "images%2525%2532%2566secret.xhtml",
+        "images%2525%2535%2563secret.xhtml",
+        "%2525%2530%2530secret.xhtml",
+        "images%2F..%2Fsecret.xhtml",
+        "images%5C..%5Csecret.xhtml",
+        "file:///etc/passwd",
+        "C:%5Csecret.txt",
+    ),
+)
+def test_publication_path_rejects_encoded_traversal_and_separators(reference: str) -> None:
+    """Traversal, separatory, NUL i niekanoniczne escape'y pozostają fail-closed."""
+    assert resolve_publication_path(reference, "OEBPS/text/chapter.xhtml") is None
+
+
+def test_publication_path_rejects_raw_parent_outside_publication() -> None:
+    """Surowy segment nadrzędny nie może wyjść ponad korzeń publikacji."""
+    assert resolve_publication_path("../secret.xhtml", "chapter.xhtml") is None
 
 
 def test_snapshot_precedence_and_generation_isolation(sample_epub: Path) -> None:

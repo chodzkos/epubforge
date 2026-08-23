@@ -12,12 +12,28 @@ from epubforge.gui.preview.preinit import EPUB_PREVIEW_SCHEME
 _SESSION_RE = re.compile(r"[0-9a-f]{32}\Z")
 _DRIVE_RE = re.compile(r"[A-Za-z]:")
 _SCHEME_RE = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*:")
-_DANGEROUS_ESCAPE_RE = re.compile(r"%(?:00|2e|2f|5c)", re.IGNORECASE)
+_FORBIDDEN_RAW_ESCAPE_RE = re.compile(r"%(?:00|2f|5c)", re.IGNORECASE)
+_DANGEROUS_ESCAPE_RE = re.compile(r"%(?:25)*(?:00|2e|2f|5c)", re.IGNORECASE)
 _MALFORMED_ESCAPE_RE = re.compile(r"%(?![0-9a-fA-F]{2})")
 
 
 class UnsafePreviewPathError(ValueError):
     """Oznacza odrzuconą ścieżkę lub URL zasobu podglądu."""
+
+
+def _has_residual_dangerous_escape(value: str) -> bool:
+    """Wykrywa niebezpieczny escape ukryty pod kolejnymi warstwami kodowania."""
+    candidate = value
+    while "%" in candidate:
+        if _DANGEROUS_ESCAPE_RE.search(candidate):
+            return True
+        decoded = "".join(
+            chr(byte) if byte < 0x80 else "\ufffd" for byte in unquote_to_bytes(candidate)
+        )
+        if decoded == candidate:
+            return False
+        candidate = decoded
+    return False
 
 
 @dataclass(frozen=True)
@@ -37,7 +53,9 @@ def normalize_internal_path(raw_path: str, *, percent_decode: bool = False) -> s
     if "\\" in raw_path or "\x00" in raw_path or _DRIVE_RE.match(raw_path):
         raise UnsafePreviewPathError("Niedozwolony separator lub prefiks dysku")
     if percent_decode:
-        if re.search(r"%(?:2f|5c|00)", raw_path, re.IGNORECASE):
+        if _MALFORMED_ESCAPE_RE.search(raw_path):
+            raise UnsafePreviewPathError("Niepoprawna sekwencja procentowa")
+        if _FORBIDDEN_RAW_ESCAPE_RE.search(raw_path):
             raise UnsafePreviewPathError("Zakodowany separator lub NUL")
         try:
             decoded = unquote_to_bytes(raw_path).decode("utf-8", errors="strict")
@@ -45,7 +63,7 @@ def normalize_internal_path(raw_path: str, *, percent_decode: bool = False) -> s
             raise UnsafePreviewPathError("Niepoprawne kodowanie UTF-8") from exc
     else:
         decoded = raw_path
-    if _DANGEROUS_ESCAPE_RE.search(decoded):
+    if _has_residual_dangerous_escape(decoded):
         raise UnsafePreviewPathError("Pozostała zakodowana sekwencja traversal")
     if "\\" in decoded or "\x00" in decoded or _DRIVE_RE.match(decoded):
         raise UnsafePreviewPathError("Niedozwolony separator lub prefiks dysku")
@@ -81,17 +99,25 @@ def resolve_publication_path(reference: str, base_path: str) -> str | None:
             return None
     if (
         parsed.path.startswith("/")
-        or _DANGEROUS_ESCAPE_RE.search(parsed.path)
+        or _FORBIDDEN_RAW_ESCAPE_RE.search(parsed.path)
         or _MALFORMED_ESCAPE_RE.search(parsed.path)
     ):
         return None
     try:
         decoded = unquote_to_bytes(parsed.path).decode("utf-8", errors="strict")
+        encoded_navigation = any(
+            "%" in raw_segment and decoded_segment in (".", "..")
+            for raw_segment, decoded_segment in zip(
+                parsed.path.split("/"), decoded.split("/"), strict=True
+            )
+        )
         if (
             "\x00" in decoded
             or "\\" in decoded
             or decoded.startswith("/")
             or _SCHEME_RE.match(decoded)
+            or encoded_navigation
+            or _has_residual_dangerous_escape(decoded)
         ):
             return None
         canonical_base = normalize_internal_path(base_path.rstrip("/"))
@@ -104,15 +130,25 @@ def resolve_publication_path(reference: str, base_path: str) -> str | None:
 
 def parse_preview_url(url: str) -> PreviewRequest:
     """Waliduje URL własnego schematu z parametrami gen i rev."""
-    parsed = urlsplit(url)
-    if parsed.scheme != EPUB_PREVIEW_SCHEME or not parsed.hostname:
-        raise UnsafePreviewPathError("Niepoprawny schemat lub pusty host")
-    session_id = parsed.hostname.lower()
     try:
+        parsed = urlsplit(url)
+        hostname = parsed.hostname
         port = parsed.port
     except ValueError as exc:
-        raise UnsafePreviewPathError("Niepoprawny port") from exc
-    if not _SESSION_RE.fullmatch(session_id) or parsed.username or port is not None:
+        raise UnsafePreviewPathError("Niepoprawne authority URL-a podglądu") from exc
+    if parsed.scheme != EPUB_PREVIEW_SCHEME or not hostname:
+        raise UnsafePreviewPathError("Niepoprawny schemat lub pusty host")
+    session_id = hostname.lower()
+    # Authority musi być zwykłym hostem sesji. Na części platform Python 3.10
+    # zdejmuje nawiasy z [hex] i .hostname przechodzi _SESSION_RE — surowy
+    # netloc nie może więc różnić się od hostname (nawiasy, userinfo, port).
+    if (
+        not _SESSION_RE.fullmatch(session_id)
+        or parsed.username
+        or parsed.password
+        or port is not None
+        or parsed.netloc.lower() != hostname.lower()
+    ):
         raise UnsafePreviewPathError("Niepoprawny identyfikator sesji")
     if not parsed.path.startswith("/") or parsed.path.startswith("//"):
         raise UnsafePreviewPathError("Niepoprawna ścieżka URL")
