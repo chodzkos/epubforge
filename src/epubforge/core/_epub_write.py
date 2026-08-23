@@ -150,8 +150,11 @@ def assert_staged_identity(staged: StagedEpub) -> None:
 
 def _same_identity(current: os.stat_result, validated: os.stat_result) -> bool:
     """Porównuje tożsamość i metadane istotne dla zwalidowanej zawartości."""
-    fields = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
-    return all(getattr(current, field) == getattr(validated, field) for field in fields)
+    fields = ("st_dev", "st_ino", "st_size", "st_mtime_ns")
+    if not all(getattr(current, field) == getattr(validated, field) for field in fields):
+        return False
+    # Python 3.12+ na Windows może raportować różne, deprecated st_ctime_ns dla stat i fstat.
+    return os.name == "nt" or current.st_ctime_ns == validated.st_ctime_ns
 
 
 def publish_staged(staged: StagedEpub, target: Path) -> None:

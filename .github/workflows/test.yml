@@ -25,8 +25,6 @@ jobs:
   test:
     name: Unit + GUI fallback Python ${{ matrix.python-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    # Diagnostyka hangów musi zakończyć job i zachować log zamiast wisieć godzinami.
-    timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
@@ -79,7 +77,6 @@ jobs:
         uv run mypy --platform win32 src/
 
     - name: Unit + GUI fallback (bez Chromium)
-      if: runner.os != 'Windows' || (matrix.python-version != '3.12' && matrix.python-version != '3.13')
       # PySide6 renderuje bezgłowo przez platformę 'offscreen' — bez xvfb i bez
       # wyłączania testów GUI na Windows/macOS.
       # Pokrycie liczone na CAŁYM kodzie (GUI włącznie — patrz brak omit w
@@ -88,14 +85,6 @@ jobs:
       env:
         QT_QPA_PLATFORM: offscreen
       run: uv run pytest --cov=src/epubforge --cov-report=xml --cov-fail-under=80 -m "not integration and not webengine"
-
-    - name: Diagnose editor hang on Windows Python >=3.12
-      if: runner.os == 'Windows' && (matrix.python-version == '3.12' || matrix.python-version == '3.13')
-      env:
-        QT_QPA_PLATFORM: offscreen
-        # Co minutę wypisz stos zawieszonego testu; nie zmienia kodu produkcyjnego.
-        PYTEST_ADDOPTS: -o faulthandler_timeout=60
-      run: uv run pytest tests/gui/test_editor.py::test_edit_save_reopen_flow -vv -s
 
     - name: Upload coverage (Linux + Python 3.12 only)
       if: runner.os == 'Linux' && matrix.python-version == '3.12'

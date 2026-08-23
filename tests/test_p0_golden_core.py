@@ -9,6 +9,7 @@ from types import SimpleNamespace
 
 import pytest
 
+import epubforge.core._epub_write as epub_write
 from epubforge.core._archive import ArchiveLimits, validate_archive
 from epubforge.core._epub_write import publish_staged, stage_epub, write_epub
 from epubforge.core.epub import Epub
@@ -357,6 +358,28 @@ def test_candidate_changed_after_validation_is_not_published(
         assert target.read_bytes() == b"target-sentinel"
     finally:
         staged.path.unlink(missing_ok=True)
+
+
+def test_staged_identity_on_windows_ignores_only_ctime(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Windows pomija ctime, lecz nadal wykrywa zmianę każdej kontroli TOCTOU."""
+    monkeypatch.setattr(epub_write, "os", SimpleNamespace(name="nt"))
+    validated = SimpleNamespace(
+        st_dev=1,
+        st_ino=2,
+        st_size=3,
+        st_mtime_ns=4,
+        st_ctime_ns=5,
+    )
+    ctime_only = SimpleNamespace(**vars(validated))
+    ctime_only.st_ctime_ns += 1
+    assert epub_write._same_identity(ctime_only, validated)  # type: ignore[arg-type]
+
+    for field in ("st_dev", "st_ino", "st_size", "st_mtime_ns"):
+        changed = SimpleNamespace(**vars(validated))
+        setattr(changed, field, getattr(changed, field) + 1)
+        assert not epub_write._same_identity(changed, validated)  # type: ignore[arg-type]
 
 
 def test_recovery_failure_keeps_original_exception_and_explicit_pending_state(
