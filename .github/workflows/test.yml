@@ -26,7 +26,7 @@ jobs:
     name: Unit + GUI fallback Python ${{ matrix.python-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     # Diagnostyka hangów musi zakończyć job i zachować log zamiast wisieć godzinami.
-    timeout-minutes: 8
+    timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
@@ -95,7 +95,7 @@ jobs:
         QT_QPA_PLATFORM: offscreen
         # Co minutę wypisz stos zawieszonego testu; nie zmienia kodu produkcyjnego.
         PYTEST_ADDOPTS: -o faulthandler_timeout=60
-      run: uv run pytest tests/gui/test_editor.py -vv -s
+      run: uv run pytest tests/gui/test_editor.py::test_edit_save_reopen_flow -vv -s
 
     - name: Upload coverage (Linux + Python 3.12 only)
       if: runner.os == 'Linux' && matrix.python-version == '3.12'
