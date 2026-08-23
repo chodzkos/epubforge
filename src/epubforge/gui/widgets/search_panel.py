@@ -2,7 +2,8 @@
 
 Logika wyszukiwania/zamiany jest czysta (``epubforge.core.search``); ten widget
 tylko ją ubiera w UI i spina z edytorem przez protokół :class:`SearchHost`.
-Wyszukiwanie całego EPUB-a biegnie w :class:`Worker` (duże książki, anulowanie).
+Wyszukiwanie i zamiana biegną w :class:`Worker` (duże książki, anulowanie,
+regex poza wątkiem GUI).
 """
 
 from __future__ import annotations
@@ -26,8 +27,8 @@ from PySide6.QtWidgets import (
 
 from epubforge.core import Epub
 from epubforge.core.search import (
+    ReplaceReport,
     SearchHit,
-    SearchPatternError,
     replace_in_epub,
     search_epub,
 )
@@ -188,30 +189,10 @@ class SearchReplacePanel(QWidget):
             return
 
         paths = self._scope_paths()
-        if paths is not None:
-            self._run_search_sync(epub, query, paths)
-        else:
-            self._start_search_worker(epub, query)
+        self._start_search_worker(epub, query, paths)
 
-    def _run_search_sync(self, epub: Epub, query: str, paths: list[str]) -> None:
-        """Szuka w bieżącym pliku synchronicznie (szybkie, bez wątku)."""
-        options = self._options()
-        try:
-            hits = search_epub(
-                epub,
-                query,
-                regex=options["regex"],
-                case_sensitive=options["case_sensitive"],
-                whole_words=options["whole_words"],
-                paths=paths,
-            )
-        except SearchPatternError as exc:
-            self._set_status(str(exc))
-            return
-        self._populate_results(hits)
-
-    def _start_search_worker(self, epub: Epub, query: str) -> None:
-        """Szuka w całym EPUB-ie w wątku roboczym (z anulowaniem)."""
+    def _start_search_worker(self, epub: Epub, query: str, paths: list[str] | None) -> None:
+        """Szuka w wątku roboczym (bieżący plik albo cały EPUB, z anulowaniem)."""
         options = self._options()
         self._searching = True
         self._set_running(True)
@@ -223,6 +204,7 @@ class SearchReplacePanel(QWidget):
             options["regex"],
             options["case_sensitive"],
             options["whole_words"],
+            paths,
         )
         self._worker.done.connect(self._on_search_done)
         self._worker.failed.connect(self._on_search_failed)
@@ -293,29 +275,37 @@ class SearchReplacePanel(QWidget):
         # Nie zgub niezapisanych zmian bieżącego pliku — najpierw sync do bufora.
         self._host.flush_current_editor()
         options = self._options()
-        try:
-            report = replace_in_epub(
-                epub,
-                query,
-                self.replace_field.text(),
-                regex=options["regex"],
-                case_sensitive=options["case_sensitive"],
-                whole_words=options["whole_words"],
-                paths=self._scope_paths(),
-            )
-        except SearchPatternError as exc:
-            self._set_status(str(exc))
-            return
+        self._searching = True
+        self._set_running(True)
+        self._set_status(_("Zamieniam…"))
+        self._worker = Worker(
+            _replace_worker,
+            epub,
+            query,
+            self.replace_field.text(),
+            options["regex"],
+            options["case_sensitive"],
+            options["whole_words"],
+            self._scope_paths(),
+        )
+        self._worker.done.connect(self._on_replace_done)
+        self._worker.failed.connect(self._on_search_failed)
+        self._worker.cancelled.connect(self._on_search_cancelled)
+        self._worker.start()
 
+    def _on_replace_done(self, result: object) -> None:
+        self._searching = False
+        self._set_running(False)
+        report = cast(ReplaceReport, result)
         self._host.mark_replaced(report.changed_files)
         self._report_replace(report.total, len(report.changed_files), report.skipped)
-        # Odśwież wyniki po zamianie (trafienia zwykonane znikają).
+        # Odśwież wyniki po zamianie (trafienia wykonane znikają).
         self._on_search()
 
     def _report_replace(self, total: int, files: int, skipped: list[tuple[str, str]]) -> None:
         message = _("Zamieniono {total} w {files} plikach").format(total=total, files=files)
         if skipped:
-            message += _(" · pominięto {n} (nie-UTF-8)").format(n=len(skipped))
+            message += _(" · pominięto {n}").format(n=len(skipped))
         self._set_status(message)
 
     # ── Pomocnicze ──────────────────────────────────────────────────────────--
@@ -338,13 +328,40 @@ def _search_worker(
     regex: bool,
     case_sensitive: bool,
     whole_words: bool,
+    paths: list[str] | None,
 ) -> list[SearchHit]:
-    """Funkcja robocza: przeszukuje cały EPUB (z anulowaniem)."""
+    """Funkcja robocza: przeszukuje wskazany zakres (z anulowaniem między plikami)."""
     return search_epub(
         epub,
         query,
         regex=regex,
         case_sensitive=case_sensitive,
         whole_words=whole_words,
+        paths=paths,
+        should_cancel=should_cancel,
+    )
+
+
+def _replace_worker(
+    _emit_line: EmitLine,
+    _emit_progress: EmitProgress,
+    should_cancel: ShouldCancel,
+    epub: Epub,
+    query: str,
+    replacement: str,
+    regex: bool,
+    case_sensitive: bool,
+    whole_words: bool,
+    paths: list[str] | None,
+) -> ReplaceReport:
+    """Funkcja robocza: zamienia w wskazanym zakresie (z anulowaniem między plikami)."""
+    return replace_in_epub(
+        epub,
+        query,
+        replacement,
+        regex=regex,
+        case_sensitive=case_sensitive,
+        whole_words=whole_words,
+        paths=paths,
         should_cancel=should_cancel,
     )

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
+import textwrap
 import zipfile
 from pathlib import Path
 
@@ -166,3 +169,92 @@ def test_replace_regex_backreference(tmp_path: Path) -> None:
         text = epub.read_file("OEBPS/text/chapter1.xhtml").decode("utf-8")
     assert report.total == 1
     assert "koty" in text
+
+
+# ── ReDoS / timeout ───────────────────────────────────────────────────────────
+
+_REDOS_NESTED = "(x+x+)+y"
+_REDOS_TIMEOUT = r"(a|a)+$"
+_WATCHDOG_SECONDS = 5.0
+
+
+def _run_search_script(epub_path: Path, query: str) -> subprocess.CompletedProcess[str]:
+    """Woła ``search_epub`` w osobnym procesie — watchdog, nie wall-clock w pytest."""
+    code = textwrap.dedent(
+        f"""
+        from epubforge.core import Epub
+        from epubforge.core.search import SearchPatternError, search_epub
+        with Epub(r"{epub_path}") as epub:
+            try:
+                hits = search_epub(epub, r"{query}", regex=True)
+            except SearchPatternError as exc:
+                print("error", type(exc).__name__, str(exc), flush=True)
+            else:
+                print("hits", len(hits), flush=True)
+        """
+    )
+    return subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=_WATCHDOG_SECONDS,
+    )
+
+
+def test_search_nested_quantifier_does_not_hang(tmp_path: Path) -> None:
+    """Klasyczny ``(x+x+)+y`` na ``x``*28 nie wiesza procesu (API ``search_epub``)."""
+    path = _build_epub(tmp_path, {"text/payload.xhtml": ("x" * 28).encode()})
+    result = _run_search_script(path, _REDOS_NESTED)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip().startswith("hits 0")
+
+
+def test_search_expensive_regex_raises_timeout(tmp_path: Path) -> None:
+    """Wzorzec, który pakiet regex też backtrackuje, kończy się SearchPatternError."""
+    path = _build_epub(tmp_path, {"text/payload.xhtml": ("a" * 28 + "!").encode()})
+    result = _run_search_script(path, _REDOS_TIMEOUT)
+    assert result.returncode == 0, result.stderr
+    assert "SearchPatternError" in result.stdout
+    assert "limit czasu" in result.stdout
+
+
+def test_replace_expensive_regex_skips_timed_out_file(tmp_path: Path) -> None:
+    """Timeout w późniejszym pliku nie gubi wcześniejszej udanej zamiany."""
+    path = _build_epub(
+        tmp_path,
+        {
+            "text/a.xhtml": b"aaa",
+            "text/z.xhtml": ("a" * 28 + "!").encode(),
+        },
+    )
+    code = textwrap.dedent(
+        f"""
+        from epubforge.core import Epub
+        from epubforge.core.search import replace_in_epub
+        with Epub(r"{path}") as epub:
+            report = replace_in_epub(
+                epub,
+                r"{_REDOS_TIMEOUT}",
+                "z",
+                regex=True,
+                paths=["OEBPS/text/a.xhtml", "OEBPS/text/z.xhtml"],
+            )
+        print("total", report.total)
+        print("changed", ",".join(report.changed_files))
+        for internal, reason in report.skipped:
+            print("skipped", internal, reason)
+        """
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=_WATCHDOG_SECONDS,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "total 1" in result.stdout
+    assert "changed OEBPS/text/a.xhtml" in result.stdout
+    assert "skipped OEBPS/text/z.xhtml" in result.stdout
+    assert "limit czasu" in result.stdout

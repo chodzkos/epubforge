@@ -1323,6 +1323,10 @@ msgstr "ISBN eingeben"
 msgid "Szukam…"
 msgstr "Suche läuft…"
 
+#: src/epubforge/gui/widgets/search_panel.py:280
+msgid "Zamieniam…"
+msgstr "Ersetze…"
+
 #: src/epubforge/gui/metadata_fetch.py:232
 msgid "Nie znaleziono metadanych dla tego ISBN (albo brak połączenia)"
 msgstr "Keine Metadaten für diese ISBN gefunden (oder keine Verbindung)"
@@ -4430,8 +4434,8 @@ msgstr "{total} in {files} Dateien ersetzt"
 
 #: src/epubforge/gui/widgets/search_panel.py:318
 #, python-brace-format
-msgid " · pominięto {n} (nie-UTF-8)"
-msgstr " · {n} übersprungen (nicht UTF-8)"
+msgid " · pominięto {n}"
+msgstr " · {n} übersprungen"
 
 #: src/epubforge/validators/ace.py:233
 #, python-brace-format

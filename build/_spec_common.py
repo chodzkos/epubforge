@@ -38,6 +38,7 @@ REQUIRED_MODULES = (
     "pyphen",
     "tinycss2",
     "platformdirs",
+    "regex",
     *(_WEBENGINE_MODULES if WEBENGINE_BUILD else ()),
 )
 
@@ -50,6 +51,7 @@ HIDDEN_IMPORTS = [
     "pyphen",
     "tinycss2",
     "platformdirs",
+    "regex",
     *(_WEBENGINE_MODULES if WEBENGINE_BUILD else ()),
 ]
 

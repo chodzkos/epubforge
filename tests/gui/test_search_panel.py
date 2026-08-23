@@ -70,6 +70,7 @@ def test_search_current_file_populates_results(qtbot: QtBot, tmp_path: Path) -> 
     panel.scope_current.setChecked(True)
     panel.search_field.setText("kot")
     panel._on_search()
+    qtbot.waitUntil(lambda: not panel._searching, timeout=3000)
 
     assert panel.results.topLevelItemCount() == 1
     group = panel.results.topLevelItem(0)
@@ -97,6 +98,7 @@ def test_double_click_result_jumps(qtbot: QtBot, tmp_path: Path) -> None:
     panel.scope_current.setChecked(True)
     panel.search_field.setText("kot")
     panel._on_search()
+    qtbot.waitUntil(lambda: not panel._searching, timeout=3000)
 
     group = panel.results.topLevelItem(0)
     assert group is not None
@@ -116,6 +118,7 @@ def test_replace_all_updates_buffer_and_marks_dirty(qtbot: QtBot, tmp_path: Path
     panel.search_field.setText("kot")
     panel.replace_field.setText("pies")
     panel._on_replace_all()
+    qtbot.waitUntil(lambda: not panel._searching, timeout=3000)
 
     assert tab._epub is not None
     assert b"pies" in tab._epub.read_file(_CHAPTER_PATH)
@@ -132,5 +135,6 @@ def test_bad_regex_shows_status(qtbot: QtBot, tmp_path: Path) -> None:
     panel.regex_check.setChecked(True)
     panel.search_field.setText("(niezamkniety")
     panel._on_search()
+    qtbot.waitUntil(lambda: not panel._searching, timeout=3000)
     assert panel.status_label.text()
     assert panel.results.topLevelItemCount() == 0
