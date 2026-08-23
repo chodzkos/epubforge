@@ -45,13 +45,13 @@ def test_inline_images_oversized_becomes_placeholder() -> None:
 
 
 def test_inline_images_skips_external_and_missing() -> None:
-    """Zewnętrzne (http) i nierozwiązane src zostają bez zmian."""
+    """Zewnętrzne (http) i nierozwiązane src są usuwane fail-closed."""
     external = inline_images(
         '<html><body><img src="http://x/y.png"/></body></html>', lambda _s: _PNG
     )
-    assert "http://x/y.png" in external and "data:" not in external
+    assert "http://x/y.png" not in external and "data:" not in external
     missing = inline_images('<html><body><img src="gone.png"/></body></html>', lambda _s: None)
-    assert "gone.png" in missing and "data:" not in missing
+    assert "gone.png" not in missing and "data:" not in missing
 
 
 # ── Integracja w EditorTab ──────────────────────────────────────────────────--

@@ -11,7 +11,9 @@ from epubforge.gui.preview.preinit import EPUB_PREVIEW_SCHEME
 
 _SESSION_RE = re.compile(r"[0-9a-f]{32}\Z")
 _DRIVE_RE = re.compile(r"[A-Za-z]:")
+_SCHEME_RE = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*:")
 _DANGEROUS_ESCAPE_RE = re.compile(r"%(?:00|2e|2f|5c)", re.IGNORECASE)
+_MALFORMED_ESCAPE_RE = re.compile(r"%(?![0-9a-fA-F]{2})")
 
 
 class UnsafePreviewPathError(ValueError):
@@ -54,6 +56,50 @@ def normalize_internal_path(raw_path: str, *, percent_decode: bool = False) -> s
     if normalized.startswith("../") or normalized == ".." or normalized != decoded:
         raise UnsafePreviewPathError("Ścieżka wychodzi poza publikację lub nie jest kanoniczna")
     return normalized
+
+
+def resolve_publication_path(reference: str, base_path: str) -> str | None:
+    """Rozwiązuje URL względny wyłącznie wewnątrz przestrzeni nazw EPUB.
+
+    Surowe segmenty ``..`` są dozwolone, jeżeli normalizacja nadal kończy się
+    wewnątrz publikacji. Schematy, authority, query, ścieżki hosta i niebezpieczne
+    kodowanie procentowe są odrzucane bez cichego przepisywania wejścia.
+    """
+    value = reference.strip()
+    if not value or value != reference or "\x00" in value or "\\" in value:
+        return None
+    try:
+        parsed = urlsplit(value)
+    except ValueError:
+        return None
+    if parsed.scheme or parsed.netloc or parsed.query:
+        return None
+    if not parsed.path:
+        try:
+            return normalize_internal_path(base_path.rstrip("/"))
+        except UnsafePreviewPathError:
+            return None
+    if (
+        parsed.path.startswith("/")
+        or _DANGEROUS_ESCAPE_RE.search(parsed.path)
+        or _MALFORMED_ESCAPE_RE.search(parsed.path)
+    ):
+        return None
+    try:
+        decoded = unquote_to_bytes(parsed.path).decode("utf-8", errors="strict")
+        if (
+            "\x00" in decoded
+            or "\\" in decoded
+            or decoded.startswith("/")
+            or _SCHEME_RE.match(decoded)
+        ):
+            return None
+        canonical_base = normalize_internal_path(base_path.rstrip("/"))
+        base_dir = canonical_base if base_path.endswith("/") else posixpath.dirname(canonical_base)
+        combined = posixpath.normpath(posixpath.join(base_dir, decoded))
+        return normalize_internal_path(combined)
+    except (UnicodeDecodeError, UnsafePreviewPathError):
+        return None
 
 
 def parse_preview_url(url: str) -> PreviewRequest:

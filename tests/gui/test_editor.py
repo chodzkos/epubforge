@@ -221,8 +221,16 @@ def test_editor_buttons_have_tooltips(qtbot: QtBot) -> None:
     assert missing == []
 
 
-def test_edit_save_reopen_flow(qtbot: QtBot, tmp_path: Path) -> None:
+def test_edit_save_reopen_flow(
+    qtbot: QtBot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Edycja XHTML → Ctrl+S → Zapisz EPUB → ponowne otwarcie pokazuje zmianę."""
+    save_errors: list[str] = []
+    monkeypatch.setattr(
+        QMessageBox,
+        "critical",
+        lambda _parent, _title, message: save_errors.append(message),
+    )
     book = _copy_fixture(tmp_path)
     tab = EditorTab()
     qtbot.addWidget(tab)
@@ -239,6 +247,7 @@ def test_edit_save_reopen_flow(qtbot: QtBot, tmp_path: Path) -> None:
     assert tab.code_editor.is_modified() is True
     assert tab._save_current() is True  # commit do bufora EPUB
     tab._save_epub()  # zapis na dysk
+    assert save_errors == []
 
     with Epub(book) as epub:
         saved = epub.read_file(_CHAPTER).decode("utf-8")
