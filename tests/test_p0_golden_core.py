@@ -10,6 +10,7 @@ from types import SimpleNamespace
 import pytest
 
 import epubforge.core._epub_write as epub_write
+import epubforge.core.epub as epub_module
 from epubforge.core._archive import ArchiveLimits, validate_archive
 from epubforge.core._epub_write import publish_staged, stage_epub, write_epub
 from epubforge.core.epub import Epub
@@ -257,8 +258,6 @@ def test_transient_reopen_failure_preserves_pending_and_recovers_session(
 def test_source_handle_is_closed_before_publish_for_windows_compatibility(
     sample_epub: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import epubforge.core.epub as epub_module
-
     real_publish = epub_module.publish_staged
     with Epub(sample_epub) as epub:
         epub.write_file("OEBPS/new.xhtml", b"pending")
@@ -304,6 +303,57 @@ def test_save_rejects_source_path_replaced_after_session_open(
         assert not sample_epub.with_name(sample_epub.name + ".bak").exists()
     finally:
         epub.close()
+
+
+@pytest.mark.parametrize(
+    "changed_field",
+    ("st_ctime_ns", "st_dev", "st_ino", "st_size", "st_mtime_ns"),
+)
+def test_source_identity_on_windows_ignores_only_ctime(
+    sample_epub: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    changed_field: str,
+) -> None:
+    """Windows akceptuje różne ctime, lecz odrzuca zmianę pozostałej tożsamości."""
+    original = sample_epub.read_bytes()
+    real_stat = os.stat
+
+    class WindowsOsProxy:
+        name = "nt"
+
+        def __getattr__(self, name: str) -> object:
+            return getattr(os, name)
+
+    with Epub(sample_epub) as epub:
+        epub.write_file("OEBPS/pending.txt", b"pending")
+        assert epub._source_stat is not None
+        current = SimpleNamespace(
+            st_mode=epub._source_stat.st_mode,
+            st_dev=epub._source_stat.st_dev,
+            st_ino=epub._source_stat.st_ino,
+            st_size=epub._source_stat.st_size,
+            st_mtime_ns=epub._source_stat.st_mtime_ns,
+            st_ctime_ns=epub._source_stat.st_ctime_ns,
+        )
+        setattr(current, changed_field, getattr(current, changed_field) + 1)
+
+        def changed_source_stat(path: object, **kwargs: object) -> os.stat_result:
+            if path == sample_epub:
+                return current  # type: ignore[return-value]
+            return real_stat(path, **kwargs)  # type: ignore[arg-type]
+
+        monkeypatch.setattr(epub_module.os, "stat", changed_source_stat)
+        monkeypatch.setattr(epub_write, "os", WindowsOsProxy())
+        if changed_field == "st_ctime_ns":
+            epub.save()
+            assert epub.pending_changes().modified == {}
+            assert epub.read_file("OEBPS/pending.txt") == b"pending"
+        else:
+            with pytest.raises(OSError, match="zmienił się od czasu otwarcia"):
+                epub.save()
+            assert epub.pending_changes().modified["OEBPS/pending.txt"] == b"pending"
+            assert sample_epub.read_bytes() == original
+            assert not sample_epub.with_name(sample_epub.name + ".bak").exists()
 
 
 def test_cleanup_failure_does_not_mask_publish_failure(

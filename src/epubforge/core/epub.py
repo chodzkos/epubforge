@@ -34,6 +34,7 @@ from epubforge.core._archive import (
     validate_member_name,
 )
 from epubforge.core._epub_write import (
+    _same_identity,
     assert_staged_identity,
     discard_staged,
     is_same_target,
@@ -438,8 +439,7 @@ class Epub:
         if self._source_stat is None:
             raise EpubNotOpenError("Brak tożsamości otwartego źródła EPUB.")
         current = os.stat(self.path, follow_symlinks=False)
-        fields = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
-        if any(getattr(current, field) != getattr(self._source_stat, field) for field in fields):
+        if not _same_identity(current, self._source_stat):
             raise OSError("Plik źródłowy EPUB zmienił się od czasu otwarcia; zapis przerwany.")
 
     def _read_xml(self, internal_path: str) -> bytes:
