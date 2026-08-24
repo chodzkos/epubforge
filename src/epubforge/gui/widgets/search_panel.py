@@ -60,7 +60,7 @@ class SearchHost(Protocol):
         """Oznacza pliki jako zmienione (bufor) i odświeża widok/drzewo."""
 
     def set_mutation_guard(self, active: bool) -> None:
-        """Blokuje edycję na czas zamiany w tle (żeby nie ścigać się z buforem)."""
+        """Włącza/wyłącza guard mutacji dokumentu (edytor + lifecycle)."""
 
 
 class SearchReplacePanel(QWidget):
@@ -71,6 +71,7 @@ class SearchReplacePanel(QWidget):
         self._host = host
         self._worker: Worker | None = None
         self._searching = False
+        self._cancellable = False
         self._build_ui()
         self.setVisible(False)
 
@@ -129,7 +130,7 @@ class SearchReplacePanel(QWidget):
         self.replace_button.clicked.connect(self._on_replace_all)
         actions.addWidget(self.replace_button)
         self.cancel_button = QPushButton(_("Anuluj"))
-        self.cancel_button.setToolTip(_("Anuluj trwające wyszukiwanie całej publikacji"))
+        self.cancel_button.setToolTip(_("Anuluj wyszukiwanie"))
         self.cancel_button.setEnabled(False)
         self.cancel_button.clicked.connect(self._on_cancel)
         actions.addWidget(self.cancel_button)
@@ -223,17 +224,15 @@ class SearchReplacePanel(QWidget):
     def _on_search_failed(self, message: str) -> None:
         self._searching = False
         self._set_running(False)
-        self._host.set_mutation_guard(False)
         self._set_status(message)
 
     def _on_search_cancelled(self) -> None:
         self._searching = False
         self._set_running(False)
-        self._host.set_mutation_guard(False)
         self._set_status(_("Anulowano"))
 
     def _on_cancel(self) -> None:
-        if self._worker is not None and self._searching:
+        if self._worker is not None and self._searching and self._cancellable:
             self.cancel_button.setEnabled(False)
             self._worker.cancel()
 
@@ -296,14 +295,12 @@ class SearchReplacePanel(QWidget):
             self._scope_paths(),
         )
         self._worker.done.connect(self._on_replace_done)
-        self._worker.failed.connect(self._on_search_failed)
-        self._worker.cancelled.connect(self._on_search_cancelled)
+        self._worker.failed.connect(self._on_replace_failed)
+        self._worker.cancelled.connect(self._on_replace_interrupted)
         self._worker.start()
 
     def _on_replace_done(self, result: object) -> None:
-        self._searching = False
-        self._set_running(False)
-        self._host.set_mutation_guard(False)
+        self._finish_replace()
         report = cast(ReplaceReport, result)
         self._host.mark_replaced(report.changed_files)
         self._report_replace(report.total, len(report.changed_files), report.skipped)
@@ -312,6 +309,29 @@ class SearchReplacePanel(QWidget):
             # Ten sam wzorzec przy search znów trafiłby na timeout i nadpisał status.
             return
         self._on_search()
+
+    def _on_replace_failed(self, message: str) -> None:
+        self._finish_replace()
+        self._sync_pending_replacements()
+        self._set_status(message)
+
+    def _on_replace_interrupted(self) -> None:
+        """Fail-safe: stray cancel() nie może zgubić bufora ani zostawić guardu."""
+        self._finish_replace()
+        self._sync_pending_replacements()
+        self._set_status(_("Zamieniono — dokończono zapis do bufora."))
+
+    def _finish_replace(self) -> None:
+        self._searching = False
+        self._set_running(False)
+        self._host.set_mutation_guard(False)
+
+    def _sync_pending_replacements(self) -> None:
+        """Oznacza dirty na podstawie bufora EPUB (także po failed/interrupted)."""
+        epub = self._host.search_epub_instance()
+        if epub is None:
+            return
+        self._host.mark_replaced(list(epub.pending_changes().modified))
 
     def _report_replace(self, total: int, files: int, skipped: list[tuple[str, str]]) -> None:
         message = _("Zamieniono {total} w {files} plikach").format(total=total, files=files)
@@ -322,6 +342,7 @@ class SearchReplacePanel(QWidget):
     # ── Pomocnicze ──────────────────────────────────────────────────────────--
 
     def _set_running(self, running: bool, *, cancellable: bool = False) -> None:
+        self._cancellable = running and cancellable
         self.search_button.setEnabled(not running)
         self.replace_button.setEnabled(not running)
         self.cancel_button.setEnabled(running and cancellable)
@@ -356,7 +377,6 @@ def _search_worker(
 def _replace_worker(
     _emit_line: EmitLine,
     _emit_progress: EmitProgress,
-    should_cancel: ShouldCancel,
     epub: Epub,
     query: str,
     replacement: str,
@@ -365,7 +385,7 @@ def _replace_worker(
     whole_words: bool,
     paths: list[str] | None,
 ) -> ReplaceReport:
-    """Funkcja robocza: zamienia w wskazanym zakresie (z anulowaniem między plikami)."""
+    """Funkcja robocza: zamienia w wskazanym zakresie (bez anulowania)."""
     return replace_in_epub(
         epub,
         query,
@@ -374,5 +394,4 @@ def _replace_worker(
         case_sensitive=case_sensitive,
         whole_words=whole_words,
         paths=paths,
-        should_cancel=should_cancel,
     )

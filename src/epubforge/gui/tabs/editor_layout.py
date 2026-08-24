@@ -63,6 +63,7 @@ class EditorLayoutMixin:
     _launch_external_tool: Callable[[str], None]
     _tools: dict[str, Tool]
     _epub_path: Path | None
+    _mutation_guard: bool
 
     def _build_ui(self) -> None:
         outer = QVBoxLayout(cast(QWidget, self))
@@ -175,7 +176,9 @@ class EditorLayoutMixin:
             label = _("Sigil") if key == "sigil" else _("Calibre Editor")
             tool = self._tools.get(key)
             available = bool(tool and tool.available and tool.path)
-            button.setEnabled(self._epub_path is not None and available)
+            button.setEnabled(
+                self._epub_path is not None and available and not self._mutation_guard
+            )
             if not available:
                 tooltip = _("Nie wykryto {tool}").format(tool=label)
             elif self._epub_path is None:

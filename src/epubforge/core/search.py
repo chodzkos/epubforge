@@ -197,6 +197,8 @@ def replace_in_epub(
             report.skipped.append((internal, REGEX_TIMEOUT_MESSAGE))
             break
         except (re.error, regex_lib.error) as exc:
+            # Może nastąpić po wcześniejszych write_file — GUI odzyskuje dirty
+            # z Epub.pending_changes(), bo ta ścieżka nie zwraca reportu.
             raise SearchPatternError(f"Niepoprawne podstawienie: {exc}") from exc
         if count and new_text != text:
             epub.write_file(internal, new_text.encode("utf-8"))

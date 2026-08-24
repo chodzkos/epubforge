@@ -150,20 +150,36 @@ class EditorTab(EditorLayoutMixin, EditorPreviewMixin, QWidget):
         self._refresh_actions()
 
     def set_mutation_guard(self, active: bool) -> None:
-        """Blokuje edytor na czas zamiany w tle."""
+        """Blokuje edytor i operacje lifecycle na czas zamiany w tle."""
         self._mutation_guard = active
         self._apply_read_only()
+        self._refresh_actions()
+
+    def is_document_mutating(self) -> bool:
+        """Czy trwa mutująca operacja na otwartym EPUB-ie (Replace All)."""
+        return self._mutation_guard
+
+    def _block_if_mutating(self) -> bool:
+        """Odrzuca lifecycle, gdy worker pisze do dokumentu. True = zablokowane."""
+        if not self._mutation_guard:
+            return False
+        self._set_info_bar(_("Poczekaj na zakończenie zamiany."))
+        return True
 
     # ── Otwieranie EPUB ─────────────────────────────────────────────────────--
 
     def _choose_epub(self) -> None:
         """Wybór pliku EPUB przez dialog i otwarcie go."""
+        if self._block_if_mutating():
+            return
         path = open_file(self, _("Otwórz EPUB"), "", _("Pliki EPUB (*.epub)"))
         if path:
             self.open_epub(Path(path))
 
     def open_epub(self, path: Path) -> bool:
         """Otwiera EPUB (pyta o niezapisane zmiany bieżącego). Zwraca sukces."""
+        if self._block_if_mutating():
+            return False
         if not self._confirm_discard_epub():
             return False
         try:
@@ -389,7 +405,9 @@ class EditorTab(EditorLayoutMixin, EditorPreviewMixin, QWidget):
         return True
 
     def _save_epub(self) -> None:
-        """„Zapisz EPUB": utrwala bufor na dysk (z backupem .bak), resetuje wskaźniki."""
+        """„Zapisz EPUB”: utrwala bufor na dysk (z backupem .bak), resetuje wskaźniki."""
+        if self._block_if_mutating():
+            return
         if self._epub is None or not self._dirty:
             return
         try:
@@ -440,8 +458,11 @@ class EditorTab(EditorLayoutMixin, EditorPreviewMixin, QWidget):
     # ── Stan / pomocnicze ─────────────────────────────────────────────────────
 
     def has_unsaved_changes(self) -> bool:
-        """Czy są zmiany niezapisane na dysk (bufor EPUB lub bieżący edytor)."""
-        return bool(self._dirty) or self.code_editor.is_modified()
+        """Czy są zmiany niezapisane na dysk (bufor EPUB, _dirty lub bieżący edytor)."""
+        pending = False
+        if self._epub is not None:
+            pending = bool(self._epub.pending_changes().modified)
+        return bool(self._dirty) or pending or self.code_editor.is_modified()
 
     def set_theme(self, theme: Theme) -> None:
         """Przekazuje motyw do edytora, inspektora CSS i chrome podglądu.
@@ -457,6 +478,8 @@ class EditorTab(EditorLayoutMixin, EditorPreviewMixin, QWidget):
 
     def _close_epub(self) -> None:
         """Zamyka bieżący EPUB i czyści stan edycji."""
+        if self._block_if_mutating():
+            return
         # Najpierw unieważnij origin, żeby żaden request nie przeżył zamknięcia ZIP-a.
         self.book_preview.set_session(None)
         if self._epub is not None:
@@ -471,6 +494,8 @@ class EditorTab(EditorLayoutMixin, EditorPreviewMixin, QWidget):
 
     def dispose(self) -> None:
         """Unieważnia sesję, zamyka EPUB i zwalnia oba backendy podglądu."""
+        if self._block_if_mutating():
+            return
         self._preview_timer.stop()
         self._close_epub()
         self.book_preview.dispose()
@@ -491,9 +516,10 @@ class EditorTab(EditorLayoutMixin, EditorPreviewMixin, QWidget):
         return f"{name} *" if modified else name
 
     def _refresh_actions(self) -> None:
-        """Aktualizuje stan przycisku „Zapisz EPUB" i wskaźnika niezapisanych zmian."""
-        self.save_epub_button.setEnabled(bool(self._dirty))
-        self.open_button.setEnabled(True)
+        """Aktualizuje stan przycisku „Zapisz EPUB” i wskaźnika niezapisanych zmian."""
+        mutating = self._mutation_guard
+        self.save_epub_button.setEnabled(bool(self._dirty) and not mutating)
+        self.open_button.setEnabled(not mutating)
         self._refresh_external_tool_actions()
 
     def _set_info_bar(self, text: str) -> None:
