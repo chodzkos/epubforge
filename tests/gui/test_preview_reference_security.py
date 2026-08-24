@@ -116,6 +116,23 @@ def test_xhtml_removes_srcset_when_no_safe_candidate_remains(tmp_path: Path) -> 
     epub.close()
 
 
+def test_xhtml_imagesrcset_keeps_only_safe_local_candidate(tmp_path: Path) -> None:
+    """Preload obrazów nie omija polityki przez osobny atrybut ``imagesrcset``."""
+    source = (
+        b'<html><head><link rel="preload" as="image" '
+        b'imagesrcset="https://evil.example/a.png 1x, ../images/cover.jpg 2x"/>'
+        b"</head><body/></html>"
+    )
+    epub, rendered = _rewrite_security_case(tmp_path, source)
+
+    assert b"https://evil.example/" not in rendered
+    link = parse_untrusted(rendered).find(".//link")
+    assert link is not None
+    assert link.get("imagesrcset", "").startswith("epub-preview://")
+    assert link.get("imagesrcset", "").endswith(" 2x")
+    epub.close()
+
+
 def test_xhtml_drops_original_reference_when_resolution_fails(tmp_path: Path) -> None:
     """Nierozwiązywalny URL nie może przeżyć jako oryginalny aktywny atrybut."""
     epub, rendered = _rewrite_security_case(

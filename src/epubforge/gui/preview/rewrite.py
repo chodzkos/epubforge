@@ -89,7 +89,7 @@ def rewrite_xhtml(
                         target = _resolved_path(original, base)
                         if target is not None:
                             element.set("data-epubforge-path", target)
-            elif local == "srcset":
+            elif local in {"srcset", "imagesrcset"}:
                 rewritten_srcset = rewrite_srcset(
                     cast(str, element.attrib[attribute]), generation, base, requester, report
                 )
@@ -155,7 +155,7 @@ def rewrite_svg(
                     del element.attrib[attribute]
                 else:
                     element.attrib[attribute] = rewritten
-            elif local == "srcset":
+            elif local in {"srcset", "imagesrcset"}:
                 rewritten_srcset = rewrite_srcset(
                     cast(str, element.attrib[attribute]), generation, base, requester, report
                 )
