@@ -179,16 +179,25 @@ _WATCHDOG_SECONDS = 5.0
 
 
 def _run_search_script(epub_path: Path, query: str) -> subprocess.CompletedProcess[str]:
-    """Woła ``search_epub`` w osobnym procesie — watchdog, nie wall-clock w pytest."""
+    """Woła ``search_epub`` w osobnym procesie — watchdog, nie wall-clock w pytest.
+
+    Child wypisuje wyłącznie ASCII (cp1252 na Windows nie umie ``ż`` z komunikatu).
+    """
     code = textwrap.dedent(
         f"""
         from epubforge.core import Epub
-        from epubforge.core.search import SearchPatternError, search_epub
+        from epubforge.core.search import (
+            REGEX_TIMEOUT_MESSAGE,
+            SearchPatternError,
+            search_epub,
+        )
         with Epub(r"{epub_path}") as epub:
             try:
                 hits = search_epub(epub, r"{query}", regex=True)
             except SearchPatternError as exc:
-                print("error", type(exc).__name__, str(exc), flush=True)
+                # Nie printuj str(exc) — na Windows stdout bywa cp1252.
+                marker = "TIMEOUT" if str(exc) == REGEX_TIMEOUT_MESSAGE else "ERROR"
+                print(marker, type(exc).__name__, flush=True)
             else:
                 print("hits", len(hits), flush=True)
         """
@@ -215,8 +224,8 @@ def test_search_expensive_regex_raises_timeout(tmp_path: Path) -> None:
     path = _build_epub(tmp_path, {"text/payload.xhtml": ("a" * 28 + "!").encode()})
     result = _run_search_script(path, _REDOS_TIMEOUT)
     assert result.returncode == 0, result.stderr
-    assert "SearchPatternError" in result.stdout
-    assert "limit czasu" in result.stdout
+    # TIMEOUT = API rzuciło SearchPatternError z REGEX_TIMEOUT_MESSAGE.
+    assert result.stdout.strip().startswith("TIMEOUT SearchPatternError")
 
 
 def test_replace_expensive_regex_skips_timed_out_file(tmp_path: Path) -> None:
@@ -231,7 +240,7 @@ def test_replace_expensive_regex_skips_timed_out_file(tmp_path: Path) -> None:
     code = textwrap.dedent(
         f"""
         from epubforge.core import Epub
-        from epubforge.core.search import replace_in_epub
+        from epubforge.core.search import REGEX_TIMEOUT_MESSAGE, replace_in_epub
         with Epub(r"{path}") as epub:
             report = replace_in_epub(
                 epub,
@@ -243,7 +252,8 @@ def test_replace_expensive_regex_skips_timed_out_file(tmp_path: Path) -> None:
         print("total", report.total)
         print("changed", ",".join(report.changed_files))
         for internal, reason in report.skipped:
-            print("skipped", internal, reason)
+            marker = "TIMEOUT" if reason == REGEX_TIMEOUT_MESSAGE else "OTHER"
+            print("skipped", internal, marker)
         """
     )
     result = subprocess.run(
@@ -256,5 +266,4 @@ def test_replace_expensive_regex_skips_timed_out_file(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     assert "total 1" in result.stdout
     assert "changed OEBPS/text/a.xhtml" in result.stdout
-    assert "skipped OEBPS/text/z.xhtml" in result.stdout
-    assert "limit czasu" in result.stdout
+    assert "skipped OEBPS/text/z.xhtml TIMEOUT" in result.stdout
