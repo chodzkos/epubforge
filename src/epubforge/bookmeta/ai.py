@@ -6,9 +6,12 @@ Klasyfikacja gatunku/epoki/miejsca/tematów odbywa się **wyłącznie z listy za
 taksonomii (walidacja odpowiedzi, 1 ponowienie), a postacie/organizacje są otwarte.
 
 **Bezpieczeństwo (D2 + wyjątek dla LAN):** hosty publiczne wyłącznie ``https``;
-``http`` dozwolone tylko dla loopback/adresów prywatnych (Ollama/LiteLLM w LAN).
-Klucz API pochodzi **wyłącznie ze zmiennej środowiskowej** — w konfiguracji trzymamy
-jedynie jej nazwę, nigdy sam klucz. Limit rozmiaru odpowiedzi jak w :mod:`._http`.
+``http`` dozwolone tylko dla loopback i RFC1918/ULA (Ollama/LiteLLM w LAN).
+Link-local, unspecified, multicast i URL z userinfo są zawsze odrzucane.
+Przekierowania waliduje ten sam mechanizm co :mod:`._http`. Klucz API pochodzi
+**wyłącznie ze zmiennej środowiskowej** — w konfiguracji trzymamy jedynie jej
+nazwę, nigdy sam klucz. Limit rozmiaru odpowiedzi jak w :mod:`._http`
+(``MAX_BYTES + 1``, bez cichego ucięcia).
 
 Presety ``base_url`` (zweryfikowane na dzień implementacji — warstwy zgodności z
 OpenAI API): patrz :data:`PRESETS`. Wszystkie są edytowalne w konfiguracji.
@@ -16,7 +19,6 @@ OpenAI API): patrz :data:`PRESETS`. Wszystkie są edytowalne w konfiguracji.
 
 from __future__ import annotations
 
-import ipaddress
 import json
 import logging
 import os
@@ -28,7 +30,14 @@ from collections.abc import Callable, Mapping, MutableMapping
 from dataclasses import dataclass, field
 from typing import Any
 
-from epubforge.bookmeta._http import MAX_BYTES
+from epubforge.bookmeta._http import (
+    MAX_BYTES,
+    UnsafeUrlError,
+    _build_safe_opener,
+    _host_addresses,
+    _is_lan_allowed_ip,
+    validate_url,
+)
 from epubforge.bookmeta.taxonomy import CATEGORIES, Taxonomy
 
 logger = logging.getLogger(__name__)
@@ -186,8 +195,9 @@ def _chat_completion(config: AIConfig, prompt: str, *, urlopen: UrlOpen | None) 
     Raises:
         AIError: niedozwolony endpoint, błąd połączenia lub niepoprawna odpowiedź HTTP.
     """
-    _validate_endpoint(config.base_url)
     url = config.base_url.rstrip("/") + "/chat/completions"
+    _validate_endpoint(config.base_url)
+    _validate_endpoint(url)
     payload = {
         "model": config.model,
         "temperature": 0,
@@ -200,12 +210,23 @@ def _chat_completion(config: AIConfig, prompt: str, *, urlopen: UrlOpen | None) 
     request = urllib.request.Request(
         url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST"
     )
-    opener = urlopen if urlopen is not None else urllib.request.urlopen
     try:
-        with opener(request, timeout=config.timeout) as response:
-            raw = bytes(response.read(MAX_BYTES))
+        if urlopen is not None:
+            response_cm = urlopen(request, timeout=config.timeout)
+        else:
+            opener = _build_safe_opener(
+                None,
+                allow_lan=_use_lan_redirects(config.base_url),
+                restrict_ports=False,
+                origin_url=url,
+            )
+            response_cm = opener.open(request, timeout=config.timeout)
+        with response_cm as response:
+            raw = bytes(response.read(MAX_BYTES + 1))
     except (urllib.error.URLError, OSError, ValueError) as exc:
         raise AIError(f"Nie udało się połączyć z endpointem AI ({config.base_url}): {exc}") from exc
+    if len(raw) > MAX_BYTES:
+        raise AIError(f"Odpowiedź endpointu AI przekracza limit {MAX_BYTES} B.")
     return _extract_content(raw)
 
 
@@ -225,30 +246,34 @@ def _extract_content(raw: bytes) -> str:
 
 
 def _validate_endpoint(base_url: str) -> None:
-    """Sprawdza schemat URL: https zawsze; http tylko dla loopback/adresów prywatnych."""
-    parsed = urllib.parse.urlparse(base_url)
-    scheme = parsed.scheme.lower()
-    if scheme == "https":
-        return
-    if scheme == "http" and _is_local_host(parsed.hostname):
-        return
-    raise AIError(
-        f"Niedozwolony endpoint AI: {base_url} — http dopuszczalne tylko dla loopback/LAN, "
-        "hosty publiczne wymagają https"
-    )
+    """Waliduje endpoint AI tą samą polityką co :func:`validate_url` (z LAN)."""
+    try:
+        validate_url(base_url, allow_lan=True, restrict_ports=False)
+    except UnsafeUrlError as exc:
+        raise AIError(f"Niedozwolony endpoint AI: {exc}") from exc
+
+
+def _use_lan_redirects(base_url: str) -> bool:
+    """Czy hop-y przekierowań mogą iść na LAN (tylko gdy sam endpoint jest LAN)."""
+    host = urllib.parse.urlsplit(base_url).hostname
+    if not host:
+        return False
+    if host.lower() in {"localhost", "localhost.localdomain"}:
+        return True
+    try:
+        addresses = _host_addresses(host)
+    except OSError:
+        return False
+    return bool(addresses) and all(_is_lan_allowed_ip(address) for address in addresses)
 
 
 def _is_local_host(host: str | None) -> bool:
-    """Czy host to loopback albo adres prywatny (RFC 1918 / link-local)."""
+    """Czy host to loopback albo RFC1918/ULA (nie link-local)."""
     if not host:
         return False
-    if host.lower() == "localhost":
+    if host.lower() in {"localhost", "localhost.localdomain"}:
         return True
-    try:
-        ip = ipaddress.ip_address(host)
-    except ValueError:
-        return False
-    return ip.is_loopback or ip.is_private or ip.is_link_local
+    return _is_lan_allowed_ip(host)
 
 
 def _api_key(config: AIConfig) -> str:
