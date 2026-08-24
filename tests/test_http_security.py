@@ -177,7 +177,12 @@ def test_lan_redirect_to_link_local_is_rejected() -> None:
 
 def test_lan_redirect_to_rfc1918_is_allowed() -> None:
     """Hop na RFC1918 przy allow_lan jest legalny (lokalny serwer AI)."""
-    handler = _SafeRedirectHandler(None, allow_lan=True, restrict_ports=False)
+    handler = _SafeRedirectHandler(
+        None,
+        allow_lan=True,
+        restrict_ports=False,
+        origin_url="http://192.168.1.10:11434/v1",
+    )
     request = urllib.request.Request("http://192.168.1.10:11434/v1")
     headers = email.message.Message()
     result = handler.redirect_request(
@@ -189,6 +194,79 @@ def test_lan_redirect_to_rfc1918_is_allowed() -> None:
         "http://192.168.1.11:11434/v1",
     )
     assert isinstance(result, urllib.request.Request)
+
+
+def _origin_redirect(
+    origin_url: str,
+    newurl: str,
+    *,
+    headers: dict[str, str] | None = None,
+) -> urllib.request.Request | None:
+    """Redirect z zamrożoną polityką origin (jak opener AI)."""
+    handler = _SafeRedirectHandler(
+        None,
+        allow_lan=True,
+        restrict_ports=False,
+        origin_url=origin_url,
+    )
+    request = urllib.request.Request(origin_url, headers=headers or {}, method="GET")
+    return handler.redirect_request(
+        request, io.BytesIO(b""), 302, "Found", email.message.Message(), newurl
+    )
+
+
+@pytest.mark.parametrize(
+    "newurl",
+    [
+        "http://192.168.1.10:11434/",
+        "http://127.0.0.1:11434/",
+        "http://169.254.169.254/metadata",
+    ],
+)
+def test_public_origin_cannot_redirect_to_lan_or_loopback_or_link_local(
+    monkeypatch: pytest.MonkeyPatch, newurl: str
+) -> None:
+    """Publiczny origin: 302 na RFC1918 / loopback / link-local jest odrzucany."""
+    _mock_public_dns(monkeypatch)
+    with pytest.raises(urllib.error.HTTPError):
+        _origin_redirect("https://public.example/api", newurl)
+
+
+def test_local_origin_redirect_to_local_peer_is_allowed() -> None:
+    """Jawny lokalny origin może skoczyć na inny dozwolony host LAN."""
+    result = _origin_redirect("http://192.168.1.10:11434/v1", "http://192.168.1.11:11434/v1")
+    assert isinstance(result, urllib.request.Request)
+
+
+def test_cross_origin_redirect_strips_authorization(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Zmiana origin (host/port/scheme) usuwa Authorization z hopu."""
+    _mock_public_dns(monkeypatch)
+    result = _origin_redirect(
+        "https://public.example/api",
+        "https://other.example/next",
+        headers={"Authorization": "Bearer secret-token", "X-Trace": "keep"},
+    )
+    assert isinstance(result, urllib.request.Request)
+    header_map = {name.lower(): value for name, value in result.header_items()}
+    assert "authorization" not in header_map
+    assert all("secret-token" not in value for value in header_map.values())
+    assert header_map.get("x-trace") == "keep"
+
+
+def test_validate_url_out_of_range_port_is_policy_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Port spoza zakresu to UnsafeUrlError, nie surowy ValueError."""
+    _mock_public_dns(monkeypatch)
+    with pytest.raises(UnsafeUrlError, match="port"):
+        validate_url("https://example.com:99999/")
+
+
+def test_userinfo_invalid_port_does_not_echo_credentials() -> None:
+    """Userinfo + zły port nie wycieka loginu/hasła w komunikacie."""
+    with pytest.raises(UnsafeUrlError) as exc_info:
+        validate_url("https://user:pass@example.com:99999/v1", allow_lan=True, restrict_ports=False)
+    message = str(exc_info.value)
+    assert "user:pass" not in message
+    assert "pass@" not in message
 
 
 # ── pętla przekierowań: limit liczby hopów ──────────────────────────────────

@@ -218,6 +218,7 @@ def _chat_completion(config: AIConfig, prompt: str, *, urlopen: UrlOpen | None) 
                 None,
                 allow_lan=_use_lan_redirects(config.base_url),
                 restrict_ports=False,
+                origin_url=url,
             )
             response_cm = opener.open(request, timeout=config.timeout)
         with response_cm as response:

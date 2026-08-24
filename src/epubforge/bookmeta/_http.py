@@ -20,8 +20,9 @@ się ich obejść w pojedynczym providerze:
 
 Opcja ``allow_lan`` (domyślnie wyłączona) jest wyłącznie dla lokalnego AI:
 dopuszcza ``http``/``https`` do loopback i RFC1918/ULA, nadal blokując
-link-local, unspecified, multicast i userinfo. Providerzy metadanych zostają
-przy twardym ``https`` + braku sieci prywatnej.
+link-local, unspecified, multicast i userinfo. Polityka LAN hopów jest
+zamrażana na originie żądania (publiczny HTTPS nie może skoczyć na LAN).
+Providerzy metadanych zostają przy twardym ``https`` + braku sieci prywatnej.
 
 Zależności: wyłącznie stdlib ``urllib``/``socket``/``ipaddress`` — bez ``requests``.
 
@@ -121,6 +122,56 @@ def _is_lan_allowed_ip(address: str) -> bool:
     return any(ip in network for network in _LAN_NETWORKS)
 
 
+def _origin_allows_lan(url: str) -> bool:
+    """Czy origin to loopback/RFC1918/ULA — polityka hopów przy ``allow_lan``."""
+    host = urlsplit(url).hostname
+    if not host:
+        return False
+    host = host.lower()
+    if host in {"localhost", "localhost.localdomain"}:
+        return True
+    try:
+        addresses = _host_addresses(host)
+    except OSError:
+        return False
+    return bool(addresses) and all(_is_lan_allowed_ip(address) for address in addresses)
+
+
+def _url_origin(url: str) -> tuple[str, str, int] | None:
+    """Zwraca ``(scheme, host, port)`` albo ``None``, gdy origin nie da się ustalić."""
+    parts = urlsplit(url)
+    scheme = parts.scheme.lower()
+    host = (parts.hostname or "").lower()
+    if not scheme or not host:
+        return None
+    try:
+        port = parts.port
+    except ValueError:
+        return None
+    if port is None:
+        port = 443 if scheme == "https" else 80
+    return scheme, host, port
+
+
+def _is_cross_origin(current: str, newurl: str) -> bool:
+    """Czy zmiana URL to inny origin (schemat, host albo port)."""
+    left = _url_origin(current)
+    right = _url_origin(newurl)
+    if left is None or right is None:
+        return True
+    return left != right
+
+
+def _strip_authorization(req: urllib.request.Request) -> None:
+    """Usuwa nagłówek Authorization (bez logowania wartości)."""
+    for key in list(req.headers):
+        if key.lower() == "authorization":
+            req.remove_header(key)
+    for key in list(req.unredirected_hdrs):
+        if key.lower() == "authorization":
+            del req.unredirected_hdrs[key]
+
+
 def _url_for_error(url: str) -> str:
     """URL do komunikatu błędu — bez userinfo (login/hasło)."""
     parts = urlsplit(url)
@@ -216,9 +267,14 @@ class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
         *,
         allow_lan: bool = False,
         restrict_ports: bool = True,
+        origin_url: str | None = None,
     ) -> None:
         self._allowed_hosts = allowed_hosts
-        self._allow_lan = allow_lan
+        # Polityka LAN jest zamrażana na originie — nie resetujemy jej na każdym hopie.
+        if origin_url is not None:
+            self._allow_lan = allow_lan and _origin_allows_lan(origin_url)
+        else:
+            self._allow_lan = allow_lan
         self._restrict_ports = restrict_ports
 
     def redirect_request(
@@ -242,7 +298,10 @@ class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
             raise urllib.error.HTTPError(
                 _url_for_error(newurl), code, f"Odrzucony redirect: {exc}", headers, fp
             ) from exc
-        return super().redirect_request(req, fp, code, msg, headers, newurl)
+        new_req = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if new_req is not None and _is_cross_origin(req.full_url, newurl):
+            _strip_authorization(new_req)
+        return new_req
 
 
 def _build_safe_opener(
@@ -250,10 +309,16 @@ def _build_safe_opener(
     *,
     allow_lan: bool = False,
     restrict_ports: bool = True,
+    origin_url: str | None = None,
 ) -> urllib.request.OpenerDirector:
     """Buduje opener z bezpiecznym redirect handlerem (bez domyślnego, który nie waliduje)."""
     return urllib.request.build_opener(
-        _SafeRedirectHandler(allowed_hosts, allow_lan=allow_lan, restrict_ports=restrict_ports)
+        _SafeRedirectHandler(
+            allowed_hosts,
+            allow_lan=allow_lan,
+            restrict_ports=restrict_ports,
+            origin_url=origin_url,
+        )
     )
 
 

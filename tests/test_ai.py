@@ -148,6 +148,23 @@ def test_userinfo_error_does_not_echo_credentials(taxonomy: Taxonomy) -> None:
     assert "pass@" not in message
 
 
+def test_out_of_range_port_raises_aierror(taxonomy: Taxonomy) -> None:
+    """Port spoza zakresu kończy się AIError, nie surowym ValueError."""
+    config = ai.AIConfig(preset="x", base_url="https://example.com:99999/v1", model="m")
+    with pytest.raises(ai.AIError, match="port"):
+        ai.suggest_tags("opis", "toc", taxonomy, config, urlopen=_chat_opener("{}"))
+
+
+def test_userinfo_and_bad_port_does_not_echo_credentials(taxonomy: Taxonomy) -> None:
+    """Userinfo + zły port: AIError bez loginu/hasła."""
+    config = ai.AIConfig(preset="x", base_url="https://user:pass@example.com:99999/v1", model="m")
+    with pytest.raises(ai.AIError) as exc_info:
+        ai.suggest_tags("opis", "toc", taxonomy, config, urlopen=_chat_opener("{}"))
+    message = str(exc_info.value)
+    assert "user:pass" not in message
+    assert "pass@" not in message
+
+
 def test_hostname_resolving_to_link_local_is_rejected(
     monkeypatch: pytest.MonkeyPatch, taxonomy: Taxonomy
 ) -> None:
@@ -162,7 +179,7 @@ def test_public_ai_opener_disables_lan_redirects(
     monkeypatch: pytest.MonkeyPatch, taxonomy: Taxonomy
 ) -> None:
     """Publiczny HTTPS nie followuje 302 na RFC1918 (Authorization nie idzie do LAN)."""
-    seen: dict[str, bool] = {}
+    seen: dict[str, object] = {}
 
     class _DummyOpener:
         def open(self, request: Any, timeout: float | None = None) -> Any:
@@ -173,8 +190,10 @@ def test_public_ai_opener_disables_lan_redirects(
         *,
         allow_lan: bool = False,
         restrict_ports: bool = True,
+        origin_url: str | None = None,
     ) -> _DummyOpener:
         seen["allow_lan"] = allow_lan
+        seen["origin_url"] = origin_url
         return _DummyOpener()
 
     monkeypatch.setattr(ai, "_build_safe_opener", fake_build)
@@ -182,13 +201,14 @@ def test_public_ai_opener_disables_lan_redirects(
     with pytest.raises(ai.AIError):
         ai.suggest_tags("o", "t", taxonomy, config)
     assert seen["allow_lan"] is False
+    assert seen["origin_url"] == "https://api.example.com/v1/chat/completions"
 
 
 def test_lan_ai_opener_keeps_lan_redirects(
     monkeypatch: pytest.MonkeyPatch, taxonomy: Taxonomy
 ) -> None:
     """Lokalny endpoint AI nadal pozwala na hop-y RFC1918/loopback."""
-    seen: dict[str, bool] = {}
+    seen: dict[str, object] = {}
 
     class _DummyOpener:
         def open(self, request: Any, timeout: float | None = None) -> Any:
@@ -199,8 +219,10 @@ def test_lan_ai_opener_keeps_lan_redirects(
         *,
         allow_lan: bool = False,
         restrict_ports: bool = True,
+        origin_url: str | None = None,
     ) -> _DummyOpener:
         seen["allow_lan"] = allow_lan
+        seen["origin_url"] = origin_url
         return _DummyOpener()
 
     monkeypatch.setattr(ai, "_build_safe_opener", fake_build)
@@ -208,6 +230,7 @@ def test_lan_ai_opener_keeps_lan_redirects(
     with pytest.raises(ai.AIError):
         ai.suggest_tags("o", "t", taxonomy, config)
     assert seen["allow_lan"] is True
+    assert seen["origin_url"] == "http://192.168.1.10:11434/v1/chat/completions"
 
 
 def test_hostname_resolving_to_public_ip_allows_https(
