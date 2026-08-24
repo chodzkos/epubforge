@@ -24,13 +24,35 @@ CSP_POLICY = "; ".join(
 )
 
 _DROP_ELEMENTS = frozenset(
-    {"script", "iframe", "object", "embed", "form", "audio", "video", "source", "track"}
+    {
+        "script",
+        "iframe",
+        "object",
+        "embed",
+        "form",
+        "base",
+        "audio",
+        "video",
+        "source",
+        "track",
+    }
 )
+_DROP_META_HTTP_EQUIV = frozenset({"refresh", "content-security-policy"})
 
 
 def sanitize_xhtml(data: bytes) -> bytes:
     """Tworzy bezpieczną kopię XHTML; nigdy nie modyfikuje bufora :class:`Epub`."""
     root, doctype = parse_untrusted_document(data)
+    root_tag = cast(object, root.tag)
+    root_local_name = etree.QName(root_tag).localname.lower() if isinstance(root_tag, str) else ""
+    root_is_active_meta = (
+        root_local_name == "meta"
+        and root.get("http-equiv", "").strip().lower() in _DROP_META_HTTP_EQUIV
+    )
+    if root_local_name in _DROP_ELEMENTS or root_is_active_meta:
+        namespace = etree.QName(cast(str, root_tag)).namespace
+        root = etree.Element(f"{{{namespace}}}html" if namespace else "html")
+        doctype = ""
     for element in list(root.iter()):
         tag = cast(object, element.tag)
         if not isinstance(tag, str):
@@ -41,9 +63,9 @@ def sanitize_xhtml(data: bytes) -> bytes:
             if parent is not None:
                 parent.remove(element)
             continue
-        if local_name == "meta" and element.get("http-equiv", "").strip().lower() in (
-            "refresh",
-            "content-security-policy",
+        if (
+            local_name == "meta"
+            and element.get("http-equiv", "").strip().lower() in _DROP_META_HTTP_EQUIV
         ):
             parent = element.getparent()
             if parent is not None:
