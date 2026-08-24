@@ -28,6 +28,8 @@ def test_full_build_includes_webengine_but_keeps_unused_qt_excluded() -> None:
     assert common.WEBENGINE_BUILD is True
     assert required <= set(common.REQUIRED_MODULES)
     assert required <= set(common.HIDDEN_IMPORTS)
+    assert "regex" in common.REQUIRED_MODULES
+    assert "regex" in common.HIDDEN_IMPORTS
     assert required.isdisjoint(common.EXCLUDES)
     assert {
         "PySide6.QtWebEngineQuick",

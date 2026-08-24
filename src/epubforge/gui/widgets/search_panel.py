@@ -2,7 +2,8 @@
 
 Logika wyszukiwania/zamiany jest czysta (``epubforge.core.search``); ten widget
 tylko ją ubiera w UI i spina z edytorem przez protokół :class:`SearchHost`.
-Wyszukiwanie całego EPUB-a biegnie w :class:`Worker` (duże książki, anulowanie).
+Wyszukiwanie i zamiana biegną w :class:`Worker` (duże książki, anulowanie,
+regex poza wątkiem GUI).
 """
 
 from __future__ import annotations
@@ -26,8 +27,9 @@ from PySide6.QtWidgets import (
 
 from epubforge.core import Epub
 from epubforge.core.search import (
+    REGEX_TIMEOUT_MESSAGE,
+    ReplaceReport,
     SearchHit,
-    SearchPatternError,
     replace_in_epub,
     search_epub,
 )
@@ -57,6 +59,9 @@ class SearchHost(Protocol):
     def mark_replaced(self, paths: list[str]) -> None:
         """Oznacza pliki jako zmienione (bufor) i odświeża widok/drzewo."""
 
+    def set_mutation_guard(self, active: bool) -> None:
+        """Włącza/wyłącza guard mutacji dokumentu (edytor + lifecycle)."""
+
 
 class SearchReplacePanel(QWidget):
     """Panel Szukaj/Zamień przeszukujący pliki tekstowe EPUB-a."""
@@ -66,6 +71,7 @@ class SearchReplacePanel(QWidget):
         self._host = host
         self._worker: Worker | None = None
         self._searching = False
+        self._cancellable = False
         self._build_ui()
         self.setVisible(False)
 
@@ -124,7 +130,7 @@ class SearchReplacePanel(QWidget):
         self.replace_button.clicked.connect(self._on_replace_all)
         actions.addWidget(self.replace_button)
         self.cancel_button = QPushButton(_("Anuluj"))
-        self.cancel_button.setToolTip(_("Anuluj trwające wyszukiwanie całej publikacji"))
+        self.cancel_button.setToolTip(_("Anuluj wyszukiwanie"))
         self.cancel_button.setEnabled(False)
         self.cancel_button.clicked.connect(self._on_cancel)
         actions.addWidget(self.cancel_button)
@@ -188,33 +194,13 @@ class SearchReplacePanel(QWidget):
             return
 
         paths = self._scope_paths()
-        if paths is not None:
-            self._run_search_sync(epub, query, paths)
-        else:
-            self._start_search_worker(epub, query)
+        self._start_search_worker(epub, query, paths)
 
-    def _run_search_sync(self, epub: Epub, query: str, paths: list[str]) -> None:
-        """Szuka w bieżącym pliku synchronicznie (szybkie, bez wątku)."""
-        options = self._options()
-        try:
-            hits = search_epub(
-                epub,
-                query,
-                regex=options["regex"],
-                case_sensitive=options["case_sensitive"],
-                whole_words=options["whole_words"],
-                paths=paths,
-            )
-        except SearchPatternError as exc:
-            self._set_status(str(exc))
-            return
-        self._populate_results(hits)
-
-    def _start_search_worker(self, epub: Epub, query: str) -> None:
-        """Szuka w całym EPUB-ie w wątku roboczym (z anulowaniem)."""
+    def _start_search_worker(self, epub: Epub, query: str, paths: list[str] | None) -> None:
+        """Szuka w wątku roboczym (bieżący plik albo cały EPUB, z anulowaniem)."""
         options = self._options()
         self._searching = True
-        self._set_running(True)
+        self._set_running(True, cancellable=True)
         self._set_status(_("Szukam…"))
         self._worker = Worker(
             _search_worker,
@@ -223,6 +209,7 @@ class SearchReplacePanel(QWidget):
             options["regex"],
             options["case_sensitive"],
             options["whole_words"],
+            paths,
         )
         self._worker.done.connect(self._on_search_done)
         self._worker.failed.connect(self._on_search_failed)
@@ -245,7 +232,7 @@ class SearchReplacePanel(QWidget):
         self._set_status(_("Anulowano"))
 
     def _on_cancel(self) -> None:
-        if self._worker is not None and self._searching:
+        if self._worker is not None and self._searching and self._cancellable:
             self.cancel_button.setEnabled(False)
             self._worker.cancel()
 
@@ -293,37 +280,72 @@ class SearchReplacePanel(QWidget):
         # Nie zgub niezapisanych zmian bieżącego pliku — najpierw sync do bufora.
         self._host.flush_current_editor()
         options = self._options()
-        try:
-            report = replace_in_epub(
-                epub,
-                query,
-                self.replace_field.text(),
-                regex=options["regex"],
-                case_sensitive=options["case_sensitive"],
-                whole_words=options["whole_words"],
-                paths=self._scope_paths(),
-            )
-        except SearchPatternError as exc:
-            self._set_status(str(exc))
-            return
+        self._searching = True
+        self._host.set_mutation_guard(True)
+        self._set_running(True, cancellable=False)
+        self._set_status(_("Zamieniam…"))
+        self._worker = Worker(
+            _replace_worker,
+            epub,
+            query,
+            self.replace_field.text(),
+            options["regex"],
+            options["case_sensitive"],
+            options["whole_words"],
+            self._scope_paths(),
+        )
+        self._worker.done.connect(self._on_replace_done)
+        self._worker.failed.connect(self._on_replace_failed)
+        self._worker.cancelled.connect(self._on_replace_interrupted)
+        self._worker.start()
 
+    def _on_replace_done(self, result: object) -> None:
+        self._finish_replace()
+        report = cast(ReplaceReport, result)
         self._host.mark_replaced(report.changed_files)
         self._report_replace(report.total, len(report.changed_files), report.skipped)
-        # Odśwież wyniki po zamianie (trafienia zwykonane znikają).
+        timed_out = any(reason == REGEX_TIMEOUT_MESSAGE for _path, reason in report.skipped)
+        if timed_out:
+            # Ten sam wzorzec przy search znów trafiłby na timeout i nadpisał status.
+            return
         self._on_search()
+
+    def _on_replace_failed(self, message: str) -> None:
+        self._finish_replace()
+        self._sync_pending_replacements()
+        self._set_status(message)
+
+    def _on_replace_interrupted(self) -> None:
+        """Fail-safe: stray cancel() nie może zgubić bufora ani zostawić guardu."""
+        self._finish_replace()
+        self._sync_pending_replacements()
+        self._set_status(_("Zamieniono — dokończono zapis do bufora."))
+
+    def _finish_replace(self) -> None:
+        self._searching = False
+        self._set_running(False)
+        self._host.set_mutation_guard(False)
+
+    def _sync_pending_replacements(self) -> None:
+        """Oznacza dirty na podstawie bufora EPUB (także po failed/interrupted)."""
+        epub = self._host.search_epub_instance()
+        if epub is None:
+            return
+        self._host.mark_replaced(list(epub.pending_changes().modified))
 
     def _report_replace(self, total: int, files: int, skipped: list[tuple[str, str]]) -> None:
         message = _("Zamieniono {total} w {files} plikach").format(total=total, files=files)
         if skipped:
-            message += _(" · pominięto {n} (nie-UTF-8)").format(n=len(skipped))
+            message += _(" · pominięto {n}").format(n=len(skipped))
         self._set_status(message)
 
     # ── Pomocnicze ──────────────────────────────────────────────────────────--
 
-    def _set_running(self, running: bool) -> None:
+    def _set_running(self, running: bool, *, cancellable: bool = False) -> None:
+        self._cancellable = running and cancellable
         self.search_button.setEnabled(not running)
         self.replace_button.setEnabled(not running)
-        self.cancel_button.setEnabled(running)
+        self.cancel_button.setEnabled(running and cancellable)
 
     def _set_status(self, text: str) -> None:
         self.status_label.setText(text)
@@ -338,13 +360,38 @@ def _search_worker(
     regex: bool,
     case_sensitive: bool,
     whole_words: bool,
+    paths: list[str] | None,
 ) -> list[SearchHit]:
-    """Funkcja robocza: przeszukuje cały EPUB (z anulowaniem)."""
+    """Funkcja robocza: przeszukuje wskazany zakres (z anulowaniem między plikami)."""
     return search_epub(
         epub,
         query,
         regex=regex,
         case_sensitive=case_sensitive,
         whole_words=whole_words,
+        paths=paths,
         should_cancel=should_cancel,
+    )
+
+
+def _replace_worker(
+    _emit_line: EmitLine,
+    _emit_progress: EmitProgress,
+    epub: Epub,
+    query: str,
+    replacement: str,
+    regex: bool,
+    case_sensitive: bool,
+    whole_words: bool,
+    paths: list[str] | None,
+) -> ReplaceReport:
+    """Funkcja robocza: zamienia w wskazanym zakresie (bez anulowania)."""
+    return replace_in_epub(
+        epub,
+        query,
+        replacement,
+        regex=regex,
+        case_sensitive=case_sensitive,
+        whole_words=whole_words,
+        paths=paths,
     )

@@ -1304,6 +1304,10 @@ msgstr "Podaj ISBN"
 msgid "Szukam…"
 msgstr "Szukam…"
 
+#: src/epubforge/gui/widgets/search_panel.py:280
+msgid "Zamieniam…"
+msgstr "Zamieniam…"
+
 #: src/epubforge/gui/metadata_fetch.py:232
 msgid "Nie znaleziono metadanych dla tego ISBN (albo brak połączenia)"
 msgstr "Nie znaleziono metadanych dla tego ISBN (albo brak połączenia)"
@@ -4365,8 +4369,8 @@ msgstr "Zamieniono {total} w {files} plikach"
 
 #: src/epubforge/gui/widgets/search_panel.py:318
 #, python-brace-format
-msgid " · pominięto {n} (nie-UTF-8)"
-msgstr " · pominięto {n} (nie-UTF-8)"
+msgid " · pominięto {n}"
+msgstr " · pominięto {n}"
 
 #: src/epubforge/validators/ace.py:233
 #, python-brace-format

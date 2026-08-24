@@ -17,6 +17,7 @@ _REQUIRED_MODULES = {
     "pyphen": "pyphen",
     "tinycss2": "tinycss2",
     "platformdirs": "platformdirs",
+    "regex": "regex",
 }
 
 _SRC_DIR = Path(__file__).resolve().parent.parent / "src" / "epubforge"
