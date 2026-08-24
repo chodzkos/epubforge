@@ -14,6 +14,7 @@ pytest.importorskip("PIL")
 from PIL import Image
 
 from epubforge.core import Epub
+from epubforge.core.exceptions import MissingPublicationMemberError
 from epubforge.fixers import ImageFixOptions, ImageOptimizationError, optimize_images
 
 _MEDIA_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png"}
@@ -265,3 +266,70 @@ def test_missing_pillow_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(builtins, "__import__", fake_import)
     with Epub(path) as epub, pytest.raises(ImageOptimizationError):
         optimize_images(epub, ImageFixOptions())
+
+
+def test_missing_image_is_not_raw_keyerror(tmp_path: Path) -> None:
+    """Wiszący href obrazu nie wychodzi z API jako surowy KeyError."""
+    epub_path = tmp_path / "missing-image.epub"
+    container = (
+        '<?xml version="1.0"?><container version="1.0" '
+        'xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles>'
+        '<rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>'
+        "</rootfiles></container>"
+    )
+    opf = (
+        '<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0">'
+        "<manifest>"
+        '<item id="chapter1" href="text/chapter1.xhtml" media-type="application/xhtml+xml"/>'
+        '<item id="img0" href="images/missing.jpg" media-type="image/jpeg"/>'
+        '</manifest><spine><itemref idref="chapter1"/></spine></package>'
+    )
+    chapter = (
+        '<?xml version="1.0"?><html xmlns="http://www.w3.org/1999/xhtml">'
+        "<head><title>c</title></head><body><p>Test</p></body></html>"
+    )
+    with zipfile.ZipFile(epub_path, "w") as zf:
+        zf.writestr("mimetype", b"application/epub+zip", zipfile.ZIP_STORED)
+        zf.writestr("META-INF/container.xml", container)
+        zf.writestr("OEBPS/content.opf", opf)
+        zf.writestr("OEBPS/text/chapter1.xhtml", chapter)
+
+    with Epub(epub_path) as epub, pytest.raises(MissingPublicationMemberError) as caught:
+        optimize_images(epub, ImageFixOptions())
+
+    assert not isinstance(caught.value, KeyError)
+    assert "There is no item named" not in str(caught.value)
+
+
+def test_parent_relative_image_href_is_resolved(tmp_path: Path) -> None:
+    """Legalny ``../images/cover.jpg`` mapuje się na ``images/cover.jpg``."""
+    epub_path = tmp_path / "parent-image.epub"
+    container = (
+        '<?xml version="1.0"?><container version="1.0" '
+        'xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles>'
+        '<rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>'
+        "</rootfiles></container>"
+    )
+    opf = (
+        '<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0">'
+        "<manifest>"
+        '<item id="chapter1" href="text/chapter1.xhtml" media-type="application/xhtml+xml"/>'
+        '<item id="img0" href="../images/cover.jpg" media-type="image/jpeg"/>'
+        '</manifest><spine><itemref idref="chapter1"/></spine></package>'
+    )
+    chapter = (
+        '<?xml version="1.0"?><html xmlns="http://www.w3.org/1999/xhtml">'
+        "<head><title>c</title></head><body><p>Test</p></body></html>"
+    )
+    jpeg = _jpeg_bytes()
+    with zipfile.ZipFile(epub_path, "w") as zf:
+        zf.writestr("mimetype", b"application/epub+zip", zipfile.ZIP_STORED)
+        zf.writestr("META-INF/container.xml", container)
+        zf.writestr("OEBPS/content.opf", opf)
+        zf.writestr("OEBPS/text/chapter1.xhtml", chapter)
+        zf.writestr("images/cover.jpg", jpeg)
+
+    with Epub(epub_path) as epub:
+        report = optimize_images(epub, ImageFixOptions(max_px=1200))
+
+    assert any(result.internal_path == "images/cover.jpg" for result in report.results)

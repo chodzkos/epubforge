@@ -10,9 +10,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
 from typing import Protocol
-from urllib.parse import urlsplit
 
 from epubforge.core import Epub
+from epubforge.core.exceptions import InvalidPublicationHrefError
+from epubforge.core.publication_href import resolve_publication_member
 from epubforge.gui.preview.cache import CacheStats, ResourceByteCache, resource_kind
 from epubforge.gui.preview.paths import UnsafePreviewPathError, normalize_internal_path
 
@@ -294,14 +295,10 @@ def build_resource_catalog(epub: Epub) -> ResourceCatalog:
 def _manifest_media_types(epub: Epub) -> dict[str, str]:
     """Mapuje href manifestu względem katalogu OPF na ścieżki archiwum."""
     result: dict[str, str] = {}
-    base = epub.opf_dir()
     for item in epub.manifest:
-        href = urlsplit(item.href)
-        if href.scheme or href.netloc or href.query:
-            continue
         try:
-            path = normalize_internal_path(posixpath.join(base, href.path), percent_decode=True)
-        except UnsafePreviewPathError:
+            path = resolve_publication_member(epub.opf_path, item.href)
+        except InvalidPublicationHrefError:
             continue
         result[path] = item.media_type
     return result

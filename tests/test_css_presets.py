@@ -10,6 +10,7 @@ from lxml import etree
 
 from epubforge.cli.main import main as cli_main
 from epubforge.core import Epub
+from epubforge.core.exceptions import MissingPublicationMemberError
 from epubforge.fixers import (
     PresetError,
     apply_preset,
@@ -230,3 +231,36 @@ def test_cli_fix_with_preset(tmp_path: Path) -> None:
     assert code == 0
     with zipfile.ZipFile(book) as zf:
         assert "OEBPS/styles/epubforge-preset.css" in zf.namelist()
+
+
+def test_apply_preset_missing_spine_member_is_not_raw_keyerror(tmp_path: Path) -> None:
+    """Wiszący dokument spine nie wychodzi z apply_preset jako surowy KeyError."""
+    book = tmp_path / "missing-spine.epub"
+    container = (
+        b'<?xml version="1.0"?>'
+        b'<container version="1.0" '
+        b'xmlns="urn:oasis:names:tc:opendocument:xmlns:container">'
+        b'<rootfiles><rootfile full-path="OEBPS/content.opf" '
+        b'media-type="application/oebps-package+xml"/></rootfiles></container>'
+    )
+    opf = (
+        b'<?xml version="1.0" encoding="UTF-8"?>'
+        b'<package xmlns="http://www.idpf.org/2007/opf" version="3.0">'
+        b"<manifest>"
+        b'<item id="ch1" href="text/missing.xhtml" media-type="application/xhtml+xml"/>'
+        b"</manifest>"
+        b'<spine><itemref idref="ch1"/></spine></package>'
+    )
+    _write_epub(
+        book,
+        {
+            "META-INF/container.xml": container,
+            "OEBPS/content.opf": opf,
+        },
+    )
+
+    with Epub(book) as epub, pytest.raises(MissingPublicationMemberError) as caught:
+        apply_preset(epub, get_preset("reader-friendly"), mode="append")
+
+    assert not isinstance(caught.value, KeyError)
+    assert "There is no item named" not in str(caught.value)

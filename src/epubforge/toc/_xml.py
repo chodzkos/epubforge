@@ -10,11 +10,11 @@ from __future__ import annotations
 import posixpath
 from collections.abc import Iterator
 from typing import cast
-from urllib.parse import unquote
 
 from lxml import etree
 
 from epubforge.core._xml_safe import parse_untrusted_document
+from epubforge.core.publication_href import resolve_from_directory
 
 XHTML_NS = "http://www.w3.org/1999/xhtml"
 EPUB_NS = "http://www.idpf.org/2007/ops"
@@ -103,13 +103,8 @@ def resolve_internal(base_dir: str, href: str) -> tuple[str, str]:
     Returns:
         Krotka ``(ścieżka_wewnętrzna, fragment)``.
     """
-    path, fragment = split_fragment(href)
-    path = unquote(path)
-    if base_dir:
-        path = posixpath.normpath(posixpath.join(base_dir, path))
-    else:
-        path = posixpath.normpath(path)
-    return path, fragment
+    _path, fragment = split_fragment(href)
+    return resolve_from_directory(base_dir, href), fragment
 
 
 def relative_href(internal_path: str, fragment: str, start_dir: str) -> str:

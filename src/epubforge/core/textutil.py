@@ -8,8 +8,7 @@ importuje z ``gui``).
 
 from __future__ import annotations
 
-import posixpath
-from urllib.parse import unquote, urldefrag
+from epubforge.core.publication_href import resolve_from_directory
 
 # Znak zastępczy Unicode wstawiany przez ``bytes.decode(errors="replace")``.
 REPLACEMENT_CHAR = "�"
@@ -39,10 +38,8 @@ def line_col_to_offset(text: str, line: int, col: int) -> int:
 
 
 def resolve_internal_path(href: str, opf_dir: str) -> str:
-    """Rozwiązuje ``href`` manifestu (względem katalogu OPF) do ścieżki w archiwum."""
-    path = unquote(urldefrag(href)[0])
-    if path.startswith("/"):
-        return posixpath.normpath(path.lstrip("/"))
-    return (
-        posixpath.normpath(posixpath.join(opf_dir, path)) if opf_dir else posixpath.normpath(path)
-    )
+    """Rozwiązuje ``href`` manifestu (względem katalogu OPF) do ścieżki w archiwum.
+
+    Thin wrapper nad :func:`epubforge.core.publication_href.resolve_publication_member`.
+    """
+    return resolve_from_directory(opf_dir, href)

@@ -234,3 +234,25 @@ def test_woff2_without_brotli_warns_and_skips(
     assert report.changed_files == []
     assert any("brotli" in warning for warning in report.warnings)
     assert any("brotli" in result.note for result in report.results)
+
+
+def test_missing_font_member_is_not_raw_keyerror(tmp_path: Path) -> None:
+    """Wiszący font w manifeście nie wychodzi z API jako surowy KeyError."""
+    epub_path = tmp_path / "missing-font.epub"
+    chapter = (
+        '<?xml version="1.0"?><html xmlns="http://www.w3.org/1999/xhtml">'
+        f"<head><title>c</title></head><body><p>{_CONTENT}</p></body></html>"
+    )
+    with zipfile.ZipFile(epub_path, "w") as zf:
+        zf.writestr("mimetype", b"application/epub+zip", zipfile.ZIP_STORED)
+        zf.writestr("META-INF/container.xml", _CONTAINER)
+        zf.writestr("OEBPS/content.opf", _opf("fonts/missing.ttf", "font/ttf"))
+        zf.writestr("OEBPS/nav.xhtml", _NAV)
+        zf.writestr("OEBPS/ch1.xhtml", chapter)
+        zf.writestr("OEBPS/s.css", "p{font-family:T;}")
+
+    with Epub(epub_path) as epub:
+        report = subset_fonts(epub, FontSubsetOptions())
+
+    assert report.changed_files == []
+    assert report.warnings or any(result.note for result in report.results)

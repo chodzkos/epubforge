@@ -6,11 +6,12 @@ Wydzielone z ``css_fixer`` (usuwanie fontów) i używane też przez ``fonts``
 
 from __future__ import annotations
 
-import posixpath
 from pathlib import Path
-from urllib.parse import unquote, urldefrag
+from urllib.parse import urldefrag
 
 from epubforge.core import Epub, ManifestItem
+from epubforge.core.exceptions import InvalidPublicationHrefError
+from epubforge.core.publication_href import resolve_publication_member
 
 FONT_MEDIA_TYPES = {
     "application/font-sfnt",
@@ -35,23 +36,18 @@ def href_suffix(href: str) -> str:
 
 def manifest_path(epub: Epub, item: ManifestItem) -> str:
     """Rozwiązuje ``manifest href`` względem katalogu OPF na ścieżkę w archiwum."""
-    href, _fragment = urldefrag(item.href)
-    href = unquote(href)
-    if href.startswith("/"):
-        return posixpath.normpath(href.lstrip("/"))
-    base = epub.opf_dir()
-    if not base:
-        return posixpath.normpath(href)
-    return posixpath.normpath(posixpath.join(base, href))
+    return resolve_publication_member(epub.opf_path, item.href)
 
 
 def font_files(epub: Epub) -> list[str]:
     """Zwraca posortowane wewnętrzne ścieżki plików fontów (manifest + archiwum)."""
-    manifest_paths = [
-        manifest_path(epub, item)
-        for item in epub.manifest
-        if item.media_type in FONT_MEDIA_TYPES or href_suffix(item.href) in FONT_SUFFIXES
-    ]
+    manifest_paths: list[str] = []
+    for item in epub.manifest:
+        if item.media_type in FONT_MEDIA_TYPES or href_suffix(item.href) in FONT_SUFFIXES:
+            try:
+                manifest_paths.append(manifest_path(epub, item))
+            except InvalidPublicationHrefError:
+                continue
     archive_paths = [
         name for name in epub.list_files() if Path(name).suffix.lower() in FONT_SUFFIXES
     ]

@@ -26,7 +26,7 @@ import shutil
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import unquote, urldefrag
+from urllib.parse import urldefrag
 
 import tinycss2
 from lxml import etree
@@ -34,6 +34,7 @@ from lxml import etree
 from epubforge.core import Epub
 from epubforge.core._xml_safe import parse_untrusted_tree
 from epubforge.core.config import config_dir
+from epubforge.core.publication_href import read_publication_member, resolve_from_directory
 from epubforge.i18n import current_language
 
 # Stałe wstrzykiwanego arkusza i znaczniki w OPF/XHTML.
@@ -218,7 +219,7 @@ def _ensure_manifest_item(epub: Epub, opf_dir: str, css_internal: str) -> None:
 
 def _ensure_link(epub: Epub, xhtml_internal: str, css_internal: str) -> None:
     """Dodaje ``<link>`` do arkusza jako OSTATNIE dziecko ``<head>`` (idempotentnie)."""
-    tree = _parse_xml(epub.read_file(xhtml_internal))
+    tree = _parse_xml(read_publication_member(epub, xhtml_internal))
     head, ns = _find_head(tree.getroot())
     if head is None:
         return
@@ -237,7 +238,7 @@ def _ensure_link(epub: Epub, xhtml_internal: str, css_internal: str) -> None:
 
 def _remove_links(epub: Epub, xhtml_internal: str, removed: set[str]) -> None:
     """Usuwa z ``<head>`` linki wskazujące na usunięte arkusze."""
-    tree = _parse_xml(epub.read_file(xhtml_internal))
+    tree = _parse_xml(read_publication_member(epub, xhtml_internal))
     head, ns = _find_head(tree.getroot())
     if head is None:
         return
@@ -318,14 +319,8 @@ def _css_internal_path(opf_dir: str) -> str:
 
 
 def _resolve_path(href: str, base_dir: str) -> str:
-    """Rozwiązuje ``href`` (względny/absolutny) do ścieżki w archiwum."""
-    path, _fragment = urldefrag(href)
-    path = unquote(path)
-    if path.startswith("/"):
-        return posixpath.normpath(path.lstrip("/"))
-    if not base_dir:
-        return posixpath.normpath(path)
-    return posixpath.normpath(posixpath.join(base_dir, path))
+    """Rozwiązuje publication href do ścieżki w archiwum (wspólna polityka)."""
+    return resolve_from_directory(base_dir, href)
 
 
 def _relative_href(target_internal: str, base_dir: str) -> str:

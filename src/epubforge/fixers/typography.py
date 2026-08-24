@@ -18,16 +18,19 @@ Pułapki (patrz ROADMAP Etap 16):
 
 from __future__ import annotations
 
-import posixpath
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from urllib.parse import unquote, urldefrag
+from urllib.parse import urldefrag
 
 from lxml import etree
 
 from epubforge.core import Epub, ManifestItem
 from epubforge.core._xml_safe import parse_untrusted_document, serialize_document
+from epubforge.core.publication_href import (
+    read_publication_member,
+    resolve_publication_member,
+)
 
 # ── Klucze reguł (stabilne — używane w raporcie, CLI i GUI) ──────────────────────
 RULE_QUOTES = "fix_quotes"
@@ -172,7 +175,7 @@ def fix_typography(epub: Epub, options: TypographyOptions) -> TypographyReport:
     report = TypographyReport()
     for item in _html_items(epub):
         internal_path = _manifest_path(epub, item)
-        original = epub.read_file(internal_path)
+        original = read_publication_member(epub, internal_path)
         updated, counts = _fix_document(original, options, chars)
         if updated is not None and updated != original:
             epub.write_file(internal_path, updated)
@@ -352,14 +355,7 @@ def _href_suffix(href: str) -> str:
 
 def _manifest_path(epub: Epub, item: ManifestItem) -> str:
     """Rozwiązuje ``manifest href`` względem katalogu OPF."""
-    href, _fragment = urldefrag(item.href)
-    href = unquote(href)
-    if href.startswith("/"):
-        return posixpath.normpath(href.lstrip("/"))
-    base = epub.opf_dir()
-    if not base:
-        return posixpath.normpath(href)
-    return posixpath.normpath(posixpath.join(base, href))
+    return resolve_publication_member(epub.opf_path, item.href)
 
 
 def _local_name(element: etree._Element) -> str:

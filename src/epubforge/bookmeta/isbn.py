@@ -12,9 +12,11 @@ zwykle w pierwszych dokumentach spine.
 
 from __future__ import annotations
 
-import posixpath
 import re
 from typing import TYPE_CHECKING
+
+from epubforge.core.exceptions import InvalidPublicationHrefError
+from epubforge.core.publication_href import resolve_from_directory
 
 if TYPE_CHECKING:
     from epubforge.core.epub import Epub
@@ -69,10 +71,10 @@ def extract_isbn_from_epub(epub: Epub, max_docs: int = 5) -> str | None:
         item = manifest_by_id.get(idref)
         if item is None:
             continue
-        internal = posixpath.join(opf_dir, item.href) if opf_dir else item.href
         try:
+            internal = resolve_from_directory(opf_dir, item.href)
             data = epub.read_file(internal)
-        except (KeyError, OSError):
+        except (InvalidPublicationHrefError, KeyError, OSError):
             continue
         found = _find_isbn_in_text(data.decode("utf-8", "replace"))
         if found is not None:

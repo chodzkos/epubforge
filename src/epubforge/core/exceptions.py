@@ -58,3 +58,11 @@ class ConversionError(EpubError):
 
 class ConverterNotFoundError(ConversionError):
     """Wymagany zewnętrzny konwerter nie został znaleziony."""
+
+
+class InvalidPublicationHrefError(EpubError):
+    """Publication href nie da się bezpiecznie zredukować do wpisu ZIP."""
+
+
+class MissingPublicationMemberError(EpubError):
+    """Manifest wskazuje zasób, którego nie ma w archiwum EPUB."""

@@ -28,12 +28,13 @@ import logging
 import posixpath
 from dataclasses import dataclass, field
 from typing import Any
-from urllib.parse import unquote, urldefrag
 
 import tinycss2
 
 from epubforge.core import Epub
 from epubforge.core._xml_safe import parse_untrusted_document
+from epubforge.core.exceptions import InvalidPublicationHrefError
+from epubforge.core.publication_href import resolve_from_directory
 from epubforge.fixers._fontutil import font_files, href_suffix, manifest_path
 from epubforge.i18n import _
 
@@ -132,12 +133,18 @@ def subset_fonts(epub: Epub, options: FontSubsetOptions) -> FontReport:
     subset_mod, ttlib = _load_fonttools()  # wczesny, czytelny błąd gdy brak fonttools
     report = FontReport()
 
-    codepoints = _wanted_codepoints(epub, options)
-    range_fonts = _fonts_with_unicode_range(epub)
+    codepoints = _wanted_codepoints(epub, options, report)
+    range_fonts = _fonts_with_unicode_range(epub, report)
     brotli_available = importlib.util.find_spec("brotli") is not None
 
     for path in font_files(epub):
-        original = epub.read_file(path)
+        try:
+            original = epub.read_file(path)
+        except KeyError:
+            note = _("brak zasobu publikacji w archiwum")
+            report.warnings.append(f"{path}: {note}")
+            report.record(FontResult(path, 0, 0, changed=False, note=note))
+            continue
         note = _skip_reason(path, range_fonts, brotli_available, report)
         if note:
             report.record(FontResult(path, len(original), len(original), changed=False, note=note))
@@ -201,10 +208,10 @@ def _subset_one(subset_mod: Any, ttlib: Any, data: bytes, codepoints: set[int]) 
 # ── Zbiór znaków ──────────────────────────────────────────────────────────────
 
 
-def _wanted_codepoints(epub: Epub, options: FontSubsetOptions) -> set[int]:
+def _wanted_codepoints(epub: Epub, options: FontSubsetOptions, report: FontReport) -> set[int]:
     """Buduje zbiór codepointów: treść + literały CSS + zestaw bezpieczeństwa."""
     chars = _safety_charset() | set(options.extra_chars)
-    chars |= _content_chars(epub)
+    chars |= _content_chars(epub, report)
     return {ord(char) for char in chars}
 
 
@@ -218,13 +225,18 @@ def _safety_charset() -> set[str]:
     return chars
 
 
-def _content_chars(epub: Epub) -> set[str]:
+def _content_chars(epub: Epub, report: FontReport) -> set[str]:
     """Zbiera znaki ze wszystkich dokumentów spine oraz literałów CSS."""
     chars: set[str] = set()
     for path in _spine_doc_paths(epub):
         try:
-            root, _doctype = parse_untrusted_document(epub.read_file(path))
-        except (KeyError, ValueError):
+            data = epub.read_file(path)
+        except KeyError:
+            report.warnings.append(_("{path}: brak dokumentu spine w archiwum").format(path=path))
+            continue
+        try:
+            root, _doctype = parse_untrusted_document(data)
+        except ValueError:
             continue
         for text in root.itertext():
             if isinstance(text, str):  # itertext() typuje str | bytes; glify liczymy z tekstu
@@ -233,7 +245,7 @@ def _content_chars(epub: Epub) -> set[str]:
         try:
             chars |= _css_string_chars(epub.read_file(path))
         except KeyError:
-            continue
+            report.warnings.append(_("{path}: brak arkusza CSS w archiwum").format(path=path))
     return chars
 
 
@@ -244,17 +256,23 @@ def _spine_doc_paths(epub: Epub) -> list[str]:
     for idref in epub.spine:
         item = by_id.get(idref)
         if item is not None:
-            paths.append(manifest_path(epub, item))
+            try:
+                paths.append(manifest_path(epub, item))
+            except InvalidPublicationHrefError:
+                continue
     return paths
 
 
 def _css_paths(epub: Epub) -> list[str]:
     """Zwraca wewnętrzne ścieżki arkuszy CSS."""
-    return [
-        manifest_path(epub, item)
-        for item in epub.manifest
-        if item.media_type in _CSS_MEDIA_TYPES or href_suffix(item.href) == ".css"
-    ]
+    result: list[str] = []
+    for item in epub.manifest:
+        if item.media_type in _CSS_MEDIA_TYPES or href_suffix(item.href) == ".css":
+            try:
+                result.append(manifest_path(epub, item))
+            except InvalidPublicationHrefError:
+                continue
+    return result
 
 
 def _css_string_chars(data: bytes) -> set[str]:
@@ -278,13 +296,14 @@ def _collect_string_tokens(nodes: list[Any], chars: set[str]) -> None:
 # ── unicode-range (fonty do pominięcia) ──────────────────────────────────────
 
 
-def _fonts_with_unicode_range(epub: Epub) -> set[str]:
+def _fonts_with_unicode_range(epub: Epub, report: FontReport) -> set[str]:
     """Zwraca ścieżki fontów, których ``@font-face`` deklaruje ``unicode-range``."""
     skip: set[str] = set()
     for css_path in _css_paths(epub):
         try:
             css = epub.read_file(css_path).decode("utf-8", "replace")
         except KeyError:
+            report.warnings.append(_("{path}: brak arkusza CSS w archiwum").format(path=css_path))
             continue
         base = posixpath.dirname(css_path)
         for rule in tinycss2.parse_stylesheet(css, skip_comments=True, skip_whitespace=True):
@@ -307,7 +326,9 @@ def _collect_range_srcs(content: list[Any], base: str, skip: set[str]) -> None:
     for decl in decls:
         if decl.lower_name == "src":
             for url in _urls_in(decl.value):
-                skip.add(_resolve(base, url))
+                resolved = _resolve(base, url)
+                if resolved is not None:
+                    skip.add(resolved)
 
 
 def _urls_in(tokens: list[Any]) -> list[str]:
@@ -324,10 +345,9 @@ def _urls_in(tokens: list[Any]) -> list[str]:
     return urls
 
 
-def _resolve(base: str, url: str) -> str:
+def _resolve(base: str, url: str) -> str | None:
     """Rozwiązuje adres z CSS względem katalogu arkusza na ścieżkę w archiwum."""
-    path, _fragment = urldefrag(url)
-    path = unquote(path)
-    if path.startswith("/"):
-        return posixpath.normpath(path.lstrip("/"))
-    return posixpath.normpath(posixpath.join(base, path)) if base else posixpath.normpath(path)
+    try:
+        return resolve_from_directory(base, url)
+    except InvalidPublicationHrefError:
+        return None
