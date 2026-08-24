@@ -8,18 +8,21 @@ Dostępne są dwie metody:
 
 from __future__ import annotations
 
-import posixpath
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, cast
-from urllib.parse import unquote, urldefrag
+from urllib.parse import urldefrag
 
 import pyphen
 from lxml import etree
 
 from epubforge.core import Epub, ManifestItem
 from epubforge.core._xml_safe import parse_untrusted
+from epubforge.core.publication_href import (
+    read_publication_member,
+    resolve_publication_member,
+)
 
 HyphenationMethod = Literal["soft-hyphen", "css"]
 
@@ -80,7 +83,7 @@ def _apply_soft_hyphen(epub: Epub, options: HyphenationOptions) -> None:
     dictionary = pyphen.Pyphen(lang=options.language)
     for item in _html_items(epub):
         internal_path = _manifest_path(epub, item)
-        original = epub.read_file(internal_path)
+        original = read_publication_member(epub, internal_path)
         updated = _hyphenate_document(original, dictionary, options)
         if updated != original:
             epub.write_file(internal_path, updated)
@@ -92,7 +95,7 @@ def _apply_css_hyphenation(epub: Epub) -> None:
     if css_items:
         for item in css_items:
             internal_path = _manifest_path(epub, item)
-            original = epub.read_file(internal_path)
+            original = read_publication_member(epub, internal_path)
             updated = _inject_css_rule(original)
             if updated != original:
                 epub.write_file(internal_path, updated)
@@ -100,7 +103,7 @@ def _apply_css_hyphenation(epub: Epub) -> None:
 
     for item in _html_items(epub):
         internal_path = _manifest_path(epub, item)
-        original = epub.read_file(internal_path)
+        original = read_publication_member(epub, internal_path)
         updated = _inject_embedded_css(original)
         if updated != original:
             epub.write_file(internal_path, updated)
@@ -132,14 +135,7 @@ def _href_suffix(href: str) -> str:
 
 def _manifest_path(epub: Epub, item: ManifestItem) -> str:
     """Rozwiązuje ``manifest href`` względem katalogu OPF."""
-    href, _fragment = urldefrag(item.href)
-    href = unquote(href)
-    if href.startswith("/"):
-        return posixpath.normpath(href.lstrip("/"))
-    base = epub.opf_dir()
-    if not base:
-        return posixpath.normpath(href)
-    return posixpath.normpath(posixpath.join(base, href))
+    return resolve_publication_member(epub.opf_path, item.href)
 
 
 def _hyphenate_document(

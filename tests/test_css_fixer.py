@@ -9,6 +9,7 @@ import pytest
 
 from epubforge.cli.main import main
 from epubforge.core import Epub
+from epubforge.core.exceptions import MissingPublicationMemberError
 from epubforge.fixers import CssFixOptions, fix_css
 from epubforge.fixers.css_fixer import (
     _inject_book_margin,
@@ -219,3 +220,43 @@ def test_cli_fix_saves_epub(tmp_path: Path, capsys: pytest.CaptureFixture[str]) 
         fixed = _read_css(epub)
     assert "color:" not in fixed
     assert "text-align:left" in fixed
+
+
+def test_missing_stylesheet_is_not_raw_keyerror(tmp_path: Path) -> None:
+    """Wiszący arkusz CSS nie wychodzi z API jako surowy KeyError."""
+    epub_path = tmp_path / "missing-css.epub"
+    container_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+</container>
+"""
+    content_opf = """<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0">
+  <manifest>
+    <item id="chapter1" href="text/chapter1.xhtml" media-type="application/xhtml+xml"/>
+    <item id="style" href="styles/missing.css" media-type="text/css"/>
+  </manifest>
+  <spine>
+    <itemref idref="chapter1"/>
+  </spine>
+</package>
+"""
+    chapter = """<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head><title>Test</title></head>
+  <body><p>Test</p></body>
+</html>
+"""
+    with zipfile.ZipFile(epub_path, "w") as zf:
+        zf.writestr("mimetype", b"application/epub+zip", zipfile.ZIP_STORED)
+        zf.writestr("META-INF/container.xml", container_xml.encode(), zipfile.ZIP_DEFLATED)
+        zf.writestr("OEBPS/content.opf", content_opf.encode(), zipfile.ZIP_DEFLATED)
+        zf.writestr("OEBPS/text/chapter1.xhtml", chapter.encode(), zipfile.ZIP_DEFLATED)
+
+    with Epub(epub_path) as epub, pytest.raises(MissingPublicationMemberError) as caught:
+        fix_css(epub, CssFixOptions())
+
+    assert not isinstance(caught.value, KeyError)
+    assert "There is no item named" not in str(caught.value)

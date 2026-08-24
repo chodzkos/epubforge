@@ -20,6 +20,7 @@ from epubforge.gui.preview.paths import (
     resolve_publication_path,
 )
 from epubforge.gui.preview.registry import PreviewGenerationRegistry
+from epubforge.gui.preview.resources import build_resource_catalog
 from epubforge.gui.preview.sanitize import CSP_POLICY, sanitize_xhtml
 from epubforge.gui.preview.session import PreviewSession
 
@@ -312,3 +313,36 @@ def test_build_url_roundtrip() -> None:
         _CHAPTER,
         42,
     )
+
+
+def test_manifest_media_types_resolve_legal_parent_relative_href(tmp_path: Path) -> None:
+    """OPF ``../images/cover.jpg`` mapuje się na ``images/cover.jpg`` w katalogu podglądu."""
+    epub_path = tmp_path / "preview-parent.epub"
+    container = (
+        '<?xml version="1.0"?><container version="1.0" '
+        'xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles>'
+        '<rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>'
+        "</rootfiles></container>"
+    )
+    opf = (
+        '<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0">'
+        "<manifest>"
+        '<item id="chapter1" href="text/chapter1.xhtml" media-type="application/xhtml+xml"/>'
+        '<item id="cover" href="../images/cover.jpg" media-type="image/jpeg"/>'
+        '</manifest><spine><itemref idref="chapter1"/></spine></package>'
+    )
+    chapter = (
+        '<?xml version="1.0"?><html xmlns="http://www.w3.org/1999/xhtml">'
+        "<head><title>c</title></head><body><p>ok</p></body></html>"
+    )
+    with zipfile.ZipFile(epub_path, "w") as archive:
+        archive.writestr("mimetype", b"application/epub+zip", zipfile.ZIP_STORED)
+        archive.writestr("META-INF/container.xml", container)
+        archive.writestr("OEBPS/content.opf", opf)
+        archive.writestr("OEBPS/text/chapter1.xhtml", chapter)
+        archive.writestr("images/cover.jpg", b"jpeg-bytes")
+
+    with Epub(epub_path) as epub:
+        types = dict(build_resource_catalog(epub).manifest_types)
+
+    assert types["images/cover.jpg"] == "image/jpeg"

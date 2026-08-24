@@ -14,13 +14,14 @@ kategorią i źródłem; zapis do ``dc:subject`` wg polityki scalania.
 
 from __future__ import annotations
 
-import posixpath
 import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from epubforge.bookmeta.ai import AIConfig, AIError, TagSuggestion, UrlOpen, suggest_tags
 from epubforge.bookmeta.taxonomy import Taxonomy, limit_tags, map_subjects
+from epubforge.core.exceptions import InvalidPublicationHrefError
+from epubforge.core.publication_href import resolve_from_directory
 
 if TYPE_CHECKING:
     from epubforge.core.epub import Epub
@@ -151,10 +152,10 @@ def extract_content_sample(epub: Epub, max_words: int = _SAMPLE_MAX_WORDS) -> st
         item = manifest_by_id.get(idref)
         if item is None:
             continue
-        internal = posixpath.join(opf_dir, item.href) if opf_dir else item.href
         try:
+            internal = resolve_from_directory(opf_dir, item.href)
             data = epub.read_file(internal)
-        except (KeyError, OSError):
+        except (InvalidPublicationHrefError, KeyError, OSError):
             continue
         text = _TAG_RE.sub(" ", data.decode("utf-8", "replace"))
         words.extend(text.split())

@@ -11,6 +11,7 @@ import pytest
 
 from epubforge.cli.main import main
 from epubforge.core import Epub
+from epubforge.core.exceptions import InvalidPublicationHrefError, MissingPublicationMemberError
 from epubforge.fixers import HyphenationOptions, hyphenate
 from epubforge.fixers.hyphenator import SOFT_HYPHEN
 
@@ -170,3 +171,100 @@ def test_cli_hyphenate_saves_epub(
     with Epub(epub_path) as epub:
         css = epub.read_file("OEBPS/styles/main.css").decode()
     assert "hyphens: auto" in css
+
+
+def _build_custom_epub(
+    tmp_path: Path,
+    *,
+    members: dict[str, bytes],
+    manifest_items: str,
+    name: str = "custom.epub",
+) -> Path:
+    """Buduje EPUB z jawnymi wpisami ZIP i fragmentem manifestu."""
+    container_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+</container>
+"""
+    content_opf = f"""<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0">
+  <manifest>
+    {manifest_items}
+  </manifest>
+  <spine>
+    <itemref idref="chapter1"/>
+  </spine>
+</package>
+"""
+    epub_path = tmp_path / name
+    with zipfile.ZipFile(epub_path, "w") as zf:
+        zf.writestr("mimetype", b"application/epub+zip", zipfile.ZIP_STORED)
+        zf.writestr("META-INF/container.xml", container_xml.encode(), zipfile.ZIP_DEFLATED)
+        zf.writestr("OEBPS/content.opf", content_opf.encode(), zipfile.ZIP_DEFLATED)
+        for member, data in members.items():
+            zf.writestr(member, data, zipfile.ZIP_DEFLATED)
+    return epub_path
+
+
+def _chapter_bytes(body: str) -> bytes:
+    """Zwraca minimalny dokument XHTML z podanym ciałem."""
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<html xmlns="http://www.w3.org/1999/xhtml">'
+        f"<head><title>Test</title></head><body>{body}</body></html>"
+    ).encode()
+
+
+def test_hyphenate_missing_member_is_not_raw_keyerror(tmp_path: Path) -> None:
+    """Wiszący manifest href nie wychodzi z API jako surowy KeyError."""
+    word = "konstantynopolitańczykowianeczka"
+    epub_path = _build_custom_epub(
+        tmp_path,
+        members={"OEBPS/text/chapter1.xhtml": _chapter_bytes(f"<p>{word}</p>")},
+        manifest_items=(
+            '<item id="chapter1" href="text/chapter1.xhtml" media-type="application/xhtml+xml"/>'
+            '<item id="ghost" href="text/missing.xhtml" media-type="application/xhtml+xml"/>'
+        ),
+    )
+
+    with Epub(epub_path) as epub, pytest.raises(MissingPublicationMemberError) as caught:
+        hyphenate(epub, HyphenationOptions(language="pl"))
+
+    assert not isinstance(caught.value, KeyError)
+    assert "There is no item named" not in str(caught.value)
+
+
+def test_hyphenate_rejects_traversal_above_root(tmp_path: Path) -> None:
+    """Href ``../../outside.xhtml`` jest odrzucany kontrolowanie."""
+    epub_path = _build_custom_epub(
+        tmp_path,
+        members={"OEBPS/text/chapter1.xhtml": _chapter_bytes("<p>ok</p>")},
+        manifest_items=(
+            '<item id="chapter1" href="../../outside.xhtml" media-type="application/xhtml+xml"/>'
+        ),
+        name="traverse.epub",
+    )
+
+    with Epub(epub_path) as epub, pytest.raises(InvalidPublicationHrefError):
+        hyphenate(epub, HyphenationOptions(language="pl"))
+
+
+def test_hyphenate_accepts_legal_parent_relative_href(tmp_path: Path) -> None:
+    """Legalny ``../chapter.xhtml`` względem OPF w OEBPS wskazuje wpis w korzeniu."""
+    word = "konstantynopolitańczykowianeczka"
+    epub_path = _build_custom_epub(
+        tmp_path,
+        members={"chapter.xhtml": _chapter_bytes(f"<p>{word}</p>")},
+        manifest_items=(
+            '<item id="chapter1" href="../chapter.xhtml" media-type="application/xhtml+xml"/>'
+        ),
+        name="parent.epub",
+    )
+
+    with Epub(epub_path) as epub:
+        hyphenate(epub, HyphenationOptions(language="pl"))
+        html = epub.read_file("chapter.xhtml").decode()
+
+    assert _expected_word("pl", word) in html

@@ -5,8 +5,11 @@ from __future__ import annotations
 import zipfile
 from pathlib import Path
 
+import pytest
+
 from epubforge.cli.main import main
 from epubforge.core import Epub
+from epubforge.core.exceptions import InvalidPublicationHrefError, MissingPublicationMemberError
 from epubforge.fixers import TypographyOptions, fix_typography
 
 NBSP = " "
@@ -315,3 +318,94 @@ def _read_chapter(epub_path: Path) -> bytes:
     """Czyta surowe bajty rozdziału z EPUB-a."""
     with zipfile.ZipFile(epub_path) as zf:
         return zf.read(_CHAPTER_PATH)
+
+
+def _build_custom_typo_epub(
+    tmp_path: Path,
+    *,
+    members: dict[str, bytes],
+    manifest_items: str,
+    name: str = "custom.epub",
+) -> Path:
+    """Buduje EPUB z jawnymi wpisami ZIP i fragmentem manifestu."""
+    epub_path = tmp_path / name
+    container = (
+        b'<?xml version="1.0" encoding="UTF-8"?>'
+        b'<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">'
+        b'<rootfiles><rootfile full-path="OEBPS/content.opf" '
+        b'media-type="application/oebps-package+xml"/></rootfiles></container>'
+    )
+    opf = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<package xmlns="http://www.idpf.org/2007/opf" version="3.0">'
+        f"<manifest>{manifest_items}</manifest>"
+        '<spine><itemref idref="chapter1"/></spine></package>'
+    ).encode()
+    with zipfile.ZipFile(epub_path, "w") as zf:
+        zf.writestr("mimetype", b"application/epub+zip", zipfile.ZIP_STORED)
+        zf.writestr("META-INF/container.xml", container, zipfile.ZIP_DEFLATED)
+        zf.writestr("OEBPS/content.opf", opf, zipfile.ZIP_DEFLATED)
+        for member, data in members.items():
+            zf.writestr(member, data, zipfile.ZIP_DEFLATED)
+    return epub_path
+
+
+def _typo_chapter(body: str) -> bytes:
+    """Zwraca minimalny dokument XHTML."""
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>T</title></head>'
+        f"<body>{body}</body></html>"
+    ).encode()
+
+
+def test_typography_missing_member_is_not_raw_keyerror(tmp_path: Path) -> None:
+    """Wiszący manifest href nie wychodzi z API jako surowy KeyError."""
+    epub_path = _build_custom_typo_epub(
+        tmp_path,
+        members={"OEBPS/text/chapter1.xhtml": _typo_chapter('<p>"ok"</p>')},
+        manifest_items=(
+            '<item id="chapter1" href="text/chapter1.xhtml" media-type="application/xhtml+xml"/>'
+            '<item id="ghost" href="text/missing.xhtml" media-type="application/xhtml+xml"/>'
+        ),
+    )
+
+    with Epub(epub_path) as epub, pytest.raises(MissingPublicationMemberError) as caught:
+        fix_typography(epub, TypographyOptions())
+
+    assert not isinstance(caught.value, KeyError)
+    assert "There is no item named" not in str(caught.value)
+
+
+def test_typography_rejects_traversal_above_root(tmp_path: Path) -> None:
+    """Href ``../../outside.xhtml`` jest odrzucany kontrolowanie."""
+    epub_path = _build_custom_typo_epub(
+        tmp_path,
+        members={"OEBPS/text/chapter1.xhtml": _typo_chapter("<p>ok</p>")},
+        manifest_items=(
+            '<item id="chapter1" href="../../outside.xhtml" media-type="application/xhtml+xml"/>'
+        ),
+        name="traverse.epub",
+    )
+
+    with Epub(epub_path) as epub, pytest.raises(InvalidPublicationHrefError):
+        fix_typography(epub, TypographyOptions())
+
+
+def test_typography_accepts_legal_parent_relative_href(tmp_path: Path) -> None:
+    """Legalny ``../chapter.xhtml`` względem OPF w OEBPS wskazuje wpis w korzeniu."""
+    epub_path = _build_custom_typo_epub(
+        tmp_path,
+        members={"chapter.xhtml": _typo_chapter('<p>"cześć"</p>')},
+        manifest_items=(
+            '<item id="chapter1" href="../chapter.xhtml" media-type="application/xhtml+xml"/>'
+        ),
+        name="parent.epub",
+    )
+
+    with Epub(epub_path) as epub:
+        report = fix_typography(epub, TypographyOptions())
+        html = epub.read_file("chapter.xhtml").decode()
+
+    assert report.total_changes > 0
+    assert "„cześć”" in html

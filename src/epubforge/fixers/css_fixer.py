@@ -11,6 +11,7 @@ from lxml import etree
 
 from epubforge.core import Epub, ManifestItem
 from epubforge.core._xml_safe import parse_untrusted
+from epubforge.core.publication_href import read_publication_member
 from epubforge.fixers._fontutil import FONT_MEDIA_TYPES as _FONT_MEDIA_TYPES
 from epubforge.fixers._fontutil import FONT_SUFFIXES as _FONT_SUFFIXES
 from epubforge.fixers._fontutil import font_files as _font_files
@@ -52,7 +53,7 @@ def fix_css(epub: Epub, options: CssFixOptions) -> None:
     """Aplikuje wybrane poprawki CSS do wszystkich arkuszy w otwartym EPUB-ie."""
     for item in _css_items(epub):
         internal_path = _manifest_path(epub, item)
-        original = epub.read_file(internal_path)
+        original = read_publication_member(epub, internal_path)
         css = original.decode("utf-8", errors="replace")
 
         if options.remove_colors:

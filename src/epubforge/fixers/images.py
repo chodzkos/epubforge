@@ -17,7 +17,6 @@ Zasady bezpieczeństwa (pułapki Etapu 20):
 
 from __future__ import annotations
 
-import posixpath
 from dataclasses import dataclass, field
 from io import BytesIO
 from pathlib import Path
@@ -26,6 +25,10 @@ from urllib.parse import unquote, urldefrag
 
 from epubforge.core import Epub, ManifestItem
 from epubforge.core._xml_safe import parse_untrusted
+from epubforge.core.publication_href import (
+    read_publication_member,
+    resolve_publication_member,
+)
 from epubforge.i18n import _
 
 if TYPE_CHECKING:
@@ -137,7 +140,7 @@ def optimize_images(epub: Epub, options: ImageFixOptions) -> ImageReport:
         if internal_path in cover_paths:
             continue
         suffix = _href_suffix(item.href)
-        original = epub.read_file(internal_path)
+        original = read_publication_member(epub, internal_path)
         optimized = _optimize_bytes(image, original, suffix, options)
         if optimized is not None and len(optimized) < len(original):
             epub.write_file(internal_path, optimized)
@@ -270,12 +273,5 @@ def _href_suffix(href: str) -> str:
 
 
 def _manifest_path(epub: Epub, item: ManifestItem) -> str:
-    """Rozwiązuje ``manifest href`` względem katalogu OPF (wzorzec z css_fixer)."""
-    href, _fragment = urldefrag(item.href)
-    href = unquote(href)
-    if href.startswith("/"):
-        return posixpath.normpath(href.lstrip("/"))
-    base = epub.opf_dir()
-    if not base:
-        return posixpath.normpath(href)
-    return posixpath.normpath(posixpath.join(base, href))
+    """Rozwiązuje ``manifest href`` względem katalogu OPF."""
+    return resolve_publication_member(epub.opf_path, item.href)

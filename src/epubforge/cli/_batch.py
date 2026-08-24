@@ -17,6 +17,7 @@ from rich.table import Table
 from rich.text import Text
 
 from epubforge.core import Epub
+from epubforge.core.exceptions import InvalidPublicationHrefError
 from epubforge.core.filetypes import is_editable
 from epubforge.core.textutil import decode_text, resolve_internal_path
 from epubforge.i18n import _
@@ -183,7 +184,13 @@ def _read_original_entries(
 def _media_types_by_path(epub: Epub) -> dict[str, str]:
     """Buduje mapę ścieżka wewnętrzna -> media-type z manifestu."""
     opf_dir = epub.opf_dir()
-    return {resolve_internal_path(item.href, opf_dir): item.media_type for item in epub.manifest}
+    result: dict[str, str] = {}
+    for item in epub.manifest:
+        try:
+            result[resolve_internal_path(item.href, opf_dir)] = item.media_type
+        except InvalidPublicationHrefError:
+            continue
+    return result
 
 
 def _format_changed_entry(

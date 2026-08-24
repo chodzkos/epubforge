@@ -29,6 +29,7 @@ from typing import Any
 import regex as regex_lib
 
 from epubforge.core.epub import Epub
+from epubforge.core.exceptions import InvalidPublicationHrefError
 from epubforge.core.textutil import decode_text, offset_to_line_col, resolve_internal_path
 
 CancelCheck = Callable[[], bool]
@@ -274,7 +275,13 @@ def _searchable_paths(epub: Epub, paths: Iterable[str] | None) -> list[str]:
 def _media_type_map(epub: Epub) -> dict[str, str]:
     """Buduje mapę ``ścieżka wewnętrzna → media-type`` z manifestu OPF."""
     opf_dir = epub.opf_dir()
-    return {resolve_internal_path(item.href, opf_dir): item.media_type for item in epub.manifest}
+    result: dict[str, str] = {}
+    for item in epub.manifest:
+        try:
+            result[resolve_internal_path(item.href, opf_dir)] = item.media_type
+        except InvalidPublicationHrefError:
+            continue
+    return result
 
 
 def _is_searchable(internal_path: str, media_type: str | None) -> bool:
