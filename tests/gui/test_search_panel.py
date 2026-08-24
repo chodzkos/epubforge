@@ -212,9 +212,7 @@ def test_replace_all_disables_cancel_and_locks_editor(
     assert _CHAPTER_PATH in tab._dirty
 
 
-def test_replace_timeout_keeps_status_without_research(
-    qtbot: QtBot, tmp_path: Path
-) -> None:
+def test_replace_timeout_keeps_status_without_research(qtbot: QtBot, tmp_path: Path) -> None:
     """Timeout zamiany nie odświeża szukania tym samym wzorcem (nie nadpisuje statusu)."""
     epub_path = tmp_path / "book.epub"
     container = (
@@ -516,9 +514,7 @@ def test_stray_cancel_does_not_drop_replace_report(
     assert "Anulowano" not in panel.status_label.text()
 
 
-def test_cancel_tooltip_describes_search_not_only_whole_epub(
-    qtbot: QtBot, tmp_path: Path
-) -> None:
+def test_cancel_tooltip_describes_search_not_only_whole_epub(qtbot: QtBot, tmp_path: Path) -> None:
     """Tooltip Anuluj obejmuje też wyszukiwanie w bieżącym pliku."""
     tab = _open_tab(qtbot, tmp_path)
     tip = tab.search_panel.cancel_button.toolTip()
