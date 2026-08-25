@@ -176,6 +176,13 @@ class SnapshotResourceProvider:
         """Zwraca liczniki współdzielonego cache sesji."""
         return self._cache.stats()
 
+    @property
+    def resident_bytes(self) -> int:
+        """Zwraca effective payload providera bez współdzielonego cache."""
+        return sum(len(value) for value in self._dirty.values()) + sum(
+            len(value) for value in self._buffered.values()
+        )
+
     def _read_source(self, normalized: str) -> bytes | None:
         """Czyta pojedynczy wpis bez skanowania pozostałej zawartości ZIP-a."""
         try:
@@ -231,10 +238,11 @@ def create_resource_provider(
         for path, value in dirty_overlay.items()
     }
     current_pending = pending if pending is not None else epub.pending_changes()
-    buffered = {
-        normalize_internal_path(path): bytes(value)
-        for path, value in current_pending.modified.items()
-    }
+    buffered: dict[str, bytes] = {}
+    for path, value in current_pending.modified.items():
+        normalized = normalize_internal_path(path)
+        if normalized not in dirty:
+            buffered[normalized] = bytes(value)
     deleted = frozenset(normalize_internal_path(path) for path in current_pending.deleted)
     current_catalog = catalog or build_resource_catalog(epub)
     files = current_catalog.files

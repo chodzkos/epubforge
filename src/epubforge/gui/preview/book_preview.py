@@ -426,7 +426,8 @@ class BookPreview(SnapshotWorkerMixin, ReaderUiMixin, QWidget):
         self._session = session
         if previous is not session:
             self._ready_document = None
-        if previous is not session:
+            self._last_snapshot = None
+            self._snapshot_request = None
             self._controller.clear()
         self._text_backend.set_session(session)
         if self._webengine_backend is not None:
@@ -457,6 +458,9 @@ class BookPreview(SnapshotWorkerMixin, ReaderUiMixin, QWidget):
             return
         self._disposed = True
         self._cancel_snapshot_pipeline(wait_ms=1000)
+        self._snapshot_request = None
+        self._last_snapshot = None
+        self._controller.clear()
         if self._session is not None:
             self._session.close()
             self._session = None

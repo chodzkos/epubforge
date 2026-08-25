@@ -4561,3 +4561,8 @@ msgstr ""
 
 #~ msgid "Zapisano metadane: {name} (liczbę stron pominięto — to EPUB 2)"
 #~ msgstr "Metadaten gespeichert: {name} (Seitenzahl übersprungen – EPUB 2)"
+
+#: src/epubforge/gui/preview/snapshot_worker.py
+#, python-brace-format
+msgid "Podgląd jest zbyt duży do bezpiecznego wygenerowania. Rozmiar: {current}; limit: {limit}."
+msgstr "Die Vorschau ist zu groß, um sie sicher zu erzeugen. Größe: {current}; Limit: {limit}."

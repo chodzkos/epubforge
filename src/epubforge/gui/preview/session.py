@@ -137,20 +137,20 @@ class PreviewSession:
                 self._catalog = build_resource_catalog(epub)
                 self._cache.clear()
             generation_id = self.generation_id + 1
-            provider = create_resource_provider(
-                epub,
-                generation_id,
-                dirty_overlay,
-                media_types,
-                catalog=self._catalog,
-                cache=self._cache,
-                pending=pending,
-            )
             frozen_overlay = MappingProxyType(
                 {
                     path: value.encode("utf-8") if isinstance(value, str) else bytes(value)
                     for path, value in dirty_overlay.items()
                 }
+            )
+            provider = create_resource_provider(
+                epub,
+                generation_id,
+                frozen_overlay,
+                media_types,
+                catalog=self._catalog,
+                cache=self._cache,
+                pending=pending,
             )
             self.generation_id = generation_id
             self.current_document = current_document

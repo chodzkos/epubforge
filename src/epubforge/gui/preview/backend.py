@@ -222,3 +222,7 @@ class PreviewBackend(QWidget):
     def dispose(self) -> None:
         """Zwalnia zasoby backendu (widgety, procesy renderera)."""
         raise NotImplementedError
+
+    def retained_resource_providers(self) -> tuple[object, ...]:
+        """Zwraca providery generacji, które backend nadal silnie utrzymuje."""
+        return ()

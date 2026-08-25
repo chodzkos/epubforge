@@ -274,12 +274,25 @@ class WebEnginePreviewBackend(ReaderWebEngineMixin, PreviewBackend):
 
     def dispose(self) -> None:
         """Unieważnia origin i zwalnia prywatny profil oraz renderer."""
+        self._last_snapshot = None
+        self._session = None
         self._registry.clear()
         self._profile.removeUrlSchemeHandler(self._handler)
         self._view.stop()
         self._page.deleteLater()
         self._view.deleteLater()
         self._profile.deleteLater()
+
+    def retained_resource_providers(self) -> tuple[object, ...]:
+        """Zwraca providery snapshotu i aktywnej generacji handlera."""
+        providers: list[object] = []
+        snapshot = self._last_snapshot
+        if snapshot is not None and snapshot.generation is not None:
+            providers.append(snapshot.generation.resource_provider)
+        generation = self._registry.current_generation()
+        if generation is not None:
+            providers.append(generation.resource_provider)
+        return tuple(providers)
 
     def _capture_then_load(self, snapshot: PreviewSnapshot) -> None:
         """Zapisuje stan starej strony, a następnie ładuje nową generację."""

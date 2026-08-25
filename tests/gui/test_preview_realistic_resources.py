@@ -13,6 +13,7 @@ from epubforge.gui.preview.backend import DiagnosticCategory
 from epubforge.gui.preview.controller import PreviewController
 from epubforge.gui.preview.reader import LayoutMode
 from epubforge.gui.preview.registry import PreviewGenerationRegistry
+from epubforge.gui.preview.resources import SnapshotResourceProvider
 from epubforge.gui.preview.rewrite import rewrite_css, rewrite_svg, rewrite_xhtml
 from epubforge.gui.preview.session import PreviewSession
 
@@ -103,6 +104,31 @@ def test_xhtml_and_css_references_use_resource_revisions(tmp_path: Path) -> None
     safe_svg = rewrite_svg(svg, generation, "OEBPS/images/icon.svg", svg_events.append)
     assert b"<script" not in safe_svg and b"onload" not in safe_svg
     assert [event.problem_kind for event in svg_events] == ["zablokowany_url"]
+    epub.close()
+
+
+def test_provider_retains_only_dirty_winner_for_pending_overlap(tmp_path: Path) -> None:
+    """Pending przegrany przez dirty nie zajmuje drugiego bufora providera."""
+    epub = Epub(_make_resource_epub(tmp_path / "overlap.epub"))
+    epub.open()
+    path = "OEBPS/styles/base.css"
+    epub.write_file(path, b"pending-old")
+    pending = epub.pending_changes()
+    session = PreviewSession.create(epub)
+
+    generation = session.advance(
+        epub,
+        "OEBPS/text/ch.xhtml",
+        {path: b"dirty-wins"},
+        pending=pending,
+    )
+
+    provider = generation.resource_provider
+    assert isinstance(provider, SnapshotResourceProvider)
+    assert provider.read(path, generation.generation_id) == b"dirty-wins"
+    assert path not in provider._buffered
+    assert provider.resident_bytes == len(b"dirty-wins")
+    session.close()
     epub.close()
 
 
