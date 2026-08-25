@@ -11,6 +11,7 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QPixmap, QResizeEvent
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
+from epubforge.gui.resource_limits import RasterStatus, probe_raster
 from epubforge.i18n import _
 
 _RESIZE_DEBOUNCE_MS = 80
@@ -34,8 +35,22 @@ class ImagePreview(QWidget):
         self._resize_timer.setInterval(_RESIZE_DEBOUNCE_MS)
         self._resize_timer.timeout.connect(self._rescale)
 
+    @property
+    def message(self) -> str:
+        """Bieżący tekst diagnostyczny podglądu obrazu."""
+        return self._label.text()
+
     def show_data(self, data: bytes) -> bool:
         """Ładuje obraz z bajtów. Zwraca ``False``, gdy formatu nie da się wczytać."""
+        probe = probe_raster(data)
+        if probe.status is RasterStatus.TOO_LARGE:
+            self._pixmap = None
+            self._label.setText(_("Obraz jest zbyt duży do bezpiecznego podglądu."))
+            return False
+        if probe.status is RasterStatus.INVALID:
+            self._pixmap = None
+            self._label.setText(_("Nie udało się wczytać obrazu"))
+            return False
         pixmap = QPixmap()
         if not pixmap.loadFromData(data):
             self._pixmap = None

@@ -9,7 +9,7 @@ from typing import Any
 from PySide6.QtCore import Slot
 from shiboken6 import isValid
 
-from epubforge.core import Epub
+from epubforge.core import Epub, PendingChanges
 from epubforge.gui.preview.backend import (
     DiagnosticCategory,
     DiagnosticEvent,
@@ -20,6 +20,13 @@ from epubforge.gui.preview.backend import (
 from epubforge.gui.preview.controller import PreviewController, SnapshotResult
 from epubforge.gui.preview.session import PreviewSession
 from epubforge.gui.preview.text_backend import TextDocumentPreviewBackend
+from epubforge.gui.resource_limits import (
+    MAX_MAIN_PREVIEW_BYTES,
+    MAX_PREVIEW_CSS_BYTES,
+    PreviewTextKind,
+    find_preview_text_violation,
+    utf8_fits,
+)
 from epubforge.gui.workers import EmitLine, EmitProgress, ShouldCancel, Worker
 from epubforge.i18n import _
 
@@ -35,6 +42,7 @@ class SnapshotRequest:
     current_text: str
     dirty: Mapping[str, str | bytes]
     media_types: Mapping[str, str]
+    pending: PendingChanges
 
 
 def build_snapshot_job(
@@ -54,6 +62,7 @@ def build_snapshot_job(
         current_text=request.current_text,
         dirty=request.dirty,
         media_types=request.media_types,
+        pending=request.pending,
     )
     return None if should_cancel() else result
 
@@ -91,6 +100,43 @@ class SnapshotWorkerMixin:
         media_types: Mapping[str, str] | None = None,
     ) -> None:
         """Kopiuje dane edytora i zleca ciężkie przygotowanie poza wątkiem GUI."""
+        current_media_types = media_types or {}
+        current_dirty = dirty or {}
+        current_pending = (
+            epub.pending_changes() if epub is not None else PendingChanges({}, frozenset())
+        )
+        is_css = internal_path is not None and (
+            internal_path.lower().endswith(".css")
+            or current_media_types.get(internal_path, "").lower() == "text/css"
+        )
+        violation = find_preview_text_violation(
+            current_path=internal_path,
+            dirty=current_dirty,
+            pending_sizes={path: len(data) for path, data in current_pending.modified.items()},
+            media_types=current_media_types,
+            document_limit=MAX_MAIN_PREVIEW_BYTES,
+            css_limit=MAX_PREVIEW_CSS_BYTES,
+        )
+        if violation is not None:
+            violation_is_css = violation.kind is PreviewTextKind.CSS
+            self._reject_oversized_preview(
+                _("Arkusz CSS jest zbyt duży do bezpiecznego podglądu.")
+                if violation_is_css
+                else _("Dokument jest zbyt duży do bezpiecznego podglądu."),
+                violation.path,
+                "zbyt_duzy_arkusz_css" if violation_is_css else "zbyt_duzy_dokument",
+            )
+            return
+        limit = MAX_PREVIEW_CSS_BYTES if is_css else MAX_MAIN_PREVIEW_BYTES
+        if not utf8_fits(xhtml, limit):
+            self._reject_oversized_preview(
+                _("Arkusz CSS jest zbyt duży do bezpiecznego podglądu.")
+                if is_css
+                else _("Dokument jest zbyt duży do bezpiecznego podglądu."),
+                internal_path,
+                "zbyt_duzy_arkusz_css" if is_css else "zbyt_duzy_dokument",
+            )
+            return
         if epub is None or internal_path is None or self._session is None:
             self._generation += 1
             snapshot = PreviewSnapshot(xhtml, epub, internal_path, self._generation)
@@ -107,8 +153,9 @@ class SnapshotWorkerMixin:
             session=self._session,
             current_path=internal_path,
             current_text=str(xhtml),
-            dirty=dict(dirty or {}),
-            media_types=dict(media_types or {}),
+            dirty=dict(current_dirty),
+            media_types=dict(current_media_types),
+            pending=current_pending,
         )
         self._status = PreviewStatus.RENDERING
         self._update_status()
@@ -117,6 +164,28 @@ class SnapshotWorkerMixin:
             self._snapshot_worker.cancel()
             return
         self._start_snapshot_worker(request)
+
+    def _reject_oversized_preview(
+        self, message: str, internal_path: str | None, problem_kind: str
+    ) -> None:
+        """Unieważnia starsze żądania i pokazuje diagnostykę bez budowania snapshotu."""
+        self._snapshot_serial += 1
+        self._pending_snapshot = None
+        if self._snapshot_worker is not None:
+            self._snapshot_worker.cancel()
+        self._status = PreviewStatus.LAST_GOOD
+        self._update_status()
+        self.fallback_label.setText(message)
+        self.fallback_label.setVisible(True)
+        self.diagnostics.emit(
+            DiagnosticEvent(
+                category=DiagnosticCategory.PREVIEW_LIMIT,
+                message=message,
+                problem_kind=problem_kind,
+                internal_path=internal_path,
+                requester=internal_path,
+            )
+        )
 
     def _start_snapshot_worker(self, request: SnapshotRequest) -> None:
         worker = Worker(build_snapshot_job, self._controller, request)

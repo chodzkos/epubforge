@@ -13,6 +13,7 @@ from epubforge.core import (
     EpubNotOpenError,
     InvalidEpubError,
     OpfNotFoundError,
+    ResourceLimitError,
 )
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sample.epub"
@@ -346,3 +347,50 @@ def test_save_is_reproducible_with_fixed_timestamp(tmp_path: Path) -> None:
         assert by_name["mimetype"].date_time == (1980, 1, 1, 0, 0, 0)
         assert by_name["OEBPS/content.opf"].date_time == (1980, 1, 1, 0, 0, 0)  # zmodyfikowany
         assert by_name["OEBPS/new.xhtml"].date_time == (1980, 1, 1, 0, 0, 0)  # nowy
+
+
+def test_file_size_uses_zip_metadata_and_pending_buffer(epub_path: Path) -> None:
+    """Rozmiar wpisu jest dostępny bez materializacji i uwzględnia pending bytes."""
+    internal = "OEBPS/text/chapter1.xhtml"
+    with Epub(epub_path) as epub:
+        expected = epub._zip.getinfo(internal).file_size  # type: ignore[union-attr]
+        assert epub.get_file_size(internal) == expected
+        epub.write_file(internal, b"pending")
+        assert epub.get_file_size(internal) == len(b"pending")
+
+
+def test_read_file_limited_allows_exact_limit_and_rejects_limit_minus_one(
+    epub_path: Path,
+) -> None:
+    """Odczyt limitowany zachowuje domknięte <= na granicy budżetu."""
+    internal = "OEBPS/text/chapter1.xhtml"
+    with Epub(epub_path) as epub:
+        size = epub.get_file_size(internal)
+        assert epub.read_file_limited(internal, size) == epub.read_file(internal)
+        with pytest.raises(ResourceLimitError):
+            epub.read_file_limited(internal, size - 1)
+
+
+def test_read_file_limited_rejects_before_full_read(
+    epub_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Limit+1 odpada na ZipInfo, zanim zostanie wywołane pełne ZipFile.read."""
+    internal = "OEBPS/text/chapter1.xhtml"
+    with Epub(epub_path) as epub:
+        size = epub.get_file_size(internal)
+
+        def forbidden_read(_path: str) -> bytes:
+            pytest.fail("pełny read_file nie może zostać wywołany po przekroczeniu limitu")
+
+        monkeypatch.setattr(epub, "read_file", forbidden_read)
+        with pytest.raises(ResourceLimitError):
+            epub.read_file_limited(internal, size - 1)
+
+
+def test_read_source_file_limited_ignores_pending_overlay(epub_path: Path) -> None:
+    """Zamrożony snapshot może czytać źródło spod późniejszego pending."""
+    internal = "OEBPS/content.opf"
+    with Epub(epub_path) as epub:
+        source = epub.read_file(internal)
+        epub.write_file(internal, b"<package>late pending</package>")
+        assert epub.read_source_file_limited(internal, len(source)) == source

@@ -52,7 +52,8 @@ def test_epub_resolver_accepts_internal_parent_and_rejects_escape() -> None:
     calls: list[str] = []
 
     class FakeEpub:
-        def read_file(self, path: str) -> bytes:
+        def read_file_limited(self, path: str, max_bytes: int) -> bytes:
+            assert max_bytes == 3 * 1024 * 1024
             calls.append(path)
             return _PNG
 

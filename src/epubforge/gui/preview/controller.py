@@ -8,7 +8,7 @@ from threading import RLock
 
 from lxml import etree
 
-from epubforge.core import Epub
+from epubforge.core import Epub, PendingChanges
 from epubforge.core._xml_safe import XmlSecurityError, parse_untrusted, parse_untrusted_document
 from epubforge.gui.preview.backend import (
     DiagnosticCategory,
@@ -17,6 +17,13 @@ from epubforge.gui.preview.backend import (
 )
 from epubforge.gui.preview.reader import PublicationLayout, detect_publication_layout
 from epubforge.gui.preview.session import PreviewSession
+from epubforge.gui.resource_limits import (
+    MAX_MAIN_PREVIEW_BYTES,
+    MAX_PREVIEW_CSS_BYTES,
+    PreviewTextKind,
+    find_preview_text_violation,
+    utf8_fits,
+)
 from epubforge.i18n import _
 
 
@@ -46,6 +53,7 @@ class PreviewController:
         current_text: str,
         dirty: Mapping[str, str | bytes],
         media_types: Mapping[str, str],
+        pending: PendingChanges | None = None,
     ) -> SnapshotResult:
         """Buduje generację, w której tekst edytora ma najwyższy priorytet."""
         with self._lock:
@@ -56,6 +64,7 @@ class PreviewController:
                 current_text=current_text,
                 dirty=dirty,
                 media_types=media_types,
+                pending=pending if pending is not None else epub.pending_changes(),
             )
 
     def _build_locked(
@@ -67,11 +76,50 @@ class PreviewController:
         current_text: str,
         dirty: Mapping[str, str | bytes],
         media_types: Mapping[str, str],
+        pending: PendingChanges,
     ) -> SnapshotResult:
         """Wykonuje ciężkie parsowanie pod blokadą kontrolera, poza wątkiem GUI."""
+        is_css = _is_css(current_path, media_types.get(current_path))
+        violation = find_preview_text_violation(
+            current_path=current_path,
+            dirty=dirty,
+            pending_sizes={path: len(data) for path, data in pending.modified.items()},
+            media_types=media_types,
+            document_limit=MAX_MAIN_PREVIEW_BYTES,
+            css_limit=MAX_PREVIEW_CSS_BYTES,
+        )
+        if violation is not None:
+            violation_is_css = violation.kind is PreviewTextKind.CSS
+            return SnapshotResult(
+                None,
+                DiagnosticEvent(
+                    category=DiagnosticCategory.PREVIEW_LIMIT,
+                    message=_("Arkusz CSS jest zbyt duży do bezpiecznego podglądu.")
+                    if violation_is_css
+                    else _("Dokument jest zbyt duży do bezpiecznego podglądu."),
+                    problem_kind="zbyt_duzy_arkusz_css"
+                    if violation_is_css
+                    else "zbyt_duzy_dokument",
+                    internal_path=violation.path,
+                    requester=current_path,
+                ),
+            )
+        limit = MAX_PREVIEW_CSS_BYTES if is_css else MAX_MAIN_PREVIEW_BYTES
+        if not utf8_fits(current_text, limit):
+            return SnapshotResult(
+                None,
+                DiagnosticEvent(
+                    category=DiagnosticCategory.PREVIEW_LIMIT,
+                    message=_("Arkusz CSS jest zbyt duży do bezpiecznego podglądu.")
+                    if is_css
+                    else _("Dokument jest zbyt duży do bezpiecznego podglądu."),
+                    problem_kind="zbyt_duzy_arkusz_css" if is_css else "zbyt_duzy_dokument",
+                    internal_path=current_path,
+                    requester=current_path,
+                ),
+            )
         overlay: dict[str, str | bytes] = dict(dirty)
         overlay[current_path] = current_text
-        is_css = _is_css(current_path, media_types.get(current_path))
         if is_css:
             if self._last_document is None or self._last_xhtml is None:
                 return SnapshotResult(
@@ -109,9 +157,11 @@ class PreviewController:
                 )
             self._last_document = document
             self._last_xhtml = xhtml
-            publication_layout = _publication_layout(epub, xhtml, overlay)
+            publication_layout = _publication_layout(epub, xhtml, overlay, pending)
             self._last_layout = publication_layout
-        generation = session.advance(epub, document, overlay, media_types, css_only=is_css)
+        generation = session.advance(
+            epub, document, overlay, media_types, css_only=is_css, pending=pending
+        )
         return SnapshotResult(
             PreviewSnapshot(
                 xhtml=xhtml,
@@ -134,13 +184,20 @@ class PreviewController:
 
 
 def _publication_layout(
-    epub: Epub, xhtml: str, overlay: Mapping[str, str | bytes]
+    epub: Epub,
+    xhtml: str,
+    overlay: Mapping[str, str | bytes],
+    pending: PendingChanges,
 ) -> PublicationLayout:
-    """Czyta bieżący OPF (z dirty overlay), a błąd degraduje do reflowable."""
+    """Czyta bieżący OPF (z zamrożonych overlay/pending), a błąd degraduje."""
     try:
         opf_value = overlay.get(epub.opf_path)
         if opf_value is None:
-            opf = epub.read_file(epub.opf_path)
+            opf_value = pending.modified.get(epub.opf_path)
+        if opf_value is None:
+            if epub.opf_path in pending.deleted:
+                raise KeyError(epub.opf_path)
+            opf = epub.read_source_file_limited(epub.opf_path, MAX_MAIN_PREVIEW_BYTES)
         elif isinstance(opf_value, str):
             opf = opf_value.encode("utf-8")
         else:

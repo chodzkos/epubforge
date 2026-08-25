@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import struct
 import subprocess
 import sys
 
@@ -90,3 +91,21 @@ def test_secure_profile_and_reply_buffer_in_isolated_process() -> None:
         env=env,
     )
     assert completed.returncode == 0, completed.stdout + completed.stderr
+
+
+@pytest.mark.skipif(not _WEBENGINE_AVAILABLE, reason="Brak Qt WebEngine")
+def test_webengine_raster_guard_rejects_huge_dimensions() -> None:
+    """Handler dokładnego toru odrzuca 81 MP przed przekazaniem danych Chromium."""
+    from epubforge.gui.preview.webengine_security import raster_diagnostic
+
+    header_size = 54
+    bmp = (
+        b"BM"
+        + struct.pack("<IHHI", header_size, 0, 0, header_size)
+        + struct.pack("<IiiHHIIiiII", 40, 9_000, 9_000, 1, 32, 0, 0, 0, 0, 0, 0)
+    )
+
+    diagnostic = raster_diagnostic(bmp, "image/bmp", "OEBPS/images/huge.bmp")
+    assert diagnostic is not None
+    assert diagnostic.problem_kind == "zbyt_duzy_obraz"
+    assert diagnostic.internal_path == "OEBPS/images/huge.bmp"

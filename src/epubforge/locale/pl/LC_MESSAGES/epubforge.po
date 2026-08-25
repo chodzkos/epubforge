@@ -4437,6 +4437,42 @@ msgstr "Nie udało się odczytać raportu EpubCheck: {error}"
 msgid "Raport EpubCheck ma nieoczekiwany format."
 msgstr "Raport EpubCheck ma nieoczekiwany format."
 
+#: src/epubforge/gui/preview/controller.py src/epubforge/gui/preview/snapshot_worker.py
+msgid "Dokument jest zbyt duży do bezpiecznego podglądu."
+msgstr "Dokument jest zbyt duży do bezpiecznego podglądu."
+
+#: src/epubforge/gui/preview/controller.py src/epubforge/gui/preview/snapshot_worker.py
+msgid "Arkusz CSS jest zbyt duży do bezpiecznego podglądu."
+msgstr "Arkusz CSS jest zbyt duży do bezpiecznego podglądu."
+
+#: src/epubforge/gui/tabs/editor.py src/epubforge/gui/widgets/image_preview.py
+#: src/epubforge/gui/preview/webengine_security.py
+msgid "Obraz jest zbyt duży do bezpiecznego podglądu."
+msgstr "Obraz jest zbyt duży do bezpiecznego podglądu."
+
+#: src/epubforge/gui/preview/webengine_security.py
+msgid "Nie udało się wczytać obrazu."
+msgstr "Nie udało się wczytać obrazu."
+
+#: src/epubforge/gui/tabs/editor.py
+msgid "Zasób jest zbyt duży do bezpiecznej edycji."
+msgstr "Zasób jest zbyt duży do bezpiecznej edycji."
+
+#: src/epubforge/gui/tabs/editor.py
+#, python-brace-format
+msgid ""
+"{message}\n"
+"\n"
+"Zasób: {name}\n"
+"Rozmiar: {size} B\n"
+"Limit: {limit} B"
+msgstr ""
+"{message}\n"
+"\n"
+"Zasób: {name}\n"
+"Rozmiar: {size} B\n"
+"Limit: {limit} B"
+
 #~ msgid "Plik wejściowy"
 #~ msgstr "Plik wejściowy"
 
