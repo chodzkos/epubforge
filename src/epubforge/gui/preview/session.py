@@ -12,7 +12,7 @@ from types import MappingProxyType
 
 from lxml import etree
 
-from epubforge.core import Epub
+from epubforge.core import Epub, PendingChanges
 from epubforge.core._xml_safe import XmlSecurityError
 from epubforge.gui.preview.cache import CacheLimits, CacheStats, ResourceByteCache
 from epubforge.gui.preview.dom_mapping import SourceNode, build_source_map
@@ -124,6 +124,7 @@ class PreviewSession:
         media_types: Mapping[str, str] | None = None,
         *,
         css_only: bool = False,
+        pending: PendingChanges | None = None,
     ) -> PreviewGeneration:
         """Tworzy i aktywuje kolejną nieruchomą generację zasobów."""
         started = time.perf_counter()
@@ -143,6 +144,7 @@ class PreviewSession:
                 media_types,
                 catalog=self._catalog,
                 cache=self._cache,
+                pending=pending,
             )
             frozen_overlay = MappingProxyType(
                 {

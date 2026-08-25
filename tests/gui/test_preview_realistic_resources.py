@@ -5,9 +5,13 @@ from __future__ import annotations
 import zipfile
 from pathlib import Path
 
+import pytest
+
 from epubforge.core import Epub
+from epubforge.gui.preview import controller as controller_module
 from epubforge.gui.preview.backend import DiagnosticCategory
 from epubforge.gui.preview.controller import PreviewController
+from epubforge.gui.preview.reader import LayoutMode
 from epubforge.gui.preview.registry import PreviewGenerationRegistry
 from epubforge.gui.preview.rewrite import rewrite_css, rewrite_svg, rewrite_xhtml
 from epubforge.gui.preview.session import PreviewSession
@@ -261,4 +265,183 @@ def test_missing_and_external_resources_report_safe_diagnostics(tmp_path: Path) 
     blocked = next(event for event in events if event.problem_kind == "zablokowany_url")
     assert blocked.source_url == "file:[ukryto]"
     assert str(tmp_path) not in repr(events)
+    epub.close()
+
+
+def test_controller_rejects_oversized_xhtml_before_xml_parse(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Core pipeline podglądu ma własny guard przed parse/source map/overlay."""
+    epub = Epub(_make_resource_epub(tmp_path / "controller-limit.epub"))
+    epub.open()
+    session = PreviewSession.create(epub)
+    controller = PreviewController()
+    monkeypatch.setattr(controller_module, "MAX_MAIN_PREVIEW_BYTES", 64)
+    monkeypatch.setattr(
+        controller_module,
+        "parse_untrusted",
+        lambda _data: pytest.fail("oversized XHTML nie może trafić do parsera"),
+    )
+    source = "<p>" + "x" * 58 + "</p>"  # dokładnie limit + 1 bajt UTF-8
+
+    result = controller.build(
+        epub=epub,
+        session=session,
+        current_path="OEBPS/text/ch.xhtml",
+        current_text=source,
+        dirty={},
+        media_types={"OEBPS/text/ch.xhtml": "application/xhtml+xml"},
+    )
+
+    assert result.snapshot is None
+    assert result.diagnostic is not None
+    assert result.diagnostic.category is DiagnosticCategory.PREVIEW_LIMIT
+    assert source not in result.diagnostic.message
+    epub.close()
+
+
+def test_controller_rejects_oversized_css_before_overlay(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """CSS ma skalibrowany hard ceiling zanim powstaną kopie overlay/provider."""
+    epub = Epub(_make_resource_epub(tmp_path / "controller-css-limit.epub"))
+    epub.open()
+    controller = PreviewController()
+    monkeypatch.setattr(controller_module, "MAX_PREVIEW_CSS_BYTES", 64)
+
+    result = controller.build(
+        epub=epub,
+        session=PreviewSession.create(epub),
+        current_path="OEBPS/styles/base.css",
+        current_text="x" * 65,
+        dirty={},
+        media_types={"OEBPS/styles/base.css": "text/css"},
+    )
+
+    assert result.snapshot is None
+    assert result.diagnostic is not None
+    assert result.diagnostic.category is DiagnosticCategory.PREVIEW_LIMIT
+    assert result.diagnostic.problem_kind == "zbyt_duzy_arkusz_css"
+    epub.close()
+
+
+@pytest.mark.parametrize(
+    ("path", "media_type", "limit_name"),
+    [
+        ("OEBPS/styles/dirty.css", "text/css", "MAX_PREVIEW_CSS_BYTES"),
+        ("OEBPS/text/dirty.xhtml", "application/xhtml+xml", "MAX_MAIN_PREVIEW_BYTES"),
+    ],
+)
+def test_controller_rejects_oversized_dirty_text_before_overlay_copy(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    path: str,
+    media_type: str,
+    limit_name: str,
+) -> None:
+    """Defense in depth kontrolera sprawdza cały dirty mapping przed dict()."""
+    epub = Epub(_make_resource_epub(tmp_path / "controller-dirty-limit.epub"))
+    epub.open()
+    monkeypatch.setattr(controller_module, limit_name, 64)
+
+    result = PreviewController().build(
+        epub=epub,
+        session=PreviewSession.create(epub),
+        current_path="OEBPS/text/ch.xhtml",
+        current_text="<html><body>small</body></html>",
+        dirty={path: "x" * 65},
+        media_types={path: media_type},
+    )
+
+    assert result.snapshot is None
+    assert result.diagnostic is not None
+    assert result.diagnostic.category is DiagnosticCategory.PREVIEW_LIMIT
+    epub.close()
+
+
+def test_controller_rejects_oversized_pending_css_before_session_advance(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Defense in depth kontrolera sprawdza pending sizes przed providerem."""
+    epub = Epub(_make_resource_epub(tmp_path / "controller-pending-limit.epub"))
+    epub.open()
+    path = "OEBPS/styles/pending.css"
+    epub.write_file(path, b"x" * 65)
+    monkeypatch.setattr(controller_module, "MAX_PREVIEW_CSS_BYTES", 64)
+
+    result = PreviewController().build(
+        epub=epub,
+        session=PreviewSession.create(epub),
+        current_path="OEBPS/text/ch.xhtml",
+        current_text="<html><body>small</body></html>",
+        dirty={},
+        media_types={path: "text/css"},
+    )
+
+    assert result.snapshot is None
+    assert result.diagnostic is not None
+    assert result.diagnostic.problem_kind == "zbyt_duzy_arkusz_css"
+    epub.close()
+
+
+def test_controller_uses_same_pending_snapshot_for_validation_and_provider(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Mutacja pending po guardzie nie może wejść do providera bieżącej generacji."""
+    epub = Epub(_make_resource_epub(tmp_path / "controller-pending-race.epub"))
+    epub.open()
+    late_path = "OEBPS/styles/late.css"
+
+    def mutate_after_snapshot(**_kwargs: object) -> None:
+        epub.write_file(late_path, b"x" * 65)
+        return None
+
+    monkeypatch.setattr(controller_module, "find_preview_text_violation", mutate_after_snapshot)
+    result = PreviewController().build(
+        epub=epub,
+        session=PreviewSession.create(epub),
+        current_path="OEBPS/text/ch.xhtml",
+        current_text="<html><body>small</body></html>",
+        dirty={},
+        media_types={late_path: "text/css"},
+    )
+
+    assert result.snapshot is not None and result.snapshot.generation is not None
+    provider = result.snapshot.generation.resource_provider
+    assert provider.read(late_path, result.snapshot.generation_id) is None
+    assert epub.get_file_size(late_path) == 65
+    epub.close()
+
+
+def test_late_opf_pending_mutation_does_not_change_frozen_layout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Layout i provider korzystają z tej samej zamrożonej wersji OPF."""
+    epub = Epub(_make_resource_epub(tmp_path / "controller-opf-race.epub"))
+    epub.open()
+    source_opf = epub.read_file(epub.opf_path)
+    fixed_opf = source_opf.replace(
+        b"</metadata>",
+        b'<meta property="rendition:layout">pre-paginated</meta></metadata>',
+    )
+
+    def mutate_after_snapshot(**_kwargs: object) -> None:
+        epub.write_file(epub.opf_path, fixed_opf)
+        return None
+
+    monkeypatch.setattr(controller_module, "find_preview_text_violation", mutate_after_snapshot)
+    result = PreviewController().build(
+        epub=epub,
+        session=PreviewSession.create(epub),
+        current_path="OEBPS/text/ch.xhtml",
+        current_text="<html><body>small</body></html>",
+        dirty={},
+        media_types={},
+    )
+
+    assert result.snapshot is not None and result.snapshot.generation is not None
+    assert result.snapshot.publication_layout.layout is LayoutMode.REFLOWABLE
+    provider = result.snapshot.generation.resource_provider
+    assert provider.read(epub.opf_path, result.snapshot.generation_id) == source_opf
+    assert epub.read_file(epub.opf_path) == fixed_opf
     epub.close()

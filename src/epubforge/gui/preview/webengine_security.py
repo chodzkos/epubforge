@@ -19,9 +19,12 @@ from PySide6.QtWebEngineCore import (
 )
 
 from epubforge.core._xml_safe import XmlSecurityError
+from epubforge.gui.preview.backend import DiagnosticCategory, DiagnosticEvent
 from epubforge.gui.preview.preinit import EPUB_PREVIEW_SCHEME
 from epubforge.gui.preview.registry import PreviewGenerationRegistry
 from epubforge.gui.preview.rewrite import rewrite_css, rewrite_svg, rewrite_xhtml
+from epubforge.gui.resource_limits import RasterStatus, probe_raster
+from epubforge.i18n import _
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +73,11 @@ class PreviewSchemeHandler(QWebEngineUrlSchemeHandler):
             job.fail(QWebEngineUrlRequestJob.Error.UrlNotFound)
             return
         data, media_type = resolved.data, resolved.media_type
+        raster_problem = raster_diagnostic(data, media_type, resolved.request.internal_path)
+        if raster_problem is not None:
+            self.diagnostics.emit(raster_problem)
+            job.fail(QWebEngineUrlRequestJob.Error.RequestFailed)
+            return
         try:
             if media_type in _XHTML_TYPES:
                 data = rewrite_xhtml(
@@ -98,6 +106,30 @@ class PreviewSchemeHandler(QWebEngineUrlSchemeHandler):
             return
         buffer = make_reply_buffer(data, job)
         job.reply(media_type.encode("ascii", errors="strict"), buffer)
+
+
+def raster_diagnostic(data: bytes, media_type: str, internal_path: str) -> DiagnosticEvent | None:
+    """Zwraca bezpieczną diagnostykę rastra odrzuconego przed dekodem Chromium."""
+    if not media_type.startswith("image/") or media_type == "image/svg+xml":
+        return None
+    probe = probe_raster(data)
+    if probe.status is RasterStatus.OK:
+        return None
+    if probe.status is RasterStatus.TOO_LARGE:
+        return DiagnosticEvent(
+            category=DiagnosticCategory.PREVIEW_LIMIT,
+            message=_("Obraz jest zbyt duży do bezpiecznego podglądu."),
+            problem_kind="zbyt_duzy_obraz",
+            internal_path=internal_path,
+            requester=internal_path,
+        )
+    return DiagnosticEvent(
+        category=DiagnosticCategory.BOOK_ERROR,
+        message=_("Nie udało się wczytać obrazu."),
+        problem_kind="niepoprawny_obraz",
+        internal_path=internal_path,
+        requester=internal_path,
+    )
 
 
 def make_reply_buffer(data: bytes, parent: QObject) -> QBuffer:

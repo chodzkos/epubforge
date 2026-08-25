@@ -26,10 +26,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from epubforge.core import ConfigStore, Epub, Tool
+from epubforge.core import ConfigStore, Epub, ResourceLimitError, Tool
 from epubforge.core._xml_safe import XmlSecurityError, parse_untrusted
 from epubforge.gui import editor_files as ef
 from epubforge.gui.preview import PreviewSession, PreviewSettings
+from epubforge.gui.resource_limits import (
+    MAX_DIRECT_IMAGE_ENCODED_BYTES,
+    MAX_EDITOR_TEXT_BYTES,
+)
 from epubforge.gui.tabs.editor_layout import EditorLayoutMixin
 from epubforge.gui.tabs.editor_preview import (
     _PAGE_EDITOR,
@@ -303,22 +307,65 @@ class EditorTab(EditorLayoutMixin, EditorPreviewMixin, QWidget):
             return
         self._current = internal
         media_type = self._media_types.get(internal)
-        data = self._epub.read_file(internal)
+        size = self._epub.get_file_size(internal)
 
         if ef.is_image(internal, media_type):
-            self.image_preview.show_data(data)
+            try:
+                data = self._epub.read_file_limited(internal, MAX_DIRECT_IMAGE_ENCODED_BYTES)
+            except ResourceLimitError:
+                self._show_resource_limit(
+                    internal,
+                    size,
+                    MAX_DIRECT_IMAGE_ENCODED_BYTES,
+                    _("Obraz jest zbyt duży do bezpiecznego podglądu."),
+                )
+                return
+            loaded = self.image_preview.show_data(data)
+            if not loaded:
+                self._readonly_files.add(internal)
+                self.code_editor.load("", None)
+                self._apply_read_only()
             self.stack.setCurrentIndex(_PAGE_IMAGE)
             self.view_switch.setVisible(False)
-            self._set_info_bar("")
+            self._set_info_bar("" if loaded else self.image_preview.message)
         elif ef.is_editable(internal, media_type):
+            if size > MAX_EDITOR_TEXT_BYTES:
+                self._show_resource_limit(
+                    internal,
+                    size,
+                    MAX_EDITOR_TEXT_BYTES,
+                    _("Zasób jest zbyt duży do bezpiecznej edycji."),
+                )
+                return
+            data = self._epub.read_file_limited(internal, MAX_EDITOR_TEXT_BYTES)
             self._show_in_editor(internal, media_type, data)
         else:
-            self.info_panel.setText(self._binary_info(internal, media_type, len(data)))
+            self.code_editor.load("", None)
+            self.info_panel.setText(self._binary_info(internal, media_type, size))
             self.stack.setCurrentIndex(_PAGE_INFO)
             self.view_switch.setVisible(False)
             self._set_info_bar("")
         self._update_inspector()
         # W trybie dzielonym: podgląd obok pokazuj tylko dla HTML (inaczej ukryj).
+        self._sync_split_preview()
+
+    def _show_resource_limit(self, internal: str, size: int, limit: int, message: str) -> None:
+        """Pokazuje kontrolowaną informację bez umieszczania jej w dokumencie edytora."""
+        self._readonly_files.add(internal)
+        self.code_editor.load("", None)
+        self._apply_read_only()
+        self.info_panel.setText(
+            _("{message}\n\nZasób: {name}\nRozmiar: {size} B\nLimit: {limit} B").format(
+                message=message,
+                name=internal,
+                size=size,
+                limit=limit,
+            )
+        )
+        self.stack.setCurrentIndex(_PAGE_INFO)
+        self.view_switch.setVisible(False)
+        self._set_info_bar(message)
+        self._update_inspector()
         self._sync_split_preview()
 
     def _show_in_editor(self, internal: str, media_type: str | None, data: bytes) -> None:

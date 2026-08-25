@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import struct
 import zipfile
 from pathlib import Path
 
@@ -12,8 +13,10 @@ from PySide6.QtWidgets import QAbstractButton, QHeaderView, QMessageBox
 from pytestqt.qtbot import QtBot
 
 from epubforge.core import Epub, Tool
+from epubforge.gui.tabs import editor as editor_module
 from epubforge.gui.tabs import editor_preview
 from epubforge.gui.tabs.editor import EditorTab
+from epubforge.gui.tabs.editor_preview import _PAGE_INFO
 from epubforge.gui.widgets.code_editor import CodeEditor
 from epubforge.gui.widgets.syntax_highlight import XmlHighlighter
 
@@ -34,6 +37,31 @@ def _handoff_tools() -> dict[str, Tool]:
         "sigil": Tool("sigil", Path("/tools/sigil"), "", True),
         "calibre_editor": Tool("calibre_editor", Path("/tools/ebook-edit"), "", True),
     }
+
+
+def _make_single_resource_epub(path: Path, internal: str, media_type: str, payload: bytes) -> Path:
+    """Buduje mały EPUB z jednym zasobem testowym zapisanym bez kompresji."""
+    container = (
+        b'<?xml version="1.0"?><container version="1.0" '
+        b'xmlns="urn:oasis:names:tc:opendocument:xmlns:container">'
+        b'<rootfiles><rootfile full-path="OEBPS/content.opf" '
+        b'media-type="application/oebps-package+xml"/></rootfiles></container>'
+    )
+    href = internal.removeprefix("OEBPS/")
+    opf = (
+        b'<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" '
+        b'version="3.0"><metadata/><manifest><item id="r" href="'
+        + href.encode()
+        + b'" media-type="'
+        + media_type.encode()
+        + b'"/></manifest><spine/></package>'
+    )
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("mimetype", b"application/epub+zip", zipfile.ZIP_STORED)
+        archive.writestr("META-INF/container.xml", container, zipfile.ZIP_STORED)
+        archive.writestr("OEBPS/content.opf", opf, zipfile.ZIP_STORED)
+        archive.writestr(internal, payload, zipfile.ZIP_STORED)
+    return path
 
 
 # ── CodeEditor ─────────────────────────────────────────────────────────────--
@@ -392,3 +420,143 @@ def test_image_file_shows_preview_page(qtbot: QtBot, tmp_path: Path) -> None:
     tab.open_epub(book)
     tab._select_path("OEBPS/img/p.png")
     assert tab.stack.currentIndex() == 1  # strona podglądu obrazu
+
+
+def test_editor_rejects_limit_plus_one_before_materialization(
+    qtbot: QtBot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tekst limit+1 pokazuje informację bez read/decode/QTextDocument i bez dirty."""
+    limit = 64
+    internal = "OEBPS/text/large.xhtml"
+    book = _make_single_resource_epub(
+        tmp_path / "large-text.epub", internal, "application/xhtml+xml", b"x" * (limit + 1)
+    )
+    monkeypatch.setattr(editor_module, "MAX_EDITOR_TEXT_BYTES", limit)
+    tab = EditorTab()
+    qtbot.addWidget(tab)
+    assert tab.open_epub(book)
+    assert tab._epub is not None
+    original_read = tab._epub.read_file
+
+    def guarded_read(path: str) -> bytes:
+        if path == internal:
+            pytest.fail("oversized tekst nie może wywołać read_file")
+        return original_read(path)
+
+    monkeypatch.setattr(tab._epub, "read_file", guarded_read)
+    tab._show_file(internal)
+
+    assert tab.stack.currentIndex() == _PAGE_INFO
+    assert "zbyt duży" in tab.info_panel.text().lower()
+    assert internal not in tab._dirty
+    assert tab.code_editor.get_text() == ""
+
+
+@pytest.mark.parametrize("size", [63, 64])
+def test_editor_opens_limit_minus_one_and_exact_limit(
+    qtbot: QtBot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, size: int
+) -> None:
+    """Tekst limit-1 oraz dokładnie limit przechodzą normalną ścieżkę edytora."""
+    internal = "OEBPS/text/allowed.xhtml"
+    book = _make_single_resource_epub(
+        tmp_path / f"allowed-{size}.epub", internal, "application/xhtml+xml", b"x" * size
+    )
+    monkeypatch.setattr(editor_module, "MAX_EDITOR_TEXT_BYTES", 64)
+    tab = EditorTab()
+    qtbot.addWidget(tab)
+    assert tab.open_epub(book)
+
+    tab._show_file(internal)
+
+    assert tab.code_editor.get_text() == "x" * size
+    assert tab.stack.currentIndex() == 0
+
+
+def test_binary_100_mib_uses_metadata_without_materialization(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Kliknięcie dużego fontu pokazuje nazwę/typ/rozmiar bez read_file."""
+    internal = "OEBPS/fonts/huge.ttf"
+    tab = EditorTab()
+    qtbot.addWidget(tab)
+    assert tab.open_epub(_FIXTURE)
+    assert tab._epub is not None
+    tab._media_types[internal] = "font/ttf"
+    monkeypatch.setattr(tab._epub, "get_file_size", lambda _path: 100 * 1024 * 1024)
+    monkeypatch.setattr(
+        tab._epub,
+        "read_file",
+        lambda _path: pytest.fail("panel metadanych binarium nie może czytać treści"),
+    )
+
+    tab._show_file(internal)
+
+    assert tab.stack.currentIndex() == _PAGE_INFO
+    assert internal in tab.info_panel.text()
+    assert "104857600" in tab.info_panel.text()
+
+
+def test_skipped_oversized_member_is_preserved_after_edit_and_save(
+    qtbot: QtBot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Odrzucony obraz pozostaje bajtowo nietknięty po zapisie małego rozdziału."""
+    book = _copy_fixture(tmp_path)
+    large_path = "OEBPS/images/large.png"
+    large_payload = (b"unchanged-large-resource-" * 45_000)[: 1024 * 1024]
+    with zipfile.ZipFile(book, "a") as archive:
+        archive.writestr(large_path, large_payload, zipfile.ZIP_STORED)
+    monkeypatch.setattr(editor_module, "MAX_DIRECT_IMAGE_ENCODED_BYTES", 512 * 1024)
+    tab = EditorTab()
+    qtbot.addWidget(tab)
+    assert tab.open_epub(book)
+
+    tab._show_file(large_path)
+    assert "zbyt duży" in tab.info_panel.text().lower()
+    tab.edit_toggle.setChecked(True)
+    tab._select_path(_CHAPTER)
+    cursor = tab.code_editor.editor.textCursor()
+    cursor.select(QTextCursor.SelectionType.Document)
+    cursor.insertText('<html xmlns="http://www.w3.org/1999/xhtml"><body>mała zmiana</body></html>')
+    assert tab._save_current()
+    tab._save_epub()
+
+    with zipfile.ZipFile(book) as archive:
+        saved = archive.read(large_path)
+        assert saved == large_payload
+        assert len(saved) == len(large_payload)
+        assert "zbyt duży".encode() not in saved.lower()
+
+
+def test_dimension_rejected_image_cannot_receive_stale_editor_content(
+    qtbot: QtBot, tmp_path: Path
+) -> None:
+    """Odrzucony raster czyści stale QTextDocument i blokuje Ctrl+S dla obrazu."""
+    internal = "OEBPS/images/huge.bmp"
+    header_size = 54
+    huge_bmp = (
+        b"BM"
+        + struct.pack("<IHHI", header_size, 0, 0, header_size)
+        + struct.pack("<IiiHHIIiiII", 40, 9_000, 9_000, 1, 32, 0, 0, 0, 0, 0, 0)
+    )
+    book = _make_single_resource_epub(
+        tmp_path / "huge-raster.epub", internal, "image/bmp", huge_bmp
+    )
+    tab = EditorTab()
+    qtbot.addWidget(tab)
+    assert tab.open_epub(book)
+    tab.edit_toggle.setChecked(True)
+    tab.code_editor.load("stale text", None)
+    cursor = tab.code_editor.editor.textCursor()
+    cursor.movePosition(QTextCursor.MoveOperation.End)
+    cursor.insertText(" modified")
+    assert tab.code_editor.is_modified()
+
+    tab._show_file(internal)
+
+    assert tab.code_editor.get_text() == ""
+    assert not tab.code_editor.is_modified()
+    assert tab.code_editor.read_only
+    assert not tab._save_current()
+    assert internal not in tab._dirty
+    with zipfile.ZipFile(book) as archive:
+        assert archive.read(internal) == huge_bmp

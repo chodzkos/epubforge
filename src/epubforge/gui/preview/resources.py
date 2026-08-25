@@ -11,7 +11,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Protocol
 
-from epubforge.core import Epub
+from epubforge.core import Epub, PendingChanges
 from epubforge.core.exceptions import InvalidPublicationHrefError
 from epubforge.core.publication_href import resolve_publication_member
 from epubforge.gui.preview.cache import CacheStats, ResourceByteCache, resource_kind
@@ -221,6 +221,7 @@ def create_resource_provider(
     *,
     catalog: ResourceCatalog | None = None,
     cache: ResourceByteCache | None = None,
+    pending: PendingChanges | None = None,
 ) -> SnapshotResourceProvider:
     """Buduje nieruchomą migawkę logicznej zawartości otwartego EPUB-a."""
     dirty = {
@@ -229,11 +230,12 @@ def create_resource_provider(
         else bytes(value)
         for path, value in dirty_overlay.items()
     }
-    pending = epub.pending_changes()
+    current_pending = pending if pending is not None else epub.pending_changes()
     buffered = {
-        normalize_internal_path(path): bytes(value) for path, value in pending.modified.items()
+        normalize_internal_path(path): bytes(value)
+        for path, value in current_pending.modified.items()
     }
-    deleted = frozenset(normalize_internal_path(path) for path in pending.deleted)
+    deleted = frozenset(normalize_internal_path(path) for path in current_pending.deleted)
     current_catalog = catalog or build_resource_catalog(epub)
     files = current_catalog.files
     manifest_types = dict(current_catalog.manifest_types)

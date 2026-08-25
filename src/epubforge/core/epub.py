@@ -251,6 +251,63 @@ class Epub:
 
     # ── Operacje na plikach wewnętrznych ─────────────────────────────────────
 
+    def get_file_size(self, internal_path: str) -> int:
+        """Zwraca logiczny rozmiar wpisu bez odczytywania jego zawartości.
+
+        Dla niezapisanej zmiany rozmiar pochodzi z bufora pamięciowego. Dla wpisu
+        źródłowego używane jest ``ZipInfo.file_size`` z katalogu centralnego ZIP.
+
+        Args:
+            internal_path: ścieżka względna wewnątrz archiwum.
+
+        Raises:
+            EpubNotOpenError: gdy EPUB nie jest otwarty.
+            KeyError: gdy plik nie istnieje albo został oznaczony do usunięcia.
+        """
+        zf = self._ensure_open()
+        if internal_path in self._deleted:
+            raise KeyError(internal_path)
+        if internal_path in self._modified:
+            return len(self._modified[internal_path])
+        return zf.getinfo(internal_path).file_size
+
+    def read_file_limited(self, internal_path: str, max_bytes: int) -> bytes:
+        """Czyta wpis tylko wtedy, gdy jego rozmiar nie przekracza limitu.
+
+        Sprawdzenie korzysta z :meth:`get_file_size`, więc dla wpisu źródłowego
+        następuje przed pełnym ``ZipFile.read`` i dekompresją do pamięci.
+
+        Args:
+            internal_path: ścieżka względna wewnątrz archiwum.
+            max_bytes: maksymalny dozwolony rozmiar logiczny w bajtach.
+
+        Raises:
+            ResourceLimitError: gdy wpis jest większy niż ``max_bytes``.
+            EpubNotOpenError: gdy EPUB nie jest otwarty.
+            KeyError: gdy plik nie istnieje albo został oznaczony do usunięcia.
+        """
+        size = self.get_file_size(internal_path)
+        if size > max_bytes:
+            raise ResourceLimitError(
+                f"Zasób {internal_path!r} przekracza limit materializacji ({size} > {max_bytes} B)."
+            )
+        return self.read_file(internal_path)
+
+    def read_source_file_limited(self, internal_path: str, max_bytes: int) -> bytes:
+        """Czyta źródłowy wpis ZIP, ignorując późniejszy pending overlay.
+
+        Nieruchomy snapshot może dzięki temu dobrać brakujący payload z wersji
+        źródłowej, którą zamroził, zamiast z żywego bufora :class:`Epub`.
+        """
+        zf = self._ensure_open()
+        size = zf.getinfo(internal_path).file_size
+        if size > max_bytes:
+            raise ResourceLimitError(
+                f"Źródłowy zasób {internal_path!r} przekracza limit materializacji "
+                f"({size} > {max_bytes} B)."
+            )
+        return zf.read(internal_path)
+
     def read_file(self, internal_path: str) -> bytes:
         """Zwraca zawartość pliku wewnątrz EPUB-a.
 

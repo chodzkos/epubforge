@@ -28,9 +28,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from epubforge.core import Epub, Tool
+from epubforge.core import Epub, ResourceLimitError, Tool
 from epubforge.core._xml_safe import parse_untrusted
 from epubforge.gui.preview.paths import resolve_publication_path
+from epubforge.gui.resource_limits import RasterStatus, probe_raster
 from epubforge.i18n import _
 
 _MAX_IMG_BYTES = 3 * 1024 * 1024
@@ -113,7 +114,11 @@ def inline_images(
             continue
         name = posixpath.basename(target)
         mime = _safe_raster_mime(data, name)
-        if mime is None or len(data) > max_bytes:
+        if (
+            mime is None
+            or len(data) > max_bytes
+            or probe_raster(data).status is not RasterStatus.OK
+        ):
             _replace_with_placeholder(img, name)
         else:
             img.set("src", _data_uri(data, mime))
@@ -258,6 +263,8 @@ class _PublicationTextBrowser(QTextBrowser):
                 return QByteArray()
             if len(data) > _MAX_IMG_BYTES:
                 return QByteArray()
+            if probe_raster(data).status is not RasterStatus.OK:
+                return QByteArray()
             return QByteArray(data)
         return QByteArray()
 
@@ -349,8 +356,8 @@ def _epub_image_resolver(epub: Epub, internal_path: str) -> ImageResolver:
         if target is None:
             return None
         try:
-            return epub.read_file(target)
-        except (KeyError, OSError):
+            return epub.read_file_limited(target, _MAX_IMG_BYTES)
+        except (KeyError, OSError, ResourceLimitError):
             return None
 
     return resolve

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import struct
 import zipfile
 from pathlib import Path
 
@@ -9,11 +10,11 @@ import pytest
 from PySide6.QtGui import QTextCursor
 from pytestqt.qtbot import QtBot
 
-from epubforge.core import Tool
+from epubforge.core import Epub, Tool
 from epubforge.gui.tabs import editor_preview
 from epubforge.gui.tabs.editor import EditorTab
 from epubforge.gui.tabs.editor_preview import _PAGE_HTML
-from epubforge.gui.widgets.html_preview import _PAPER_BG, inline_images
+from epubforge.gui.widgets.html_preview import _PAPER_BG, _epub_image_resolver, inline_images
 
 pytestmark = pytest.mark.gui
 
@@ -44,6 +45,19 @@ def test_inline_images_oversized_becomes_placeholder() -> None:
     assert "big.png" in out
 
 
+def test_inline_images_rejects_small_encoded_huge_raster() -> None:
+    """Fallback nie przekazuje QTextDocument małego pliku deklarującego 81 MP."""
+    header_size = 54
+    bmp = (
+        b"BM"
+        + struct.pack("<IHHI", header_size, 0, 0, header_size)
+        + struct.pack("<IiiHHIIiiII", 40, 9_000, 9_000, 1, 32, 0, 0, 0, 0, 0, 0)
+    )
+    out = inline_images('<html><body><img src="img/huge.bmp"/></body></html>', lambda _s: bmp)
+    assert "data:" not in out
+    assert "huge.bmp" in out
+
+
 def test_inline_images_skips_external_and_missing() -> None:
     """Zewnętrzne (http) i nierozwiązane src są usuwane fail-closed."""
     external = inline_images(
@@ -52,6 +66,28 @@ def test_inline_images_skips_external_and_missing() -> None:
     assert "http://x/y.png" not in external and "data:" not in external
     missing = inline_images('<html><body><img src="gone.png"/></body></html>', lambda _s: None)
     assert "gone.png" not in missing and "data:" not in missing
+
+
+def test_fallback_image_resolver_rejects_before_full_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Obraz ponad 3 MiB odpada na ZipInfo przed materializacją fallbacku."""
+    book = tmp_path / "fallback-large-image.epub"
+    _make_html_epub(book)
+    internal = "OEBPS/images/large.png"
+    with zipfile.ZipFile(book, "a") as archive:
+        archive.writestr(internal, b"x" * (3 * 1024 * 1024 + 1), zipfile.ZIP_STORED)
+    with Epub(book) as epub:
+        original_read = epub.read_file
+
+        def guarded_read(path: str) -> bytes:
+            if path == internal:
+                pytest.fail("fallback nie może materializować obrazu ponad limit encoded")
+            return original_read(path)
+
+        monkeypatch.setattr(epub, "read_file", guarded_read)
+        resolver = _epub_image_resolver(epub, "OEBPS/ch.xhtml")
+        assert resolver("images/large.png") is None
 
 
 # ── Integracja w EditorTab ──────────────────────────────────────────────────--
