@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import posixpath
 from collections import OrderedDict
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
 from threading import RLock
@@ -104,6 +105,18 @@ class ResourceByteCache:
         with self._lock:
             for kind, items in self._items.items():
                 stale = [key for key in items if key[0] == path and key[1] != keep_revision]
+                for key in stale:
+                    self._bytes[kind] -= len(items.pop(key))
+
+    def invalidate_revisions(self, revisions: Mapping[str, int]) -> None:
+        """Usuwa stare rewizje wskazanych zasobów podczas jednego skanu cache."""
+        if not revisions:
+            return
+        with self._lock:
+            for kind, items in self._items.items():
+                stale = [
+                    key for key in items if key[0] in revisions and key[1] != revisions[key[0]]
+                ]
                 for key in stale:
                     self._bytes[kind] -= len(items.pop(key))
 

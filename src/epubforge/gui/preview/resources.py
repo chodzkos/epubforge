@@ -98,8 +98,7 @@ class SnapshotResourceProvider:
         self._revisions = MappingProxyType(dict(revisions))
         self._sizes = MappingProxyType(dict(sizes))
         self._cache = cache
-        for path, revision in self._revisions.items():
-            self._cache.invalidate(path, keep_revision=revision)
+        self._cache.invalidate_revisions(self._revisions)
 
     def read(self, path: str, generation_id: int) -> bytes | None:
         """Czyta overlay, potem bufor Epub, na końcu oryginalny wpis ZIP."""
