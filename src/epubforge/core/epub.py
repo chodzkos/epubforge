@@ -244,10 +244,9 @@ class Epub:
 
     @metadata.setter
     def metadata(self, value: Metadata) -> None:
-        """Wpisuje metadane do OPF i utrwala zmianę na dysku (z backupem)."""
+        """Aktualizuje metadane w pamięci; :meth:`save` utrwala zmianę na dysku."""
         new_opf = value.to_opf(self._read_xml(self.opf_path))
         self.write_file(self.opf_path, new_opf)
-        self.save()
 
     # ── Operacje na plikach wewnętrznych ─────────────────────────────────────
 

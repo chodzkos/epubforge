@@ -149,23 +149,78 @@ def test_epub_metadata_getter(sample_epub: Path) -> None:
     assert meta.creators == ["Jan Kowalski"]
 
 
-def test_epub_metadata_setter_persists(sample_epub: Path) -> None:
-    """Przypisanie Epub.metadata zapisuje zmiany na dysku (z backupem)."""
+def test_epub_metadata_setter_updates_memory_without_persisting(sample_epub: Path) -> None:
+    """Setter aktualizuje OPF w buforze, ale nie zapisuje źródła ani backupu."""
+    source_before = sample_epub.read_bytes()
+
     with Epub(sample_epub) as epub:
         meta = epub.metadata
         meta.title = "Tytuł po edycji"
         meta.creators = ["Pierwszy", "Drugi"]
         epub.metadata = meta
-    # Ponowne otwarcie czyta zapisaną wartość.
+
+        assert epub.metadata.title == "Tytuł po edycji"
+        assert epub.metadata.creators == ["Pierwszy", "Drugi"]
+        assert epub.opf_path in epub.pending_changes().modified
+        assert sample_epub.read_bytes() == source_before
+        assert not sample_epub.with_suffix(".epub.bak").exists()
+
+        with Epub(sample_epub) as reopened:
+            assert reopened.metadata.title == "Przykładowa książka"
+
+    with Epub(sample_epub) as reopened_after_close:
+        assert reopened_after_close.metadata.title == "Przykładowa książka"
+
+
+def test_epub_metadata_explicit_save_persists(sample_epub: Path) -> None:
+    """Jawne save utrwala metadata i tworzy backup przy nadpisaniu."""
     with Epub(sample_epub) as epub:
-        reloaded = epub.metadata
-    assert reloaded.title == "Tytuł po edycji"
-    assert reloaded.creators == ["Pierwszy", "Drugi"]
+        meta = epub.metadata
+        meta.title = "Tytuł po edycji"
+        epub.metadata = meta
+        epub.save()
+
+    with Epub(sample_epub) as reopened:
+        assert reopened.metadata.title == "Tytuł po edycji"
     assert sample_epub.with_suffix(".epub.bak").is_file()
 
 
+def test_epub_metadata_save_as_keeps_source_unchanged(sample_epub: Path, tmp_path: Path) -> None:
+    """Jawny save-as zapisuje metadata do kopii bez modyfikowania źródła."""
+    source_before = sample_epub.read_bytes()
+    output = tmp_path / "metadata-copy.epub"
+
+    with Epub(sample_epub) as epub:
+        meta = epub.metadata
+        meta.title = "Tytuł w kopii"
+        epub.metadata = meta
+        epub.save(output)
+
+    assert sample_epub.read_bytes() == source_before
+    with Epub(sample_epub) as source:
+        assert source.metadata.title == "Przykładowa książka"
+    with Epub(output) as copied:
+        assert copied.metadata.title == "Tytuł w kopii"
+
+
+def test_epub_metadata_multiple_assignments_last_one_wins(sample_epub: Path) -> None:
+    """Kilka przypisań pozostaje w buforze, a jawny save utrwala ostatnie."""
+    with Epub(sample_epub) as epub:
+        first = epub.metadata
+        first.title = "Pierwszy tytuł"
+        epub.metadata = first
+        second = epub.metadata
+        second.title = "Ostatni tytuł"
+        epub.metadata = second
+        assert epub.metadata.title == "Ostatni tytuł"
+        epub.save()
+
+    with Epub(sample_epub) as reopened:
+        assert reopened.metadata.title == "Ostatni tytuł"
+
+
 def test_epub_metadata_setter_keeps_spine(sample_epub: Path) -> None:
-    """Zapis metadanych przez Epub nie psuje spine ani manifestu."""
+    """Buforowana zmiana metadanych nie psuje spine ani manifestu."""
     with Epub(sample_epub) as epub:
         meta = epub.metadata
         meta.title = "Inny"

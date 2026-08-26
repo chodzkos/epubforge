@@ -34,6 +34,7 @@ def run(args: argparse.Namespace) -> int:
             metadata = epub.metadata
             if _apply_edits(metadata, args):
                 epub.metadata = metadata
+                epub.save()
                 print(_("Zapisano metadane: {path}\n").format(path=args.file))
             _print_metadata(metadata)
     except (EpubError, OSError, KeyError) as exc:
