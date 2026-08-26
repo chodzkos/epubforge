@@ -26,6 +26,11 @@ class PreviewGenerationRegistry:
         self._lock = RLock()
         self._generation: PreviewGeneration | None = None
 
+    def current_generation(self) -> PreviewGeneration | None:
+        """Zwraca aktywną generację bez ujawniania locka na zewnątrz."""
+        with self._lock:
+            return self._generation
+
     def activate(self, generation: PreviewGeneration) -> None:
         """Atomowo zastępuje aktywną generację."""
         with self._lock:

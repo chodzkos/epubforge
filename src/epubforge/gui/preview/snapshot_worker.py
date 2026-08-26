@@ -18,6 +18,15 @@ from epubforge.gui.preview.backend import (
     PreviewStatus,
 )
 from epubforge.gui.preview.controller import PreviewController, SnapshotResult
+from epubforge.gui.preview.memory_budget import (
+    MAX_DIRTY_PENDING_BYTES,
+    MAX_PREVIEW_RESIDENT_BYTES,
+    PreviewBudgetExceededError,
+    PreviewBudgetKind,
+    estimate_preview_memory,
+    format_preview_bytes,
+)
+from epubforge.gui.preview.resources import SnapshotResourceProvider
 from epubforge.gui.preview.session import PreviewSession
 from epubforge.gui.preview.text_backend import TextDocumentPreviewBackend
 from epubforge.gui.resource_limits import (
@@ -43,6 +52,24 @@ class SnapshotRequest:
     dirty: Mapping[str, str | bytes]
     media_types: Mapping[str, str]
     pending: PendingChanges
+    retained_providers: tuple[SnapshotResourceProvider, ...] = ()
+
+
+def _budget_diagnostic(exc: PreviewBudgetExceededError, internal_path: str) -> DiagnosticEvent:
+    """Buduje bezpieczną diagnostykę wspólną dla GUI i workera."""
+    message = _(
+        "Podgląd jest zbyt duży do bezpiecznego wygenerowania. Rozmiar: {current}; limit: {limit}."
+    ).format(
+        current=format_preview_bytes(exc.current_bytes),
+        limit=format_preview_bytes(exc.limit_bytes),
+    )
+    return DiagnosticEvent(
+        category=DiagnosticCategory.PREVIEW_LIMIT,
+        message=message,
+        problem_kind="zbyt_duza_sesja_podgladu",
+        internal_path=internal_path,
+        requester=internal_path,
+    )
 
 
 def build_snapshot_job(
@@ -55,6 +82,31 @@ def build_snapshot_job(
     """Buduje snapshot w workerze; funkcja nie importuje ani nie dotyka widgetów."""
     if should_cancel():
         return None
+    retained_bytes = sum(provider.resident_bytes for provider in request.retained_providers)
+    provider = request.session.resource_provider
+    if provider is not None and all(provider is not item for item in request.retained_providers):
+        if not isinstance(provider, SnapshotResourceProvider):
+            violation = PreviewBudgetExceededError(
+                PreviewBudgetKind.RESIDENT,
+                MAX_PREVIEW_RESIDENT_BYTES + 1,
+                MAX_PREVIEW_RESIDENT_BYTES,
+            )
+            return SnapshotResult(None, _budget_diagnostic(violation, request.current_path))
+        retained_bytes += provider.resident_bytes
+    try:
+        estimate_preview_memory(
+            current_path=request.current_path,
+            current_text=request.current_text,
+            dirty=request.dirty,
+            pending=request.pending,
+            dirty_pending_limit=MAX_DIRTY_PENDING_BYTES,
+            resident_limit=MAX_PREVIEW_RESIDENT_BYTES,
+            cache_bytes=request.session.cache_stats().limits.total,
+            retained_generation_bytes=retained_bytes,
+            main_document_reserve=MAX_MAIN_PREVIEW_BYTES,
+        )
+    except PreviewBudgetExceededError as exc:
+        return SnapshotResult(None, _budget_diagnostic(exc, request.current_path))
     result = controller.build(
         epub=request.epub,
         session=request.session,
@@ -105,6 +157,7 @@ class SnapshotWorkerMixin:
         current_pending = (
             epub.pending_changes() if epub is not None else PendingChanges({}, frozenset())
         )
+        retained_providers: tuple[SnapshotResourceProvider, ...] = ()
         is_css = internal_path is not None and (
             internal_path.lower().endswith(".css")
             or current_media_types.get(internal_path, "").lower() == "text/css"
@@ -137,6 +190,31 @@ class SnapshotWorkerMixin:
                 "zbyt_duzy_arkusz_css" if is_css else "zbyt_duzy_dokument",
             )
             return
+        if epub is not None and internal_path is not None and self._session is not None:
+            try:
+                retained_providers = self._retained_generation_providers()
+                retained_generation_bytes = sum(
+                    provider.resident_bytes for provider in retained_providers
+                )
+                estimate_preview_memory(
+                    current_path=internal_path,
+                    current_text=xhtml,
+                    dirty=current_dirty,
+                    pending=current_pending,
+                    dirty_pending_limit=MAX_DIRTY_PENDING_BYTES,
+                    resident_limit=MAX_PREVIEW_RESIDENT_BYTES,
+                    cache_bytes=self._session.cache_stats().limits.total,
+                    retained_generation_bytes=retained_generation_bytes,
+                    main_document_reserve=MAX_MAIN_PREVIEW_BYTES,
+                )
+            except PreviewBudgetExceededError as exc:
+                diagnostic = _budget_diagnostic(exc, internal_path)
+                self._reject_oversized_preview(
+                    diagnostic.message,
+                    internal_path,
+                    diagnostic.problem_kind or "zbyt_duza_sesja_podgladu",
+                )
+                return
         if epub is None or internal_path is None or self._session is None:
             self._generation += 1
             snapshot = PreviewSnapshot(xhtml, epub, internal_path, self._generation)
@@ -156,6 +234,7 @@ class SnapshotWorkerMixin:
             dirty=dict(current_dirty),
             media_types=dict(current_media_types),
             pending=current_pending,
+            retained_providers=retained_providers,
         )
         self._status = PreviewStatus.RENDERING
         self._update_status()
@@ -164,6 +243,45 @@ class SnapshotWorkerMixin:
             self._snapshot_worker.cancel()
             return
         self._start_snapshot_worker(request)
+
+    def _retained_generation_providers(self) -> tuple[SnapshotResourceProvider, ...]:
+        """Zbiera unikalne providery sesji, snapshotu i backendów."""
+        candidates: list[object] = []
+        snapshot = self._last_snapshot
+        if snapshot is not None and snapshot.generation is not None:
+            candidates.append(snapshot.generation.resource_provider)
+        if self._session is not None and self._session.resource_provider is not None:
+            candidates.append(self._session.resource_provider)
+        for backend in (
+            self._active,
+            getattr(self, "_webengine_backend", None),
+            self._comparison_backend,
+        ):
+            if backend is None:
+                continue
+            reporter = getattr(backend, "retained_resource_providers", None)
+            reported = reporter() if callable(reporter) else ()
+            if isinstance(reported, tuple):
+                candidates.extend(reported)
+            leftover = getattr(backend, "_last_snapshot", None)
+            generation = getattr(leftover, "generation", None)
+            if generation is not None:
+                candidates.append(generation.resource_provider)
+        retained: list[SnapshotResourceProvider] = []
+        seen: set[int] = set()
+        for provider in candidates:
+            identity = id(provider)
+            if identity in seen:
+                continue
+            seen.add(identity)
+            if not isinstance(provider, SnapshotResourceProvider):
+                raise PreviewBudgetExceededError(
+                    PreviewBudgetKind.RESIDENT,
+                    MAX_PREVIEW_RESIDENT_BYTES + 1,
+                    MAX_PREVIEW_RESIDENT_BYTES,
+                )
+            retained.append(provider)
+        return tuple(retained)
 
     def _reject_oversized_preview(
         self, message: str, internal_path: str | None, problem_kind: str

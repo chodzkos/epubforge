@@ -4293,3 +4293,7 @@ msgstr ""
 "\n"
 ""
 
+#: src/epubforge/gui/preview/snapshot_worker.py
+#, python-brace-format
+msgid "Podgląd jest zbyt duży do bezpiecznego wygenerowania. Rozmiar: {current}; limit: {limit}."
+msgstr ""
