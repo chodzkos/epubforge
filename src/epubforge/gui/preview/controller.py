@@ -16,6 +16,7 @@ from epubforge.gui.preview.backend import (
     PreviewSnapshot,
 )
 from epubforge.gui.preview.reader import PublicationLayout, detect_publication_layout
+from epubforge.gui.preview.resources import PreviewSourceChangedError
 from epubforge.gui.preview.session import PreviewSession
 from epubforge.gui.resource_limits import (
     MAX_MAIN_PREVIEW_BYTES,
@@ -159,9 +160,12 @@ class PreviewController:
             self._last_xhtml = xhtml
             publication_layout = _publication_layout(epub, xhtml, overlay, pending)
             self._last_layout = publication_layout
-        generation = session.advance(
-            epub, document, overlay, media_types, css_only=is_css, pending=pending
-        )
+        try:
+            generation = session.advance(
+                epub, document, overlay, media_types, css_only=is_css, pending=pending
+            )
+        except PreviewSourceChangedError:
+            return SnapshotResult(None, _source_changed_diagnostic(current_path))
         return SnapshotResult(
             PreviewSnapshot(
                 xhtml=xhtml,
@@ -181,6 +185,17 @@ class PreviewController:
             self._last_document = None
             self._last_xhtml = None
             self._last_layout = PublicationLayout()
+
+
+def _source_changed_diagnostic(internal_path: str) -> DiagnosticEvent:
+    """Kontrolowane odrzucenie, gdy źródło zmieniło się podczas snapshotu."""
+    return DiagnosticEvent(
+        category=DiagnosticCategory.PREVIEW_LIMIT,
+        message=_("Plik źródłowy zmienił się podczas przygotowywania podglądu. Odśwież podgląd."),
+        problem_kind="zrodlo_zmienione",
+        internal_path=internal_path,
+        requester=internal_path,
+    )
 
 
 def _publication_layout(

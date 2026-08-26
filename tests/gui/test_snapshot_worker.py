@@ -707,3 +707,60 @@ def test_dirty_str_request_counts_encoded_peak_before_advance(
     assert "69 B" in preview.fallback_label.text()
     preview.dispose()
     epub.close()
+
+
+def test_source_mismatch_invalidates_stale_worker_result(qtbot: QtBot, sample_epub: Path) -> None:
+    """Odrzucenie źródła nie pokazuje wyniku starego workera jako świeżego."""
+    from epubforge.gui.preview.backend import DiagnosticCategory, DiagnosticEvent
+
+    epub = Epub(sample_epub)
+    epub.open()
+    session = PreviewSession.create(epub)
+    preview = BookPreview(settings=PreviewSettings())
+    qtbot.addWidget(preview)
+    preview.set_session(session)
+    preview._snapshot_serial = 5
+    preview._snapshot_ready(
+        SnapshotRequest(
+            serial=5,
+            epub=epub,
+            session=session,
+            current_path="OEBPS/text/chapter1.xhtml",
+            current_text="nowy",
+            dirty={},
+            media_types={},
+            pending=PendingChanges({}, frozenset()),
+        ),
+        SnapshotResult(
+            None,
+            DiagnosticEvent(
+                category=DiagnosticCategory.PREVIEW_LIMIT,
+                message=(
+                    "Plik źródłowy zmienił się podczas przygotowywania podglądu. Odśwież podgląd."
+                ),
+                problem_kind="zrodlo_zmienione",
+                internal_path="OEBPS/text/chapter1.xhtml",
+            ),
+        ),
+    )
+    diagnostic = preview.fallback_label.text()
+    stale = SnapshotRequest(
+        serial=4,
+        epub=epub,
+        session=session,
+        current_path="OEBPS/text/chapter1.xhtml",
+        current_text="stale",
+        dirty={},
+        media_types={},
+        pending=PendingChanges({}, frozenset()),
+    )
+    preview._snapshot_ready(
+        stale,
+        SnapshotResult(PreviewSnapshot("stale", epub, stale.current_path, generation_id=4)),
+    )
+
+    assert preview._last_snapshot is None
+    assert preview.fallback_label.text() == diagnostic
+    preview._snapshot_worker = None
+    preview.dispose()
+    epub.close()

@@ -131,9 +131,7 @@ class PreviewSession:
         with self._lock:
             if self.closed:
                 raise RuntimeError("Sesja podglądu jest zamknięta")
-            if self._catalog is None or self._catalog.source_signature != _path_signature(
-                epub.path
-            ):
+            if self._catalog is None or self._catalog.source_signature != epub.source_identity():
                 self._catalog = build_resource_catalog(epub)
                 self._cache.clear()
             generation_id = self.generation_id + 1
@@ -230,12 +228,3 @@ def _source_map(
         return MappingProxyType(build_source_map(data, current_document))
     except (ValueError, etree.XMLSyntaxError, XmlSecurityError):
         return MappingProxyType({})
-
-
-def _path_signature(path: Path) -> tuple[int, int, int, int] | None:
-    """Rozpoznaje zmianę źródłowego EPUB-a bez czytania jego zawartości."""
-    try:
-        stat = path.stat()
-    except OSError:
-        return None
-    return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns)

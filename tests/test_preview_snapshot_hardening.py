@@ -21,6 +21,7 @@ def test_provider_rejects_source_changed_during_generation(sample_epub: Path) ->
     session = PreviewSession.create(epub, sample_epub)
     generation = session.advance(epub, "OEBPS/text/chapter1.xhtml", {})
     before = sample_epub.stat()
+    session.clear_cache()
     os.utime(
         sample_epub,
         ns=(before.st_atime_ns, before.st_mtime_ns + 1_000_000_000),

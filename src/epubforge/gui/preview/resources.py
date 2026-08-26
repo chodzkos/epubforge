@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import posixpath
 import zipfile
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
@@ -86,10 +88,11 @@ class SnapshotResourceProvider:
         revisions: Mapping[str, int],
         sizes: Mapping[str, int],
         cache: ResourceByteCache,
+        source_signature: tuple[int, int, int, int] | None = None,
     ) -> None:
         self.source_path = Path(source_path)
         self.generation_id = generation_id
-        self._source_signature = _source_signature(self.source_path)
+        self._source_signature = source_signature
         self._dirty = MappingProxyType(dict(dirty_overlay))
         self._buffered = MappingProxyType(dict(buffered))
         self._deleted = deleted
@@ -113,8 +116,6 @@ class SnapshotResourceProvider:
         if normalized in self._buffered:
             return self._buffered[normalized]
         if normalized not in self._files:
-            return None
-        if _source_signature(self.source_path) != self._source_signature:
             return None
         revision = self._revisions.get(normalized, 0)
         kind = resource_kind(normalized, self.media_type(normalized))
@@ -148,10 +149,8 @@ class SnapshotResourceProvider:
             self._files,
             key=lambda path: (resource_kind(path, self.media_type(path)).value, path),
         )
-        if _source_signature(self.source_path) != self._source_signature:
-            return
         try:
-            with zipfile.ZipFile(self.source_path) as archive:
+            with _open_verified_zip(self.source_path, self._source_signature) as archive:
                 for path in ordered:
                     if path in self._deleted or path in self._dirty or path in self._buffered:
                         continue
@@ -168,6 +167,8 @@ class SnapshotResourceProvider:
                     except KeyError:
                         continue
                     self._cache.put(path, revision, kind, data)
+        except PreviewSourceChangedError:
+            raise
         except (FileNotFoundError, OSError, zipfile.BadZipFile):
             return
 
@@ -183,11 +184,17 @@ class SnapshotResourceProvider:
         )
 
     def _read_source(self, normalized: str) -> bytes | None:
-        """Czyta pojedynczy wpis bez skanowania pozostałej zawartości ZIP-a."""
+        """Czyta pojedynczy wpis z uchwytu zweryfikowanego po otwarciu."""
         try:
-            with zipfile.ZipFile(self.source_path) as archive:
+            with _open_verified_zip(self.source_path, self._source_signature) as archive:
                 return archive.read(normalized)
-        except (FileNotFoundError, KeyError, OSError, zipfile.BadZipFile):
+        except (
+            FileNotFoundError,
+            KeyError,
+            OSError,
+            zipfile.BadZipFile,
+            PreviewSourceChangedError,
+        ):
             return None
 
     def media_type(self, path: str) -> str:
@@ -267,6 +274,7 @@ def create_resource_provider(
         revisions=revisions,
         sizes=current_catalog.sizes,
         cache=cache or ResourceByteCache(),
+        source_signature=current_catalog.source_signature,
     )
     provider.preload()
     return provider
@@ -274,11 +282,12 @@ def create_resource_provider(
 
 def build_resource_catalog(epub: Epub) -> ResourceCatalog:
     """Skanuje centralny katalog ZIP raz dla całej sesji, bez odczytu treści wpisów."""
+    identity = epub.source_identity()
     files: set[str] = set()
     revisions: dict[str, int] = {}
     sizes: dict[str, int] = {}
     try:
-        with zipfile.ZipFile(epub.path) as archive:
+        with _open_verified_zip(epub.path, identity) as archive:
             for info in archive.infolist():
                 if info.is_dir():
                     continue
@@ -289,11 +298,13 @@ def build_resource_catalog(epub: Epub) -> ResourceCatalog:
                 files.add(path)
                 revisions[path] = info.CRC
                 sizes[path] = info.file_size
+    except PreviewSourceChangedError:
+        raise
     except (FileNotFoundError, OSError, zipfile.BadZipFile):
         pass
     return ResourceCatalog(
         source_path=epub.path,
-        source_signature=_source_signature(epub.path),
+        source_signature=identity,
         files=frozenset(files),
         revisions=MappingProxyType(revisions),
         sizes=MappingProxyType(sizes),
@@ -325,10 +336,42 @@ def _overlay_revisions(
             revisions[path] = int.from_bytes(digest, "big")
 
 
+class PreviewSourceChangedError(RuntimeError):
+    """Źródło EPUB zmieniło się między otwarciem sesji a odczytem podglądu."""
+
+
+@contextmanager
+def _open_verified_zip(
+    path: Path, expected: tuple[int, int, int, int] | None
+) -> Iterator[zipfile.ZipFile]:
+    """Otwiera pathname, weryfikuje fstat tego uchwytu i czyta z tego samego fd."""
+    if expected is None:
+        raise PreviewSourceChangedError("Brak tożsamości źródła podglądu.")
+    handle = path.open("rb")
+    try:
+        if _handle_identity(os.fstat(handle.fileno())) != expected:
+            raise PreviewSourceChangedError(
+                "Plik źródłowy zmienił się podczas przygotowywania podglądu."
+            )
+        archive = zipfile.ZipFile(handle)
+        try:
+            yield archive
+        finally:
+            archive.close()
+    finally:
+        if not handle.closed:
+            handle.close()
+
+
+def _handle_identity(stat: os.stat_result) -> tuple[int, int, int, int]:
+    """Fingerprint tożsamości otwartego deskryptora, zgodny z sesją Epub."""
+    return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns)
+
+
 def _source_signature(path: Path) -> tuple[int, int, int, int] | None:
     """Identyfikuje wersję pliku źródłowego bez utrzymywania uchwytu."""
     try:
         stat = path.stat()
     except OSError:
         return None
-    return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns)
+    return _handle_identity(stat)

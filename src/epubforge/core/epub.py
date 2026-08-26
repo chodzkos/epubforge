@@ -184,6 +184,19 @@ class Epub:
         self._source_stat = os.fstat(zf.fp.fileno())
         logger.debug("Otwarto EPUB: %s", self.path)
 
+    def source_identity(self) -> tuple[int, int, int, int] | None:
+        """Zwraca tożsamość otwartego uchwytu źródła, nie bieżącego pathname.
+
+        Pola odpowiadają fingerprintowi podglądu: ``st_dev``, ``st_ino``,
+        ``st_size``, ``st_mtime_ns`` z :func:`os.fstat` tego samego deskryptora,
+        którego używa sesja :class:`Epub`. ``None`` oznacza brak otwartego
+        archiwum.
+        """
+        if self._zip is None or self._source_stat is None:
+            return None
+        stat = self._source_stat
+        return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns)
+
     def close(self) -> None:
         """Zamyka archiwum i czyszcze bufor zmian oraz cache.
 
