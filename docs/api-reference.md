@@ -43,12 +43,17 @@ with Epub("book.epub") as ebook:
     meta.language = "pl"
     meta.series = "Wiedźmin"  # zapis w formacie Calibre + EPUB 3
     meta.series_index = 3  # float (bywa 1.5)
-    ebook.metadata = meta  # setter zapisuje + robi backup
+    ebook.metadata = meta  # aktualizuje bufor w pamięci
+    ebook.save()  # jawnie utrwala zmianę i tworzy backup
 
 # Bez Epub — bezpośrednio na bajtach OPF:
 meta = Metadata.from_opf(opf_bytes)
 new_opf = meta.to_opf(opf_bytes)  # zachowuje manifest/spine i resztę
 ```
+
+Przypisanie do `ebook.metadata` nie modyfikuje pliku źródłowego. Użyj
+`ebook.save()` do nadpisania źródła albo `ebook.save(output_path)` do zapisania
+kopii. Wyjście z context managera bez `save()` porzuca niezapisane zmiany.
 
 ---
 

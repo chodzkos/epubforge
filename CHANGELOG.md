@@ -69,6 +69,11 @@ projekt stosuje [Semantic Versioning](https://semver.org/lang/pl/).
   nigdy tekst książki — a zmiany techniczne nie trafiają do zapisywanego EPUB-a.
 
 ### Fixed
+- **Jawna persistencja `Epub.metadata`** — przypisanie do publicznego settera
+  aktualizuje teraz wyłącznie bufor OPF w pamięci, spójnie z `write_file()` i innymi
+  mutatorami. Utrwalenie wymaga `epub.save()` albo `epub.save(output_path)`; wyjście
+  z context managera bez zapisu porzuca zmianę. Kod korzystający dotąd z autosave
+  musi dodać jawne `save()`; wbudowane CLI `meta` zostało zmigrowane.
 - **Pobieranie metadanych po ISBN z e-booka** (Etap 26) — Biblioteka Narodowa nie
   znajdowała książek po ISBN wydania elektronicznego, bo katalog BN indeksuje głównie
   wydania papierowe (e-book ma własny ISBN, którego w BN zwykle nie ma). Provider BN

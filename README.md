@@ -355,7 +355,7 @@ with Epub("book.epub") as ebook:
     meta = ebook.metadata
     meta.title = "Nowy tytuł"
     meta.creators = ["Jan Kowalski", "Anna Nowak"]
-    ebook.metadata = meta
+    ebook.metadata = meta  # zmiana w pamięci; utrwala ją jawne ebook.save() poniżej
 
     # Naprawa CSS
     fix_css(
