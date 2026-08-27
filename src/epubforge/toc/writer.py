@@ -63,7 +63,10 @@ def _write_nav(epub: Epub, entries: list[TocEntry]) -> None:
     )
     if nav_item is not None:
         nav_path, _ = resolve_internal(epub.opf_dir(), nav_item.href)
-        _update_existing_nav(epub, nav_path, entries)
+        try:
+            _update_existing_nav(epub, nav_path, entries)
+        except KeyError:
+            _write_nav_document(epub, nav_path, entries)
         return
     _create_nav(epub, entries)
 
@@ -92,6 +95,16 @@ def _create_nav(epub: Epub, entries: list[TocEntry]) -> None:
     opf_dir = epub.opf_dir()
     nav_path = posixpath.normpath(posixpath.join(opf_dir, "nav.xhtml")) if opf_dir else "nav.xhtml"
 
+    _write_nav_document(epub, nav_path, entries)
+    href = relative_href(nav_path, "", opf_dir)
+    _add_manifest_item(
+        epub, item_id="nav", href=href, media_type=_XHTML_MEDIA_TYPE, properties="nav"
+    )
+
+
+def _write_nav_document(epub: Epub, nav_path: str, entries: list[TocEntry]) -> None:
+    """Tworzy nav pod wskazaną ścieżką, bez modyfikowania manifestu."""
+
     nav_nsmap = cast("dict[str, str]", {None: _XHTML_NS, "epub": EPUB_NS})
     html = etree.Element(f"{{{_XHTML_NS}}}html", nsmap=nav_nsmap)
     head = etree.SubElement(html, f"{{{_XHTML_NS}}}head")
@@ -102,10 +115,6 @@ def _create_nav(epub: Epub, entries: list[TocEntry]) -> None:
     nav_el.append(_build_ol(entries, posixpath.dirname(nav_path)))
 
     epub.write_file(nav_path, serialize_xml(html, "<!DOCTYPE html>"))
-    href = relative_href(nav_path, "", opf_dir)
-    _add_manifest_item(
-        epub, item_id="nav", href=href, media_type=_XHTML_MEDIA_TYPE, properties="nav"
-    )
 
 
 def _build_ol(entries: list[TocEntry], start_dir: str) -> etree._Element:

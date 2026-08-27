@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import posixpath
 from typing import Literal
 
 from lxml import etree
 
 from epubforge.core import Epub
+from epubforge.core.publication_href import resolve_publication_member
 from epubforge.toc._xml import (
     EPUB_TYPE,
     children_by_localname,
@@ -64,10 +64,10 @@ def _read_nav(epub: Epub) -> list[TocEntry] | None:
     ol = first_by_localname(nav_el, "ol")
     if ol is None:
         return None
-    return _parse_ol(ol, posixpath.dirname(nav_path))
+    return _parse_ol(ol, nav_path)
 
 
-def _parse_ol(ol: etree._Element, base_dir: str) -> list[TocEntry]:
+def _parse_ol(ol: etree._Element, base_path: str) -> list[TocEntry]:
     """Parsuje listę ``<ol>``/``<li>`` na wpisy (rekurencyjnie, z zagnieżdżeniem)."""
     entries: list[TocEntry] = []
     for li in children_by_localname(ol, "li"):
@@ -76,11 +76,17 @@ def _parse_ol(ol: etree._Element, base_dir: str) -> list[TocEntry]:
         href = ""
         raw_href = anchor.get("href") if anchor is not None else None
         if raw_href:
-            href = join_href(*resolve_internal(base_dir, raw_href))
+            href = _resolve_document_href(base_path, raw_href)
         sub_ol = next((child for child in li if localname(child) == "ol"), None)
-        children = _parse_ol(sub_ol, base_dir) if sub_ol is not None else []
+        children = _parse_ol(sub_ol, base_path) if sub_ol is not None else []
         entries.append(TocEntry(title=title, href=href, children=children))
     return entries
+
+
+def _resolve_document_href(base_path: str, href: str) -> str:
+    """Rozwiązuje link dokumentu, zachowując fragment do modelu TOC."""
+    _path, _separator, fragment = href.partition("#")
+    return join_href(resolve_publication_member(base_path, href), fragment)
 
 
 def _read_ncx(epub: Epub) -> list[TocEntry] | None:
@@ -96,10 +102,10 @@ def _read_ncx(epub: Epub) -> list[TocEntry] | None:
     navmap = first_by_localname(root, "navmap")
     if navmap is None:
         return None
-    return _parse_navpoints(navmap, posixpath.dirname(ncx_path))
+    return _parse_navpoints(navmap, ncx_path)
 
 
-def _parse_navpoints(parent: etree._Element, base_dir: str) -> list[TocEntry]:
+def _parse_navpoints(parent: etree._Element, base_path: str) -> list[TocEntry]:
     """Parsuje ``<navPoint>`` (z zagnieżdżeniem) na wpisy spisu."""
     entries: list[TocEntry] = []
     for navpoint in children_by_localname(parent, "navpoint"):
@@ -108,7 +114,7 @@ def _parse_navpoints(parent: etree._Element, base_dir: str) -> list[TocEntry]:
         title = normalized_text(text_el) if text_el is not None else ""
         content = next((child for child in navpoint if localname(child) == "content"), None)
         src = content.get("src") if content is not None else None
-        href = join_href(*resolve_internal(base_dir, src)) if src else ""
-        children = _parse_navpoints(navpoint, base_dir)
+        href = _resolve_document_href(base_path, src) if src else ""
+        children = _parse_navpoints(navpoint, base_path)
         entries.append(TocEntry(title=title, href=href, children=children))
     return entries
