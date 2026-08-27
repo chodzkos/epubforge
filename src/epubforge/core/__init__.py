@@ -10,7 +10,13 @@ from epubforge.core.config import (
     save_config,
 )
 from epubforge.core.detection import Tool, Tools, detect_with_cache
-from epubforge.core.epub import Epub, ManifestItem, PendingChanges
+from epubforge.core.epub import (
+    Epub,
+    ManifestItem,
+    PendingChanges,
+    SourceIdentity,
+    source_identity_from_stat,
+)
 from epubforge.core.exceptions import (
     ConversionError,
     ConverterNotFoundError,
@@ -49,6 +55,7 @@ __all__ = [
     "OpfNotFoundError",
     "PendingChanges",
     "ResourceLimitError",
+    "SourceIdentity",
     "Tool",
     "Tools",
     "ValidationError",
@@ -60,5 +67,6 @@ __all__ = [
     "remove_number_of_pages",
     "save_config",
     "set_number_of_pages",
+    "source_identity_from_stat",
     "supports_number_of_pages",
 ]

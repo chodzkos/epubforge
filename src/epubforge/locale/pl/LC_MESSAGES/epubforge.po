@@ -4441,6 +4441,10 @@ msgstr "Raport EpubCheck ma nieoczekiwany format."
 msgid "Dokument jest zbyt duży do bezpiecznego podglądu."
 msgstr "Dokument jest zbyt duży do bezpiecznego podglądu."
 
+#: src/epubforge/gui/preview/controller.py
+msgid "Plik źródłowy zmienił się podczas przygotowywania podglądu. Odśwież podgląd."
+msgstr "Plik źródłowy zmienił się podczas przygotowywania podglądu. Odśwież podgląd."
+
 #: src/epubforge/gui/preview/controller.py src/epubforge/gui/preview/snapshot_worker.py
 msgid "Arkusz CSS jest zbyt duży do bezpiecznego podglądu."
 msgstr "Arkusz CSS jest zbyt duży do bezpiecznego podglądu."
