@@ -21,6 +21,7 @@ from epubforge.toc._xml import (
     serialize_xml,
     split_fragment,
 )
+from epubforge.toc.limits import validate_toc_structure
 from epubforge.toc.model import TocEntry
 
 _XHTML_NS = "http://www.w3.org/1999/xhtml"
@@ -47,6 +48,7 @@ def write_toc(
         write_nav: zapisz dokument nawigacyjny EPUB 3 (nav.xhtml).
         write_ncx: zapisz klasyczny toc.ncx (EPUB 2) i wepnij go w spine.
     """
+    validate_toc_structure(entries)
     if write_nav:
         _write_nav(epub, entries)
     if write_ncx:

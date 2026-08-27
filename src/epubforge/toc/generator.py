@@ -15,6 +15,7 @@ from epubforge.toc._xml import (
     resolve_internal,
     serialize_xml,
 )
+from epubforge.toc.limits import TocBudget
 from epubforge.toc.model import TocEntry
 
 _DEFAULT_MAX_LEVEL = 3
@@ -48,8 +49,15 @@ def generate_toc(epub: Epub, max_level: int = _DEFAULT_MAX_LEVEL) -> list[TocEnt
     """
     max_level = max(1, min(6, max_level))
     headings: list[_Heading] = []
+    staged_documents: list[tuple[str, bytes]] = []
+    budget = TocBudget()
     for internal_path in _spine_paths(epub):
-        headings.extend(_headings_from_doc(epub, internal_path, max_level))
+        document_headings, modified = _headings_from_doc(epub, internal_path, max_level, budget)
+        headings.extend(document_headings)
+        if modified is not None:
+            staged_documents.append((internal_path, modified))
+    for internal_path, data in staged_documents:
+        epub.write_file(internal_path, data)
     return _build_tree(headings)
 
 
@@ -66,23 +74,25 @@ def _spine_paths(epub: Epub) -> list[str]:
     return paths
 
 
-def _headings_from_doc(epub: Epub, internal_path: str, max_level: int) -> list[_Heading]:
+def _headings_from_doc(
+    epub: Epub,
+    internal_path: str,
+    max_level: int,
+    budget: TocBudget,
+) -> tuple[list[_Heading], bytes | None]:
     """Zbiera nagłówki z jednego dokumentu, wstrzykując brakujące ``id``."""
     try:
         root, doctype = parse_xml(epub.read_file(internal_path))
     except (KeyError, ValueError):
-        return []
+        return [], None
     wanted = {f"h{level}" for level in range(1, max_level + 1)}
-    elements = list(iter_by_localname(root, wanted))
-    if not elements:
-        return []  # plik bez nagłówków — pomijamy
-
     used_ids = collect_ids(root)
     counter = 0
     headings: list[_Heading] = []
     changed = False
-    for index, element in enumerate(elements):
+    for index, element in enumerate(iter_by_localname(root, wanted)):
         level = int(localname(element)[1])
+        budget.consume(level)
         title = normalized_text(element)
         if index == 0:
             # Pierwszy nagłówek pliku — link do pliku bez fragmentu (bez id).
@@ -96,9 +106,8 @@ def _headings_from_doc(epub: Epub, internal_path: str, max_level: int) -> list[_
             changed = True
         headings.append(_Heading(level, title, join_href(internal_path, anchor_id)))
 
-    if changed:  # zapis tylko gdy faktycznie wstrzyknięto id (idempotencja)
-        epub.write_file(internal_path, serialize_xml(root, doctype))
-    return headings
+    modified = serialize_xml(root, doctype) if changed else None
+    return headings, modified
 
 
 def _fresh_id(used_ids: set[str], counter: int) -> tuple[str, int]:

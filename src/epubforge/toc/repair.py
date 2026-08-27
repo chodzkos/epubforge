@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from epubforge.core import Epub
 from epubforge.toc._xml import collect_ids, parse_xml, split_fragment
+from epubforge.toc.limits import validate_toc_structure
 from epubforge.toc.model import TocEntry
 
 
@@ -52,6 +53,7 @@ def validate_toc(epub: Epub, entries: list[TocEntry]) -> list[TocProblem]:
 
     Wpisy bez ``href`` (czysto strukturalne) są pomijane.
     """
+    validate_toc_structure(entries)
     cache = _IdCache(epub)
     problems: list[TocProblem] = []
     _collect_problems(entries, cache, problems)
@@ -88,6 +90,7 @@ def repair_toc(epub: Epub, entries: list[TocEntry]) -> tuple[list[TocEntry], lis
         zwracane „odpięte" od drzewa (bez modyfikowania ich list dzieci, które
         zostały już podciągnięte).
     """
+    validate_toc_structure(entries)
     cache = _IdCache(epub)
     removed: list[TocEntry] = []
     repaired = _repair_level(entries, cache, removed)
