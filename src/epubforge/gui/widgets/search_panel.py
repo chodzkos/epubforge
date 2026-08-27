@@ -30,6 +30,7 @@ from epubforge.core.search import (
     REGEX_TIMEOUT_MESSAGE,
     ReplaceReport,
     SearchHit,
+    SearchResults,
     replace_in_epub,
     search_epub,
 )
@@ -66,12 +67,21 @@ class SearchHost(Protocol):
 class SearchReplacePanel(QWidget):
     """Panel Szukaj/Zamień przeszukujący pliki tekstowe EPUB-a."""
 
+    RESULT_PAGE_SIZE = 500
+
     def __init__(self, host: SearchHost, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._host = host
         self._worker: Worker | None = None
+        self._workers: set[Worker] = set()
         self._searching = False
         self._cancellable = False
+        self._search_generation = 0
+        self._result_hits: list[SearchHit] = []
+        self._result_groups: dict[str, QTreeWidgetItem] = {}
+        self._result_totals: dict[str, int] = {}
+        self._rendered_results = 0
+        self._result_truncated = False
         self._build_ui()
         self.setVisible(False)
 
@@ -85,6 +95,7 @@ class SearchReplacePanel(QWidget):
         self.search_field = QLineEdit()
         self.search_field.setPlaceholderText(_("Szukaj…"))
         self.search_field.setToolTip(_("Fraza lub wyrażenie regularne do wyszukania"))
+        self.search_field.textChanged.connect(self._on_query_changed)
         self.search_field.returnPressed.connect(self._on_search)
         fields.addWidget(self.search_field, stretch=1)
         self.replace_field = QLineEdit()
@@ -146,6 +157,12 @@ class SearchReplacePanel(QWidget):
         self.results.itemDoubleClicked.connect(self._on_result_double_clicked)
         layout.addWidget(self.results, stretch=1)
 
+        self.show_more_button = QPushButton(_("Pokaż więcej"))
+        self.show_more_button.setToolTip(_("Pokaż kolejną stronę wyników z pamięci"))
+        self.show_more_button.setEnabled(False)
+        self.show_more_button.clicked.connect(self._show_more_results)
+        layout.addWidget(self.show_more_button)
+
         self.status_label = QLabel("")
         layout.addWidget(self.status_label)
 
@@ -181,6 +198,14 @@ class SearchReplacePanel(QWidget):
 
     # ── Wyszukiwanie ────────────────────────────────────────────────────────--
 
+    def _on_query_changed(self, _text: str) -> None:
+        """Unieważnia stare trafienia i zatrzymuje search rozpoczęty dla innego query."""
+        self._search_generation += 1
+        self._reset_results()
+        self._set_status("")
+        if self._worker is not None and self._searching and self._cancellable:
+            self._worker.cancel()
+
     def _on_search(self) -> None:
         if self._searching:
             return
@@ -199,10 +224,13 @@ class SearchReplacePanel(QWidget):
     def _start_search_worker(self, epub: Epub, query: str, paths: list[str] | None) -> None:
         """Szuka w wątku roboczym (bieżący plik albo cały EPUB, z anulowaniem)."""
         options = self._options()
+        self._reset_results()
+        self._search_generation += 1
+        generation = self._search_generation
         self._searching = True
         self._set_running(True, cancellable=True)
         self._set_status(_("Szukam…"))
-        self._worker = Worker(
+        worker = Worker(
             _search_worker,
             epub,
             query,
@@ -211,25 +239,42 @@ class SearchReplacePanel(QWidget):
             options["whole_words"],
             paths,
         )
-        self._worker.done.connect(self._on_search_done)
-        self._worker.failed.connect(self._on_search_failed)
-        self._worker.cancelled.connect(self._on_search_cancelled)
-        self._worker.start()
+        self._worker = worker
+        self._track_worker(worker)
+        worker.done.connect(lambda result: self._on_search_done(result, generation))
+        worker.failed.connect(lambda message: self._on_search_failed(message, generation))
+        worker.cancelled.connect(lambda: self._on_search_cancelled(generation))
+        worker.start()
 
-    def _on_search_done(self, result: object) -> None:
+    def _on_search_done(self, result: object, generation: int) -> None:
+        if generation != self._search_generation:
+            self._finish_stale_search()
+            return
         self._searching = False
         self._set_running(False)
-        self._populate_results(cast(list[SearchHit], result))
+        self._populate_results(cast(SearchResults, result))
 
-    def _on_search_failed(self, message: str) -> None:
+    def _on_search_failed(self, message: str, generation: int) -> None:
+        if generation != self._search_generation:
+            self._finish_stale_search()
+            return
         self._searching = False
         self._set_running(False)
         self._set_status(message)
 
-    def _on_search_cancelled(self) -> None:
+    def _on_search_cancelled(self, generation: int) -> None:
+        if generation != self._search_generation:
+            self._finish_stale_search()
+            return
         self._searching = False
         self._set_running(False)
         self._set_status(_("Anulowano"))
+
+    def _finish_stale_search(self) -> None:
+        """Zwalnia lifecycle po callbacku search unieważnionego zmianą zapytania."""
+        if self._searching and self._cancellable:
+            self._searching = False
+            self._set_running(False)
 
     def _on_cancel(self) -> None:
         if self._worker is not None and self._searching and self._cancellable:
@@ -238,27 +283,89 @@ class SearchReplacePanel(QWidget):
 
     # ── Wyniki ──────────────────────────────────────────────────────────────--
 
-    def _populate_results(self, hits: list[SearchHit]) -> None:
-        """Wypełnia drzewo wyników zgrupowane po pliku."""
-        self.results.clear()
+    def _populate_results(self, hits: SearchResults) -> None:
+        """Buforuje bounded wynik core i materializuje tylko pierwszą stronę Qt."""
+        self._reset_results()
         grouped: dict[str, list[SearchHit]] = {}
         for hit in hits:
             grouped.setdefault(hit.internal_path, []).append(hit)
-        for path in sorted(grouped):
-            file_hits = grouped[path]
-            group = QTreeWidgetItem([f"{path} ({len(file_hits)})"])
-            group.setFlags(Qt.ItemFlag.ItemIsEnabled)
-            self.results.addTopLevelItem(group)
-            for hit in file_hits:
+        self._result_totals = {path: len(file_hits) for path, file_hits in grouped.items()}
+        self._result_hits = [hit for path in sorted(grouped) for hit in grouped[path]]
+        self._result_truncated = hits.truncated
+        self._show_more_results()
+
+    def _show_more_results(self) -> None:
+        """Dokłada jedną stronę z istniejącego bufora; nie uruchamia ponownie search."""
+        end = min(self._rendered_results + self.RESULT_PAGE_SIZE, len(self._result_hits))
+        self.results.setUpdatesEnabled(False)
+        try:
+            for hit in self._result_hits[self._rendered_results : end]:
+                group = self._result_groups.get(hit.internal_path)
+                if group is None:
+                    total = self._result_totals[hit.internal_path]
+                    group = QTreeWidgetItem([f"{hit.internal_path} ({total})"])
+                    group.setFlags(Qt.ItemFlag.ItemIsEnabled)
+                    self.results.addTopLevelItem(group)
+                    self._result_groups[hit.internal_path] = group
+                    group.setExpanded(True)
                 child = QTreeWidgetItem([f"{hit.line}: {hit.preview}"])
                 child.setData(0, _HIT_ROLE, (hit.internal_path, hit.line, hit.column))
                 group.addChild(child)
-            group.setExpanded(True)
-        self._set_status(
-            ngettext("Znaleziono {n} trafienie", "Znaleziono {n} trafień", len(hits)).format(
-                n=len(hits)
+        finally:
+            self.results.setUpdatesEnabled(True)
+        self._rendered_results = end
+        self.show_more_button.setEnabled(end < len(self._result_hits))
+        self._update_result_status()
+
+    def _reset_results(self) -> None:
+        """Czyści bounded bufor i wszystkie zmaterializowane strony GUI."""
+        self.results.clear()
+        self._result_hits = []
+        self._result_groups = {}
+        self._result_totals = {}
+        self._rendered_results = 0
+        self._result_truncated = False
+        self.show_more_button.setEnabled(False)
+
+    def _update_result_status(self) -> None:
+        """Pokazuje pełną liczność bufora i jawny sygnał truncation core."""
+        count = len(self._result_hits)
+        if self._result_truncated:
+            message = _(
+                "Znaleziono co najmniej {n} trafień. Wyniki wyszukiwania ograniczono."
+            ).format(n=count)
+        else:
+            message = ngettext("Znaleziono {n} trafienie", "Znaleziono {n} trafień", count).format(
+                n=count
             )
-        )
+        if self._rendered_results < count:
+            message += _(" · pokazano {shown}").format(shown=self._rendered_results)
+        self._set_status(message)
+
+    def reset(self) -> None:
+        """Anuluje bieżący search i unieważnia wyniki przy zmianie EPUB-a."""
+        self._search_generation += 1
+        if self._worker is not None and self._searching and self._cancellable:
+            self._worker.cancel()
+        self._worker = None
+        self._searching = False
+        self._set_running(False)
+        self._reset_results()
+        self._set_status("")
+
+    def is_search_running(self) -> bool:
+        """Czy worker tylko-odczytowego wyszukiwania nadal używa otwartego EPUB-a."""
+        return self._searching and self._cancellable
+
+    def _track_worker(self, worker: Worker) -> None:
+        """Trzyma anulowany QThread przy życiu do sygnału finished."""
+        self._workers.add(worker)
+        worker.finished.connect(lambda: self._release_worker(worker))
+
+    def _release_worker(self, worker: Worker) -> None:
+        self._workers.discard(worker)
+        if self._worker is worker:
+            self._worker = None
 
     def _on_result_double_clicked(self, item: QTreeWidgetItem, _column: int) -> None:
         location = item.data(0, _HIT_ROLE)
@@ -284,7 +391,7 @@ class SearchReplacePanel(QWidget):
         self._host.set_mutation_guard(True)
         self._set_running(True, cancellable=False)
         self._set_status(_("Zamieniam…"))
-        self._worker = Worker(
+        worker = Worker(
             _replace_worker,
             epub,
             query,
@@ -294,10 +401,12 @@ class SearchReplacePanel(QWidget):
             options["whole_words"],
             self._scope_paths(),
         )
-        self._worker.done.connect(self._on_replace_done)
-        self._worker.failed.connect(self._on_replace_failed)
-        self._worker.cancelled.connect(self._on_replace_interrupted)
-        self._worker.start()
+        self._worker = worker
+        self._track_worker(worker)
+        worker.done.connect(self._on_replace_done)
+        worker.failed.connect(self._on_replace_failed)
+        worker.cancelled.connect(self._on_replace_interrupted)
+        worker.start()
 
     def _on_replace_done(self, result: object) -> None:
         self._finish_replace()
@@ -361,7 +470,7 @@ def _search_worker(
     case_sensitive: bool,
     whole_words: bool,
     paths: list[str] | None,
-) -> list[SearchHit]:
+) -> SearchResults:
     """Funkcja robocza: przeszukuje wskazany zakres (z anulowaniem między plikami)."""
     return search_epub(
         epub,

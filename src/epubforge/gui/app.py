@@ -383,11 +383,11 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802 — Qt API
         """Pyta o niezapisane zmiany Edytora/Spisu treści, potem zapisuje konfigurację."""
-        if self.editor_tab.is_document_mutating():
+        if self.editor_tab.is_document_busy():
             QMessageBox.information(
                 self,
-                _("Zamiana w toku"),
-                _("Poczekaj na zakończenie zamiany."),
+                _("Operacja w toku"),
+                _("Poczekaj na zakończenie wyszukiwania lub zamiany."),
             )
             event.ignore()
             return

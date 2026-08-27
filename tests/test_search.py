@@ -12,7 +12,9 @@ import pytest
 
 from epubforge.core import Epub
 from epubforge.core.search import (
+    MAX_SEARCH_RESULTS,
     SearchPatternError,
+    SearchResults,
     replace_in_epub,
     search_epub,
 )
@@ -119,6 +121,73 @@ def test_search_scoped_to_paths(tmp_path: Path) -> None:
     assert {h.internal_path for h in hits} == {"OEBPS/styles/main.css"}
 
 
+def _search_many(
+    tmp_path: Path,
+    counts: list[int],
+    *,
+    regex: bool = False,
+) -> SearchResults:
+    """Buduje mały fixture w locie i zwraca trafienia z kontrolowaną licznością."""
+    files = {
+        f"text/many-{index:02d}.xhtml": ("<p>needle</p>\n" * count).encode()
+        for index, count in enumerate(counts)
+    }
+    paths = [f"OEBPS/{name}" for name in files]
+    with Epub(_build_epub(tmp_path, files)) as epub:
+        return search_epub(
+            epub,
+            r"need(?:le)" if regex else "needle",
+            regex=regex,
+            paths=paths,
+        )
+
+
+@pytest.mark.parametrize("count", [100, 1000, 5000])
+def test_search_returns_all_results_below_limit(tmp_path: Path, count: int) -> None:
+    """Normalne zbiory poniżej limitu są kompletne i nieoznaczone jako ucięte."""
+    hits = _search_many(tmp_path, [count])
+
+    assert len(hits) == count
+    assert hits.truncated is False
+
+
+def test_search_accepts_exact_result_limit(tmp_path: Path) -> None:
+    """Dokładnie limit trafień jest pełnym, zaakceptowanym wynikiem."""
+    hits = _search_many(tmp_path, [MAX_SEARCH_RESULTS])
+
+    assert len(hits) == MAX_SEARCH_RESULTS
+    assert hits.truncated is False
+
+
+def test_search_limit_plus_one_is_bounded_and_reported(tmp_path: Path) -> None:
+    """Trafienie limit+1 tylko wykrywa truncation; nie tworzy kolejnego SearchHit."""
+    hits = _search_many(tmp_path, [MAX_SEARCH_RESULTS + 1])
+
+    assert len(hits) == MAX_SEARCH_RESULTS
+    assert hits.truncated is True
+
+
+def test_search_limit_is_global_and_order_is_deterministic(tmp_path: Path) -> None:
+    """Cap obejmuje sumę plików i zachowuje kolejność ścieżka → offset."""
+    hits = _search_many(tmp_path, [4000, 4000, 3000])
+
+    assert len(hits) == MAX_SEARCH_RESULTS
+    assert hits.truncated is True
+    assert hits[0].internal_path.endswith("many-00.xhtml")
+    assert hits[3999].internal_path.endswith("many-00.xhtml")
+    assert hits[4000].internal_path.endswith("many-01.xhtml")
+    assert hits[-1].internal_path.endswith("many-02.xhtml")
+    assert hits[-1].line == 2000
+
+
+def test_fast_regex_with_many_matches_uses_same_result_cap(tmp_path: Path) -> None:
+    """Legalny szybki regex nie omija globalnego limitu liczby wyników."""
+    hits = _search_many(tmp_path, [MAX_SEARCH_RESULTS + 1], regex=True)
+
+    assert len(hits) == MAX_SEARCH_RESULTS
+    assert hits.truncated is True
+
+
 # ── Zamiana ──────────────────────────────────────────────────────────────────
 
 
@@ -169,6 +238,22 @@ def test_replace_regex_backreference(tmp_path: Path) -> None:
         text = epub.read_file("OEBPS/text/chapter1.xhtml").decode("utf-8")
     assert report.total == 1
     assert "koty" in text
+
+
+def test_replace_all_is_not_limited_by_search_result_cap(tmp_path: Path) -> None:
+    """Replace All wykonuje wszystkie podmiany, zamiast cicho kończyć na capie search."""
+    count = MAX_SEARCH_RESULTS + 1
+    files = {"text/many.xhtml": ("needle\n" * count).encode()}
+    with Epub(_build_epub(tmp_path, files)) as epub:
+        report = replace_in_epub(
+            epub,
+            "needle",
+            "done",
+            paths=["OEBPS/text/many.xhtml"],
+        )
+
+    assert report.total == count
+    assert report.skipped == []
 
 
 # ── ReDoS / timeout ───────────────────────────────────────────────────────────
