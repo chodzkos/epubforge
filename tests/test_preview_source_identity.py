@@ -12,9 +12,7 @@ from typing import Any
 import pytest
 
 from epubforge.core import Epub, PendingChanges, SourceIdentity, source_identity_from_stat
-from epubforge.gui.preview.backend import DiagnosticCategory
 from epubforge.gui.preview.cache import ResourceByteCache
-from epubforge.gui.preview.controller import PreviewController
 from epubforge.gui.preview.resources import (
     PreviewSourceChangedError,
     SnapshotResourceProvider,
@@ -32,6 +30,19 @@ def _open_identity(path: Path) -> SourceIdentity:
     """Tożsamość z fstat otwartego uchwytu — nie pathname.stat()."""
     with path.open("rb") as handle:
         return source_identity_from_stat(os.fstat(handle.fileno()))
+
+
+def _replace_open_source(replacement: Path, source: Path, *, required: bool = True) -> bool:
+    """os.replace(replacement, source). Na Windows lock otwartego ZIP-a: skip albo False."""
+    try:
+        os.replace(replacement, source)
+    except PermissionError:
+        if os.name != "nt":
+            raise
+        if required:
+            pytest.skip("Windows blokuje os.replace otwartego EPUB-a (exclusive lock)")
+        return False
+    return True
 
 
 def _marker_epub(source: Path, target: Path, marker: bytes) -> Path:
@@ -118,7 +129,7 @@ def test_identity_mismatch_after_generation_rejects_source_read(
     generation = session.advance(epub, _CHAPTER, {})
     original_nav = zipfile.ZipFile(source).read(_NAV)
     session.clear_cache()
-    os.replace(replacement, source)
+    _replace_open_source(replacement, source)
 
     data = generation.resource_provider.read(_NAV, generation.generation_id)
 
@@ -146,7 +157,7 @@ def test_pending_overlay_survives_source_identity_mismatch(
         {_CHAPTER: b"dirty-chapter"},
         pending=pending,
     )
-    os.replace(replacement, source)
+    _replace_open_source(replacement, source, required=False)
     provider = generation.resource_provider
 
     assert provider.read(_CHAPTER, generation.generation_id) == b"dirty-chapter"
@@ -247,7 +258,11 @@ def test_controller_rejects_source_replaced_before_snapshot(
     epub = Epub(source)
     epub.open()
     session = PreviewSession.create(epub, source)
-    os.replace(replacement, source)
+    _replace_open_source(replacement, source)
+
+    pytest.importorskip("PySide6")
+    from epubforge.gui.preview.backend import DiagnosticCategory
+    from epubforge.gui.preview.controller import PreviewController
 
     result = PreviewController().build(
         epub=epub,
@@ -319,7 +334,7 @@ def test_catalog_raises_when_path_replaced_after_open(tmp_path: Path, sample_epu
     _marker_epub(sample_epub, replacement, _MARKER_B)
     epub = Epub(source)
     epub.open()
-    os.replace(replacement, source)
+    _replace_open_source(replacement, source)
     with pytest.raises(PreviewSourceChangedError):
         build_resource_catalog(epub)
     epub.close()
@@ -334,7 +349,7 @@ def test_preload_raises_when_path_replaced_after_catalog(tmp_path: Path, sample_
     epub = Epub(source)
     epub.open()
     catalog = build_resource_catalog(epub)
-    os.replace(replacement, source)
+    _replace_open_source(replacement, source)
     with pytest.raises(PreviewSourceChangedError):
         create_resource_provider(epub, 1, {}, catalog=catalog)
     epub.close()
