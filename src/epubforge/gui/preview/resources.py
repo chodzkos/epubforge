@@ -14,7 +14,8 @@ from types import MappingProxyType
 from typing import Protocol
 
 from epubforge.core import Epub, PendingChanges, SourceIdentity, source_identity_from_stat
-from epubforge.core.exceptions import InvalidPublicationHrefError
+from epubforge.core.exceptions import AmbiguousPublicationMemberError, InvalidPublicationHrefError
+from epubforge.core.member_lookup import live_archive_members, locate_archive_member
 from epubforge.core.publication_href import resolve_publication_member
 from epubforge.gui.preview.cache import CacheStats, ResourceByteCache, resource_kind
 from epubforge.gui.preview.paths import UnsafePreviewPathError, normalize_internal_path
@@ -103,45 +104,57 @@ class SnapshotResourceProvider:
         self._cache = cache
         self._cache.invalidate_revisions(self._revisions)
 
-    def read(self, path: str, generation_id: int) -> bytes | None:
-        """Czyta overlay, potem bufor Epub, na końcu oryginalny wpis ZIP."""
+    def _locate_preview_member(self, path: str) -> str | None:
+        """Ta sama tożsamość NFC co core; ambiguity → None (fail-closed)."""
         try:
-            normalized = normalize_internal_path(path)
+            requested = normalize_internal_path(path)
         except UnsafePreviewPathError:
             return None
-        if generation_id != self.generation_id or normalized in self._deleted:
+        live = live_archive_members(
+            self._files,
+            [*self._dirty, *self._buffered],
+            self._deleted,
+        )
+        try:
+            return locate_archive_member(requested, live)
+        except (KeyError, AmbiguousPublicationMemberError):
             return None
-        if normalized in self._dirty:
-            return self._dirty[normalized]
-        if normalized in self._buffered:
-            return self._buffered[normalized]
-        if normalized not in self._files:
+
+    def read(self, path: str, generation_id: int) -> bytes | None:
+        """Czyta overlay, potem bufor Epub, na końcu oryginalny wpis ZIP."""
+        if generation_id != self.generation_id:
             return None
-        revision = self._revisions.get(normalized, 0)
-        kind = resource_kind(normalized, self.media_type(normalized))
-        cached = self._cache.get(normalized, revision, kind)
+        located = self._locate_preview_member(path)
+        if located is None:
+            return None
+        if located in self._dirty:
+            return self._dirty[located]
+        if located in self._buffered:
+            return self._buffered[located]
+        revision = self._revisions.get(located, 0)
+        kind = resource_kind(located, self.media_type(located))
+        cached = self._cache.get(located, revision, kind)
         if cached is not None:
             return cached
-        data = self._read_source(normalized)
+        data = self._read_source(located)
         if data is not None:
-            self._cache.put(normalized, revision, kind, data)
+            self._cache.put(located, revision, kind, data)
         return data
 
     def read_prepared(self, path: str, generation_id: int) -> bytes | None:
         """Obsługuje request WebEngine bez stat/ZIP I/O na wątku handlera."""
-        try:
-            normalized = normalize_internal_path(path)
-        except UnsafePreviewPathError:
+        if generation_id != self.generation_id:
             return None
-        if generation_id != self.generation_id or normalized in self._deleted:
+        located = self._locate_preview_member(path)
+        if located is None:
             return None
-        if normalized in self._dirty:
-            return self._dirty[normalized]
-        if normalized in self._buffered:
-            return self._buffered[normalized]
-        revision = self._revisions.get(normalized, 0)
-        kind = resource_kind(normalized, self.media_type(normalized))
-        return self._cache.get(normalized, revision, kind)
+        if located in self._dirty:
+            return self._dirty[located]
+        if located in self._buffered:
+            return self._buffered[located]
+        revision = self._revisions.get(located, 0)
+        kind = resource_kind(located, self.media_type(located))
+        return self._cache.get(located, revision, kind)
 
     def preload(self) -> None:
         """Wypełnia cache w workerze; typowe requesty handlera są wyłącznie pamięciowe."""
@@ -200,30 +213,28 @@ class SnapshotResourceProvider:
     def media_type(self, path: str) -> str:
         """Preferuje manifest OPF; aktywnych typów nie zgaduje."""
         try:
-            normalized = normalize_internal_path(path)
+            requested = normalize_internal_path(path)
         except UnsafePreviewPathError:
             return "application/octet-stream"
-        declared = self._manifest_types.get(normalized, "").strip().lower()
+        located = self._locate_preview_member(requested)
+        key = located or requested
+        declared = self._manifest_types.get(key, "").strip().lower()
+        if declared not in _SAFE_DECLARED_MIME:
+            declared = self._manifest_types.get(requested, "").strip().lower()
         if declared in _SAFE_DECLARED_MIME:
             return declared
-        return _SAFE_MIME.get(posixpath.splitext(normalized)[1].lower(), "application/octet-stream")
+        return _SAFE_MIME.get(posixpath.splitext(key)[1].lower(), "application/octet-stream")
 
     def exists(self, path: str) -> bool:
         """Sprawdza obecność bez odczytywania danych wpisu."""
-        try:
-            normalized = normalize_internal_path(path)
-        except UnsafePreviewPathError:
-            return False
-        return normalized not in self._deleted and (
-            normalized in self._dirty or normalized in self._buffered or normalized in self._files
-        )
+        return self._locate_preview_member(path) is not None
 
     def revision(self, path: str) -> int:
         """Zwraca rewizję lub zero dla nieznanego zasobu."""
-        try:
-            return self._revisions.get(normalize_internal_path(path), 0)
-        except UnsafePreviewPathError:
+        located = self._locate_preview_member(path)
+        if located is None:
             return 0
+        return self._revisions.get(located, 0)
 
 
 def create_resource_provider(

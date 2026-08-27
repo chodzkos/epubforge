@@ -50,6 +50,7 @@ from epubforge.core.exceptions import (
     OpfNotFoundError,
     ResourceLimitError,
 )
+from epubforge.core.member_lookup import live_archive_members, locate_archive_member
 from epubforge.core.metadata import Metadata
 
 logger = logging.getLogger(__name__)
@@ -291,13 +292,13 @@ class Epub:
         Raises:
             EpubNotOpenError: gdy EPUB nie jest otwarty.
             KeyError: gdy plik nie istnieje albo został oznaczony do usunięcia.
+            AmbiguousPublicationMemberError: kilka równoważnych NFC/NFD bez exact match.
         """
         zf = self._ensure_open()
-        if internal_path in self._deleted:
-            raise KeyError(internal_path)
-        if internal_path in self._modified:
-            return len(self._modified[internal_path])
-        return zf.getinfo(internal_path).file_size
+        located = self._locate_live_member(internal_path)
+        if located in self._modified:
+            return len(self._modified[located])
+        return zf.getinfo(located).file_size
 
     def read_file_limited(self, internal_path: str, max_bytes: int) -> bytes:
         """Czyta wpis tylko wtedy, gdy jego rozmiar nie przekracza limitu.
@@ -328,13 +329,14 @@ class Epub:
         źródłowej, którą zamroził, zamiast z żywego bufora :class:`Epub`.
         """
         zf = self._ensure_open()
-        size = zf.getinfo(internal_path).file_size
+        located = locate_archive_member(internal_path, zf.namelist())
+        size = zf.getinfo(located).file_size
         if size > max_bytes:
             raise ResourceLimitError(
                 f"Źródłowy zasób {internal_path!r} przekracza limit materializacji "
                 f"({size} > {max_bytes} B)."
             )
-        return zf.read(internal_path)
+        return zf.read(located)
 
     def read_file(self, internal_path: str) -> bytes:
         """Zwraca zawartość pliku wewnątrz EPUB-a.
@@ -347,13 +349,13 @@ class Epub:
         Raises:
             EpubNotOpenError: gdy EPUB nie jest otwarty.
             KeyError: gdy plik nie istnieje w archiwum.
+            AmbiguousPublicationMemberError: kilka równoważnych NFC/NFD bez exact match.
         """
         zf = self._ensure_open()
-        if internal_path in self._deleted:
-            raise KeyError(internal_path)
-        if internal_path in self._modified:
-            return self._modified[internal_path]
-        return zf.read(internal_path)
+        located = self._locate_live_member(internal_path)
+        if located in self._modified:
+            return self._modified[located]
+        return zf.read(located)
 
     def write_file(self, internal_path: str, data: bytes) -> None:
         """Zapisuje zmianę pliku do bufora w pamięci (utrwalane w :meth:`save`).
@@ -364,13 +366,18 @@ class Epub:
 
         Raises:
             EpubNotOpenError: gdy EPUB nie jest otwarty.
+            AmbiguousPublicationMemberError: kilka równoważnych NFC/NFD bez exact match.
         """
         self._ensure_open()
         validate_member_name(internal_path)
-        self._deleted.discard(internal_path)
-        self._modified[internal_path] = data
+        try:
+            target = self._locate_live_member(internal_path)
+        except KeyError:
+            target = internal_path
+        self._deleted.discard(target)
+        self._modified[target] = data
         # Modyfikacja OPF unieważnia zcache'owany manifest/spine.
-        if internal_path == self._opf_path:
+        if target == self._opf_path:
             self._manifest = None
             self._spine = None
 
@@ -382,12 +389,17 @@ class Epub:
 
         Raises:
             EpubNotOpenError: gdy EPUB nie jest otwarty.
+            AmbiguousPublicationMemberError: kilka równoważnych NFC/NFD bez exact match.
         """
         self._ensure_open()
         validate_member_name(internal_path)
-        self._modified.pop(internal_path, None)
-        self._deleted.add(internal_path)
-        if internal_path == self._opf_path:
+        try:
+            target = self._locate_live_member(internal_path)
+        except KeyError:
+            target = internal_path
+        self._modified.pop(target, None)
+        self._deleted.add(target)
+        if target == self._opf_path:
             self._reset_cache()
 
     def list_files(self) -> list[str]:
@@ -540,6 +552,15 @@ class Epub:
             raise EpubNotOpenError("EPUB nie jest otwarty — wywołaj open() lub użyj 'with'.")
         return self._zip
 
+    def _live_member_names(self) -> set[str]:
+        """Żywe tożsamości ZIP i overlay, bez exact-deleted."""
+        zf = self._ensure_open()
+        return live_archive_members(zf.namelist(), self._modified, self._deleted)
+
+    def _locate_live_member(self, internal_path: str) -> str:
+        """Exact-first lookup z jednoznacznym fallbackiem NFC."""
+        return locate_archive_member(internal_path, self._live_member_names())
+
     def _assert_source_unchanged(self) -> None:
         """Odrzuca save, gdy pathname nie wskazuje archiwum otwartego przez sesję."""
         if self._source_path is None or self._source_stat is None:
@@ -555,10 +576,14 @@ class Epub:
         odczytem, więc „duży XML” zostaje odrzucony zanim trafi do parsera lxml.
         Bufor zapisów w pamięci (nasze własne bajty) nie jest limitowany.
         """
-        if internal_path not in self._modified and internal_path not in self._deleted:
+        try:
+            located = self._locate_live_member(internal_path)
+        except KeyError:
+            located = internal_path
+        if located not in self._modified and located not in self._deleted:
             zf = self._ensure_open()
             try:
-                info = zf.getinfo(internal_path)
+                info = zf.getinfo(located)
             except KeyError:
                 info = None
             if info is not None and info.file_size > self._limits.max_text_size:

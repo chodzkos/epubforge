@@ -18,6 +18,7 @@ from epubforge.core.epub import (
     source_identity_from_stat,
 )
 from epubforge.core.exceptions import (
+    AmbiguousPublicationMemberError,
     ConversionError,
     ConverterNotFoundError,
     EpubError,
@@ -39,6 +40,7 @@ from epubforge.core.metadata import (
 
 __all__ = [
     "DEFAULT_LIMITS",
+    "AmbiguousPublicationMemberError",
     "ArchiveLimits",
     "Config",
     "ConfigStore",
