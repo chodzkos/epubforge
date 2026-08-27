@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 from pytestqt.qtbot import QtBot
+from shiboken6 import isValid
 
 from epubforge.core import Epub
 from epubforge.gui.preview.backend import PreviewSnapshot
@@ -43,6 +44,22 @@ def test_new_session_reaches_hidden_backend_and_closes_previous(qtbot: QtBot) ->
     preview._webengine_backend = None
     preview.dispose()
     assert second.closed
+
+
+def test_session_close_releases_fallback_document(qtbot: QtBot) -> None:
+    """Zamknięcie książki usuwa aktywny dokument i jego cache zasobów fallbacku."""
+    preview = BookPreview()
+    qtbot.addWidget(preview)
+    session = PreviewSession.create(source_path=Path("book.epub"))
+    preview.set_session(session)
+    preview.html_preview.set_content("<html><body>retained</body></html>", None, None)
+    document = preview.html_preview.view.document()
+
+    preview.set_session(None)
+
+    assert session.closed
+    assert not isValid(document)
+    assert preview.html_preview.view.toPlainText() == ""
 
 
 def test_dispose_releases_last_generation_provider(qtbot: QtBot, sample_epub: Path) -> None:

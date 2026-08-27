@@ -17,6 +17,10 @@ MAX_PREVIEW_CSS_BYTES = 4 * _MIB
 MAX_DIRECT_IMAGE_ENCODED_BYTES = 32 * _MIB
 MAX_IMAGE_PIXELS = 32_000_000
 MAX_DECODED_IMAGE_BYTES = 128 * _MIB
+# Fallback utrzymuje zdekodowane rastry przez lifetime aktywnego QTextDocument.
+# Budżet agregatu jest równy istniejącemu ceilingowi pojedynczego obrazu, więc
+# nie odrzuca obrazu legalnego według guarda per-image, ale ogranicza ich sumę.
+MAX_FALLBACK_DECODED_IMAGE_BYTES = MAX_DECODED_IMAGE_BYTES
 _UTF8_CHUNK_CHARS = 64 * 1024
 
 
