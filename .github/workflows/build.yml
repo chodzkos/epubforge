@@ -26,6 +26,39 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/v')
       run: python build/check_tag_version.py "$GITHUB_REF_NAME"
 
+  verify-ci:
+    name: Require successful Tests + CodeQL for release SHA
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    steps:
+    - name: Wait for successful blocking workflows on exact SHA
+      # `needs` nie działa między workflowami. Odpytujemy więc GitHub Actions o
+      # kompletne, udane biegi obu workflowów dla dokładnego SHA tagu/manualnego ref.
+      # Tests obejmuje matrix, Base CLI, Package, WebEngine, Windows frozen smoke,
+      # security-tests i pip-audit; CodeQL jest osobnym blocking workflowem.
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        for workflow in test.yml codeql.yml; do
+          success_count=0
+          for attempt in $(seq 1 90); do
+            success_count="$(gh api \
+              "/repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow}/runs?head_sha=${GITHUB_SHA}&event=push&status=success&per_page=1" \
+              --jq '.total_count')"
+            if [ "$success_count" -gt 0 ]; then
+              echo "OK: ${workflow} succeeded for ${GITHUB_SHA}"
+              break
+            fi
+            echo "Waiting for ${workflow} success on ${GITHUB_SHA} (${attempt}/90)"
+            sleep 20
+          done
+          if [ "$success_count" -eq 0 ]; then
+            echo "ERROR: no successful ${workflow} run for exact SHA ${GITHUB_SHA}"
+            exit 1
+          fi
+        done
+
   build-dist:
     name: Build sdist + wheel + SBOM
     needs: verify-version
@@ -255,7 +288,7 @@ jobs:
 
   release:
     name: Publish GitHub Release (signed provenance)
-    needs: [build-dist, build-windows]
+    needs: [verify-ci, build-dist, build-windows]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     # Minimalny write: utworzenie Release (contents) + poświadczenie pochodzenia
