@@ -66,3 +66,12 @@ class InvalidPublicationHrefError(EpubError):
 
 class MissingPublicationMemberError(EpubError):
     """Manifest wskazuje zasób, którego nie ma w archiwum EPUB."""
+
+
+class AmbiguousPublicationMemberError(EpubError):
+    """Żądana ścieżka pasuje do więcej niż jednego wpisu po normalizacji NFC.
+
+    Exact match zawsze wygrywa. Ten błąd oznacza brak exact identity przy
+    co najmniej dwóch równoważnych nazwach (np. NFC i NFD). Nie wolno
+    wybierać pierwszego wpisu.
+    """
