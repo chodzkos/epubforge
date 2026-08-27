@@ -59,6 +59,23 @@ _CONTAINER_PATH = EPUB_CONTAINER_PATH
 _CONTAINER_NS = "urn:oasis:names:tc:opendocument:xmlns:container"
 _OPF_NS = "http://www.idpf.org/2007/opf"
 
+SourceIdentity = tuple[int, int, int, int, int | None]
+
+
+def source_identity_from_stat(
+    stat: os.stat_result, *, os_name: str | None = None
+) -> SourceIdentity:
+    """Buduje cross-platform identity zgodne z porównaniem #180.
+
+    Args:
+        stat: wynik ``stat``/``fstat`` otwartego uchwytu.
+        os_name: nadpisanie platformy (nt vs POSIX). None = os.name.
+    """
+    name = os.name if os_name is None else os_name
+    ctime_ns = None if name == "nt" else stat.st_ctime_ns
+    return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, ctime_ns)
+
+
 # Domyślna liczba przechowywanych backupów (najnowszy + starsze rotowane).
 # Konfigurowalne per-wywołanie przez ``Epub.save(backup_retention=…)`` / ``backup``.
 DEFAULT_BACKUP_RETENTION = 5
@@ -184,18 +201,17 @@ class Epub:
         self._source_stat = os.fstat(zf.fp.fileno())
         logger.debug("Otwarto EPUB: %s", self.path)
 
-    def source_identity(self) -> tuple[int, int, int, int] | None:
+    def source_identity(self) -> SourceIdentity | None:
         """Zwraca tożsamość otwartego uchwytu źródła, nie bieżącego pathname.
 
-        Pola odpowiadają fingerprintowi podglądu: ``st_dev``, ``st_ino``,
-        ``st_size``, ``st_mtime_ns`` z :func:`os.fstat` tego samego deskryptora,
-        którego używa sesja :class:`Epub`. ``None`` oznacza brak otwartego
-        archiwum.
+        Pola odpowiadają kontraktowi #180: ``st_dev``, ``st_ino``, ``st_size``,
+        ``st_mtime_ns`` oraz ``st_ctime_ns`` na POSIX. Na Windows ostatnie pole
+        jest ``None``, ponieważ ``stat`` i ``fstat`` mogą raportować niezgodne
+        wartości deprecated creation-time.
         """
         if self._zip is None or self._source_stat is None:
             return None
-        stat = self._source_stat
-        return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns)
+        return source_identity_from_stat(self._source_stat)
 
     def close(self) -> None:
         """Zamyka archiwum i czyszcze bufor zmian oraz cache.

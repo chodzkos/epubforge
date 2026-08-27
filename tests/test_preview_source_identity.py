@@ -6,21 +6,32 @@ import os
 import zipfile
 from collections.abc import Callable
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
-from epubforge.core import Epub, PendingChanges
-from epubforge.gui.preview import resources as resources_module
+from epubforge.core import Epub, PendingChanges, SourceIdentity, source_identity_from_stat
 from epubforge.gui.preview.backend import DiagnosticCategory
 from epubforge.gui.preview.cache import ResourceByteCache
 from epubforge.gui.preview.controller import PreviewController
-from epubforge.gui.preview.resources import SnapshotResourceProvider
+from epubforge.gui.preview.resources import (
+    PreviewSourceChangedError,
+    SnapshotResourceProvider,
+    build_resource_catalog,
+    create_resource_provider,
+)
 from epubforge.gui.preview.session import PreviewSession
 
 _CHAPTER = "OEBPS/text/chapter1.xhtml"
 _NAV = "OEBPS/nav.xhtml"
 _MARKER_B = b"REPLACED-SOURCE-B"
+
+
+def _open_identity(path: Path) -> SourceIdentity:
+    """Tożsamość z fstat otwartego uchwytu — nie pathname.stat()."""
+    with path.open("rb") as handle:
+        return source_identity_from_stat(os.fstat(handle.fileno()))
 
 
 def _marker_epub(source: Path, target: Path, marker: bytes) -> Path:
@@ -47,7 +58,7 @@ def _provider(path: Path) -> SnapshotResourceProvider:
         revisions={_CHAPTER: 1, _NAV: 1},
         sizes={_CHAPTER: 64, _NAV: 64},
         cache=ResourceByteCache(),
-        source_signature=resources_module._source_signature(path),
+        source_signature=_open_identity(path),
     )
 
 
@@ -158,10 +169,10 @@ def test_source_unchanged_with_pending_still_previews(sample_epub: Path) -> None
     epub.close()
 
 
-def test_same_size_same_mtime_fingerprint_collision_is_identity_residual(
+def test_same_size_same_mtime_rewrite_uses_platform_ctime_contract(
     tmp_path: Path,
 ) -> None:
-    """Fingerprint (dev, ino, size, mtime) nie rozróżnia rewrite w tym samym inode."""
+    """POSIX ctime wykrywa rewrite; Windows zachowuje wyjątek kontraktu #180."""
     source = tmp_path / "collision-a.epub"
     replacement = tmp_path / "collision-b.epub"
     with zipfile.ZipFile(source, "w") as archive:
@@ -174,7 +185,7 @@ def test_same_size_same_mtime_fingerprint_collision_is_identity_residual(
         archive.writestr(info, b"B" * 32)
     assert source.stat().st_size == replacement.stat().st_size
     provider = _provider(source)
-    expected = resources_module._source_signature(source)
+    expected = _open_identity(source)
     original_stat = source.stat()
     with source.open("r+b") as handle:
         handle.write(replacement.read_bytes())
@@ -183,9 +194,14 @@ def test_same_size_same_mtime_fingerprint_collision_is_identity_residual(
         os.fsync(handle.fileno())
     os.utime(source, ns=(original_stat.st_atime_ns, original_stat.st_mtime_ns))
 
-    assert resources_module._source_signature(source) == expected
     data = provider.read(_CHAPTER, 1)
-    assert data in {None, b"A" * 32, b"B" * 32}
+    if os.name == "nt":
+        assert _open_identity(source) == expected
+        assert data in {None, b"A" * 32, b"B" * 32}
+    else:
+        assert _open_identity(source) != expected
+        assert data is None
+        assert data != b"B" * 32
 
 
 def test_symlink_retarget_does_not_return_replacement(
@@ -247,4 +263,78 @@ def test_controller_rejects_source_replaced_before_snapshot(
     assert result.diagnostic.category is DiagnosticCategory.PREVIEW_LIMIT
     assert result.diagnostic.problem_kind == "zrodlo_zmienione"
     assert "źródłowy" in result.diagnostic.message.lower()
+    epub.close()
+
+
+def _fake_stat(
+    *,
+    dev: int = 1,
+    ino: int = 2,
+    size: int = 3,
+    mtime: int = 4,
+    ctime: int = 5,
+) -> SimpleNamespace:
+    """Minimalny obiekt z polami używanymi przez source_identity_from_stat."""
+    return SimpleNamespace(
+        st_dev=dev,
+        st_ino=ino,
+        st_size=size,
+        st_mtime_ns=mtime,
+        st_ctime_ns=ctime,
+    )
+
+
+def test_windows_ctime_only_change_does_not_mismatch() -> None:
+    """Na Windows zmiana samego st_ctime_ns nie zmienia identity."""
+    left = source_identity_from_stat(_fake_stat(ctime=111), os_name="nt")  # type: ignore[arg-type]
+    right = source_identity_from_stat(_fake_stat(ctime=222), os_name="nt")  # type: ignore[arg-type]
+    assert left == right
+    assert left[-1] is None
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (("dev", 9), ("ino", 9), ("size", 9), ("mtime", 9)),
+)
+def test_windows_identity_mismatch_on_core_fields(field: str, value: int) -> None:
+    """Na Windows mismatch daje zmiana dev, ino, size albo mtime."""
+    baseline = source_identity_from_stat(_fake_stat(), os_name="nt")  # type: ignore[arg-type]
+    changed = source_identity_from_stat(_fake_stat(**{field: value}), os_name="nt")  # type: ignore[arg-type]
+    assert baseline != changed
+
+
+def test_posix_ctime_change_mismatches() -> None:
+    """Na POSIX samo st_ctime_ns wchodzi do identity."""
+    left = source_identity_from_stat(_fake_stat(ctime=111), os_name="posix")  # type: ignore[arg-type]
+    right = source_identity_from_stat(_fake_stat(ctime=222), os_name="posix")  # type: ignore[arg-type]
+    assert left != right
+    assert left[-1] == 111
+
+
+def test_catalog_raises_when_path_replaced_after_open(tmp_path: Path, sample_epub: Path) -> None:
+    """Katalog ZIP jest skanowany tylko z uchwytu o expected identity."""
+    source = tmp_path / "preview-source.epub"
+    replacement = tmp_path / "preview-b.epub"
+    source.write_bytes(sample_epub.read_bytes())
+    _marker_epub(sample_epub, replacement, _MARKER_B)
+    epub = Epub(source)
+    epub.open()
+    os.replace(replacement, source)
+    with pytest.raises(PreviewSourceChangedError):
+        build_resource_catalog(epub)
+    epub.close()
+
+
+def test_preload_raises_when_path_replaced_after_catalog(tmp_path: Path, sample_epub: Path) -> None:
+    """Preload nie czyta replacement po zbudowaniu katalogu z A."""
+    source = tmp_path / "preview-source.epub"
+    replacement = tmp_path / "preview-b.epub"
+    source.write_bytes(sample_epub.read_bytes())
+    _marker_epub(sample_epub, replacement, _MARKER_B)
+    epub = Epub(source)
+    epub.open()
+    catalog = build_resource_catalog(epub)
+    os.replace(replacement, source)
+    with pytest.raises(PreviewSourceChangedError):
+        create_resource_provider(epub, 1, {}, catalog=catalog)
     epub.close()

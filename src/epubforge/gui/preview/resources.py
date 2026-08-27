@@ -13,7 +13,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Protocol
 
-from epubforge.core import Epub, PendingChanges
+from epubforge.core import Epub, PendingChanges, SourceIdentity, source_identity_from_stat
 from epubforge.core.exceptions import InvalidPublicationHrefError
 from epubforge.core.publication_href import resolve_publication_member
 from epubforge.gui.preview.cache import CacheStats, ResourceByteCache, resource_kind
@@ -44,7 +44,7 @@ class ResourceCatalog:
     """Indeks centralnego katalogu ZIP współdzielony przez generacje sesji."""
 
     source_path: Path
-    source_signature: tuple[int, int, int, int] | None
+    source_signature: SourceIdentity | None
     files: frozenset[str]
     revisions: Mapping[str, int]
     sizes: Mapping[str, int]
@@ -88,7 +88,7 @@ class SnapshotResourceProvider:
         revisions: Mapping[str, int],
         sizes: Mapping[str, int],
         cache: ResourceByteCache,
-        source_signature: tuple[int, int, int, int] | None = None,
+        source_signature: SourceIdentity | None = None,
     ) -> None:
         self.source_path = Path(source_path)
         self.generation_id = generation_id
@@ -341,15 +341,13 @@ class PreviewSourceChangedError(RuntimeError):
 
 
 @contextmanager
-def _open_verified_zip(
-    path: Path, expected: tuple[int, int, int, int] | None
-) -> Iterator[zipfile.ZipFile]:
+def _open_verified_zip(path: Path, expected: SourceIdentity | None) -> Iterator[zipfile.ZipFile]:
     """Otwiera pathname, weryfikuje fstat tego uchwytu i czyta z tego samego fd."""
     if expected is None:
         raise PreviewSourceChangedError("Brak tożsamości źródła podglądu.")
     handle = path.open("rb")
     try:
-        if _handle_identity(os.fstat(handle.fileno())) != expected:
+        if source_identity_from_stat(os.fstat(handle.fileno())) != expected:
             raise PreviewSourceChangedError(
                 "Plik źródłowy zmienił się podczas przygotowywania podglądu."
             )
@@ -361,17 +359,3 @@ def _open_verified_zip(
     finally:
         if not handle.closed:
             handle.close()
-
-
-def _handle_identity(stat: os.stat_result) -> tuple[int, int, int, int]:
-    """Fingerprint tożsamości otwartego deskryptora, zgodny z sesją Epub."""
-    return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns)
-
-
-def _source_signature(path: Path) -> tuple[int, int, int, int] | None:
-    """Identyfikuje wersję pliku źródłowego bez utrzymywania uchwytu."""
-    try:
-        stat = path.stat()
-    except OSError:
-        return None
-    return _handle_identity(stat)
