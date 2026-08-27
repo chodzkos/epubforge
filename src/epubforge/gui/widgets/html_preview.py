@@ -373,6 +373,14 @@ class HtmlPreview(QWidget):
             base_path=base_path,
             identity_resolver=identity_resolver,
         )
+        self._install_document(html)
+
+    def clear_content(self) -> None:
+        """Usuwa aktywny dokument wraz z jego prywatnym cache zasobów."""
+        self._install_document("")
+
+    def _install_document(self, html: str) -> None:
+        """Instaluje jeden dokument i deterministycznie niszczy poprzedni."""
         self.view.set_allowed_data_urls(set())
         previous_document = self.view.document()
         document = QTextDocument(self.view)

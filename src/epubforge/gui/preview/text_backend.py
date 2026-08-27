@@ -44,8 +44,11 @@ class TextDocumentPreviewBackend(PreviewBackend):
         layout.addWidget(self.html_preview)
 
     def set_session(self, session: PreviewSession | None) -> None:
-        """Zapamiętuje sesję (lekki tor nie potrzebuje jej do renderu)."""
+        """Ustawia sesję i zwalnia dokument poprzedniej publikacji."""
+        previous = self._session
         self._session = session
+        if previous is not None and previous is not session:
+            self.html_preview.clear_content()
 
     def render_snapshot(self, snapshot: PreviewSnapshot) -> None:
         """Renderuje treść snapshotu przez ``HtmlPreview.set_content``."""
@@ -81,5 +84,6 @@ class TextDocumentPreviewBackend(PreviewBackend):
         self.html_preview.set_theme(palette)
 
     def dispose(self) -> None:
-        """Brak zasobów do zwolnienia w torze tekstowym."""
-        return None
+        """Zwalnia aktywny dokument i jego zdekodowane zasoby."""
+        self._session = None
+        self.html_preview.clear_content()
