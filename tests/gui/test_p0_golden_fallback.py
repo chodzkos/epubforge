@@ -135,6 +135,24 @@ def test_previous_document_data_uri_is_revoked(qtbot: QtBot, tmp_path: Path) -> 
     assert not blocked
 
 
+def test_previous_qtextdocument_is_released_on_generation_reset(
+    qtbot: QtBot, tmp_path: Path
+) -> None:
+    """Zmiana generacji nie pozostawia starego cache zasobów jako child QTextBrowser."""
+    book = _make_epub(tmp_path / "book.epub")
+    preview = HtmlPreview()
+    qtbot.addWidget(preview)
+    with Epub(book) as epub:
+        preview.set_content(
+            '<html><body><img src="../images/p.png"/></body></html>',
+            epub,
+            "OEBPS/text/ch.xhtml",
+        )
+        preview.set_content("<html><body>next</body></html>", epub, "OEBPS/text/ch.xhtml")
+
+    assert len(preview.view.findChildren(QTextDocument)) == 1
+
+
 @pytest.mark.parametrize("attribute", ["SRC", "Src", "x:src"])
 def test_case_variant_and_namespaced_raw_data_src_is_removed(attribute: str) -> None:
     namespace = ' xmlns:x="urn:test"' if attribute.startswith("x:") else ""

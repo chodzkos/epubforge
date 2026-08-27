@@ -58,6 +58,12 @@ class ResourceProvider(Protocol):
     def read(self, path: str, generation_id: int) -> bytes | None:
         """Zwraca bajty zasobu tylko dla właściwej generacji."""
 
+    def read_limited(self, path: str, generation_id: int, max_bytes: int) -> bytes | None:
+        """Zwraca zasób tylko wtedy, gdy winner mieści się w limicie bajtów."""
+
+    def canonical_path(self, path: str) -> str | None:
+        """Zwraca faktyczną tożsamość membera w migawce albo ``None``."""
+
     def media_type(self, path: str) -> str:
         """Zwraca typ z manifestu albo bezpieczny fallback rozszerzenia."""
 
@@ -140,6 +146,28 @@ class SnapshotResourceProvider:
         if data is not None:
             self._cache.put(located, revision, kind, data)
         return data
+
+    def canonical_path(self, path: str) -> str | None:
+        """Zwraca exact-first/NFC identity faktycznie żywego membera publikacji."""
+        return self._locate_preview_member(path)
+
+    def read_limited(self, path: str, generation_id: int, max_bytes: int) -> bytes | None:
+        """Czyta logical winner z kontrolą rozmiaru przed źródłowym ZIP I/O."""
+        if generation_id != self.generation_id or max_bytes < 0:
+            return None
+        located = self._locate_preview_member(path)
+        if located is None:
+            return None
+        if located in self._dirty:
+            data = self._dirty[located]
+            return data if len(data) <= max_bytes else None
+        if located in self._buffered:
+            data = self._buffered[located]
+            return data if len(data) <= max_bytes else None
+        if self._sizes.get(located, 0) > max_bytes:
+            return None
+        source_data = self.read(located, generation_id)
+        return source_data if source_data is not None and len(source_data) <= max_bytes else None
 
     def read_prepared(self, path: str, generation_id: int) -> bytes | None:
         """Obsługuje request WebEngine bez stat/ZIP I/O na wątku handlera."""

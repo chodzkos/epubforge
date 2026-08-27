@@ -11,13 +11,13 @@ import base64
 import binascii
 import posixpath
 from collections.abc import Callable, Sequence
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import tinycss2
 from chodzkos_gui_kit.palette import Palette as Theme
 from chodzkos_gui_kit.qt.theme import current_palette as current_theme
 from lxml import etree
-from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QUrl, Signal
+from PySide6.QtCore import QBuffer, QByteArray, QCoreApplication, QEvent, QIODevice, QUrl, Signal
 from PySide6.QtGui import QImageReader, QTextDocument
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -27,12 +27,20 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from shiboken6 import isValid
 
 from epubforge.core import Epub, ResourceLimitError, Tool
 from epubforge.core._xml_safe import parse_untrusted
 from epubforge.gui.preview.paths import resolve_publication_path
-from epubforge.gui.resource_limits import RasterStatus, probe_raster
+from epubforge.gui.resource_limits import (
+    MAX_FALLBACK_DECODED_IMAGE_BYTES,
+    RasterStatus,
+    probe_raster,
+)
 from epubforge.i18n import _
+
+if TYPE_CHECKING:
+    from epubforge.gui.preview.session import PreviewGeneration
 
 _MAX_IMG_BYTES = 3 * 1024 * 1024
 _PAPER_BG = "#ffffff"
@@ -52,6 +60,7 @@ _MIME_BY_SUFFIX = {
 }
 
 ImageResolver = Callable[[str], bytes | None]
+ImageIdentityResolver = Callable[[str], str | None]
 
 
 def inline_images(
@@ -60,6 +69,8 @@ def inline_images(
     max_bytes: int = _MAX_IMG_BYTES,
     *,
     base_path: str = _FALLBACK_DOCUMENT,
+    max_decoded_bytes: int = MAX_FALLBACK_DECODED_IMAGE_BYTES,
+    identity_resolver: ImageIdentityResolver | None = None,
 ) -> str:
     """Sanityzuje URL-e i osadza wyłącznie zweryfikowane rastry z publikacji.
 
@@ -91,6 +102,9 @@ def inline_images(
             ):
                 del element.attrib[attribute]
 
+    embedded: dict[str, str] = {}
+    blocked: set[str] = set()
+    decoded_bytes = 0
     for img in [element for element in root.iter() if _localname(element) == "img"]:
         src_attribute = next(
             (
@@ -109,19 +123,34 @@ def inline_images(
         target = resolve_publication_path(src, base_path) if src is not None else None
         if src is None or target is None:
             continue
+        identity = identity_resolver(target) if identity_resolver is not None else target
+        if identity is None:
+            continue
+        if identity in embedded:
+            img.set("src", embedded[identity])
+            continue
+        if identity in blocked:
+            _replace_with_placeholder(img, posixpath.basename(target))
+            continue
         data = resolver(src)
         if data is None:
             continue
         name = posixpath.basename(target)
         mime = _safe_raster_mime(data, name)
+        probe = probe_raster(data)
         if (
             mime is None
             or len(data) > max_bytes
-            or probe_raster(data).status is not RasterStatus.OK
+            or probe.status is not RasterStatus.OK
+            or decoded_bytes + probe.decoded_bytes > max_decoded_bytes
         ):
+            blocked.add(identity)
             _replace_with_placeholder(img, name)
         else:
-            img.set("src", _data_uri(data, mime))
+            data_uri = _data_uri(data, mime)
+            embedded[identity] = data_uri
+            decoded_bytes += probe.decoded_bytes
+            img.set("src", data_uri)
     return etree.tostring(root, encoding="unicode")
 
 
@@ -321,19 +350,40 @@ class HtmlPreview(QWidget):
         button.clicked.connect(lambda: self.open_external.emit(key))
         return button
 
-    def set_content(self, xhtml_text: str, epub: Epub | None, internal_path: str | None) -> None:
+    def set_content(
+        self,
+        xhtml_text: str,
+        epub: Epub | None,
+        internal_path: str | None,
+        generation: PreviewGeneration | None = None,
+    ) -> None:
         """Sanityzuje i renderuje dokument z nową, per-document allowlistą."""
         base_path = internal_path if internal_path is not None else _FALLBACK_DOCUMENT
         resolver = (
-            _epub_image_resolver(epub, internal_path)
+            _epub_image_resolver(epub, internal_path, generation)
             if epub is not None and internal_path is not None
             else lambda _src: None
         )
-        html = inline_images(xhtml_text, resolver, base_path=base_path)
+        identity_resolver = (
+            generation.resource_provider.canonical_path if generation is not None else None
+        )
+        html = inline_images(
+            xhtml_text,
+            resolver,
+            base_path=base_path,
+            identity_resolver=identity_resolver,
+        )
         self.view.set_allowed_data_urls(set())
+        previous_document = self.view.document()
         document = QTextDocument(self.view)
         document.setBaseUrl(_ISOLATED_BASE)
         self.view.setDocument(document)
+        if isValid(previous_document):
+            previous_document.deleteLater()
+            QCoreApplication.sendPostedEvents(
+                previous_document,
+                QEvent.Type.DeferredDelete,
+            )
         self.view.set_allowed_data_urls(_embedded_data_urls(html))
         self.view.setHtml(html)
 
@@ -348,13 +398,23 @@ class HtmlPreview(QWidget):
         )
 
 
-def _epub_image_resolver(epub: Epub, internal_path: str) -> ImageResolver:
-    """Czyta obrazy tylko przez współdzielony resolver przestrzeni publikacji."""
+def _epub_image_resolver(
+    epub: Epub,
+    internal_path: str,
+    generation: PreviewGeneration | None = None,
+) -> ImageResolver:
+    """Czyta logiczny winner obrazu przez provider generacji albo otwarty EPUB."""
 
     def resolve(src: str) -> bytes | None:
         target = resolve_publication_path(src, internal_path)
         if target is None:
             return None
+        if generation is not None:
+            return generation.resource_provider.read_limited(
+                target,
+                generation.generation_id,
+                _MAX_IMG_BYTES,
+            )
         try:
             return epub.read_file_limited(target, _MAX_IMG_BYTES)
         except (KeyError, OSError, ResourceLimitError):
