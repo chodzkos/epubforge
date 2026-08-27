@@ -8,7 +8,10 @@ import pytest
 from PySide6.QtWidgets import QMessageBox
 from pytestqt.qtbot import QtBot
 
+from epubforge.core import ResourceLimitError
+from epubforge.gui.tabs import toc as toc_module
 from epubforge.gui.tabs.toc import TocTab
+from epubforge.toc import MAX_TOC_ENTRIES, TocEntry
 
 pytestmark = pytest.mark.gui
 
@@ -82,3 +85,72 @@ def test_save_clears_dirty(qtbot: QtBot, toc_epub: Path, monkeypatch: pytest.Mon
     assert tab.has_unsaved_changes() is True
     tab._save()
     assert tab.has_unsaved_changes() is False
+
+
+def test_load_shows_safe_message_for_toc_resource_limit(
+    qtbot: QtBot, toc_epub: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Limit TOC nie ucieka ze slotu i nie zostawia otwartego modelu do edycji."""
+    tab = _loaded(qtbot, toc_epub)
+    monkeypatch.setattr(
+        toc_module,
+        "read_toc",
+        lambda _epub: (_ for _ in ()).throw(ResourceLimitError("surowy szczegół")),
+    )
+
+    tab.load_epub(toc_epub)
+
+    assert tab._epub is None
+    assert tab._epub_path is None
+    assert tab._entries == []
+    assert "zbyt duży lub zbyt głęboki" in tab.status_label.text()
+    assert "surowy szczegół" not in tab.status_label.text()
+
+
+def test_generate_shows_safe_message_for_toc_resource_limit(
+    qtbot: QtBot, toc_epub: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Limit generatora pozostaje kontrolowanym stanem zakładki."""
+    tab = _loaded(qtbot, toc_epub)
+    monkeypatch.setattr(tab, "_confirm", lambda _question: True)
+    monkeypatch.setattr(
+        toc_module,
+        "generate_toc",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(ResourceLimitError("surowy szczegół")),
+    )
+
+    tab._generate()
+
+    assert "zbyt duży lub zbyt głęboki" in tab.status_label.text()
+    assert "surowy szczegół" not in tab.status_label.text()
+
+
+def test_add_at_entry_limit_rolls_back_without_dirty_state(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Dodanie wpisu 20 001 nie mutuje modelu ani nie przebudowuje widgetów."""
+    tab = TocTab()
+    qtbot.addWidget(tab)
+    tab._entries = [TocEntry(str(index)) for index in range(MAX_TOC_ENTRIES)]
+    monkeypatch.setattr(tab, "_rebuild_tree", lambda: pytest.fail("nie wolno przebudować"))
+
+    tab._add_entry()
+
+    assert len(tab._entries) == MAX_TOC_ENTRIES
+    assert tab.has_unsaved_changes() is False
+    assert "zbyt duży lub zbyt głęboki" in tab.status_label.text()
+
+
+def test_reorder_handles_preexisting_oversized_model(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Niespójny model programowy nie wypuszcza ResourceLimitError ze slotu."""
+    tab = TocTab()
+    qtbot.addWidget(tab)
+    tab._entries = [TocEntry(str(index)) for index in range(MAX_TOC_ENTRIES + 1)]
+    monkeypatch.setattr(tab, "_selected_entry", lambda: tab._entries[0])
+
+    tab._reorder("up")
+
+    assert tab.has_unsaved_changes() is False
+    assert "zbyt duży lub zbyt głęboki" in tab.status_label.text()

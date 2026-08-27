@@ -16,14 +16,13 @@ class InvalidEpubError(EpubError):
 
 
 class ResourceLimitError(EpubError):
-    """Archiwum EPUB przekracza limit bezpieczeństwa albo ma niekanoniczną nazwę wpisu.
+    """EPUB albo jego struktura przekracza bezpieczny budżet zasobów.
 
-    Zgłaszane PRZED kosztowną dekompresją (na podstawie metadanych nagłówka ZIP),
-    m.in. przy: zbyt wielu wpisach, zbyt dużej sumie rozmiarów nieskompresowanych,
-    zbyt dużym pojedynczym wpisie, zbyt wysokim współczynniku kompresji (bomba ZIP),
-    zaszyfrowanym wpisie oraz nazwie z NUL/backslashem, ścieżką absolutną czy
-    segmentem ``..`` (traversal). Komunikat jest bezpieczny do pokazania w GUI/CLI.
-    Świadome podniesienie limitów: :class:`~epubforge.core._archive.ArchiveLimits`.
+    Zgłaszane m.in. przed kosztowną dekompresją na podstawie metadanych ZIP oraz
+    podczas budowania i przetwarzania ograniczonych struktur, takich jak spis
+    treści. Obejmuje zbyt wiele wpisów, nadmierną głębokość, rozmiary i stopień
+    kompresji, a także niekanoniczne nazwy członków archiwum. Komunikat jest
+    bezpieczny do pokazania w GUI/CLI.
     """
 
 

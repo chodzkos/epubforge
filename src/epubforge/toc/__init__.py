@@ -5,6 +5,7 @@ zakładkę „Spis treści".
 """
 
 from epubforge.toc.generator import generate_toc
+from epubforge.toc.limits import MAX_TOC_DEPTH, MAX_TOC_ENTRIES
 from epubforge.toc.model import (
     MoveMode,
     TocEntry,
@@ -18,6 +19,8 @@ from epubforge.toc.repair import TocProblem, repair_toc, validate_toc
 from epubforge.toc.writer import write_toc
 
 __all__ = [
+    "MAX_TOC_DEPTH",
+    "MAX_TOC_ENTRIES",
     "MoveMode",
     "TocEntry",
     "TocProblem",

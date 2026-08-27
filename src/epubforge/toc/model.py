@@ -11,6 +11,8 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Literal
 
+from epubforge.core import ResourceLimitError
+
 MoveMode = Literal["before", "after", "into"]
 
 
@@ -31,13 +33,27 @@ class TocEntry:
 
 def iter_entries(entries: list[TocEntry]) -> Iterator[TocEntry]:
     """Iteruje po wszystkich wpisach drzewa w kolejności DFS (pre-order)."""
-    for entry in entries:
+    from epubforge.toc.limits import validate_toc_structure
+
+    validate_toc_structure(entries)
+    stack: list[Iterator[TocEntry]] = [iter(entries)]
+    while stack:
+        iterator = stack[-1]
+        try:
+            entry = next(iterator)
+        except StopIteration:
+            stack.pop()
+            continue
         yield entry
-        yield from iter_entries(entry.children)
+        if entry.children:
+            stack.append(iter(entry.children))
 
 
 def siblings_of(entries: list[TocEntry], node: TocEntry) -> tuple[list[TocEntry], int] | None:
     """Zwraca ``(lista_rodzeństwa, indeks)`` węzła albo ``None``, gdy go nie ma."""
+    from epubforge.toc.limits import validate_toc_structure
+
+    validate_toc_structure(entries)
     return _locate(entries, node)
 
 
@@ -89,6 +105,9 @@ def move_entry(
             (zakaz przeniesienia do własnego potomka) lub gdy któryś z węzłów
             nie należy do drzewa.
     """
+    from epubforge.toc.limits import validate_toc_structure
+
+    validate_toc_structure(entries)
     if src is dst:
         raise ValueError("Nie można przenieść wpisu na samego siebie.")
     if _subtree_contains(src, dst):
@@ -103,9 +122,19 @@ def move_entry(
     # lokalizujemy dst ponownie.
     dst_list, dst_index = _locate(entries, dst)  # type: ignore[misc]
     if mode == "into":
-        dst.children.append(src)
+        inserted_list = dst.children
+        inserted_index = len(inserted_list)
     elif mode == "before":
-        dst_list.insert(dst_index, src)
+        inserted_list = dst_list
+        inserted_index = dst_index
     else:  # "after"
-        dst_list.insert(dst_index + 1, src)
+        inserted_list = dst_list
+        inserted_index = dst_index + 1
+    inserted_list.insert(inserted_index, src)
+    try:
+        validate_toc_structure(entries)
+    except ResourceLimitError:
+        inserted_list.pop(inserted_index)
+        src_list.insert(src_index, src)
+        raise
     return entries

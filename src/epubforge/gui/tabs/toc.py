@@ -31,7 +31,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from epubforge.core import ConfigStore, Epub
+from epubforge.core import ConfigStore, Epub, ResourceLimitError
 from epubforge.gui.widgets import PathEntry, make_scrollable, path_entry_texts
 from epubforge.i18n import _, ngettext
 from epubforge.toc import (
@@ -47,6 +47,7 @@ from epubforge.toc import (
     validate_toc,
     write_toc,
 )
+from epubforge.toc.limits import validate_toc_structure
 
 _TITLE_COL = 0
 _TARGET_COL = 1
@@ -206,9 +207,15 @@ class TocTab(QWidget):
         except Exception as exc:
             self.status_label.setText(_("Nie udało się otworzyć: {error}").format(error=exc))
             return
+        try:
+            entries, source = read_toc(epub)
+        except ResourceLimitError:
+            epub.close()
+            self._show_resource_limit()
+            self._refresh_actions()
+            return
         self._epub = epub
         self._epub_path = path
-        entries, source = read_toc(epub)
         self._entries = entries
         self._dirty = False
         self._rebuild_tree()
@@ -290,6 +297,9 @@ class TocTab(QWidget):
             move_entry(self._entries, src, dst, mode)  # type: ignore[arg-type]
         except ValueError:
             return  # np. próba przeniesienia do własnego potomka — ignorujemy
+        except ResourceLimitError:
+            self._show_resource_limit()
+            return
         self._mark_dirty()
         self._rebuild_tree()
 
@@ -298,7 +308,11 @@ class TocTab(QWidget):
         entry = self._selected_entry()
         if entry is None:
             return
-        siblings = siblings_of(self._entries, entry)
+        try:
+            siblings = siblings_of(self._entries, entry)
+        except ResourceLimitError:
+            self._show_resource_limit()
+            return
         if siblings is None:
             return
         items, index = siblings
@@ -309,7 +323,11 @@ class TocTab(QWidget):
         elif direction == "in" and index > 0:
             self._handle_move(entry, items[index - 1], "into")
         elif direction == "out":
-            parent = parent_of(self._entries, entry)
+            try:
+                parent = parent_of(self._entries, entry)
+            except ResourceLimitError:
+                self._show_resource_limit()
+                return
             if parent is not None:
                 self._handle_move(entry, parent, "after")
 
@@ -317,12 +335,24 @@ class TocTab(QWidget):
         """Dodaje nową pozycję jako rodzeństwo zaznaczonej (lub na końcu listy)."""
         new_entry = TocEntry(title=_("Nowa pozycja"), href="")
         selected = self._selected_entry()
-        siblings = siblings_of(self._entries, selected) if selected is not None else None
+        try:
+            siblings = siblings_of(self._entries, selected) if selected is not None else None
+        except ResourceLimitError:
+            self._show_resource_limit()
+            return
         if siblings is not None:
             items, index = siblings
-            items.insert(index + 1, new_entry)
+            insert_at = index + 1
         else:
-            self._entries.append(new_entry)
+            items = self._entries
+            insert_at = len(items)
+        items.insert(insert_at, new_entry)
+        try:
+            validate_toc_structure(self._entries)
+        except ResourceLimitError:
+            items.pop(insert_at)
+            self._show_resource_limit()
+            return
         self._mark_dirty()
         self._rebuild_tree()
 
@@ -331,7 +361,11 @@ class TocTab(QWidget):
         entry = self._selected_entry()
         if entry is None:
             return
-        siblings = siblings_of(self._entries, entry)
+        try:
+            siblings = siblings_of(self._entries, entry)
+        except ResourceLimitError:
+            self._show_resource_limit()
+            return
         if siblings is not None:
             items, index = siblings
             items.pop(index)
@@ -346,7 +380,12 @@ class TocTab(QWidget):
             return
         if self._entries and not self._confirm(_("Zastąpić bieżący spis treści wygenerowanym?")):
             return
-        self._entries = generate_toc(self._epub, max_level=self.level_spin.value())
+        try:
+            generated = generate_toc(self._epub, max_level=self.level_spin.value())
+        except ResourceLimitError:
+            self._show_resource_limit()
+            return
+        self._entries = generated
         self._mark_dirty()
         self._rebuild_tree()
         self.status_label.setText(_("Wygenerowano spis: {count}").format(count=self._count_label()))
@@ -355,13 +394,22 @@ class TocTab(QWidget):
         """Pokazuje listę problemów i po potwierdzeniu usuwa martwe wpisy."""
         if self._epub is None:
             return
-        problems = validate_toc(self._epub, self._entries)
+        try:
+            problems = validate_toc(self._epub, self._entries)
+        except ResourceLimitError:
+            self._show_resource_limit()
+            return
         if not problems:
             self.status_label.setText(_("Spis treści jest poprawny."))
             return
         if not self._show_problems_dialog(problems):
             return
-        self._entries, removed = repair_toc(self._epub, self._entries)
+        try:
+            repaired, removed = repair_toc(self._epub, self._entries)
+        except ResourceLimitError:
+            self._show_resource_limit()
+            return
+        self._entries = repaired
         self._mark_dirty()
         self._rebuild_tree()
         self.status_label.setText(_("Usunięto {n} wpisów.").format(n=len(removed)))
@@ -373,6 +421,9 @@ class TocTab(QWidget):
         try:
             write_toc(self._epub, self._entries)
             self._epub.save()
+        except ResourceLimitError:
+            self._show_resource_limit()
+            return
         except Exception as exc:
             self.status_label.setText(_("Nie udało się zapisać: {error}").format(error=exc))
             return
@@ -409,6 +460,12 @@ class TocTab(QWidget):
 
         count = sum(1 for _entry in iter_entries(self._entries))
         return ngettext("{n} pozycja", "{n} pozycji", count).format(n=count)
+
+    def _show_resource_limit(self) -> None:
+        """Pokazuje bezpieczny, wspólny komunikat o limicie struktury TOC."""
+        self.status_label.setText(
+            _("Spis treści jest zbyt duży lub zbyt głęboki do bezpiecznego przetworzenia.")
+        )
 
     def _mark_dirty(self) -> None:
         """Oznacza niezapisane zmiany i odświeża pasek/akcje."""
@@ -462,6 +519,7 @@ class TocTab(QWidget):
         if self._epub is not None:
             self._epub.close()
         self._epub = None
+        self._epub_path = None
         self._entries = []
         self._items = {}
         self._dirty = False
