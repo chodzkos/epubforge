@@ -11,7 +11,7 @@ from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import QMessageBox
 from pytestqt.qtbot import QtBot
 
-from epubforge.core.search import ReplaceReport, replace_in_epub
+from epubforge.core.search import ReplaceReport, SearchHit, SearchResults, replace_in_epub
 from epubforge.gui.tabs.editor import EditorTab
 from epubforge.gui.widgets.search_panel import SearchReplacePanel
 
@@ -89,6 +89,31 @@ def _start_blocked_replace(
     return tab, panel, started, release
 
 
+def _start_blocked_search(
+    qtbot: QtBot,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[EditorTab, SearchReplacePanel, threading.Event, threading.Event]:
+    """Uruchamia search i trzyma odczyt starego EPUB-a na jawnej barierze."""
+    import epubforge.gui.widgets.search_panel as search_mod
+
+    started = threading.Event()
+    release = threading.Event()
+
+    def blocked(*_args: object, **_kwargs: object) -> SearchResults:
+        started.set()
+        assert release.wait(timeout=3)
+        return _many_hits(1)
+
+    monkeypatch.setattr(search_mod, "search_epub", blocked)
+    tab = _open_tab(qtbot, tmp_path)
+    panel = tab.search_panel
+    panel.search_field.setText("needle")
+    panel._on_search()
+    qtbot.waitUntil(started.is_set, timeout=3000)
+    return tab, panel, started, release
+
+
 def test_toggle_shows_panel(qtbot: QtBot, tmp_path: Path) -> None:
     """Ctrl+Shift+F (toggle) pokazuje i chowa panel."""
     tab = _open_tab(qtbot, tmp_path)
@@ -125,6 +150,173 @@ def test_search_whole_epub_worker(qtbot: QtBot, tmp_path: Path) -> None:
 
     qtbot.waitUntil(lambda: not panel._searching, timeout=3000)
     assert panel.results.topLevelItemCount() == 1
+
+
+def _many_hits(count: int, *, truncated: bool = False) -> SearchResults:
+    """Tworzy lekki bounded result set bez pliku-fixture."""
+    return SearchResults(
+        [SearchHit(_CHAPTER_PATH, line, 1, f"needle {line}") for line in range(1, count + 1)],
+        truncated=truncated,
+    )
+
+
+def test_large_result_set_populates_only_first_page(qtbot: QtBot, tmp_path: Path) -> None:
+    """GUI nie tworzy naraz itemu Qt dla każdego trafienia z bufora core."""
+    tab = _open_tab(qtbot, tmp_path)
+    panel = tab.search_panel
+
+    panel._populate_results(_many_hits(1001, truncated=True))
+
+    group = panel.results.topLevelItem(0)
+    assert group is not None
+    assert panel.RESULT_PAGE_SIZE == 500
+    assert group.childCount() == 500
+    assert panel.show_more_button.isEnabled()
+    assert "co najmniej" in panel.status_label.text()
+
+
+def test_show_more_uses_buffer_without_duplicates(qtbot: QtBot, tmp_path: Path) -> None:
+    """Kolejne strony są dokładane z bufora raz, bez ponownego search i duplikatów."""
+    tab = _open_tab(qtbot, tmp_path)
+    panel = tab.search_panel
+    panel._populate_results(_many_hits(1001))
+
+    panel._show_more_results()
+    panel._show_more_results()
+
+    group = panel.results.topLevelItem(0)
+    assert group is not None
+    assert group.childCount() == 1001
+    locations = [group.child(index).data(0, 256) for index in range(group.childCount())]
+    assert len(locations) == len(set(locations))
+    assert panel.show_more_button.isEnabled() is False
+
+
+def test_empty_result_resets_pagination_state(qtbot: QtBot, tmp_path: Path) -> None:
+    """Pusty wynik usuwa poprzedni bufor, itemy i możliwość pokazania kolejnej strony."""
+    tab = _open_tab(qtbot, tmp_path)
+    panel = tab.search_panel
+    panel._populate_results(_many_hits(1001))
+
+    panel._populate_results(SearchResults())
+
+    assert panel.results.topLevelItemCount() == 0
+    assert panel.show_more_button.isEnabled() is False
+    assert panel._result_hits == []
+
+
+def test_new_epub_resets_search_results(qtbot: QtBot, tmp_path: Path) -> None:
+    """Otwarcie nowej książki czyści strony i unieważnia callback starego search."""
+    tab = _open_tab(qtbot, tmp_path)
+    panel = tab.search_panel
+    panel._populate_results(_many_hits(1001))
+    old_generation = panel._search_generation
+    other_dir = tmp_path / "other-search"
+    other_dir.mkdir()
+
+    assert tab.open_epub(_build_epub(other_dir))
+    panel._on_search_done(_many_hits(1), old_generation)
+
+    assert panel.results.topLevelItemCount() == 0
+    assert panel._result_hits == []
+
+
+def test_new_query_resets_previous_pagination(qtbot: QtBot, tmp_path: Path) -> None:
+    """Start nowego query usuwa stare itemy przed uruchomieniem workera."""
+    tab = _open_tab(qtbot, tmp_path)
+    panel = tab.search_panel
+    panel.search_field.setText("needle")
+    panel._populate_results(_many_hits(1001))
+    panel.search_field.setText("absent")
+
+    assert panel.results.topLevelItemCount() == 0
+    assert panel._result_hits == []
+
+    panel._on_search()
+    qtbot.waitUntil(lambda: not panel._searching, timeout=3000)
+
+
+def test_clearing_query_resets_previous_results(qtbot: QtBot, tmp_path: Path) -> None:
+    """Wyczyszczenie pola natychmiast usuwa trafienia poprzedniego zapytania."""
+    tab = _open_tab(qtbot, tmp_path)
+    panel = tab.search_panel
+    panel.search_field.setText("needle")
+    panel._populate_results(_many_hits(1001))
+
+    panel.search_field.clear()
+
+    assert panel.results.topLevelItemCount() == 0
+    assert panel._result_hits == []
+    assert panel.show_more_button.isEnabled() is False
+
+
+def test_open_and_dispose_are_blocked_while_search_reads_epub(
+    qtbot: QtBot,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Lifecycle nie zamyka Epub-a pod aktywnym workerem search."""
+    tab, panel, _started, release = _start_blocked_search(qtbot, tmp_path, monkeypatch)
+    epub = tab._epub
+    assert epub is not None
+    other_dir = tmp_path / "search-lifecycle"
+    other_dir.mkdir()
+    other = _build_epub(other_dir)
+    try:
+        assert tab.open_epub(other) is False
+        tab.dispose()
+        assert tab._epub is epub
+        assert epub._zip is not None
+    finally:
+        release.set()
+        qtbot.waitUntil(lambda: not panel._searching, timeout=3000)
+
+
+def test_search_cancel_is_cooperative(
+    qtbot: QtBot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Anulowanie ustawia hook workera i nie aplikuje częściowego wyniku."""
+    import epubforge.gui.widgets.search_panel as search_mod
+
+    started = threading.Event()
+    cancelled = threading.Event()
+
+    def cancellable(*_args: object, **kwargs: object) -> SearchResults:
+        should_cancel = kwargs["should_cancel"]
+        started.set()
+        assert callable(should_cancel)
+        assert cancelled.wait(timeout=3) or should_cancel()
+        return _many_hits(1)
+
+    monkeypatch.setattr(search_mod, "search_epub", cancellable)
+    tab = _open_tab(qtbot, tmp_path)
+    panel = tab.search_panel
+    panel.search_field.setText("needle")
+    panel._on_search()
+    qtbot.waitUntil(started.is_set, timeout=3000)
+
+    panel._on_cancel()
+    cancelled.set()
+    qtbot.waitUntil(lambda: not panel._searching, timeout=3000)
+
+    assert panel.results.topLevelItemCount() == 0
+    assert "Anulowano" in panel.status_label.text()
+
+
+def test_query_change_cancels_and_ignores_inflight_result(
+    qtbot: QtBot,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Callback starego query nie odtwarza wyników po zmianie tekstu pola."""
+    _tab, panel, _started, release = _start_blocked_search(qtbot, tmp_path, monkeypatch)
+
+    panel.search_field.setText("different")
+    release.set()
+    qtbot.waitUntil(lambda: not panel._searching, timeout=3000)
+
+    assert panel.results.topLevelItemCount() == 0
+    assert panel._result_hits == []
 
 
 def test_double_click_result_jumps(qtbot: QtBot, tmp_path: Path) -> None:

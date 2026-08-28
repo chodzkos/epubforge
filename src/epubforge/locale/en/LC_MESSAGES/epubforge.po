@@ -4485,3 +4485,33 @@ msgstr ""
 #, python-brace-format
 msgid "Podgląd jest zbyt duży do bezpiecznego wygenerowania. Rozmiar: {current}; limit: {limit}."
 msgstr "The preview is too large to generate safely. Size: {current}; limit: {limit}."
+
+#: src/epubforge/gui/app.py
+msgid "Operacja w toku"
+msgstr "Operation in progress"
+
+#: src/epubforge/gui/app.py
+msgid "Poczekaj na zakończenie wyszukiwania lub zamiany."
+msgstr "Wait for the search or replacement to finish."
+
+#: src/epubforge/gui/tabs/editor.py
+msgid "Poczekaj na zakończenie wyszukiwania lub je anuluj."
+msgstr "Wait for the search to finish or cancel it."
+
+#: src/epubforge/gui/widgets/search_panel.py
+msgid "Pokaż więcej"
+msgstr "Show more"
+
+#: src/epubforge/gui/widgets/search_panel.py
+msgid "Pokaż kolejną stronę wyników z pamięci"
+msgstr "Show the next page of buffered results"
+
+#: src/epubforge/gui/widgets/search_panel.py
+#, python-brace-format
+msgid "Znaleziono co najmniej {n} trafień. Wyniki wyszukiwania ograniczono."
+msgstr "At least {n} matches were found. Search results were limited."
+
+#: src/epubforge/gui/widgets/search_panel.py
+#, python-brace-format
+msgid " · pokazano {shown}"
+msgstr " · shown {shown}"

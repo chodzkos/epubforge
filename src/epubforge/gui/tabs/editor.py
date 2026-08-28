@@ -163,18 +163,25 @@ class EditorTab(EditorLayoutMixin, EditorPreviewMixin, QWidget):
         """Czy trwa mutująca operacja na otwartym EPUB-ie (Replace All)."""
         return self._mutation_guard
 
-    def _block_if_mutating(self) -> bool:
-        """Odrzuca lifecycle, gdy worker pisze do dokumentu. True = zablokowane."""
-        if not self._mutation_guard:
-            return False
-        self._set_info_bar(_("Poczekaj na zakończenie zamiany."))
-        return True
+    def is_document_busy(self) -> bool:
+        """Czy dowolny worker nadal czyta albo mutuje otwarty EPUB."""
+        return self._mutation_guard or self.search_panel.is_search_running()
+
+    def _block_if_busy(self) -> bool:
+        """Odrzuca lifecycle, dopóki worker używa otwartego EPUB-a."""
+        if self._mutation_guard:
+            self._set_info_bar(_("Poczekaj na zakończenie zamiany."))
+            return True
+        if self.search_panel.is_search_running():
+            self._set_info_bar(_("Poczekaj na zakończenie wyszukiwania lub je anuluj."))
+            return True
+        return False
 
     # ── Otwieranie EPUB ─────────────────────────────────────────────────────--
 
     def _choose_epub(self) -> None:
         """Wybór pliku EPUB przez dialog i otwarcie go."""
-        if self._block_if_mutating():
+        if self._block_if_busy():
             return
         path = open_file(self, _("Otwórz EPUB"), "", _("Pliki EPUB (*.epub)"))
         if path:
@@ -182,7 +189,7 @@ class EditorTab(EditorLayoutMixin, EditorPreviewMixin, QWidget):
 
     def open_epub(self, path: Path) -> bool:
         """Otwiera EPUB (pyta o niezapisane zmiany bieżącego). Zwraca sukces."""
-        if self._block_if_mutating():
+        if self._block_if_busy():
             return False
         if not self._confirm_discard_epub():
             return False
@@ -453,7 +460,7 @@ class EditorTab(EditorLayoutMixin, EditorPreviewMixin, QWidget):
 
     def _save_epub(self) -> None:
         """„Zapisz EPUB”: utrwala bufor na dysk (z backupem .bak), resetuje wskaźniki."""
-        if self._block_if_mutating():
+        if self._block_if_busy():
             return
         if self._epub is None or not self._dirty:
             return
@@ -525,8 +532,9 @@ class EditorTab(EditorLayoutMixin, EditorPreviewMixin, QWidget):
 
     def _close_epub(self) -> None:
         """Zamyka bieżący EPUB i czyści stan edycji."""
-        if self._block_if_mutating():
+        if self._block_if_busy():
             return
+        self.search_panel.reset()
         # Najpierw unieważnij origin, żeby żaden request nie przeżył zamknięcia ZIP-a.
         self.book_preview.set_session(None)
         if self._epub is not None:
@@ -541,7 +549,7 @@ class EditorTab(EditorLayoutMixin, EditorPreviewMixin, QWidget):
 
     def dispose(self) -> None:
         """Unieważnia sesję, zamyka EPUB i zwalnia oba backendy podglądu."""
-        if self._block_if_mutating():
+        if self._block_if_busy():
             return
         self._preview_timer.stop()
         self._close_epub()

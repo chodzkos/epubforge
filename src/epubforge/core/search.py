@@ -39,6 +39,8 @@ MAX_PATTERN_LENGTH = 1000
 # Twardy limit czasu jednego wywołania matchera (finditer/subn) per plik.
 REGEX_TIMEOUT_SECONDS = 1.0
 REGEX_TIMEOUT_MESSAGE = "Wyrażenie regularne przekroczyło limit czasu. Uprość wzorzec."
+# Globalny limit trafień jednego wyszukiwania (nie dotyczy Replace All).
+MAX_SEARCH_RESULTS = 10_000
 # Maksymalna długość podglądu linii z trafieniem.
 _PREVIEW_LIMIT = 160
 
@@ -77,6 +79,21 @@ class SearchHit:
     preview: str  # linia z trafieniem, przycięta
 
 
+class SearchResults(list[SearchHit]):
+    """Lista trafień z jawną informacją, że znaleziono co najmniej jedno dalsze."""
+
+    __slots__ = ("truncated",)
+
+    def __init__(
+        self,
+        hits: Iterable[SearchHit] = (),
+        *,
+        truncated: bool = False,
+    ) -> None:
+        super().__init__(hits)
+        self.truncated = truncated
+
+
 @dataclass(frozen=True)
 class ReplaceResult:
     """Liczba podmian w jednym pliku."""
@@ -112,7 +129,7 @@ def search_epub(
     whole_words: bool = False,
     paths: Iterable[str] | None = None,
     should_cancel: CancelCheck | None = None,
-) -> list[SearchHit]:
+) -> SearchResults:
     """Wyszukuje ``query`` w plikach tekstowych EPUB-a.
 
     Args:
@@ -125,26 +142,32 @@ def search_epub(
         should_cancel: predykat przerwania (dla dużych książek w wątku roboczym).
 
     Returns:
-        Lista :class:`SearchHit` w kolejności plików i wystąpień.
+        Lista :class:`SearchHit` w kolejności plików i wystąpień. Maksymalnie
+        :data:`MAX_SEARCH_RESULTS`; ``result.truncated`` sygnalizuje dalsze trafienia.
 
     Raises:
         SearchPatternError: gdy wzorzec jest błędny, zbyt długi, pusty
             albo przekroczył :data:`REGEX_TIMEOUT_SECONDS` na którymś pliku.
     """
     if not query:
-        return []
+        return SearchResults()
     pattern, timed = _compile(
         query, regex=regex, case_sensitive=case_sensitive, whole_words=whole_words
     )
-    hits: list[SearchHit] = []
+    hits = SearchResults()
     for internal in _searchable_paths(epub, paths):
         if should_cancel is not None and should_cancel():
-            break
+            return hits
         text, _replaced = decode_text(epub.read_file(internal))
         try:
             for match in _finditer(pattern, text, timed=timed):
+                if should_cancel is not None and should_cancel():
+                    return hits
                 if match.start() == match.end():  # pomijamy dopasowania zerowej długości
                     continue
+                if len(hits) >= MAX_SEARCH_RESULTS:
+                    hits.truncated = True
+                    return hits
                 line, column = offset_to_line_col(text, match.start())
                 hits.append(SearchHit(internal, line, column, _preview(text, match.start())))
         except TimeoutError as exc:
