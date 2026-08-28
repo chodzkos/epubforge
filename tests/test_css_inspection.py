@@ -328,6 +328,73 @@ def test_missing_stylesheet_source_is_negatively_cached() -> None:
     assert calls == 1
 
 
+def test_many_unique_missing_sources_have_bounded_provider_calls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Różne missing paths nie mogą wykonać nieograniczonej liczby odczytów GUI."""
+    monkeypatch.setattr(
+        inspection_module, "MAX_CSS_INSPECTOR_MAPPING_STYLESHEETS", 2, raising=False
+    )
+    report = _report((0,))
+    raw_rule = report["rules"][0]  # type: ignore[index]
+    assert isinstance(raw_rule, dict)
+    report["rules"] = [
+        {**raw_rule, "stylesheet_path": f"OEBPS/missing-{index}.css"} for index in range(5)
+    ]
+    calls: list[str] = []
+
+    def missing(path: str) -> None:
+        calls.append(path)
+
+    inspection = map_element_report(report, missing, generation=4)
+
+    assert calls == ["OEBPS/missing-0.css", "OEBPS/missing-1.css"]
+    assert inspection.truncated is True
+    assert any("budżet" in item for item in inspection.limitations)
+
+
+def test_oversized_source_exhausts_aggregate_before_more_providers_or_full_encode(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Pierwszy over-budget snapshot kończy dalsze materializowanie arkuszy."""
+    budget = 16
+    monkeypatch.setattr(inspection_module, "MAX_CSS_INSPECTOR_MAPPING_SOURCE_BYTES", budget)
+    monkeypatch.setattr(
+        inspection_module, "MAX_CSS_INSPECTOR_MAPPING_STYLESHEETS", 10, raising=False
+    )
+    report = _report((0,))
+    raw_rule = report["rules"][0]  # type: ignore[index]
+    assert isinstance(raw_rule, dict)
+    report["rules"] = [
+        {**raw_rule, "stylesheet_path": f"OEBPS/large-{index}.css"} for index in range(4)
+    ]
+    provider_calls: list[str] = []
+    fit_limits: list[int] = []
+    parse_calls = 0
+
+    def provider(path: str):
+        provider_calls.append(path)
+        return source_snapshot("x" * (budget + 1))
+
+    def bounded_fit(_source: str, max_bytes: int) -> bool:
+        fit_limits.append(max_bytes)
+        return False
+
+    def parse_forbidden(*_args: object, **_kwargs: object) -> None:
+        nonlocal parse_calls
+        parse_calls += 1
+
+    monkeypatch.setattr(inspection_module, "utf8_fits", bounded_fit)
+    monkeypatch.setattr(inspection_module, "parse_rules_bounded", parse_forbidden)
+    inspection = map_element_report(report, provider, generation=4)
+
+    assert provider_calls == ["OEBPS/large-0.css"]
+    assert fit_limits == [budget]
+    assert parse_calls == 0
+    assert inspection.truncated is True
+    assert any("budżet" in item for item in inspection.limitations)
+
+
 def test_mapping_source_aggregate_uses_existing_synchronous_parse_threshold() -> None:
     """Aggregate GUI budget nie przekracza istniejącej granicy pracy synchronicznej."""
     assert MAX_CSS_INSPECTOR_MAPPING_SOURCE_BYTES == CSS_INSPECTOR_WORKER_THRESHOLD_BYTES
@@ -516,6 +583,22 @@ def test_malformed_text_list_member_is_explicit() -> None:
     )
     assert inspection.truncated is True
     assert any("metadane tekstowe" in item for item in inspection.limitations)
+
+
+def test_limitation_overflow_keeps_truncation_reason_deduplicated() -> None:
+    """Overflow nie może ponownie dopisać reason zachowanego już w prefiksie."""
+    report = _report((0,))
+    truncation_message = inspection_module._TRUNCATION_MESSAGE
+    report["limitations"] = [
+        truncation_message,
+        *(f"limit-{index}" for index in range(MAX_CSS_ELEMENT_REPORT_LIMITATIONS - 1)),
+    ]
+    inspection = map_element_report(report, lambda _path: None, generation=4)
+
+    assert inspection.truncated is True
+    assert len(inspection.limitations) == MAX_CSS_ELEMENT_REPORT_LIMITATIONS
+    assert inspection.limitations.count(truncation_message) == 1
+    assert len(inspection.limitations) == len(set(inspection.limitations))
 
 
 @pytest.mark.parametrize(

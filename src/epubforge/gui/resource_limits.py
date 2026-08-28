@@ -49,6 +49,9 @@ from epubforge.gui.css_inspector_limits import (
     MAX_CSS_INSPECTOR_MAPPING_SOURCE_BYTES as MAX_CSS_INSPECTOR_MAPPING_SOURCE_BYTES,
 )
 from epubforge.gui.css_inspector_limits import (
+    MAX_CSS_INSPECTOR_MAPPING_STYLESHEETS as MAX_CSS_INSPECTOR_MAPPING_STYLESHEETS,
+)
+from epubforge.gui.css_inspector_limits import (
     MAX_CSS_INSPECTOR_RULE_DECLARATIONS as MAX_CSS_INSPECTOR_RULE_DECLARATIONS,
 )
 from epubforge.gui.css_inspector_limits import (

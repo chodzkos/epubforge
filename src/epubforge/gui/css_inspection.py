@@ -27,9 +27,9 @@ from epubforge.gui.css_inspector_limits import (
     MAX_CSS_ELEMENT_RULE_DECLARATIONS,
     MAX_CSS_INSPECTOR_DECLARATIONS,
     MAX_CSS_INSPECTOR_MAPPING_SOURCE_BYTES,
+    MAX_CSS_INSPECTOR_MAPPING_STYLESHEETS,
     MAX_CSS_INSPECTOR_RULE_DECLARATIONS,
     MAX_CSS_INSPECTOR_RULES,
-    MAX_CSS_INSPECTOR_SOURCE_BYTES,
     utf8_fits,
 )
 
@@ -184,6 +184,7 @@ def map_element_report(
     mapped_rules: list[InspectorRule] = []
     declaration_count = 0
     mapping_source_bytes = 0
+    mapping_provider_calls = 0
     mapping_budget_exhausted = False
     truncated = bool(report.get("truncated", False)) or metadata_truncated
     cascade_truncated = bool(report.get("cascade_truncated", report.get("truncated", False)))
@@ -270,16 +271,22 @@ def map_element_report(
                 cache[path] = None
                 parsed = None
             else:
-                snapshot = source_provider(path)
                 parsed = None
-                if snapshot is not None:
-                    source, revision = snapshot
-                    if utf8_fits(source, MAX_CSS_INSPECTOR_SOURCE_BYTES):
-                        source_bytes = len(source.encode("utf-8"))
-                        if (
-                            mapping_source_bytes + source_bytes
-                            <= MAX_CSS_INSPECTOR_MAPPING_SOURCE_BYTES
-                        ):
+                if mapping_provider_calls >= MAX_CSS_INSPECTOR_MAPPING_STYLESHEETS:
+                    mapping_budget_exhausted = True
+                    mapping_budget_skipped.add(path)
+                    truncated = True
+                    limitations.append(_MAPPING_SOURCE_BUDGET_MESSAGE)
+                else:
+                    mapping_provider_calls += 1
+                    snapshot = source_provider(path)
+                    if snapshot is not None:
+                        source, revision = snapshot
+                        remaining_source_bytes = (
+                            MAX_CSS_INSPECTOR_MAPPING_SOURCE_BYTES - mapping_source_bytes
+                        )
+                        if utf8_fits(source, remaining_source_bytes):
+                            source_bytes = len(source.encode("utf-8"))
                             mapping_source_bytes += source_bytes
                             parsed_result = parse_rules_bounded(
                                 source,
@@ -296,11 +303,6 @@ def map_element_report(
                             mapping_budget_skipped.add(path)
                             truncated = True
                             limitations.append(_MAPPING_SOURCE_BUDGET_MESSAGE)
-                    else:
-                        limitations.append(
-                            f"Arkusz zbyt duży do mapowania źródła inspektora: {path}."
-                        )
-                        parsed = ({}, revision)
                 cache[path] = parsed
             if parsed is not None:
                 rules, revision = parsed
@@ -472,8 +474,11 @@ def map_element_report(
     deduplicated_limitations = tuple(dict.fromkeys(limitations))
     if len(deduplicated_limitations) > MAX_CSS_ELEMENT_REPORT_LIMITATIONS:
         truncated = True
+        retained_limitations = tuple(
+            item for item in deduplicated_limitations if item != _TRUNCATION_MESSAGE
+        )
         deduplicated_limitations = (
-            *deduplicated_limitations[: MAX_CSS_ELEMENT_REPORT_LIMITATIONS - 1],
+            *retained_limitations[: MAX_CSS_ELEMENT_REPORT_LIMITATIONS - 1],
             _TRUNCATION_MESSAGE,
         )
     return ElementInspection(
