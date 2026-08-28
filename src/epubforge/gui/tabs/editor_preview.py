@@ -25,9 +25,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from epubforge.core import Epub, Tool
+from epubforge.core import Epub, ResourceLimitError, Tool
 from epubforge.gui import editor_files as ef
 from epubforge.gui.css_inspection import RuleIdentity, content_revision
+from epubforge.gui.css_inspector_limits import MAX_CSS_INSPECTOR_SOURCE_BYTES
 from epubforge.gui.external_tools import ToolUnavailableError, launch_tool
 from epubforge.gui.preview import BackendKind, BookPreview, PreviewSettings
 from epubforge.gui.preview.dom_mapping import SourceLocation
@@ -287,8 +288,9 @@ class EditorPreviewMixin:
             text = self._dirty[internal_path]
         else:
             try:
-                text, replaced = ef.decode_text(self._epub.read_file(internal_path))
-            except (KeyError, OSError):
+                data = self._epub.read_file_limited(internal_path, MAX_CSS_INSPECTOR_SOURCE_BYTES)
+                text, replaced = ef.decode_text(data)
+            except (KeyError, OSError, ResourceLimitError):
                 return None
             if replaced:
                 return None

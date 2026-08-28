@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import struct
 
+from epubforge.gui.css_inspector_limits import (
+    MAX_CSS_INSPECTOR_RULES as PURE_MAX_CSS_INSPECTOR_RULES,
+)
+from epubforge.gui.css_inspector_limits import utf8_fits
 from epubforge.gui.resource_limits import (
+    MAX_CSS_INSPECTOR_RULES,
     MAX_DECODED_IMAGE_BYTES,
     MAX_IMAGE_PIXELS,
     RasterStatus,
     probe_raster,
-    utf8_fits,
 )
 
 
@@ -24,6 +28,11 @@ def _bmp_metadata(width: int, height: int) -> bytes:
 def test_utf8_budget_allows_exact_bytes_and_rejects_one_more() -> None:
     assert utf8_fits("ą" * 4, 8)
     assert not utf8_fits("ą" * 4 + "x", 8)
+
+
+def test_resource_limits_reexports_css_inspector_limits() -> None:
+    """Historyczna ścieżka importu zachowuje jedno źródło wartości limitu."""
+    assert MAX_CSS_INSPECTOR_RULES == PURE_MAX_CSS_INSPECTOR_RULES
 
 
 def test_raster_exact_pixel_limit_is_allowed() -> None:
