@@ -1104,7 +1104,48 @@ msgid ""
 "{skipped}"
 msgstr "{id}: match {match} ({source}); {verb}: {changed}; übersprungen: {skipped}"
 
-#: src/epubforge/fixers/fonts.py:150
+#: src/epubforge/fixers/fonts.py:154
+#, python-brace-format
+msgid "Pominięto {count} fontów ponad limit liczby fontów ({limit})."
+msgstr "{count} Schriften über dem Schriftanzahl-Limit ({limit}) übersprungen."
+
+#: src/epubforge/fixers/fonts.py:168
+#, python-brace-format
+msgid ""
+"{path}: font zbyt duży do bezpiecznego automatycznego ograniczenia "
+"({size} > {limit} B)"
+msgstr ""
+"{path}: Schrift zu groß für sicheres automatisches Subsetting "
+"({size} > {limit} B)"
+
+#: src/epubforge/fixers/fonts.py:176
+#, python-brace-format
+msgid ""
+"{path}: pominięto — przekroczony łączny budżet subsettingu fontów "
+"({limit} B)"
+msgstr ""
+"{path}: übersprungen — Gesamtbudget für Schrift-Subsetting überschritten "
+"({limit} B)"
+
+#: src/epubforge/fixers/fonts.py:280
+#, python-brace-format
+msgid ""
+"Publikacja ma zbyt dużą liczbę plików do bezpiecznego automatycznego "
+"skanu znaków ({count} > {limit})."
+msgstr ""
+"Die Publikation enthält zu viele Dateien für eine sichere automatische "
+"Zeichensuche ({count} > {limit})."
+
+#: src/epubforge/fixers/fonts.py:313
+#, python-brace-format
+msgid ""
+"Treść publikacji jest zbyt duża do bezpiecznego automatycznego skanu "
+"znaków ({size} > {limit} B)."
+msgstr ""
+"Der Inhalt der Publikation ist zu groß für eine sichere automatische "
+"Zeichensuche ({size} > {limit} B)."
+
+#: src/epubforge/fixers/fonts.py:199
 msgid "nie udało się odczytać fontu"
 msgstr "Schrift konnte nicht gelesen werden"
 
