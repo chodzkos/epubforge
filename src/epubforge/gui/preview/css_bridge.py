@@ -1,6 +1,6 @@
 """Skrypt ApplicationWorld zbierający rzeczywistą kaskadę wybranego elementu."""
 
-from epubforge.gui.resource_limits import (
+from epubforge.gui.css_inspector_limits import (
     MAX_CSS_ELEMENT_REPORT_DECLARATIONS,
     MAX_CSS_ELEMENT_REPORT_LIMITATIONS,
     MAX_CSS_ELEMENT_REPORT_METADATA_ITEMS,

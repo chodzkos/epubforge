@@ -9,26 +9,54 @@ from enum import Enum
 from PySide6.QtCore import QBuffer, QByteArray, QIODevice
 from PySide6.QtGui import QImageReader
 
+from epubforge.gui.css_inspector_limits import (
+    CSS_INSPECTOR_WORKER_THRESHOLD_BYTES as CSS_INSPECTOR_WORKER_THRESHOLD_BYTES,
+)
+from epubforge.gui.css_inspector_limits import (
+    MAX_CSS_ELEMENT_REPORT_DECLARATIONS as MAX_CSS_ELEMENT_REPORT_DECLARATIONS,
+)
+from epubforge.gui.css_inspector_limits import (
+    MAX_CSS_ELEMENT_REPORT_LIMITATIONS as MAX_CSS_ELEMENT_REPORT_LIMITATIONS,
+)
+from epubforge.gui.css_inspector_limits import (
+    MAX_CSS_ELEMENT_REPORT_METADATA_ITEMS as MAX_CSS_ELEMENT_REPORT_METADATA_ITEMS,
+)
+from epubforge.gui.css_inspector_limits import (
+    MAX_CSS_ELEMENT_REPORT_PATH_DEPTH as MAX_CSS_ELEMENT_REPORT_PATH_DEPTH,
+)
+from epubforge.gui.css_inspector_limits import (
+    MAX_CSS_ELEMENT_REPORT_RULES as MAX_CSS_ELEMENT_REPORT_RULES,
+)
+from epubforge.gui.css_inspector_limits import (
+    MAX_CSS_ELEMENT_REPORT_TEXT_CHARS as MAX_CSS_ELEMENT_REPORT_TEXT_CHARS,
+)
+from epubforge.gui.css_inspector_limits import (
+    MAX_CSS_ELEMENT_RULE_DECLARATIONS as MAX_CSS_ELEMENT_RULE_DECLARATIONS,
+)
+from epubforge.gui.css_inspector_limits import (
+    MAX_CSS_ELEMENT_SCAN_RULES as MAX_CSS_ELEMENT_SCAN_RULES,
+)
+from epubforge.gui.css_inspector_limits import (
+    MAX_CSS_INSPECTOR_DECLARATIONS as MAX_CSS_INSPECTOR_DECLARATIONS,
+)
+from epubforge.gui.css_inspector_limits import (
+    MAX_CSS_INSPECTOR_RULE_DECLARATIONS as MAX_CSS_INSPECTOR_RULE_DECLARATIONS,
+)
+from epubforge.gui.css_inspector_limits import (
+    MAX_CSS_INSPECTOR_RULES as MAX_CSS_INSPECTOR_RULES,
+)
+from epubforge.gui.css_inspector_limits import (
+    MAX_CSS_INSPECTOR_SOURCE_BYTES as MAX_CSS_INSPECTOR_SOURCE_BYTES,
+)
+from epubforge.gui.css_inspector_limits import (
+    utf8_fits as utf8_fits,
+)
+
 _MIB = 1024 * 1024
 
 MAX_EDITOR_TEXT_BYTES = 16 * _MIB
 MAX_MAIN_PREVIEW_BYTES = 8 * _MIB
 MAX_PREVIEW_CSS_BYTES = 4 * _MIB
-# Modele inspektora są mniejsze od legalnego zasobu CSS i nigdy nie wpływają na zapis.
-MAX_CSS_INSPECTOR_RULES = 10_000
-MAX_CSS_INSPECTOR_DECLARATIONS = 20_000
-MAX_CSS_INSPECTOR_RULE_DECLARATIONS = 2_000
-MAX_CSS_INSPECTOR_SOURCE_BYTES = 1 * _MIB
-CSS_INSPECTOR_WORKER_THRESHOLD_BYTES = 64 * 1024
-# Raport elementu mapuje się na GUI thread; 2k reguł kosztuje ~150 ms, 10k ~670 ms.
-MAX_CSS_ELEMENT_REPORT_RULES = 2_000
-MAX_CSS_ELEMENT_SCAN_RULES = 20_000
-MAX_CSS_ELEMENT_REPORT_DECLARATIONS = 5_000
-MAX_CSS_ELEMENT_RULE_DECLARATIONS = 2_000
-MAX_CSS_ELEMENT_REPORT_METADATA_ITEMS = 256
-MAX_CSS_ELEMENT_REPORT_LIMITATIONS = 128
-MAX_CSS_ELEMENT_REPORT_PATH_DEPTH = 64
-MAX_CSS_ELEMENT_REPORT_TEXT_CHARS = 4_096
 MAX_DIRECT_IMAGE_ENCODED_BYTES = 32 * _MIB
 MAX_IMAGE_PIXELS = 32_000_000
 MAX_DECODED_IMAGE_BYTES = 128 * _MIB
@@ -36,7 +64,6 @@ MAX_DECODED_IMAGE_BYTES = 128 * _MIB
 # Budżet agregatu jest równy istniejącemu ceilingowi pojedynczego obrazu, więc
 # nie odrzuca obrazu legalnego według guarda per-image, ale ogranicza ich sumę.
 MAX_FALLBACK_DECODED_IMAGE_BYTES = MAX_DECODED_IMAGE_BYTES
-_UTF8_CHUNK_CHARS = 64 * 1024
 
 
 class RasterStatus(str, Enum):
@@ -71,18 +98,6 @@ class PreviewTextViolation:
 
     path: str
     kind: PreviewTextKind
-
-
-def utf8_fits(text: str, max_bytes: int) -> bool:
-    """Sprawdza rozmiar UTF-8 z małymi buforami i kończy po przekroczeniu limitu."""
-    if max_bytes < 0:
-        return False
-    total = 0
-    for start in range(0, len(text), _UTF8_CHUNK_CHARS):
-        total += len(text[start : start + _UTF8_CHUNK_CHARS].encode("utf-8"))
-        if total > max_bytes:
-            return False
-    return True
 
 
 def probe_raster(data: bytes) -> RasterProbe:

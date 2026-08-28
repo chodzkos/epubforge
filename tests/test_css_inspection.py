@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
+
 from epubforge.gui.css_inspection import content_revision, map_element_report, source_snapshot
-from epubforge.gui.preview.css_bridge import INSPECT_SCRIPT
-from epubforge.gui.resource_limits import (
+from epubforge.gui.css_inspector_limits import (
     MAX_CSS_ELEMENT_REPORT_LIMITATIONS,
     MAX_CSS_ELEMENT_REPORT_METADATA_ITEMS,
     MAX_CSS_ELEMENT_REPORT_PATH_DEPTH,
     MAX_CSS_ELEMENT_REPORT_TEXT_CHARS,
 )
+from epubforge.gui.preview.css_bridge import INSPECT_SCRIPT
 
 
 def _report(path: tuple[int, ...], *, active: bool = True) -> dict[str, object]:
@@ -45,6 +48,29 @@ def _report(path: tuple[int, ...], *, active: bool = True) -> dict[str, object]:
             }
         ],
     }
+
+
+def test_css_report_model_and_bridge_import_without_qt() -> None:
+    """Czysty model/JS bridge nie może wymagać opcjonalnego PySide6."""
+    code = """
+import builtins
+real_import = builtins.__import__
+def blocked(name, *args, **kwargs):
+    if name.startswith('PySide6'):
+        raise ModuleNotFoundError(name)
+    return real_import(name, *args, **kwargs)
+builtins.__import__ = blocked
+import epubforge.gui.css_inspection
+import epubforge.gui.preview.css_bridge
+"""
+    completed = subprocess.run(
+        [sys.executable, "-c", code],
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    assert completed.returncode == 0, completed.stderr
 
 
 def test_same_selector_maps_by_rule_path_not_selector() -> None:

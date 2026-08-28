@@ -45,7 +45,7 @@ from epubforge.gui.css_inspection import (
     content_revision,
     map_element_report,
 )
-from epubforge.gui.resource_limits import (
+from epubforge.gui.css_inspector_limits import (
     MAX_CSS_INSPECTOR_DECLARATIONS,
     MAX_CSS_INSPECTOR_RULE_DECLARATIONS,
     MAX_CSS_INSPECTOR_RULES,

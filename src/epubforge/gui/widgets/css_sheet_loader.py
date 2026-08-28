@@ -9,7 +9,7 @@ from typing import cast
 from PySide6.QtCore import QObject, Signal
 
 from epubforge.fixers.css_rules import CssRuleParseResult, parse_rules_bounded
-from epubforge.gui.resource_limits import (
+from epubforge.gui.css_inspector_limits import (
     CSS_INSPECTOR_WORKER_THRESHOLD_BYTES,
     MAX_CSS_INSPECTOR_DECLARATIONS,
     MAX_CSS_INSPECTOR_RULE_DECLARATIONS,

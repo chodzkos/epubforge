@@ -12,9 +12,9 @@ from pytestqt.qtbot import QtBot
 import epubforge.gui.widgets.css_inspector as inspector_module
 from epubforge.fixers.css_rules import CssDecl, CssRuleInfo, parse_rules
 from epubforge.gui.css_inspection import InspectorRule, RuleIdentity, content_revision
+from epubforge.gui.css_inspector_limits import MAX_CSS_INSPECTOR_SOURCE_BYTES
 from epubforge.gui.preview.backend import BackendKind
 from epubforge.gui.preview.webengine_backend import _decode_json_object
-from epubforge.gui.resource_limits import MAX_CSS_INSPECTOR_SOURCE_BYTES
 from epubforge.gui.tabs.editor import EditorTab
 from epubforge.gui.widgets.css_inspector import CssInspector
 from epubforge.gui.widgets.css_sheet_format import declaration_shortcut

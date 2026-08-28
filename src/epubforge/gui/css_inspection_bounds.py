@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from epubforge.gui.resource_limits import (
+from epubforge.gui.css_inspector_limits import (
     MAX_CSS_ELEMENT_REPORT_METADATA_ITEMS,
     MAX_CSS_ELEMENT_REPORT_TEXT_CHARS,
 )

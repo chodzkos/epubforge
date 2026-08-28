@@ -17,7 +17,7 @@ from epubforge.gui.css_inspection_bounds import (
 from epubforge.gui.css_inspection_bounds import optional_text as _optional_text
 from epubforge.gui.css_inspection_bounds import text_was_bounded as _text_was_bounded
 from epubforge.gui.css_inspection_bounds import texts as _texts
-from epubforge.gui.resource_limits import (
+from epubforge.gui.css_inspector_limits import (
     MAX_CSS_ELEMENT_REPORT_DECLARATIONS,
     MAX_CSS_ELEMENT_REPORT_LIMITATIONS,
     MAX_CSS_ELEMENT_REPORT_METADATA_ITEMS,

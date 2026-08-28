@@ -10,6 +10,7 @@ from PySide6.QtCore import Slot
 from shiboken6 import isValid
 
 from epubforge.core import Epub, PendingChanges
+from epubforge.gui.css_inspector_limits import utf8_fits
 from epubforge.gui.preview.backend import (
     DiagnosticCategory,
     DiagnosticEvent,
@@ -34,7 +35,6 @@ from epubforge.gui.resource_limits import (
     MAX_PREVIEW_CSS_BYTES,
     PreviewTextKind,
     find_preview_text_violation,
-    utf8_fits,
 )
 from epubforge.gui.workers import EmitLine, EmitProgress, ShouldCancel, Worker
 from epubforge.i18n import _
