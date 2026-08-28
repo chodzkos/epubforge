@@ -42,6 +42,15 @@ logger = logging.getLogger(__name__)
 
 _CSS_MEDIA_TYPES = {"text/css"}
 
+# ``fontTools`` jednocześnie utrzymuje bajty źródłowe, model tabel i bufor
+# serializacji. Limit subsettingu jest celowo znacznie niższy niż ogólny limit
+# wpisu EPUB (duży legalny font nadal można zachować i zapisać bez modyfikacji).
+MAX_FONT_SUBSET_BYTES = 16 * 1024**2
+MAX_FONT_SUBSET_TOTAL_BYTES = 128 * 1024**2
+MAX_FONT_SUBSET_FILES = 256
+MAX_FONT_GLYPH_SCAN_BYTES = 64 * 1024**2
+MAX_FONT_GLYPH_SCAN_FILES = 4096
+
 # Interpunkcja typograficzna wstawiana przez fixery typografii (Etap 16) —
 # musi zostać w foncie, żeby tekst po naprawie się renderował.
 _TYPOGRAPHIC = "„”“‚’‘«»—–…•·"
@@ -136,8 +145,45 @@ def subset_fonts(epub: Epub, options: FontSubsetOptions) -> FontReport:
     codepoints = _wanted_codepoints(epub, options, report)
     range_fonts = _fonts_with_unicode_range(epub, report)
     brotli_available = importlib.util.find_spec("brotli") is not None
+    accepted_source_bytes = 0
+    staged_outputs: dict[str, bytes] = {}
+    paths = font_files(epub)
+    excess_count = max(0, len(paths) - MAX_FONT_SUBSET_FILES)
+    if excess_count:
+        report.warnings.append(
+            _("Pominięto {count} fontów ponad limit liczby fontów ({limit}).").format(
+                count=excess_count, limit=MAX_FONT_SUBSET_FILES
+            )
+        )
 
-    for path in font_files(epub):
+    for path in paths[:MAX_FONT_SUBSET_FILES]:
+        try:
+            source_size = epub.get_file_size(path)
+        except KeyError:
+            note = _("brak zasobu publikacji w archiwum")
+            report.warnings.append(f"{path}: {note}")
+            report.record(FontResult(path, 0, 0, changed=False, note=note))
+            continue
+        if source_size > MAX_FONT_SUBSET_BYTES:
+            note = _(
+                "{path}: font zbyt duży do bezpiecznego automatycznego ograniczenia "
+                "({size} > {limit} B)"
+            ).format(path=path, size=source_size, limit=MAX_FONT_SUBSET_BYTES)
+            report.warnings.append(note)
+            report.record(FontResult(path, source_size, source_size, changed=False, note=note))
+            continue
+        note = _skip_reason(path, range_fonts, brotli_available, report)
+        if note:
+            report.record(FontResult(path, source_size, source_size, changed=False, note=note))
+            continue
+        if accepted_source_bytes + source_size > MAX_FONT_SUBSET_TOTAL_BYTES:
+            note = _(
+                "{path}: pominięto — przekroczony łączny budżet subsettingu fontów ({limit} B)"
+            ).format(path=path, limit=MAX_FONT_SUBSET_TOTAL_BYTES)
+            report.warnings.append(note)
+            report.record(FontResult(path, source_size, source_size, changed=False, note=note))
+            continue
+        accepted_source_bytes += source_size
         try:
             original = epub.read_file(path)
         except KeyError:
@@ -145,19 +191,17 @@ def subset_fonts(epub: Epub, options: FontSubsetOptions) -> FontReport:
             report.warnings.append(f"{path}: {note}")
             report.record(FontResult(path, 0, 0, changed=False, note=note))
             continue
-        note = _skip_reason(path, range_fonts, brotli_available, report)
-        if note:
-            report.record(FontResult(path, len(original), len(original), changed=False, note=note))
-            continue
         subsetted = _subset_one(subset_mod, ttlib, original, codepoints)
         if subsetted is not None and len(subsetted) < len(original):
-            epub.write_file(path, subsetted)
+            staged_outputs[path] = subsetted
             report.record(FontResult(path, len(original), len(subsetted), changed=True))
         else:
             skip_note = "" if subsetted is not None else _("nie udało się odczytać fontu")
             report.record(
                 FontResult(path, len(original), len(original), changed=False, note=skip_note)
             )
+    for path, data in staged_outputs.items():
+        epub.write_file(path, data)
     return report
 
 
@@ -200,6 +244,8 @@ def _subset_one(subset_mod: Any, ttlib: Any, data: bytes, codepoints: set[int]) 
         font.flavor = flavor
         font.save(buffer)
         return buffer.getvalue()
+    except MemoryError:
+        raise
     except Exception:  # uszkodzony font nie może wywalić całego batcha
         logger.exception("Nie udało się przyciąć fontu (pomijam)")
         return None
@@ -228,8 +274,20 @@ def _safety_charset() -> set[str]:
 def _content_chars(epub: Epub, report: FontReport) -> set[str]:
     """Zbiera znaki ze wszystkich dokumentów spine oraz literałów CSS."""
     chars: set[str] = set()
-    for path in _spine_doc_paths(epub):
+    scanned_bytes = 0
+    spine_paths = _spine_doc_paths(epub)
+    css_paths = _css_paths(epub)
+    source_count = len(spine_paths) + len(css_paths)
+    if source_count > MAX_FONT_GLYPH_SCAN_FILES:
+        raise FontSubsetError(
+            _(
+                "Publikacja ma zbyt dużą liczbę plików do bezpiecznego automatycznego "
+                "skanu znaków ({count} > {limit})."
+            ).format(count=source_count, limit=MAX_FONT_GLYPH_SCAN_FILES)
+        )
+    for path in spine_paths:
         try:
+            scanned_bytes = _reserve_glyph_scan_bytes(epub, path, scanned_bytes)
             data = epub.read_file(path)
         except KeyError:
             report.warnings.append(_("{path}: brak dokumentu spine w archiwum").format(path=path))
@@ -241,12 +299,26 @@ def _content_chars(epub: Epub, report: FontReport) -> set[str]:
         for text in root.itertext():
             if isinstance(text, str):  # itertext() typuje str | bytes; glify liczymy z tekstu
                 chars.update(text)
-    for path in _css_paths(epub):
+    for path in css_paths:
         try:
+            scanned_bytes = _reserve_glyph_scan_bytes(epub, path, scanned_bytes)
             chars |= _css_string_chars(epub.read_file(path))
         except KeyError:
             report.warnings.append(_("{path}: brak arkusza CSS w archiwum").format(path=path))
     return chars
+
+
+def _reserve_glyph_scan_bytes(epub: Epub, path: str, scanned_bytes: int) -> int:
+    """Rezerwuje rozmiar źródła tekstowego albo przerywa niebezpieczny pełny skan."""
+    total = scanned_bytes + epub.get_file_size(path)
+    if total > MAX_FONT_GLYPH_SCAN_BYTES:
+        raise FontSubsetError(
+            _(
+                "Treść publikacji jest zbyt duża do bezpiecznego automatycznego skanu znaków "
+                "({size} > {limit} B)."
+            ).format(size=total, limit=MAX_FONT_GLYPH_SCAN_BYTES)
+        )
+    return total
 
 
 def _spine_doc_paths(epub: Epub) -> list[str]:

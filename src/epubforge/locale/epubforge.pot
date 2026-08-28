@@ -1049,7 +1049,40 @@ msgid ""
 "{skipped}"
 msgstr ""
 
-#: src/epubforge/fixers/fonts.py:150
+#: src/epubforge/fixers/fonts.py:154
+#, python-brace-format
+msgid "Pominięto {count} fontów ponad limit liczby fontów ({limit})."
+msgstr ""
+
+#: src/epubforge/fixers/fonts.py:168
+#, python-brace-format
+msgid ""
+"{path}: font zbyt duży do bezpiecznego automatycznego ograniczenia "
+"({size} > {limit} B)"
+msgstr ""
+
+#: src/epubforge/fixers/fonts.py:176
+#, python-brace-format
+msgid ""
+"{path}: pominięto — przekroczony łączny budżet subsettingu fontów "
+"({limit} B)"
+msgstr ""
+
+#: src/epubforge/fixers/fonts.py:280
+#, python-brace-format
+msgid ""
+"Publikacja ma zbyt dużą liczbę plików do bezpiecznego automatycznego "
+"skanu znaków ({count} > {limit})."
+msgstr ""
+
+#: src/epubforge/fixers/fonts.py:313
+#, python-brace-format
+msgid ""
+"Treść publikacji jest zbyt duża do bezpiecznego automatycznego skanu "
+"znaków ({size} > {limit} B)."
+msgstr ""
+
+#: src/epubforge/fixers/fonts.py:199
 msgid "nie udało się odczytać fontu"
 msgstr ""
 
