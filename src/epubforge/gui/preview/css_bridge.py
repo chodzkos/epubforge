@@ -7,6 +7,8 @@ from epubforge.gui.css_inspector_limits import (
     MAX_CSS_ELEMENT_REPORT_PATH_DEPTH,
     MAX_CSS_ELEMENT_REPORT_RULES,
     MAX_CSS_ELEMENT_REPORT_TEXT_CHARS,
+    MAX_CSS_ELEMENT_REPORT_TOTAL_ITEMS,
+    MAX_CSS_ELEMENT_REPORT_TOTAL_TEXT_CHARS,
     MAX_CSS_ELEMENT_RULE_DECLARATIONS,
     MAX_CSS_ELEMENT_SCAN_RULES,
 )
@@ -59,17 +61,42 @@ _INSPECT_SCRIPT_TEMPLATE = r"""
   const rules = [];
   const maxRules = __MAX_RULES__, maxScannedRules = __MAX_SCANNED_RULES__, maxDeclarations = __MAX_DECLARATIONS__, maxRuleDeclarations = __MAX_RULE_DECLARATIONS__;
   const maxMetadataItems = __MAX_METADATA_ITEMS__, maxLimitations = __MAX_LIMITATIONS__, maxPathDepth = __MAX_PATH_DEPTH__, maxTextChars = __MAX_TEXT_CHARS__;
-  let reportDeclarations = 0, scannedRules = 0, scannedSheets = 0, truncated = false, inspectionAborted = false;
+  const maxReportTextChars = __MAX_REPORT_TEXT_CHARS__, maxReportItems = __MAX_REPORT_ITEMS__;
+  let reportDeclarations = 0, scannedRules = 0, scannedSheets = 0, reportTextChars = 0, reportItems = 0, truncated = false, inspectionAborted = false;
+  const jsonEscapedTextChars = value => Math.max(0, JSON.stringify(String(value ?? '')).length - 2);
+  const reserveReportText = value => {
+    const escapedChars = jsonEscapedTextChars(value);
+    if (reportTextChars + escapedChars > maxReportTextChars) {
+      truncated = true; inspectionAborted = true; return false;
+    }
+    reportTextChars += escapedChars;
+    return true;
+  };
+  const reserveReportItem = (count = 1) => {
+    if (reportItems + count > maxReportItems) {
+      truncated = true; inspectionAborted = true; return false;
+    }
+    reportItems += count;
+    return true;
+  };
+  const reportBudgetCheckpoint = () => [reportTextChars, reportItems];
+  const rollbackReportBudget = checkpoint => {
+    reportTextChars = checkpoint[0]; reportItems = checkpoint[1];
+  };
+  reserveReportItem(16);  // stały szkielet raportu i box modelu
   const boundedText = value => {
     const text = String(value ?? '');
     if (text.length > maxTextChars) truncated = true;
-    return text.slice(0, maxTextChars);
+    const bounded = text.slice(0, maxTextChars);
+    return reserveReportText(bounded) ? bounded : '';
   };
   const boundedList = (values, mapper = boundedText) => {
     const result = [];
     for (const value of values || []) {
       if (result.length >= maxMetadataItems) { truncated = true; break; }
-      result.push(mapper(value));
+      const mapped = mapper(value);
+      if (inspectionAborted || !reserveReportItem()) break;
+      result.push(mapped);
     }
     return result;
   };
@@ -92,17 +119,21 @@ _INSPECT_SCRIPT_TEMPLATE = r"""
     }
     return result;
   };
-  const limitations = new Set([
+  const limitations = new Set();
+  const addLimitation = text => {
+    if (limitations.size >= maxLimitations) { truncated = true; return; }
+    const bounded = boundedText(text);
+    if (inspectionAborted || !reserveReportItem()) return;
+    limitations.add(bounded);
+  };
+  [
     'Pseudoelementy, animacje i transitions są tylko do odczytu.',
     '@layer, @container, @scope oraz złożone var() mają ograniczoną analizę.',
     'Pełne drzewo stylów user-agent nie jest prezentowane.',
     'Shorthandy bez jednoznacznego spanu deklaracji są edytowane wyłącznie w obrębie całej reguły.',
-    'Font użyty dla konkretnego glifu nie jest ujawniany przez WebEngine; pokazano rodzinę computed i fallbacki.'
-  ]);
-  const addLimitation = text => {
-    if (limitations.size >= maxLimitations) { truncated = true; return; }
-    limitations.add(boundedText(text));
-  };
+    'Font użyty dla konkretnego glifu nie jest ujawniany przez WebEngine; pokazano rodzinę computed i fallbacki.',
+    'Łączny raport WebEngine ma budżet 1 MiB tekstu JSON; osiągnięcie limitu przerywa zbieranie kaskady.'
+  ].forEach(addLimitation);
   const addLimitationValue = (prefix, value, suffix = '') => {
     const text = String(value ?? '');
     const remaining = Math.max(0, maxTextChars - prefix.length - suffix.length);
@@ -151,6 +182,7 @@ _INSPECT_SCRIPT_TEMPLATE = r"""
           addLimitation('Inspektor przerwał analizę po osiągnięciu limitu raportu kaskady.');
           return;
         }
+        const ruleBudget = reportBudgetCheckpoint();
         const rawDeclarations = [];
         for (let i = 0; i < rule.style.length; i++) {
           const property = rule.style[i];
@@ -161,10 +193,18 @@ _INSPECT_SCRIPT_TEMPLATE = r"""
             addLimitation('Inspektor przerwał analizę deklaracji przekraczającej limit tekstu.');
             return;
           }
-          rawDeclarations.push({property, declared, computedValue});
+          const boundedProperty = boundedText(property);
+          const boundedDeclared = boundedText(declared);
+          const boundedComputed = boundedText(computedValue);
+          if (inspectionAborted) { rollbackReportBudget(ruleBudget); return; }
+          if (!reserveReportItem()) { rollbackReportBudget(ruleBudget); return; }
+          rawDeclarations.push({property, boundedProperty, boundedDeclared, boundedComputed});
         }
         const active = contextsActive(contexts);
         const spec = bestSpecificity(rule.selectorText);
+        if (!reserveReportItem(1 + rulePath.length + spec.length)) {
+          rollbackReportBudget(ruleBudget); return;
+        }
         const record = {
           selector: boundedText(rule.selectorText),
           stylesheet_path: sheetPath === null || sheetPath === undefined ? null : boundedText(sheetPath),
@@ -172,11 +212,12 @@ _INSPECT_SCRIPT_TEMPLATE = r"""
           contexts: boundedList(contexts, ctx => ({type: boundedText(ctx.type), condition: boundedText(ctx.condition)})),
           active, matched: true, specificity: spec, order, declarations: []
         };
+        if (inspectionAborted) { rollbackReportBudget(ruleBudget); return; }
         for (const rawDeclaration of rawDeclarations) {
           const decl = {
-            property: boundedText(rawDeclaration.property), [propertyKey]: rawDeclaration.property, declared: boundedText(rawDeclaration.declared),
+            property: rawDeclaration.boundedProperty, [propertyKey]: rawDeclaration.property, declared: rawDeclaration.boundedDeclared,
             important: rule.style.getPropertyPriority(rawDeclaration.property) === 'important',
-            computed: boundedText(rawDeclaration.computedValue), active, matched: true,
+            computed: rawDeclaration.boundedComputed, active, matched: true,
             specificity: spec, order, inline: false
           };
           record.declarations.push(decl);
@@ -218,6 +259,7 @@ _INSPECT_SCRIPT_TEMPLATE = r"""
       truncated = true; inspectionAborted = true;
       addLimitation('Inspektor przerwał analizę po osiągnięciu limitu stylu inline.');
     } else {
+      const inlineBudget = reportBudgetCheckpoint();
       const rawInlineDeclarations = [];
       for (let i = 0; i < element.style.length; i++) {
         const property = element.style[i];
@@ -228,15 +270,23 @@ _INSPECT_SCRIPT_TEMPLATE = r"""
           addLimitation('Inspektor przerwał analizę deklaracji inline przekraczającej limit tekstu.');
           break;
         }
-        rawInlineDeclarations.push({property, declared, computedValue});
+        const boundedProperty = boundedText(property);
+        const boundedDeclared = boundedText(declared);
+        const boundedComputed = boundedText(computedValue);
+        if (inspectionAborted || !reserveReportItem()) {
+          rollbackReportBudget(inlineBudget); break;
+        }
+        rawInlineDeclarations.push({property, boundedProperty, boundedDeclared, boundedComputed});
       }
-      if (!inspectionAborted) {
-        const inlineRule = {selector: 'element.style', stylesheet_path: null, rule_path: ['inline'], contexts: [], active: true, matched: true, specificity: [1,0,0,0], order: sourceOrder++, declarations: []};
+      if (!inspectionAborted && reserveReportItem(6)) {
+        const inlineRule = {selector: boundedText('element.style'), stylesheet_path: null, rule_path: ['inline'], contexts: [], active: true, matched: true, specificity: [1,0,0,0], order: sourceOrder++, declarations: []};
         for (const rawDeclaration of rawInlineDeclarations) {
-          const decl = {property: boundedText(rawDeclaration.property), [propertyKey]: rawDeclaration.property, declared: boundedText(rawDeclaration.declared), important: element.style.getPropertyPriority(rawDeclaration.property) === 'important', computed: boundedText(rawDeclaration.computedValue), active: true, matched: true, specificity: [1,0,0,0], order: inlineRule.order, inline: true};
+          const decl = {property: rawDeclaration.boundedProperty, [propertyKey]: rawDeclaration.property, declared: rawDeclaration.boundedDeclared, important: element.style.getPropertyPriority(rawDeclaration.property) === 'important', computed: rawDeclaration.boundedComputed, active: true, matched: true, specificity: [1,0,0,0], order: inlineRule.order, inline: true};
           inlineRule.declarations.push(decl); declarations.push(decl);
         }
         rules.push(inlineRule); reportDeclarations += inlineRule.declarations.length;
+      } else if (inspectionAborted) {
+        rollbackReportBudget(inlineBudget);
       }
     }
   }
@@ -271,8 +321,10 @@ _INSPECT_SCRIPT_TEMPLATE = r"""
   const parentComputed = element.parentElement ? getComputedStyle(element.parentElement) : null;
   const inherited = [];
   if (parentComputed) inheritedNames.forEach(property => {
-    if (!byProperty.has(property) && computed.getPropertyValue(property) === parentComputed.getPropertyValue(property))
-      inherited.push({property: boundedText(property), computed: boundedText(computed.getPropertyValue(property).trim()), from: boundedText(element.parentElement.localName)});
+    if (!byProperty.has(property) && computed.getPropertyValue(property) === parentComputed.getPropertyValue(property)) {
+      const item = {property: boundedText(property), computed: boundedText(computed.getPropertyValue(property).trim()), from: boundedText(element.parentElement.localName)};
+      if (!inspectionAborted && reserveReportItem()) inherited.push(item);
+    }
   });
   const rect = element.getBoundingClientRect();
   const side = (prefix, name) => ({top: boundedText(computed.getPropertyValue(prefix+'-top'+name)), right: boundedText(computed.getPropertyValue(prefix+'-right'+name)), bottom: boundedText(computed.getPropertyValue(prefix+'-bottom'+name)), left: boundedText(computed.getPropertyValue(prefix+'-left'+name))});
@@ -280,12 +332,15 @@ _INSPECT_SCRIPT_TEMPLATE = r"""
   for (let n = element; n && n.nodeType === 1 && breadcrumb.length < maxMetadataItems; n = n.parentElement) {
     const name = boundedText(n.localName);
     const id = n.id ? '#' + boundedText(n.id) : '';
-    breadcrumb.unshift(boundedText(name + id + classSuffix(n)));
+    const crumb = boundedText(name + id + classSuffix(n));
+    if (inspectionAborted || !reserveReportItem()) break;
+    breadcrumb.unshift(crumb);
     if (breadcrumb.length === maxMetadataItems && n.parentElement) truncated = true;
   }
   const family = boundedText(computed.fontFamily);
   const candidates = family.split(',', maxMetadataItems + 1).map(x => boundedText(x.trim().replace(/^['"]|['"]$/g, ''))).filter(Boolean);
   if (candidates.length > maxMetadataItems) { candidates.length = maxMetadataItems; truncated = true; }
+  if (!inspectionAborted && !reserveReportItem(candidates.length)) candidates.length = 0;
   let embedded = false, fontStatus = 'font systemowy lub fallback';
   if (document.fonts) {
     let faceCount = 0;
@@ -298,21 +353,31 @@ _INSPECT_SCRIPT_TEMPLATE = r"""
       if (faceFamily.replace(/^['"]|['"]$/g, '') !== (candidates[0] || '')) continue;
       faceCount++;
       const status = boundedText(face.status);
-      if (faceCount <= maxMetadataItems && statusChars + status.length <= maxTextChars) {
+      if (faceCount <= maxMetadataItems && statusChars + status.length <= maxTextChars && !inspectionAborted && reserveReportItem()) {
         statuses.push(status); statusChars += status.length;
       } else truncated = true;
       if (face.status === 'loaded') embedded = true;
     }
     if (faceCount) fontStatus = embedded ? 'osadzony, gotowy' : statuses.join(', ');
   }
-  return {
+  const result = {
     available: true, node_id: boundedText(element.getAttribute('data-epubforge-node-id')), breadcrumb,
     element: {tag: boundedText(element.localName), id: boundedText(element.id || ''), classes: boundedList(element.classList), text: boundedElementText(element).slice(0,160)},
     box: {margin: side('margin',''), border: side('border','-width'), padding: side('padding',''), content: {width: boundedText(computed.width || rect.width+'px'), height: boundedText(computed.height || rect.height+'px')}},
-    rules, inherited: inherited.slice(0, maxMetadataItems), truncated, cascade_truncated: inspectionAborted,
+    rules, inherited: inherited.slice(0, maxMetadataItems), truncated: false, cascade_truncated: false,
     font: {used_family: boundedText(candidates[0] || family), computed_family: boundedText(family), embedded, status: boundedText(fontStatus), fallbacks: candidates.slice(1, maxMetadataItems)},
     limitations: Array.from(limitations).slice(0, maxLimitations)
   };
+  if (inspectionAborted) {
+    rules.length = 0;
+    declarations.length = 0;
+    inherited.length = 0;
+    result.rules = [];
+    result.inherited = [];
+  }
+  result.truncated = truncated;
+  result.cascade_truncated = inspectionAborted;
+  return result;
 })
 """
 
@@ -325,4 +390,6 @@ INSPECT_SCRIPT = (
     .replace("__MAX_LIMITATIONS__", str(MAX_CSS_ELEMENT_REPORT_LIMITATIONS))
     .replace("__MAX_PATH_DEPTH__", str(MAX_CSS_ELEMENT_REPORT_PATH_DEPTH))
     .replace("__MAX_TEXT_CHARS__", str(MAX_CSS_ELEMENT_REPORT_TEXT_CHARS))
+    .replace("__MAX_REPORT_TEXT_CHARS__", str(MAX_CSS_ELEMENT_REPORT_TOTAL_TEXT_CHARS))
+    .replace("__MAX_REPORT_ITEMS__", str(MAX_CSS_ELEMENT_REPORT_TOTAL_ITEMS))
 )

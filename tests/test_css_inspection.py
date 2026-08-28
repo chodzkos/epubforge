@@ -5,12 +5,19 @@ from __future__ import annotations
 import subprocess
 import sys
 
+import pytest
+
+import epubforge.gui.css_inspection as inspection_module
 from epubforge.gui.css_inspection import content_revision, map_element_report, source_snapshot
 from epubforge.gui.css_inspector_limits import (
+    CSS_INSPECTOR_WORKER_THRESHOLD_BYTES,
     MAX_CSS_ELEMENT_REPORT_LIMITATIONS,
     MAX_CSS_ELEMENT_REPORT_METADATA_ITEMS,
     MAX_CSS_ELEMENT_REPORT_PATH_DEPTH,
     MAX_CSS_ELEMENT_REPORT_TEXT_CHARS,
+    MAX_CSS_ELEMENT_REPORT_TOTAL_ITEMS,
+    MAX_CSS_ELEMENT_REPORT_TOTAL_TEXT_CHARS,
+    MAX_CSS_INSPECTOR_MAPPING_SOURCE_BYTES,
 )
 from epubforge.gui.preview.css_bridge import INSPECT_SCRIPT
 
@@ -321,6 +328,230 @@ def test_missing_stylesheet_source_is_negatively_cached() -> None:
     assert calls == 1
 
 
+def test_mapping_source_aggregate_uses_existing_synchronous_parse_threshold() -> None:
+    """Aggregate GUI budget nie przekracza istniejącej granicy pracy synchronicznej."""
+    assert MAX_CSS_INSPECTOR_MAPPING_SOURCE_BYTES == CSS_INSPECTOR_WORKER_THRESHOLD_BYTES
+
+
+def test_mapping_source_aggregate_stops_before_more_providers_and_parses(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Suma różnych arkuszy ma cap przed kolejnymi providerami i parserami."""
+    source = ".x { color: red }"
+    monkeypatch.setattr(
+        inspection_module, "MAX_CSS_INSPECTOR_MAPPING_SOURCE_BYTES", len(source.encode("utf-8"))
+    )
+    report = _report((0,))
+    raw_rule = report["rules"][0]  # type: ignore[index]
+    assert isinstance(raw_rule, dict)
+    report["rules"] = [{**raw_rule, "stylesheet_path": f"OEBPS/{index}.css"} for index in range(4)]
+    provider_calls: list[str] = []
+    parse_calls = 0
+    original_parse = inspection_module.parse_rules_bounded
+
+    def provider(path: str):  # type: ignore[no-untyped-def]
+        provider_calls.append(path)
+        return source_snapshot(source)
+
+    def counted_parse(text: str, **kwargs: int):  # type: ignore[no-untyped-def]
+        nonlocal parse_calls
+        parse_calls += 1
+        return original_parse(text, **kwargs)
+
+    monkeypatch.setattr(inspection_module, "parse_rules_bounded", counted_parse)
+    inspection = map_element_report(report, provider, generation=4)
+
+    assert provider_calls == ["OEBPS/0.css", "OEBPS/1.css"]
+    assert parse_calls == 1
+    assert inspection.truncated is True
+    assert any("łączny budżet" in item for item in inspection.limitations)
+
+
+def test_mapping_source_aggregate_accepts_exact_total(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Dokładnie cały aggregate source budget parsuje wszystkie unikalne arkusze."""
+    source = ".x{color:red}"
+    source_bytes = len(source.encode("utf-8"))
+    monkeypatch.setattr(
+        inspection_module, "MAX_CSS_INSPECTOR_MAPPING_SOURCE_BYTES", source_bytes * 2
+    )
+    report = _report((0,))
+    raw_rule = report["rules"][0]  # type: ignore[index]
+    assert isinstance(raw_rule, dict)
+    report["rules"] = [
+        {**raw_rule, "stylesheet_path": "OEBPS/a.css"},
+        {**raw_rule, "stylesheet_path": "OEBPS/b.css"},
+    ]
+    parse_calls = 0
+    original_parse = inspection_module.parse_rules_bounded
+
+    def counted_parse(text: str, **kwargs: int):  # type: ignore[no-untyped-def]
+        nonlocal parse_calls
+        parse_calls += 1
+        return original_parse(text, **kwargs)
+
+    monkeypatch.setattr(inspection_module, "parse_rules_bounded", counted_parse)
+    inspection = map_element_report(report, lambda _path: source_snapshot(source), generation=4)
+
+    assert parse_calls == 2
+    assert inspection.truncated is False
+
+
+def test_mapping_source_aggregate_limit_plus_one_does_not_parse_next_sheet(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Unikalny arkusz przekraczający remaining budget nie trafia do parsera."""
+    first = ".a{color:red}"
+    second = ".b{color:blue}"
+    monkeypatch.setattr(
+        inspection_module,
+        "MAX_CSS_INSPECTOR_MAPPING_SOURCE_BYTES",
+        len(first.encode("utf-8")) + len(second.encode("utf-8")) - 1,
+    )
+    report = _report((0,))
+    raw_rule = report["rules"][0]  # type: ignore[index]
+    assert isinstance(raw_rule, dict)
+    report["rules"] = [
+        {**raw_rule, "stylesheet_path": "OEBPS/a.css"},
+        {**raw_rule, "stylesheet_path": "OEBPS/b.css"},
+    ]
+    parse_calls: list[str] = []
+    original_parse = inspection_module.parse_rules_bounded
+
+    def provider(path: str):
+        return source_snapshot(first if path.endswith("a.css") else second)
+
+    def counted_parse(text: str, **kwargs: int):  # type: ignore[no-untyped-def]
+        parse_calls.append(text)
+        return original_parse(text, **kwargs)
+
+    monkeypatch.setattr(inspection_module, "parse_rules_bounded", counted_parse)
+    inspection = map_element_report(report, provider, generation=4)
+
+    assert parse_calls == [first]
+    assert inspection.truncated is True
+
+
+def test_mapping_source_aggregate_counts_repeated_path_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Powtórzony path korzysta z cache i nie zużywa source budget ponownie."""
+    source = ".x{color:red}"
+    monkeypatch.setattr(
+        inspection_module, "MAX_CSS_INSPECTOR_MAPPING_SOURCE_BYTES", len(source.encode("utf-8"))
+    )
+    report = _report((0,))
+    report["rules"] = report["rules"] * 4  # type: ignore[operator]
+    provider_calls = 0
+    parse_calls = 0
+    original_parse = inspection_module.parse_rules_bounded
+
+    def provider(_path: str):
+        nonlocal provider_calls
+        provider_calls += 1
+        return source_snapshot(source)
+
+    def counted_parse(text: str, **kwargs: int):  # type: ignore[no-untyped-def]
+        nonlocal parse_calls
+        parse_calls += 1
+        return original_parse(text, **kwargs)
+
+    monkeypatch.setattr(inspection_module, "parse_rules_bounded", counted_parse)
+    inspection = map_element_report(report, provider, generation=4)
+
+    assert provider_calls == 1
+    assert parse_calls == 1
+    assert inspection.truncated is False
+
+
+def test_malformed_declaration_entry_is_explicit() -> None:
+    """Pomijana deklaracja ma jawny truncation reason."""
+    report = _report((0,))
+    report["rules"][0]["declarations"].append("invalid")  # type: ignore[index,union-attr]
+    inspection = map_element_report(
+        report, lambda _path: source_snapshot(".x { color: red }"), generation=4
+    )
+    assert inspection.truncated is True
+    assert any("declarations" in item for item in inspection.limitations)
+
+
+def test_malformed_context_entry_is_explicit() -> None:
+    """Pomijany context ma jawny truncation reason."""
+    report = _report((0,))
+    report["rules"][0]["contexts"].append("invalid")  # type: ignore[index,union-attr]
+    inspection = map_element_report(
+        report, lambda _path: source_snapshot(".x { color: red }"), generation=4
+    )
+    assert inspection.truncated is True
+    assert any("contexts" in item for item in inspection.limitations)
+
+
+def test_malformed_specificity_member_is_explicit() -> None:
+    """Pomijana składowa specificity ma jawny truncation reason."""
+    report = _report((0,))
+    report["rules"][0]["specificity"].append("invalid")  # type: ignore[index,union-attr]
+    inspection = map_element_report(
+        report, lambda _path: source_snapshot(".x { color: red }"), generation=4
+    )
+    assert inspection.truncated is True
+    assert any("specificity" in item for item in inspection.limitations)
+
+
+def test_malformed_inherited_entry_is_explicit() -> None:
+    """Pomijany inherited record ma jawny truncation reason."""
+    report = _report((0,))
+    report["inherited"].append("invalid")  # type: ignore[union-attr]
+    inspection = map_element_report(
+        report, lambda _path: source_snapshot(".x { color: red }"), generation=4
+    )
+    assert inspection.truncated is True
+    assert any("inherited" in item for item in inspection.limitations)
+
+
+def test_malformed_text_list_member_is_explicit() -> None:
+    """Non-string odrzucony przez bounded_texts nie znika bez limitation."""
+    report = _report((0,))
+    report["breadcrumb"].append(7)  # type: ignore[union-attr]
+    inspection = map_element_report(
+        report, lambda _path: source_snapshot(".x { color: red }"), generation=4
+    )
+    assert inspection.truncated is True
+    assert any("metadane tekstowe" in item for item in inspection.limitations)
+
+
+@pytest.mark.parametrize(
+    ("member", "invalid"),
+    [
+        ("rules", {}),
+        ("breadcrumb", {}),
+        ("inherited", {}),
+    ],
+)
+def test_malformed_top_level_list_container_is_explicit(member: str, invalid: object) -> None:
+    """Kontener raportu o złym typie nie może oznaczać kompletnej inspekcji."""
+    report = _report((0,))
+    report[member] = invalid
+    inspection = map_element_report(
+        report, lambda _path: source_snapshot(".x { color: red }"), generation=4
+    )
+    assert inspection.truncated is True
+    assert inspection.limitations
+
+
+@pytest.mark.parametrize(
+    ("member", "invalid"),
+    [("declarations", None), ("contexts", {}), ("specificity", {})],
+)
+def test_malformed_rule_list_container_is_explicit(member: str, invalid: object) -> None:
+    """Kontener członka reguły o złym typie daje jawny truncation signal."""
+    report = _report((0,))
+    report["rules"][0][member] = invalid  # type: ignore[index]
+    inspection = map_element_report(
+        report, lambda _path: source_snapshot(".x { color: red }"), generation=4
+    )
+    assert inspection.truncated is True
+    assert inspection.limitations
+
+
 def test_element_report_bounds_untrusted_metadata_before_model_copy() -> None:
     """Metadane poza rules/declarations mają własne cardinality i text caps."""
     report = _report((0,))
@@ -387,6 +618,28 @@ def test_webengine_report_bounds_metadata_before_json_transport() -> None:
     assert "++scannedSheets > maxScannedRules" in INSPECT_SCRIPT
     assert "for (const face of document.fonts)" in INSPECT_SCRIPT
     assert "const addLimitationValue" in INSPECT_SCRIPT
+
+
+def test_webengine_report_has_aggregate_pre_serialization_budget() -> None:
+    """Iloczyn capów pól nie może ominąć łącznego budżetu payloadu JSON."""
+    assert f"const maxReportTextChars = {MAX_CSS_ELEMENT_REPORT_TOTAL_TEXT_CHARS}" in INSPECT_SCRIPT
+    assert f"maxReportItems = {MAX_CSS_ELEMENT_REPORT_TOTAL_ITEMS}" in INSPECT_SCRIPT
+    assert "const reserveReportText" in INSPECT_SCRIPT
+    assert "const reserveReportItem" in INSPECT_SCRIPT
+    assert "JSON.stringify(String(value ?? '')).length - 2" in INSPECT_SCRIPT
+    assert "reportTextChars + escapedChars > maxReportTextChars" in INSPECT_SCRIPT
+    assert "reportTextChars + escapedChars >= maxReportTextChars" not in INSPECT_SCRIPT
+    assert "const reportBudgetCheckpoint" in INSPECT_SCRIPT
+    assert "rollbackReportBudget(ruleBudget)" in INSPECT_SCRIPT
+    assert "osiągnięcie limitu przerywa zbieranie kaskady" in INSPECT_SCRIPT
+    assert "if (!reserveReportItem())" in INSPECT_SCRIPT
+    assert INSPECT_SCRIPT.index("if (!reserveReportItem())") < INSPECT_SCRIPT.index(
+        "record.declarations.push(decl)"
+    )
+    final_cleanup = INSPECT_SCRIPT.rindex("if (inspectionAborted)")
+    assert final_cleanup > INSPECT_SCRIPT.index("if (document.fonts)")
+    assert final_cleanup < INSPECT_SCRIPT.rindex("return result;")
+    assert "rules.length = 0" in INSPECT_SCRIPT[final_cleanup:]
 
 
 def test_unavailable_element_report_bounds_error_and_limitations() -> None:

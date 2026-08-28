@@ -31,6 +31,12 @@ from epubforge.gui.css_inspector_limits import (
     MAX_CSS_ELEMENT_REPORT_TEXT_CHARS as MAX_CSS_ELEMENT_REPORT_TEXT_CHARS,
 )
 from epubforge.gui.css_inspector_limits import (
+    MAX_CSS_ELEMENT_REPORT_TOTAL_ITEMS as MAX_CSS_ELEMENT_REPORT_TOTAL_ITEMS,
+)
+from epubforge.gui.css_inspector_limits import (
+    MAX_CSS_ELEMENT_REPORT_TOTAL_TEXT_CHARS as MAX_CSS_ELEMENT_REPORT_TOTAL_TEXT_CHARS,
+)
+from epubforge.gui.css_inspector_limits import (
     MAX_CSS_ELEMENT_RULE_DECLARATIONS as MAX_CSS_ELEMENT_RULE_DECLARATIONS,
 )
 from epubforge.gui.css_inspector_limits import (
@@ -38,6 +44,9 @@ from epubforge.gui.css_inspector_limits import (
 )
 from epubforge.gui.css_inspector_limits import (
     MAX_CSS_INSPECTOR_DECLARATIONS as MAX_CSS_INSPECTOR_DECLARATIONS,
+)
+from epubforge.gui.css_inspector_limits import (
+    MAX_CSS_INSPECTOR_MAPPING_SOURCE_BYTES as MAX_CSS_INSPECTOR_MAPPING_SOURCE_BYTES,
 )
 from epubforge.gui.css_inspector_limits import (
     MAX_CSS_INSPECTOR_RULE_DECLARATIONS as MAX_CSS_INSPECTOR_RULE_DECLARATIONS,

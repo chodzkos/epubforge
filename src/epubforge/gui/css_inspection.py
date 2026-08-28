@@ -26,6 +26,7 @@ from epubforge.gui.css_inspector_limits import (
     MAX_CSS_ELEMENT_REPORT_TEXT_CHARS,
     MAX_CSS_ELEMENT_RULE_DECLARATIONS,
     MAX_CSS_INSPECTOR_DECLARATIONS,
+    MAX_CSS_INSPECTOR_MAPPING_SOURCE_BYTES,
     MAX_CSS_INSPECTOR_RULE_DECLARATIONS,
     MAX_CSS_INSPECTOR_RULES,
     MAX_CSS_INSPECTOR_SOURCE_BYTES,
@@ -37,6 +38,15 @@ SourceProvider = Callable[[str], SourceSnapshot | None]
 _TRUNCATION_MESSAGE = (
     "Inspektor CSS ograniczył liczbę reguł lub deklaracji. Zawęź widok lub użyj filtra."
 )
+_MAPPING_SOURCE_BUDGET_MESSAGE = (
+    "Osiągnięto łączny budżet źródeł mapowania; dalsze arkusze pozostają tylko do odczytu."
+)
+_MALFORMED_RULES_MESSAGE = "Pomijano niepoprawny kontener rules."
+_MALFORMED_DECLARATIONS_MESSAGE = "Pomijano niepoprawne rekordy declarations."
+_MALFORMED_CONTEXTS_MESSAGE = "Pomijano niepoprawne rekordy contexts."
+_MALFORMED_SPECIFICITY_MESSAGE = "Pomijano niepoprawne wartości specificity."
+_MALFORMED_INHERITED_MESSAGE = "Pomijano niepoprawne rekordy inherited."
+_MALFORMED_TEXTS_MESSAGE = "Pomijano niepoprawne metadane tekstowe."
 
 
 @dataclass(frozen=True)
@@ -170,19 +180,26 @@ def map_element_report(
     )
     limitations = list(limitation_texts)
     cache: dict[str, tuple[dict[tuple[int, ...], CssRuleInfo], int] | None] = {}
+    mapping_budget_skipped: set[str] = set()
     mapped_rules: list[InspectorRule] = []
     declaration_count = 0
+    mapping_source_bytes = 0
+    mapping_budget_exhausted = False
     truncated = bool(report.get("truncated", False)) or metadata_truncated
     cascade_truncated = bool(report.get("cascade_truncated", report.get("truncated", False)))
     raw_rules = report.get("rules", ())
     if not isinstance(raw_rules, list):
         raw_rules = []
+        truncated = True
+        cascade_truncated = True
+        limitations.append(_MALFORMED_RULES_MESSAGE)
     for raw_index, raw in enumerate(raw_rules):
         if raw_index >= max_rules:
             truncated = True
             cascade_truncated = True
             break
         if not isinstance(raw, dict):
+            truncated = True
             limitations.append("Nierozpoznany rekord reguły zwrócony przez CSSOM.")
             continue
         raw_declarations = raw.get("declarations", ())
@@ -196,7 +213,13 @@ def map_element_report(
                 truncated = True
                 cascade_truncated = True
                 break
+            if any(not isinstance(item, dict) for item in raw_declarations):
+                truncated = True
+                limitations.append(_MALFORMED_DECLARATIONS_MESSAGE)
             declaration_items.extend(item for item in raw_declarations if isinstance(item, dict))
+        else:
+            truncated = True
+            limitations.append(_MALFORMED_DECLARATIONS_MESSAGE)
         declaration_count += len(declaration_items)
         path_value = raw.get("stylesheet_path")
         path_was_bounded = (
@@ -242,22 +265,37 @@ def map_element_report(
         if path is not None and mapping_safe:
             if path in cache:
                 parsed = cache[path]
+            elif mapping_budget_exhausted:
+                mapping_budget_skipped.add(path)
+                cache[path] = None
+                parsed = None
             else:
                 snapshot = source_provider(path)
                 parsed = None
                 if snapshot is not None:
                     source, revision = snapshot
                     if utf8_fits(source, MAX_CSS_INSPECTOR_SOURCE_BYTES):
-                        parsed_result = parse_rules_bounded(
-                            source,
-                            max_rules=MAX_CSS_INSPECTOR_RULES,
-                            max_declarations=MAX_CSS_INSPECTOR_DECLARATIONS,
-                            max_rule_declarations=MAX_CSS_INSPECTOR_RULE_DECLARATIONS,
-                        )
-                        parsed = (
-                            {item.rule_path: item for item in parsed_result.rules},
-                            revision,
-                        )
+                        source_bytes = len(source.encode("utf-8"))
+                        if (
+                            mapping_source_bytes + source_bytes
+                            <= MAX_CSS_INSPECTOR_MAPPING_SOURCE_BYTES
+                        ):
+                            mapping_source_bytes += source_bytes
+                            parsed_result = parse_rules_bounded(
+                                source,
+                                max_rules=MAX_CSS_INSPECTOR_RULES,
+                                max_declarations=MAX_CSS_INSPECTOR_DECLARATIONS,
+                                max_rule_declarations=MAX_CSS_INSPECTOR_RULE_DECLARATIONS,
+                            )
+                            parsed = (
+                                {item.rule_path: item for item in parsed_result.rules},
+                                revision,
+                            )
+                        else:
+                            mapping_budget_exhausted = True
+                            mapping_budget_skipped.add(path)
+                            truncated = True
+                            limitations.append(_MAPPING_SOURCE_BUDGET_MESSAGE)
                     else:
                         limitations.append(
                             f"Arkusz zbyt duży do mapowania źródła inspektora: {path}."
@@ -273,7 +311,7 @@ def map_element_report(
                     limitations.append(
                         f"Nie zmapowano reguły {path} / {'.'.join(map(str, rule_path))}."
                     )
-            else:
+            elif path not in mapping_budget_skipped:
                 limitations.append(f"Źródło arkusza niedostępne: {path}.")
         elif path is not None and not mapping_safe:
             limitations.append("Reguła ma zbyt duże metadane i pozostaje tylko do odczytu.")
@@ -291,6 +329,8 @@ def map_element_report(
                 truncated = True
             for item in raw_contexts[:MAX_CSS_ELEMENT_REPORT_METADATA_ITEMS]:
                 if not isinstance(item, dict):
+                    truncated = True
+                    limitations.append(_MALFORMED_CONTEXTS_MESSAGE)
                     continue
                 context_type = _bounded_text(item.get("type", ""))
                 condition = _bounded_text(item.get("condition", ""))
@@ -299,7 +339,15 @@ def map_element_report(
                 ):
                     truncated = True
                 contexts.append(f"@{context_type} {condition}".strip())
+        else:
+            truncated = True
+            limitations.append(_MALFORMED_CONTEXTS_MESSAGE)
         raw_specificity = raw.get("specificity", ())
+        if isinstance(raw_specificity, (list, tuple)) and any(
+            type(value) is not int for value in raw_specificity[:MAX_CSS_ELEMENT_REPORT_PATH_DEPTH]
+        ):
+            truncated = True
+            limitations.append(_MALFORMED_SPECIFICITY_MESSAGE)
         specificity = tuple(
             int(value)
             for value in (
@@ -307,13 +355,16 @@ def map_element_report(
                 if isinstance(raw_specificity, (list, tuple))
                 else ()
             )
-            if isinstance(value, int)
+            if type(value) is int
         )
         if (
             isinstance(raw_specificity, (list, tuple))
             and len(raw_specificity) > MAX_CSS_ELEMENT_REPORT_PATH_DEPTH
         ):
             truncated = True
+        elif not isinstance(raw_specificity, (list, tuple)):
+            truncated = True
+            limitations.append(_MALFORMED_SPECIFICITY_MESSAGE)
         mapped_rules.append(
             InspectorRule(
                 selector=selector,
@@ -340,6 +391,10 @@ def map_element_report(
         element.get("classes", ()) if isinstance(element, dict) else ()
     )
     truncated = truncated or breadcrumb_truncated or classes_truncated
+    if _has_non_text(report.get("breadcrumb", ())) or _has_non_text(
+        element.get("classes", ()) if isinstance(element, dict) else ()
+    ):
+        limitations.append(_MALFORMED_TEXTS_MESSAGE)
     if isinstance(element, dict) and any(
         _text_was_bounded(element.get(key, "")) for key in ("tag", "id", "text")
     ):
@@ -357,6 +412,8 @@ def map_element_report(
     fallbacks, fallbacks_truncated = _bounded_texts(
         font.get("fallbacks", ()) if isinstance(font, dict) else ()
     )
+    if _has_non_text(font.get("fallbacks", ()) if isinstance(font, dict) else ()):
+        limitations.append(_MALFORMED_TEXTS_MESSAGE)
     if isinstance(font, dict) and (
         fallbacks_truncated
         or any(
@@ -390,6 +447,11 @@ def map_element_report(
         )
         if isinstance(item, dict)
     )
+    if not isinstance(raw_inherited, (list, tuple)) or any(
+        not isinstance(item, dict) for item in raw_inherited[:MAX_CSS_ELEMENT_REPORT_METADATA_ITEMS]
+    ):
+        truncated = True
+        limitations.append(_MALFORMED_INHERITED_MESSAGE)
     if (
         isinstance(raw_inherited, (list, tuple))
         and len(raw_inherited) > MAX_CSS_ELEMENT_REPORT_METADATA_ITEMS
@@ -446,4 +508,11 @@ def _rule_path(value: object) -> tuple[int, ...]:
         return ()
     return tuple(
         item for item in value[:MAX_CSS_ELEMENT_REPORT_PATH_DEPTH] if isinstance(item, int)
+    )
+
+
+def _has_non_text(value: object) -> bool:
+    """Wykrywa element listy tekstowej odrzucony przez bounded konwersję."""
+    return isinstance(value, (list, tuple)) and any(
+        not isinstance(item, str) for item in value[:MAX_CSS_ELEMENT_REPORT_METADATA_ITEMS]
     )

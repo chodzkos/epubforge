@@ -28,14 +28,14 @@ def bounded_texts(
 ) -> tuple[tuple[str, ...], bool]:
     """Kopiuje bounded listę tekstów i raportuje utratę danych."""
     if not isinstance(value, (list, tuple)):
-        return (), False
+        return (), True
     texts = tuple(
         item[:MAX_CSS_ELEMENT_REPORT_TEXT_CHARS]
         for item in value[:max_items]
         if isinstance(item, str)
     )
     truncated = len(value) > max_items or any(
-        isinstance(item, str) and len(item) > MAX_CSS_ELEMENT_REPORT_TEXT_CHARS
+        not isinstance(item, str) or len(item) > MAX_CSS_ELEMENT_REPORT_TEXT_CHARS
         for item in value[:max_items]
     )
     return texts, truncated
