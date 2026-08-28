@@ -8,6 +8,7 @@ from epubforge.fixers.css_rules import (
     build_preview_html,
     declarations_to_preview,
     parse_rules,
+    parse_rules_bounded,
     parse_single_rule,
     replace_rule,
     sample_for_selector,
@@ -89,6 +90,51 @@ def test_parse_font_face_not_previewable() -> None:
     (rule,) = parse_rules('@font-face { font-family: Foo; src: url("x.ttf") }')
     assert rule.previewable is False
     assert rule.selector.startswith("@font-face")
+
+
+def test_bounded_parse_accepts_exact_rule_limit() -> None:
+    """Dokładnie limit reguł jest pełnym, nieuciętym modelem."""
+    source = "a{color:red}b{color:red}c{color:red}"
+    result = parse_rules_bounded(source, max_rules=3, max_declarations=10)
+    assert len(result.rules) == 3
+    assert result.truncated is False
+    assert result.reason is None
+
+
+def test_bounded_parse_rule_limit_plus_one_is_explicit() -> None:
+    """Limit+1 nie tworzy kolejnego modelu i jawnie zgłasza ograniczenie."""
+    source = "a{color:red}b{color:red}c{color:red}d{color:red}"
+    result = parse_rules_bounded(source, max_rules=3, max_declarations=10)
+    assert [rule.selector for rule in result.rules] == ["a", "b", "c"]
+    assert result.truncated is True
+    assert result.reason == "rules"
+    assert source.endswith("d{color:red}")
+
+
+def test_bounded_parse_declaration_boundary_keeps_rules_whole() -> None:
+    """Budżet deklaracji akceptuje exact, a limit+1 nie zwraca częściowej reguły."""
+    exact = parse_rules_bounded("a{color:red;margin:0;padding:0}", max_rules=10, max_declarations=3)
+    over = parse_rules_bounded(
+        "a{color:red;margin:0;padding:0;border:0}", max_rules=10, max_declarations=3
+    )
+    assert len(exact.rules) == 1
+    assert exact.truncated is False
+    assert over.rules == ()
+    assert over.truncated is True
+    assert over.reason == "declarations"
+
+
+def test_bounded_parse_rejects_one_rule_over_per_rule_declaration_limit() -> None:
+    """Jedna monstrualna reguła nie zużywa całego budżetu deklaracji modelu."""
+    result = parse_rules_bounded(
+        "a{color:red;margin:0;padding:0;border:0}b{color:blue}",
+        max_rules=10,
+        max_declarations=10,
+        max_rule_declarations=3,
+    )
+    assert result.rules == ()
+    assert result.truncated is True
+    assert result.reason == "rule_declarations"
 
 
 # ── replace_rule ─────────────────────────────────────────────────────────────

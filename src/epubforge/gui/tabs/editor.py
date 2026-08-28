@@ -537,6 +537,7 @@ class EditorTab(EditorLayoutMixin, EditorPreviewMixin, QWidget):
         self.search_panel.reset()
         # Najpierw unieważnij origin, żeby żaden request nie przeżył zamknięcia ZIP-a.
         self.book_preview.set_session(None)
+        self.css_inspector.reset()
         if self._epub is not None:
             self._epub.close()
         self._epub = None
@@ -553,6 +554,7 @@ class EditorTab(EditorLayoutMixin, EditorPreviewMixin, QWidget):
             return
         self._preview_timer.stop()
         self._close_epub()
+        self.css_inspector.dispose()
         self.book_preview.dispose()
 
     def _update_tree_markers(self) -> None:

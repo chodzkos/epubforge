@@ -83,11 +83,76 @@ class CssRuleInfo:
     source_column: int = 1
 
 
+@dataclass(frozen=True)
+class CssRuleParseResult:
+    """Bounded model inspektora z jawną informacją o ograniczeniu."""
+
+    rules: tuple[CssRuleInfo, ...]
+    truncated: bool = False
+    reason: str | None = None
+
+
+@dataclass
+class _ParseBudget:
+    """Wewnętrzny licznik pełnych reguł i deklaracji modelu inspektora."""
+
+    max_rules: int
+    max_declarations: int
+    max_rule_declarations: int | None
+    declarations: int = 0
+    truncated: bool = False
+    reason: str | None = None
+
+    def append(self, rule: CssRuleInfo, rules: list[CssRuleInfo]) -> bool:
+        """Dodaje wyłącznie pełną regułę; ``False`` kończy dalsze mapowanie."""
+        if len(rules) >= self.max_rules:
+            self.truncated = True
+            self.reason = "rules"
+            return False
+        count = len(rule.declarations)
+        if self.max_rule_declarations is not None and count > self.max_rule_declarations:
+            self.truncated = True
+            self.reason = "rule_declarations"
+            return False
+        if self.declarations + count > self.max_declarations:
+            self.truncated = True
+            self.reason = "declarations"
+            return False
+        rules.append(rule)
+        self.declarations += count
+        return True
+
+
 # ── Parsowanie arkusza ──────────────────────────────────────────────────────
 
 
 def parse_rules(source: str) -> list[CssRuleInfo]:
     """Parsuje arkusz na listę reguł z offsetami; ``@media`` spłaszcza rekurencyjnie."""
+    rules, _budget = _parse_rules(source, None)
+    return rules
+
+
+def parse_rules_bounded(
+    source: str,
+    *,
+    max_rules: int,
+    max_declarations: int,
+    max_rule_declarations: int | None = None,
+) -> CssRuleParseResult:
+    """Buduje bounded model inspektora, nie zmieniając treści ani semantyki spanów."""
+    if max_rules < 1 or max_declarations < 1:
+        raise ValueError("Limity inspektora CSS muszą być dodatnie.")
+    if max_rule_declarations is not None and max_rule_declarations < 1:
+        raise ValueError("Limit deklaracji pojedynczej reguły musi być dodatni.")
+    budget = _ParseBudget(max_rules, max_declarations, max_rule_declarations)
+    rules, _used_budget = _parse_rules(source, budget)
+    return CssRuleParseResult(tuple(rules), budget.truncated, budget.reason)
+
+
+def _parse_rules(
+    source: str, budget: _ParseBudget | None
+) -> tuple[list[CssRuleInfo], _ParseBudget | None]:
+    """Wspólny parser; opcjonalny budżet ogranicza wyłącznie model wynikowy."""
     line_starts = _line_starts(source)
     nodes = tinycss2.parse_stylesheet(source, skip_comments=False, skip_whitespace=False)
     rules: list[CssRuleInfo] = []
@@ -95,7 +160,7 @@ def parse_rules(source: str) -> list[CssRuleInfo]:
     for node in nodes:
         if getattr(node, "type", "") in {"whitespace", "comment", "error"}:
             continue
-        _collect(
+        keep_going = _collect(
             node,
             source,
             line_starts,
@@ -103,9 +168,12 @@ def parse_rules(source: str) -> list[CssRuleInfo]:
             out=rules,
             rule_path=(rule_index,),
             contexts=(),
+            budget=budget,
         )
+        if not keep_going:
+            break
         rule_index += 1
-    return rules
+    return rules, budget
 
 
 def _collect(
@@ -116,22 +184,25 @@ def _collect(
     out: list[CssRuleInfo],
     rule_path: tuple[int, ...],
     contexts: tuple[str, ...],
-) -> None:
+    budget: _ParseBudget | None,
+) -> bool:
     """Dokłada regułę (lub rekurencyjnie reguły z ``@media``) do listy wynikowej."""
     node_type = getattr(node, "type", "")
     if node_type == "qualified-rule":
-        out.append(
-            _rule_info(
-                node,
-                source,
-                line_starts,
-                media=media,
-                previewable=True,
-                rule_path=rule_path,
-                contexts=contexts,
-            )
+        rule = _rule_info(
+            node,
+            source,
+            line_starts,
+            media=media,
+            previewable=True,
+            rule_path=rule_path,
+            contexts=contexts,
         )
-    elif node_type == "at-rule":
+        if budget is not None:
+            return budget.append(rule, out)
+        out.append(rule)
+        return True
+    if node_type == "at-rule":
         keyword = str(getattr(node, "lower_at_keyword", "") or "")
         prelude = _serialize(node.prelude).strip()  # type: ignore[attr-defined]
         context = f"@{keyword} {prelude}".strip()
@@ -145,7 +216,7 @@ def _collect(
             for inner in tinycss2.parse_rule_list(node.content or []):  # type: ignore[attr-defined]
                 if getattr(inner, "type", "") in {"whitespace", "comment", "error"}:
                     continue
-                _collect(
+                keep_going = _collect(
                     inner,
                     source,
                     line_starts,
@@ -153,20 +224,25 @@ def _collect(
                     out=out,
                     rule_path=(*rule_path, child_index),
                     contexts=(*contexts, context),
+                    budget=budget,
                 )
+                if not keep_going:
+                    return False
                 child_index += 1
         else:
-            out.append(
-                _rule_info(
-                    node,
-                    source,
-                    line_starts,
-                    media=media,
-                    previewable=False,
-                    rule_path=rule_path,
-                    contexts=contexts,
-                )
+            rule = _rule_info(
+                node,
+                source,
+                line_starts,
+                media=media,
+                previewable=False,
+                rule_path=rule_path,
+                contexts=contexts,
             )
+            if budget is not None:
+                return budget.append(rule, out)
+            out.append(rule)
+    return True
 
 
 def _rule_info(

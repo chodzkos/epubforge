@@ -33,8 +33,9 @@ from PySide6.QtWidgets import (
 
 from epubforge.fixers.css_rules import (
     CssRuleInfo,
+    CssRuleParseResult,
     build_preview_html,
-    parse_rules,
+    parse_rules_bounded,
     parse_single_rule,
 )
 from epubforge.gui.css_inspection import (
@@ -44,8 +45,17 @@ from epubforge.gui.css_inspection import (
     content_revision,
     map_element_report,
 )
+from epubforge.gui.resource_limits import (
+    MAX_CSS_INSPECTOR_DECLARATIONS,
+    MAX_CSS_INSPECTOR_RULE_DECLARATIONS,
+    MAX_CSS_INSPECTOR_RULES,
+    MAX_CSS_INSPECTOR_SOURCE_BYTES,
+    utf8_fits,
+)
 from epubforge.gui.widgets.code_editor import CodeEditor
 from epubforge.gui.widgets.css_element_panel import CssElementPanel
+from epubforge.gui.widgets.css_sheet_format import declaration_shortcut, index_for_rule_key
+from epubforge.gui.widgets.css_sheet_loader import CssSheetLoader, CssSheetLoadResult
 from epubforge.i18n import _
 
 # Kolory „papieru" podglądu — CELOWO niezależne od motywu aplikacji (symulacja
@@ -55,12 +65,13 @@ _PAPER_FG = "#1a1a1a"
 
 _PREVIEW_DEBOUNCE_MS = 300
 _REFRESH_DEBOUNCE_MS = 400
-_DECL_SHORTCUT_MAX = 60
 _INDEX_ROLE = Qt.ItemDataRole.UserRole
 
 
 class CssInspector(QWidget):
     """Panel: lista reguł + edytor reguły + podgląd na żywo + Zastosuj."""
+
+    RULE_PAGE_SIZE = 500
 
     rule_applied = Signal()
 
@@ -92,6 +103,8 @@ class CssInspector(QWidget):
         self._index = -1
         self._last_good_html = ""
         self._source_revision = 0
+        self._rendered_rules = 0
+        self._pending_rule_key: tuple[tuple[int, ...], tuple[int, int]] | None = None
 
         self._preview_timer = _single_shot(self, _PREVIEW_DEBOUNCE_MS, self._update_preview)
         self._refresh_timer = _single_shot(self, _REFRESH_DEBOUNCE_MS, self.refresh)
@@ -103,6 +116,15 @@ class CssInspector(QWidget):
             create_rule=create_rule or (lambda _selector, _path: None),
             highlight_matches=highlight_matches or (lambda _selector: None),
         )
+        self._sheet_loader = CssSheetLoader(
+            parse_rules_bounded,
+            self,
+            max_rules=MAX_CSS_INSPECTOR_RULES,
+            max_declarations=MAX_CSS_INSPECTOR_DECLARATIONS,
+            max_rule_declarations=MAX_CSS_INSPECTOR_RULE_DECLARATIONS,
+        )
+        self._sheet_loader.loaded.connect(self._on_sheet_loaded)
+        self._sheet_loader.failed.connect(self._on_sheet_failed)
         self._style_preview()
         self.refresh()
 
@@ -152,6 +174,14 @@ class CssInspector(QWidget):
 
         splitter.addWidget(self._build_preview_pane())
         splitter.setSizes([220, 150, 230])
+
+        self.show_more_button = QPushButton(_("Pokaż więcej"))
+        self.show_more_button.setToolTip(_("Pokaż kolejną stronę reguł z pamięci"))
+        self.show_more_button.clicked.connect(self._show_more_rules)
+        sheet_layout.addWidget(self.show_more_button)
+        self.limit_label = QLabel()
+        self.limit_label.setWordWrap(True)
+        sheet_layout.addWidget(self.limit_label)
 
         buttons = QHBoxLayout()
         self.apply_button = QPushButton(_("Zastosuj do arkusza"))
@@ -215,21 +245,72 @@ class CssInspector(QWidget):
     # ── Odświeżanie listy ─────────────────────────────────────────────────────
 
     def refresh(self) -> None:
-        """Re-parsuje źródło i zachowuje wybór po ścieżce/spanie, nie selektorze."""
-        previous_key = (
+        """Zamraża źródło; mały model liczy od razu, ciężki przekazuje workerowi."""
+        self._pending_rule_key = (
             (self._rules[self._index].rule_path, self._rules[self._index].span)
             if 0 <= self._index < len(self._rules)
             else None
         )
         self._source = self._get_source()
         self._source_revision = content_revision(self._source)
-        self._rules = parse_rules(self._source)
+        self._reset_sheet_tree()
+        if not utf8_fits(self._source, MAX_CSS_INSPECTOR_SOURCE_BYTES):
+            self._sheet_loader.invalidate()
+            self.limit_label.setText(
+                _("Arkusz CSS jest zbyt duży do bezpiecznej inspekcji. Plik pozostaje bez zmian.")
+            )
+            return
+        self.limit_label.setText(_("Analizowanie arkusza CSS…"))
+        self._sheet_loader.request(self._source, self._source_revision)
 
+    def _on_sheet_loaded(self, value: object) -> None:
+        """Materializuje wynik tylko dla dokładnego, nadal bieżącego snapshotu."""
+        if not isinstance(value, CssSheetLoadResult):
+            return
+        request = value.request
+        if request.revision != self._source_revision or request.source != self._source:
+            return
+        self._apply_sheet_result(value.parsed)
+
+    def _on_sheet_failed(self, _message: str) -> None:
+        """Degraduje błąd parsera bez tracebacku i bez modyfikacji źródła."""
+        self._reset_sheet_tree()
+        self.limit_label.setText(_("Nie udało się bezpiecznie przeanalizować arkusza CSS."))
+
+    def _apply_sheet_result(self, result: CssRuleParseResult) -> None:
+        """Podmienia bounded model i renderuje tylko potrzebne strony."""
+        self._rules = list(result.rules)
+        self.limit_label.setText(
+            _("Inspektor CSS ograniczył liczbę reguł lub deklaracji. Zawęź widok lub użyj filtra.")
+            if result.truncated
+            else ""
+        )
+        target = index_for_rule_key(self._rules, self._pending_rule_key)
+        pages = 1 if target is None else target // self.RULE_PAGE_SIZE + 1
         self.tree.setUpdatesEnabled(False)
+        for _page in range(pages):
+            self._show_more_rules()
+        self.tree.setUpdatesEnabled(True)
+
+        selected = self.tree.topLevelItem(target) if target is not None else None
+        if selected is not None:
+            self.tree.setCurrentItem(selected)
+
+    def _reset_sheet_tree(self) -> None:
+        """Czyści model prezentacji i stan stron przed nowym snapshotem."""
+        self._rules = []
+        self._index = -1
+        self._rendered_rules = 0
         self.tree.clear()
+        self.show_more_button.setEnabled(False)
+
+    def _show_more_rules(self) -> None:
+        """Dokłada stronę z istniejącego modelu bez ponownego parsowania CSS."""
+        end = min(self._rendered_rules + self.RULE_PAGE_SIZE, len(self._rules))
         items: list[QTreeWidgetItem] = []
-        for index, rule in enumerate(self._rules):
-            item = QTreeWidgetItem([rule.selector, _decl_shortcut(rule), rule.media or ""])
+        for index in range(self._rendered_rules, end):
+            rule = self._rules[index]
+            item = QTreeWidgetItem([rule.selector, declaration_shortcut(rule), rule.media or ""])
             item.setData(0, _INDEX_ROLE, index)
             if not rule.previewable:
                 disabled = QColor(self._theme.disabled_fg)
@@ -237,12 +318,8 @@ class CssInspector(QWidget):
                     item.setForeground(column, disabled)
             items.append(item)
         self.tree.addTopLevelItems(items)
-        self.tree.setUpdatesEnabled(True)
-
-        target = _index_for_rule_key(self._rules, previous_key)
-        selected = self.tree.topLevelItem(target) if target is not None else None
-        if selected is not None:
-            self.tree.setCurrentItem(selected)
+        self._rendered_rules = end
+        self.show_more_button.setEnabled(end < len(self._rules))
 
     # ── Wybór / podgląd ────────────────────────────────────────────────────--
 
@@ -351,6 +428,23 @@ class CssInspector(QWidget):
         """Przełącza na kompatybilny tryb Arkusz."""
         self.mode_tabs.setCurrentIndex(0)
 
+    def reset(self) -> None:
+        """Unieważnia parse/report przy zamknięciu lub podmianie publikacji."""
+        self._preview_timer.stop()
+        self._refresh_timer.stop()
+        self._sheet_loader.invalidate()
+        self._source = ""
+        self._source_revision = content_revision("")
+        self._pending_rule_key = None
+        self._reset_sheet_tree()
+        self.limit_label.clear()
+        self.element_panel.set_inspection(ElementInspection(False))
+
+    def dispose(self) -> None:
+        """Kooperacyjnie kończy parser i odrzuca wszystkie późne callbacki."""
+        self.reset()
+        self._sheet_loader.dispose()
+
     def set_theme(self, theme: Theme) -> None:
         """Aktualizuje motyw (edytor reguły, kolor wyszarzenia, ramka podglądu)."""
         self._theme = theme
@@ -393,33 +487,3 @@ def _single_shot(parent: QWidget, interval: int, slot: Callable[[], None]) -> QT
     timer.setInterval(interval)
     timer.timeout.connect(slot)
     return timer
-
-
-def _decl_shortcut(rule: CssRuleInfo) -> str:
-    """Skrót deklaracji reguły do ~60 znaków dla kolumny listy."""
-    text = "; ".join(f"{decl.name}: {decl.value}" for decl in rule.declarations)
-    return text if len(text) <= _DECL_SHORTCUT_MAX else text[: _DECL_SHORTCUT_MAX - 1] + "…"
-
-
-def _index_for_selector(rules: list[CssRuleInfo], selector: str | None) -> int | None:
-    """Indeks pierwszej reguły o danym selektorze; fallback na pierwszą regułę."""
-    if not rules:
-        return None
-    if selector is not None:
-        for index, rule in enumerate(rules):
-            if rule.selector == selector:
-                return index
-    return 0
-
-
-def _index_for_rule_key(
-    rules: list[CssRuleInfo], key: tuple[tuple[int, ...], tuple[int, int]] | None
-) -> int | None:
-    """Odtwarza zaznaczenie konkretnego wystąpienia, także przy duplikatach selektora."""
-    if not rules:
-        return None
-    if key is not None:
-        for index, rule in enumerate(rules):
-            if (rule.rule_path, rule.span) == key:
-                return index
-    return 0

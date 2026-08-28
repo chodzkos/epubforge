@@ -4515,3 +4515,27 @@ msgstr "At least {n} matches were found. Search results were limited."
 #, python-brace-format
 msgid " · pokazano {shown}"
 msgstr " · shown {shown}"
+
+#: src/epubforge/gui/widgets/css_element_panel.py
+msgid "Pokaż kolejną stronę dopasowanych deklaracji"
+msgstr "Show the next page of matched declarations"
+
+#: src/epubforge/gui/widgets/css_inspector.py
+msgid "Pokaż kolejną stronę reguł z pamięci"
+msgstr "Show the next page of rules from memory"
+
+#: src/epubforge/gui/widgets/css_inspector.py
+msgid "Arkusz CSS jest zbyt duży do bezpiecznej inspekcji. Plik pozostaje bez zmian."
+msgstr "The CSS stylesheet is too large to inspect safely. The file remains unchanged."
+
+#: src/epubforge/gui/widgets/css_inspector.py
+msgid "Analizowanie arkusza CSS…"
+msgstr "Analyzing CSS stylesheet…"
+
+#: src/epubforge/gui/widgets/css_inspector.py
+msgid "Nie udało się bezpiecznie przeanalizować arkusza CSS."
+msgstr "The CSS stylesheet could not be analyzed safely."
+
+#: src/epubforge/gui/widgets/css_inspector.py
+msgid "Inspektor CSS ograniczył liczbę reguł lub deklaracji. Zawęź widok lub użyj filtra."
+msgstr "The CSS inspector limited the number of rules or declarations. Narrow the view or use a filter."

@@ -5,6 +5,53 @@ from __future__ import annotations
 from epubforge.gui.css_inspection import ElementInspection, InspectorRule
 from epubforge.i18n import _
 
+_FILTER_PREFIXES = {
+    "typography": (
+        "font",
+        "text",
+        "line-",
+        "letter-",
+        "word-",
+        "hyphens",
+        "orphans",
+        "widows",
+    ),
+    "layout": (
+        "display",
+        "position",
+        "inset",
+        "top",
+        "right",
+        "bottom",
+        "left",
+        "width",
+        "height",
+        "min-",
+        "max-",
+        "flex",
+        "grid",
+        "align",
+        "justify",
+        "float",
+        "clear",
+        "overflow",
+    ),
+    "colors": ("color", "background", "fill", "stroke", "opacity"),
+    "box": ("margin", "padding", "border", "box-", "outline"),
+}
+
+
+def declaration_visible(
+    prop: str, state: str, query: str, categories: tuple[str, ...], overridden: bool
+) -> bool:
+    """Filtruje czyste dane deklaracji przed utworzeniem itemów Qt."""
+    lowered = prop.lower()
+    if query and query not in lowered:
+        return False
+    if overridden and state == "winning":
+        return False
+    return not categories or any(lowered.startswith(_FILTER_PREFIXES[key]) for key in categories)
+
 
 def format_box(box: object) -> str:
     """Składa margin/border/padding/content do zwartego opisu."""

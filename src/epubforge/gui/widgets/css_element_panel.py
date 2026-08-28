@@ -23,10 +23,16 @@ from PySide6.QtWidgets import (
 )
 
 from epubforge.fixers.css_rules import parse_single_rule
-from epubforge.gui.css_inspection import ElementInspection, InspectorRule, RuleIdentity
+from epubforge.gui.css_inspection import (
+    ElementInspection,
+    InspectorDeclaration,
+    InspectorRule,
+    RuleIdentity,
+)
 from epubforge.gui.widgets.code_editor import CodeEditor
 from epubforge.gui.widgets.css_element_format import (
     declaration_source,
+    declaration_visible,
     format_box,
     format_font,
     state_label,
@@ -35,33 +41,12 @@ from epubforge.gui.widgets.horizontal_strip import HorizontalStrip
 from epubforge.i18n import _
 
 _RULE_ROLE = Qt.ItemDataRole.UserRole
-_TYPOGRAPHY = ("font", "text", "line-", "letter-", "word-", "hyphens", "orphans", "widows")
-_LAYOUT = (
-    "display",
-    "position",
-    "inset",
-    "top",
-    "right",
-    "bottom",
-    "left",
-    "width",
-    "height",
-    "min-",
-    "max-",
-    "flex",
-    "grid",
-    "align",
-    "justify",
-    "float",
-    "clear",
-    "overflow",
-)
-_COLORS = ("color", "background", "fill", "stroke", "opacity")
-_BOX = ("margin", "padding", "border", "box-", "outline")
 
 
 class CssElementPanel(QWidget):
     """Prezentuje raport CSSOM, filtry, preview i bezpieczne akcje źródłowe."""
+
+    RULE_PAGE_SIZE = 200
 
     def __init__(
         self,
@@ -86,6 +71,9 @@ class CssElementPanel(QWidget):
         self._highlight_matches = highlight_matches
         self._inspection = ElementInspection(False)
         self._selected_rule: InspectorRule | None = None
+        self._visible_declarations: list[tuple[InspectorRule, InspectorDeclaration]] = []
+        self._rendered_declarations = 0
+        self._rule_items: dict[InspectorRule, QTreeWidgetItem] = {}
         self._build_ui()
         self._timer = QTimer(self)
         self._timer.setSingleShot(True)
@@ -151,6 +139,9 @@ class CssElementPanel(QWidget):
         )
         self.tree.currentItemChanged.connect(self._on_selection)
         splitter.addWidget(self.tree)
+        self.show_more_button = QPushButton(_("Pokaż więcej"))
+        self.show_more_button.setToolTip(_("Pokaż kolejną stronę dopasowanych deklaracji"))
+        self.show_more_button.clicked.connect(self._show_more_rules)
         self.rule_editor = CodeEditor()
         self.rule_editor.read_only = True
         self.rule_editor.setToolTip(
@@ -159,6 +150,7 @@ class CssElementPanel(QWidget):
         splitter.addWidget(self.rule_editor)
         splitter.setSizes([360, 150])
         layout.addWidget(splitter, stretch=1)
+        layout.addWidget(self.show_more_button)
 
         scope_row = QHBoxLayout()
         self.scope_combo = QComboBox()
@@ -294,46 +286,87 @@ class CssElementPanel(QWidget):
 
     def _rebuild_tree(self) -> None:
         selected_identity = self._selected_rule.identity if self._selected_rule else None
+        self._selected_rule = None
+        self.rule_editor.editor.blockSignals(True)
+        self.rule_editor.load("", "css")
+        self.rule_editor.editor.blockSignals(False)
+        self.rule_editor.read_only = True
+        self.jump_button.setEnabled(False)
+        self.apply_button.setEnabled(False)
         self.tree.clear()
         query = self.search_edit.text().strip().lower()
+        categories = tuple(
+            key
+            for key in ("typography", "layout", "colors", "box")
+            if self.filter_checks[key].isChecked()
+        )
+        overridden = self.filter_checks["overridden"].isChecked()
+        self._visible_declarations = []
         for rule in self._inspection.rules:
-            declarations = [
-                decl
+            self._visible_declarations.extend(
+                (rule, decl)
                 for decl in rule.declarations
-                if self._visible(decl.property, decl.state, query)
-            ]
-            if not declarations:
-                continue
-            context = " / ".join(rule.contexts)
-            source = rule.stylesheet_path or _("inline")
-            if rule.source_line is not None:
-                source += f":{rule.source_line}:{rule.source_column or 1}"
-            title = f"{rule.selector}  [{context}]" if context else rule.selector
-            parent = QTreeWidgetItem(
-                [title, "", "", _("aktywna") if rule.active else _("nieaktywna"), source]
+                if declaration_visible(decl.property, decl.state, query, categories, overridden)
             )
-            parent.setData(0, _RULE_ROLE, rule)
-            self.tree.addTopLevelItem(parent)
-            for decl in declarations:
-                important = " !important" if decl.important else ""
-                child = QTreeWidgetItem(
-                    [
-                        decl.property,
-                        decl.declared + important,
-                        decl.computed,
-                        state_label(decl.state),
-                        declaration_source(rule, decl.winner_order, decl.state),
-                    ]
-                )
-                child.setData(0, _RULE_ROLE, rule)
-                parent.addChild(child)
-            parent.setExpanded(True)
-            if selected_identity is not None and rule.identity == selected_identity:
-                self.tree.setCurrentItem(parent)
+        self._rendered_declarations = 0
+        self._rule_items = {}
+        self._show_more_rules(selected_identity)
+        self._append_inherited(query, categories, overridden)
+        if self.tree.currentItem() is None and self.tree.topLevelItemCount():
+            first = self.tree.topLevelItem(0)
+            if first is not None:
+                self.tree.setCurrentItem(first)
+
+    def _show_more_rules(self, selected_identity: RuleIdentity | None = None) -> None:
+        """Dokłada bounded stronę deklaracji z przefiltrowanego modelu."""
+        end = min(
+            self._rendered_declarations + self.RULE_PAGE_SIZE, len(self._visible_declarations)
+        )
+        for rule, decl in self._visible_declarations[self._rendered_declarations : end]:
+            parent = self._rule_items.get(rule)
+            if parent is None:
+                parent = self._rule_item(rule)
+                self._rule_items[rule] = parent
+                self.tree.insertTopLevelItem(len(self._rule_items) - 1, parent)
+                if selected_identity is not None and rule.identity == selected_identity:
+                    self.tree.setCurrentItem(parent)
+            important = " !important" if decl.important else ""
+            child = QTreeWidgetItem(
+                [
+                    decl.property,
+                    decl.declared + important,
+                    decl.computed,
+                    state_label(decl.state),
+                    declaration_source(rule, decl.winner_order, decl.state),
+                ]
+            )
+            child.setData(0, _RULE_ROLE, rule)
+            parent.addChild(child)
+        self._rendered_declarations = end
+        self.show_more_button.setEnabled(end < len(self._visible_declarations))
+
+    def _rule_item(self, rule: InspectorRule) -> QTreeWidgetItem:
+        """Buduje jeden wiersz reguły bez materializacji jej deklaracji."""
+        context = " / ".join(rule.contexts)
+        source = rule.stylesheet_path or _("inline")
+        if rule.source_line is not None:
+            source += f":{rule.source_line}:{rule.source_column or 1}"
+        title = f"{rule.selector}  [{context}]" if context else rule.selector
+        parent = QTreeWidgetItem(
+            [title, "", "", _("aktywna") if rule.active else _("nieaktywna"), source]
+        )
+        parent.setData(0, _RULE_ROLE, rule)
+        parent.setExpanded(True)
+        return parent
+
+    def _append_inherited(self, query: str, categories: tuple[str, ...], overridden: bool) -> None:
+        """Zachowuje mały, silnikowo ograniczony zestaw dziedziczonych właściwości."""
         inherited_items = [
             item
             for item in self._inspection.inherited
-            if self._visible(str(item.get("property", "")), "winning", query)
+            if declaration_visible(
+                str(item.get("property", "")), "winning", query, categories, overridden
+            )
         ]
         if inherited_items:
             inherited_parent = QTreeWidgetItem(
@@ -353,26 +386,6 @@ class CssElementPanel(QWidget):
                     )
                 )
             inherited_parent.setExpanded(True)
-        if self.tree.currentItem() is None and self.tree.topLevelItemCount():
-            first = self.tree.topLevelItem(0)
-            if first is not None:
-                self.tree.setCurrentItem(first)
-
-    def _visible(self, prop: str, state: str, query: str) -> bool:
-        low = prop.lower()
-        if query and query not in low:
-            return False
-        if self.filter_checks["overridden"].isChecked() and state == "winning":
-            return False
-        categories = [
-            key
-            for key in ("typography", "layout", "colors", "box")
-            if self.filter_checks[key].isChecked()
-        ]
-        if not categories:
-            return True
-        prefixes = {"typography": _TYPOGRAPHY, "layout": _LAYOUT, "colors": _COLORS, "box": _BOX}
-        return any(low.startswith(prefixes[key]) for key in categories)
 
     def _on_selection(
         self, current: QTreeWidgetItem | None, _previous: QTreeWidgetItem | None
