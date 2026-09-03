@@ -873,6 +873,10 @@ class FixerTab(QWidget):
         """Ustawia tekst paska statusu zakładki."""
         self.status_label.setText(text)
 
+    def is_running(self) -> bool:
+        """Czy główna operacja Fixera nadal używa workera i plików wejściowych."""
+        return self._running
+
 
 def _run_fix_worker(
     emit_line: EmitLine,
