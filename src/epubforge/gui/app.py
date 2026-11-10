@@ -391,6 +391,14 @@ class MainWindow(QMainWindow):
             )
             event.ignore()
             return
+        if self.fixer_tab.is_running():
+            QMessageBox.information(
+                self,
+                _("Operacja w toku"),
+                _("Poczekaj na zakończenie naprawy lub modernizacji EPUB."),
+            )
+            event.ignore()
+            return
         if self.editor_tab.has_unsaved_changes() or self.toc_tab.has_unsaved_changes():
             answer = QMessageBox.question(
                 self,

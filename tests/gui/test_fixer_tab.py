@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 from typing import Any
 
 import pytest
+from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import QMessageBox
 from pytestqt.qtbot import QtBot
 
@@ -232,3 +234,62 @@ def test_run_fix_worker_calls_fixers(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert (succeeded, total) == (1, 1)
     assert last == fixed
     assert hyphen_calls and css_calls
+
+
+def test_main_window_close_is_blocked_during_fixer_work(
+    qtbot: QtBot,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    qapp: object,
+) -> None:
+    """Zamknięcie aplikacji nie niszczy GUI, gdy Fixer nadal zapisuje EPUB-y."""
+    from chodzkos_gui_kit.qt.theme import ThemeManager
+    from PySide6.QtWidgets import QApplication
+
+    from epubforge.core.config import ConfigStore
+    from epubforge.gui.app import MainWindow
+
+    assert isinstance(qapp, QApplication)
+    started = threading.Event()
+    release = threading.Event()
+
+    def blocked_worker(
+        _emit_line: object, _emit_progress: object, *_args: object
+    ) -> tuple[int, int, None]:
+        started.set()
+        release.wait(timeout=5)
+        return 0, 1, None
+
+    monkeypatch.setattr(fixer_module, "_run_fix_worker", blocked_worker)
+    notices: list[str] = []
+    monkeypatch.setattr(
+        QMessageBox,
+        "information",
+        staticmethod(lambda *args, **_kwargs: notices.append(str(args[2]))),
+    )
+    store = ConfigStore("epubforge", path=tmp_path / "config.json")
+    window = MainWindow(
+        tmp_path / "config.json",
+        store,
+        {"pandoc": Tool("pandoc", None, available=False)},
+        ThemeManager(qapp, store),
+    )
+    qtbot.addWidget(window)
+    window.fixer_tab.file_list.add_files([tmp_path / "book.epub"])
+    window.fixer_tab._run_fix()
+    qtbot.waitUntil(started.is_set, timeout=3000)
+    worker = window.fixer_tab._worker
+    assert worker is not None and worker.isRunning()
+
+    try:
+        event = QCloseEvent()
+        window.closeEvent(event)
+
+        assert event.isAccepted() is False
+        assert window.fixer_tab.is_running() is True
+        assert worker.isRunning()
+        assert any("Poczekaj" in notice for notice in notices)
+    finally:
+        release.set()
+        qtbot.waitUntil(lambda: not window.fixer_tab._running, timeout=3000)
+        worker.wait(3000)
