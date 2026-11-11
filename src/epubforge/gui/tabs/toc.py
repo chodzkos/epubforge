@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import cast
 
 from chodzkos_gui_kit.palette import Palette as Theme
 from chodzkos_gui_kit.qt.theme import current_palette as current_theme
@@ -261,7 +260,7 @@ class TocTab(QWidget):
 
     def _selected_entry(self) -> TocEntry | None:
         """Zwraca wpis odpowiadający zaznaczonej pozycji (lub ``None``)."""
-        item = cast("QTreeWidgetItem | None", self.tree.currentItem())
+        item = self.tree.currentItem()
         if item is None:
             return None
         return self._items.get(item.data(0, _ENTRY_ROLE))
